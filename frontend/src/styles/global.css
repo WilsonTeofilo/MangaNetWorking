@@ -1,0 +1,191 @@
+@import "tailwindcss";
+@import "./tokens.css";
+@import "./textures.css";
+
+@theme {
+  --color-ink: #0B0B0C;
+  --color-ink-2: #151517;
+  --color-ink-3: #212125;
+  --color-line: #34343A;
+  --color-paper: #F4EFE3;
+  --color-paper-2: #E4DDCB;
+  --color-yellow: #FFD400;
+  --color-yellow-press: #E0B800;
+  --color-red: #E8402F;
+  --color-mute: #A9A59A;
+  --color-mute-paper: #55524A;
+  --color-ok: #3DDC84;
+
+  --font-display: "Anton", "Impact", sans-serif;
+  --font-logo: "Bowlby One", "Anton", sans-serif;
+  --font-body: "Archivo Variable", "Archivo", system-ui, sans-serif;
+  --font-pixel: "Silkscreen", monospace;
+}
+
+@layer base {
+  body {
+    background-color: var(--mn-ink);
+    color: var(--mn-paper);
+    font-family: var(--font-body);
+    line-height: 1.5;
+    overflow-x: hidden;
+    margin: 0;
+  }
+
+  /* Scrollbar customizada estilo Tinta e Papel */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--mn-ink);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--mn-line);
+    border-radius: 0px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--mn-yellow);
+  }
+}
+
+/* Escala e Utilitários Oficiais de Tipografia */
+.font-display {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+}
+
+.font-logo {
+  font-family: var(--font-logo);
+  text-transform: uppercase;
+}
+
+.font-body {
+  font-family: var(--font-body);
+}
+
+.font-pixel {
+  font-family: var(--font-pixel);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Container Único Oficial: max-width 1200px, alinhado */
+.mn-container {
+  width: 100%;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+@media (min-width: 768px) {
+  .mn-container {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+}
+
+/* Tipografia em Escala */
+.text-display-xl {
+  font-family: var(--font-display);
+  font-size: clamp(56px, 9vw, 128px);
+  line-height: 0.88;
+  text-transform: uppercase;
+}
+
+.text-display-l {
+  font-family: var(--font-display);
+  font-size: clamp(40px, 6vw, 72px);
+  line-height: 0.92;
+  text-transform: uppercase;
+}
+
+.text-display-m {
+  font-family: var(--font-display);
+  font-size: 40px;
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+
+.text-display-title {
+  font-family: var(--font-display);
+  font-size: 24px;
+  line-height: 1.0;
+  text-transform: uppercase;
+}
+
+.text-card-title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.text-body-l {
+  font-family: var(--font-body);
+  font-size: 18px;
+  line-height: 1.6;
+}
+
+.text-micro {
+  font-family: var(--font-pixel);
+  font-size: 12px;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Janela Retrô OS — MangaNetWorking */
+.mn-win {
+  border: 2px solid var(--edge);
+  box-shadow: 4px 4px 0 var(--drop);
+  background: var(--mn-ink-2);
+  border-radius: var(--radius);
+}
+
+.mn-win__bar {
+  height: 28px;
+  background: var(--mn-yellow);
+  color: var(--mn-ink);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+  border-bottom: 2px solid var(--edge);
+  font-family: var(--font-pixel);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: bold;
+}
+
+.mn-win__ctrl {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--mn-ink);
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.mn-win__ctrl:hover {
+  background: var(--mn-ink);
+  color: var(--mn-yellow);
+}
+
+.mn-win__body {
+  padding: 16px;
+}

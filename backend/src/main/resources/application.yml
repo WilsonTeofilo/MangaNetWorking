@@ -1,0 +1,49 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: manganetworking-backend
+
+  # Banco de Dados Relacional (PostgreSQL)
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:25432/manganetworking}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgrespassword}
+    driver-class-name: org.postgresql.Driver
+
+  # Flyway Migrations (Schema versionado em db/migration/)
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+  jpa:
+    hibernate:
+      ddl-auto: validate # Flyway gerencia o schema autoritativamente
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  # Banco de Dados Não-Relacional (MongoDB para Feed, Algoritmo e Eventos de Engajamento)
+  data:
+    mongodb:
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/manganetworking_events}
+
+# Parâmetros de Negócio da Plataforma MangaNetWorking
+platform:
+  fee-percentage: 0.17 # 17% retido pela plataforma sobre doações e membros
+  creator-share-percentage: 0.83 # 83% repasse líquido ao criador
+  membership:
+    min-price: 7.99
+    max-price: 45.99
+  ads:
+    pages-per-ad: 30 # Anúncio a cada 30 páginas lidas
+    creator-share-percentage: 0.58 # 58% para o criador monetizado
+    platform-share-percentage: 0.42 # 42% para a plataforma
+  security:
+    two-factor-mandatory: true # 2FA obrigatório até mesmo para login com Google
+  storage:
+    local-upload-dir: ${UPLOAD_DIR:./data/uploads} # Diretório isolado local para páginas e avatares

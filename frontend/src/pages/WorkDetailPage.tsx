@@ -1,0 +1,314 @@
+import { useState, useMemo } from 'react';
+import { 
+  ArrowUpDown, 
+  Heart, 
+  Flag,
+  Calendar,
+  Sparkles
+} from 'lucide-react';
+import { Work, Chapter } from '../types';
+import { MOCK_CHAPTERS, MOCK_CREATORS } from '../data/mockData';
+import { useAuth } from '../context/AuthContext';
+import { useModals } from '../context/ModalContext';
+import { isChapterEarlyAccess } from '../utils/discoveryAlgorithm';
+import { Cover } from '../components/ui/Cover';
+import { Button } from '../components/ui/Button';
+import { Sticker } from '../components/ui/Sticker';
+
+interface WorkDetailPageProps {
+  work: Work;
+  onBackToCatalog: () => void;
+  onOpenChapter: (work: Work, chapter: Chapter) => void;
+}
+
+export function WorkDetailPage({
+  work,
+  onBackToCatalog,
+  onOpenChapter,
+}: WorkDetailPageProps) {
+  const { user, toggleFavorite, isMemberOf } = useAuth();
+  const { openEarlyAccess, openDonate, openMembership } = useModals();
+
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  const isFavorited = user.favorites.includes(work.id);
+  const creator = MOCK_CREATORS[work.authorId] || Object.values(MOCK_CREATORS)[0];
+
+  // Capítulos desta obra
+  const chapters = useMemo(() => {
+    const list = MOCK_CHAPTERS.filter((c) => c.workId === work.id);
+    const sorted = [...(list.length > 0 ? list : MOCK_CHAPTERS.slice(0, 3))];
+    sorted.sort((a, b) => (sortOrder === 'asc' ? a.number - b.number : b.number - a.number));
+    return sorted;
+  }, [work.id, sortOrder]);
+
+  const firstChapter = chapters[0] || MOCK_CHAPTERS[0];
+
+  const handleChapterClick = (chapter: Chapter) => {
+    const isLocked = isChapterEarlyAccess(chapter) && !isMemberOf(work.authorId);
+    if (isLocked) {
+      if (creator) {
+        openEarlyAccess(chapter, creator, work);
+        return;
+      }
+    }
+    onOpenChapter(work, chapter);
+  };
+
+  return (
+    <div className="mn-container py-6 space-y-8 select-none">
+      
+      {/* 1. Breadcrumbs Oficiais */}
+      <nav className="flex items-center gap-2 font-pixel text-xs text-[#A9A59A] uppercase tracking-wider">
+        <button
+          type="button"
+          onClick={onBackToCatalog}
+          className="hover:text-[#FFD400] transition-colors"
+        >
+          INÍCIO
+        </button>
+        <span>&gt;</span>
+        <button
+          type="button"
+          onClick={onBackToCatalog}
+          className="hover:text-[#FFD400] transition-colors"
+        >
+          CATÁLOGO
+        </button>
+        <span>&gt;</span>
+        <span className="text-[#F4EFE3] font-bold truncate max-w-xs">{work.title}</span>
+      </nav>
+
+      {/* 2. Hero da Obra (Design Editorial: Capa 2:3 + Título em Anton + Ações Táteis) */}
+      <section className="border-2 border-[#34343A] bg-[#151517] shadow-[6px_6px_0_#F4EFE3] p-6 sm:p-8 relative overflow-hidden">
+        <div className="flex flex-col md:flex-row gap-8 items-start relative z-10">
+          
+          {/* Capa Vertical 2:3 */}
+          <div className="w-52 sm:w-60 shrink-0 mx-auto md:mx-0">
+            <Cover
+              src={work.coverUrl}
+              title={work.title}
+              aspectRatio="2/3"
+              dropShadow={true}
+              className="w-full"
+            />
+          </div>
+
+          {/* Dados da Obra */}
+          <div className="flex-1 space-y-4">
+            <div className="space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-pixel text-xs text-[#FFD400] font-bold tracking-widest uppercase">
+                  OBRA NACIONAL ORIGINAL
+                </span>
+                {work.status === 'completed' && <Sticker kind="complete" />}
+              </div>
+
+              <h1 className="font-display text-4xl sm:text-5xl md:text-6xl text-[#F4EFE3] leading-[0.95] uppercase">
+                {work.title}
+              </h1>
+
+              <p className="font-body text-sm text-[#A9A59A]">
+                Criado por{' '}
+                <strong className="text-[#FFD400] font-semibold">{work.authorName}</strong>
+              </p>
+            </div>
+
+            {/* Chips de Gênero */}
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {work.genres.map((genre) => (
+                <span
+                  key={genre}
+                  className="px-2.5 py-0.5 bg-[#0B0B0C] border border-[#34343A] text-[#F4EFE3] font-pixel text-[11px] uppercase tracking-wider"
+                >
+                  {genre}
+                </span>
+              ))}
+            </div>
+
+            {/* Sinopse Editorial */}
+            <div className="pt-2 border-t border-[#34343A]">
+              <span className="font-pixel text-[10px] text-[#A9A59A] tracking-wider uppercase block mb-1">
+                SINOPSE
+              </span>
+              <p className="font-body text-sm text-[#F4EFE3] leading-relaxed max-w-2xl">
+                {work.synopsis}
+              </p>
+            </div>
+
+            {/* Botões de Ação */}
+            <div className="flex flex-wrap items-center gap-3 pt-4">
+              <Button
+                variant="primary"
+                onClick={() => firstChapter && handleChapterClick(firstChapter)}
+                className="!text-lg !px-6"
+              >
+                LER DO COMEÇO
+              </Button>
+
+              <button
+                type="button"
+                onClick={() => toggleFavorite(work.id)}
+                className={`inline-flex items-center gap-2 px-4 py-2.5 font-display text-base uppercase border-2 transition-all ${
+                  isFavorited
+                    ? 'bg-[#FFD400] text-[#0B0B0C] border-[#0B0B0C] shadow-[3px_3px_0_#F4EFE3]'
+                    : 'bg-[#0B0B0C] text-[#F4EFE3] border-[#34343A] hover:border-[#FFD400]'
+                }`}
+              >
+                <Heart size={16} className={isFavorited ? 'fill-[#0B0B0C]' : ''} />
+                <span>{isFavorited ? 'FAVORITADO' : '+ FAVORITAR'}</span>
+              </button>
+
+              {creator && (
+                <Button
+                  variant="secondary"
+                  onClick={() => openDonate(creator.id, creator.name, work.title, work.id)}
+                  className="!text-sm"
+                >
+                  APOIAR AUTOR
+                </Button>
+              )}
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+      {/* 3. Grade de Conteúdo: Lista de Capítulos (Linhas) + Sidebar do Autor */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8 items-start">
+        
+        {/* Coluna Principal: Capítulos */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between border-b-2 border-[#34343A] pb-3">
+            <h2 className="font-display text-2xl sm:text-3xl text-[#F4EFE3] uppercase tracking-wide">
+              LISTA DE CAPÍTULOS
+            </h2>
+
+            <button
+              type="button"
+              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+              className="flex items-center gap-1.5 font-pixel text-xs text-[#FFD400] hover:underline"
+            >
+              <ArrowUpDown size={12} />
+              <span>{sortOrder === 'asc' ? 'CRESCENTE' : 'DECRESCENTE'}</span>
+            </button>
+          </div>
+
+          <div className="border-t-2 border-[#34343A]">
+            {chapters.map((chap) => {
+              const isLocked = isChapterEarlyAccess(chap) && !isMemberOf(work.authorId);
+
+              return (
+                <div
+                  key={chap.id}
+                  onClick={() => handleChapterClick(chap)}
+                  className="flex items-center justify-between p-3.5 border-b border-[#34343A] hover:bg-[#151517] cursor-pointer group transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    <span className="font-display text-2xl text-[#FFD400] tracking-tight w-12 text-center shrink-0">
+                      #{chap.number < 10 ? `0${chap.number}` : chap.number}
+                    </span>
+
+                    <div>
+                      <h4 className="font-display text-lg text-[#F4EFE3] group-hover:text-[#FFD400] transition-colors uppercase">
+                        {chap.title}
+                      </h4>
+                      <p className="font-body text-xs text-[#A9A59A] tabular-nums">
+                        Publicado em {chap.createdAt || 'abr. 2026'} · {chap.pages?.length || 24} págs
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    {isLocked ? (
+                      <Sticker kind="members" />
+                    ) : (
+                      <span className="font-pixel text-[11px] text-[#A9A59A] group-hover:text-[#FFD400]">
+                        LER →
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Botão de Denúncia Discreto (Seção 8.11) */}
+          <div className="pt-4 flex justify-end">
+            <button
+              type="button"
+              onClick={() => alert('Canal de Denúncia: Violações autorais ou conduta inadequada são apuradas em até 24h pela moderação.')}
+              className="inline-flex items-center gap-1.5 font-body text-xs text-[#A9A59A] hover:text-[#E8402F] transition-colors"
+            >
+              <Flag size={13} />
+              <span>DENUNCIAR ESTA OBRA</span>
+            </button>
+          </div>
+        </section>
+
+        {/* Sidebar: Card de Apoio ao Criador & Atualização */}
+        <aside className="space-y-6">
+          {creator && (
+            <div className="border-2 border-[#34343A] bg-[#151517] p-5 space-y-4">
+              <span className="font-pixel text-[10px] text-[#FFD400] tracking-wider uppercase block font-bold">
+                SOBRE O CRIADOR
+              </span>
+
+              <div className="flex items-center gap-3">
+                <img
+                  src={creator.avatarUrl}
+                  alt={creator.name}
+                  className="w-12 h-12 object-cover border-2 border-[#0B0B0C] shadow-[2px_2px_0_#FFD400]"
+                />
+                <div>
+                  <h4 className="font-display text-lg text-[#F4EFE3] uppercase">
+                    {creator.name}
+                  </h4>
+                  <span className="font-body text-xs text-[#A9A59A]">
+                    @{creator.handle}
+                  </span>
+                </div>
+              </div>
+
+              <p className="font-body text-xs text-[#F4EFE3] leading-relaxed">
+                {creator.bio}
+              </p>
+
+              <div className="pt-2 border-t border-[#34343A] flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => openMembership(creator)}
+                  className="w-full py-2 bg-[#FFD400] text-[#0B0B0C] border-2 border-[#0B0B0C] font-display text-sm tracking-wider uppercase shadow-[3px_3px_0_#0B0B0C] hover:bg-[#E0B800] transition-colors flex items-center justify-center gap-1.5"
+                >
+                  <Sparkles size={14} />
+                  <span>VIRAR MEMBRO (R$ {creator.membershipPriceBrl.toFixed(2)}/mês)</span>
+                </button>
+
+                <Button
+                  variant="secondary"
+                  onClick={() => openDonate(creator.id, creator.name, work.title, work.id)}
+                  className="w-full !text-xs !py-1.5"
+                >
+                  DOAR QUALQUER VALOR
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <div className="border-2 border-[#34343A] bg-[#151517] p-5 space-y-2">
+            <span className="font-pixel text-[10px] text-[#A9A59A] tracking-wider uppercase block">
+              CRONOGRAMA EDITORIAL
+            </span>
+            <div className="flex items-center gap-2 text-xs font-body text-[#F4EFE3]">
+              <Calendar size={14} className="text-[#FFD400]" />
+              <span>Capítulos novos toda sexta-feira às 18h.</span>
+            </div>
+          </div>
+        </aside>
+
+      </div>
+
+    </div>
+  );
+}

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" fill="none">
+  <!-- Sombra Dura Deslocada -->
+  <polygon points="6,4 46,4 46,36 38,44 6,44" fill="#0B0B0C" />
+  
+  <!-- Borda de Adesivo Off-White (Die-cut) -->
+  <polygon points="2,0 42,0 42,32 34,40 2,40" fill="#F4EFE3" />
+  
+  <!-- Fundo Amarelo MangaNetWorking com Borda Preta -->
+  <polygon points="4,2 40,2 40,30 32,38 4,38" fill="#FFD400" stroke="#0B0B0C" stroke-width="2.5" stroke-linejoin="miter" />
+  
+  <!-- Monograma MN em Estilo Nanquim -->
+  <text x="21" y="27" font-family="'Bowlby One', 'Anton', sans-serif" font-weight="900" font-size="20" fill="#0B0B0C" text-anchor="middle" letter-spacing="-1">MN</text>
+  
+  <!-- Ponta do Balão de Fala de Mangá -->
+  <polygon points="12,38 12,46 19,38" fill="#0B0B0C" />
+  <polygon points="10,36 10,44 17,36" fill="#FFD400" />
+</svg>

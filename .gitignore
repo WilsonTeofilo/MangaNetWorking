@@ -1,0 +1,24 @@
+# Node & Frontend
+node_modules/
+dist/
+.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Java & Backend
+target/
+*.class
+*.jar
+*.war
+
+# Environment & IDE
+.env
+.env.local
+.idea/
+.vscode/
+*.iml
+*.log
+
+# Uploads locais de teste
+data/uploads/

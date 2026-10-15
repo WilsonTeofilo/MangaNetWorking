@@ -1,0 +1,40 @@
+<!-- PLACEHOLDER: substituir por arte final de ilustrador -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 120" width="100" height="120" fill="none">
+  <!-- Sombra Dura Deslocada -->
+  <ellipse cx="54" cy="112" rx="34" ry="6" fill="#0B0B0C" opacity="0.8" />
+  
+  <!-- Borda de Adesivo Off-White Externa -->
+  <g stroke="#F4EFE3" stroke-width="8" stroke-linejoin="round" stroke-linecap="round">
+    <!-- Pena / Antena -->
+    <path d="M50 35 L50 12 L43 25 Z" fill="#F4EFE3" />
+    <!-- Frasco / Corpo do Tinteiro -->
+    <rect x="22" y="38" width="56" height="52" rx="4" fill="#F4EFE3" />
+    <!-- Pés / Tênis -->
+    <path d="M30 94 L30 108 L42 108" fill="#F4EFE3" />
+    <path d="M70 94 L70 108 L82 108" fill="#F4EFE3" />
+  </g>
+
+  <!-- Pés / Tênis de Rua -->
+  <path d="M28 92 L28 106 L44 106 L44 100 L34 100 L34 92 Z" fill="#FFD400" stroke="#0B0B0C" stroke-width="2.5" />
+  <path d="M66 92 L66 106 L82 106 L82 100 L72 100 L72 92 Z" fill="#FFD400" stroke="#0B0B0C" stroke-width="2.5" />
+
+  <!-- Corpo do Tinteiro (Preto Nanquim) -->
+  <rect x="24" y="40" width="52" height="48" rx="2" fill="#0B0B0C" stroke="#0B0B0C" stroke-width="3" />
+  
+  <!-- Rótulo Amarelo do Frasco -->
+  <rect x="28" y="58" width="44" height="24" fill="#FFD400" stroke="#0B0B0C" stroke-width="2" />
+  <text x="50" y="74" font-family="'Silkscreen', monospace" font-size="9" font-weight="bold" fill="#0B0B0C" text-anchor="middle">INK 100%</text>
+
+  <!-- Pena de Bico de Aço (Prata/Papel) -->
+  <path d="M50 38 L50 14 L43 28 Z" fill="#F4EFE3" stroke="#0B0B0C" stroke-width="2.5" />
+  <line x1="48" y1="20" x2="48" y2="34" stroke="#0B0B0C" stroke-width="1.5" />
+
+  <!-- Olhos de Desenho Expressivos -->
+  <ellipse cx="40" cy="50" rx="5" ry="6" fill="#F4EFE3" stroke="#0B0B0C" stroke-width="2" />
+  <ellipse cx="60" cy="50" rx="5" ry="6" fill="#F4EFE3" stroke="#0B0B0C" stroke-width="2" />
+  <circle cx="42" cy="51" r="2.5" fill="#0B0B0C" />
+  <circle cx="62" cy="51" r="2.5" fill="#0B0B0C" />
+
+  <!-- Detalhe de Brilho no Frasco -->
+  <line x1="28" y1="44" x2="28" y2="52" stroke="#34343A" stroke-width="2" stroke-linecap="round" />
+</svg>

@@ -1,0 +1,49 @@
+/* Tokens oficiais — MangaNetWorking Design System */
+:root {
+  --mn-ink: #0B0B0C;
+  --mn-ink-2: #151517;
+  --mn-ink-3: #212125;
+  --mn-line: #34343A;
+  --mn-paper: #F4EFE3;
+  --mn-paper-2: #E4DDCB;
+  --mn-yellow: #FFD400;
+  --mn-yellow-press: #E0B800;
+  --mn-red: #E8402F;
+  --mn-mute: #A9A59A;
+  --mn-mute-paper: #55524A;
+  --mn-ok: #3DDC84;
+
+  --font-display: "Anton", "Impact", sans-serif;
+  --font-logo: "Bowlby One", "Anton", sans-serif;
+  --font-body: "Archivo Variable", "Archivo", system-ui, sans-serif;
+  --font-pixel: "Silkscreen", monospace;
+
+  --radius: 2px;
+  --bw: 2px;
+  --drop: var(--mn-paper);
+  --shadow: 4px 4px 0 var(--drop);
+  --shadow-lg: 8px 8px 0 var(--drop);
+  --focus: var(--mn-paper);
+}
+
+:root, .mn-on-dark {
+  --edge: var(--mn-line);
+  --drop: var(--mn-paper);
+  --fg: var(--mn-paper);
+  --fg-mute: var(--mn-mute);
+  --focus: var(--mn-paper);
+}
+
+.mn-on-yellow, .mn-on-paper {
+  --edge: var(--mn-ink);
+  --drop: var(--mn-ink);
+  --fg: var(--mn-ink);
+  --fg-mute: var(--mn-mute-paper);
+  --focus: var(--mn-ink);
+}
+
+/* Foco visível acessível */
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}

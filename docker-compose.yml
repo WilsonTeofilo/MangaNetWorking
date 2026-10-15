@@ -1,0 +1,46 @@
+name: manganetworking
+
+services:
+  # Banco Relacional: PostgreSQL (porta externa 25432 para não colidir com o Peditto na 15432 nem com o Postgres local na 5432)
+  postgres:
+    image: postgres:16-alpine
+    container_name: manganetworking-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: manganetworking
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+    ports:
+      - "25432:5432"
+    volumes:
+      - manganetworking_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d manganetworking"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Banco Não-Relacional: MongoDB (porta 27017 exclusiva)
+  mongodb:
+    image: mongo:7.0
+    container_name: manganetworking-mongodb
+    restart: always
+    environment:
+      MONGO_INITDB_DATABASE: manganetworking_events
+    ports:
+      - "27017:27017"
+    volumes:
+      - manganetworking_mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  manganetworking_postgres_data:
+    name: manganetworking_postgres_data
+    driver: local
+  manganetworking_mongo_data:
+    name: manganetworking_mongo_data
+    driver: local
