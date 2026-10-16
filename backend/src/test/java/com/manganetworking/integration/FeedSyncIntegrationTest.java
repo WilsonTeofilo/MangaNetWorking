@@ -10,10 +10,12 @@ import com.manganetworking.repository.jpa.CreatorRepository;
 import com.manganetworking.repository.jpa.UserRepository;
 import com.manganetworking.repository.jpa.WorkRepository;
 import com.manganetworking.repository.mongo.WorkFeedMongoRepository;
+import com.manganetworking.service.moderation.ModerationApplicationService;
 import com.manganetworking.service.recommendation.RecommendationAlgorithmService;
 import com.manganetworking.service.work.WorkApplicationService;
 import com.manganetworking.service.work.dto.CreateChapterRequestDto;
 import com.manganetworking.service.work.dto.CreateWorkRequestDto;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,25 +29,29 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Cobertura de integração real (PostgreSQL + MongoDB efêmeros) para os pontos que o smoke E2E validava
- * manualmente e que os testes de slice não alcançam:
+ * manualmente e que os testes de slice/unitários não alcançam:
  *
  * <ul>
- *   <li>{@code spring.jpa.open-in-view=false}: o cenário roda com OSIV desligado (o próprio contexto).</li>
+ *   <li>{@code spring.jpa.open-in-view=false}: o contexto roda com OSIV desligado (premissa verificada em teste).</li>
  *   <li>Sincronização do feed (MongoDB) adiada para {@code afterCommit}: cadastrar obra / publicar capítulo
  *       grava o documento no Mongo <b>depois</b> do commit relacional, sem {@code LazyInitializationException}.</li>
  *   <li>Reindexação do catálogo ({@code syncAllWorksToFeed}) chamada fora de requisição web — depende do
- *       {@code @Transactional(readOnly = true)} do serviço.</li>
+ *       {@code @Transactional(readOnly = true)} do serviço para resolver a associação LAZY do autor.</li>
+ *   <li>Remoção do feed na suspensão por moderação (o outro caminho {@code afterCommit}).</li>
  * </ul>
  *
- * <p>As classes usam {@code disabledWithoutDocker = true}: sem daemon Docker o teste é ignorado, então a
- * suíte continua verde em ambientes sem contêiner.</p>
+ * <p><b>Importante:</b> esta classe NÃO deve receber {@code @Transactional}. O teste depende de a transação
+ * dos serviços <i>commitar</i> para disparar as sincronizações {@code afterCommit}; um {@code @Transactional}
+ * de teste postergaria o commit e faria as asserções falharem (falso negativo).</p>
+ *
+ * <p>Usa {@code disabledWithoutDocker = true}: sem daemon Docker a classe é ignorada (aparece como
+ * {@code Skipped} no surefire), então a suíte continua verde em ambientes sem contêiner.</p>
  */
 @SpringBootTest
 @Testcontainers(disabledWithoutDocker = true)
@@ -69,6 +75,9 @@ class FeedSyncIntegrationTest {
     private WorkApplicationService workApplicationService;
 
     @Autowired
+    private ModerationApplicationService moderationApplicationService;
+
+    @Autowired
     private RecommendationAlgorithmService algorithmService;
 
     @Autowired
@@ -87,6 +96,7 @@ class FeedSyncIntegrationTest {
     private boolean openInView;
 
     @Test
+    @DisplayName("Cadastro de obra: persiste no PostgreSQL e sincroniza o feed no MongoDB no afterCommit, sem OSIV")
     void createWork_persistsInPostgresAndSyncsFeedInMongoAfterCommit_withoutOsiv() {
         // Garante que o cenário realmente roda com o OSIV desligado (é a premissa do teste).
         assertThat(openInView).isFalse();
@@ -98,16 +108,16 @@ class FeedSyncIntegrationTest {
         assertThat(workRepository.findById(work.getId())).isPresent();
 
         // ...e o feed (MongoDB) foi sincronizado no afterCommit, sem LazyInitializationException.
-        Optional<WorkFeedDocument> feed = workFeedMongoRepository.findByWorkId(work.getId().toString());
-        assertThat(feed).isPresent();
-        assertThat(feed.get().getSlug()).isEqualTo(work.getSlug());
-        assertThat(feed.get().getTitle()).isEqualTo(work.getTitle());
-        assertThat(feed.get().getAuthorHandle()).isEqualTo("@" + creator.getHandle());
-        assertThat(feed.get().getAuthorId()).isEqualTo(creator.getId().toString());
-        assertThat(feed.get().getGenres()).containsExactly(Genre.ACAO.name());
+        WorkFeedDocument feed = workFeedMongoRepository.findByWorkId(work.getId().toString()).orElseThrow();
+        assertThat(feed.getSlug()).isEqualTo(work.getSlug());
+        assertThat(feed.getTitle()).isEqualTo(work.getTitle());
+        assertThat(feed.getAuthorHandle()).isEqualTo("@" + creator.getHandle());
+        assertThat(feed.getAuthorId()).isEqualTo(creator.getId().toString());
+        assertThat(feed.getGenres()).containsExactly(Genre.ACAO.name());
     }
 
     @Test
+    @DisplayName("Publicação de capítulo: feed atualizado no afterCommit com último capítulo e early access")
     void createChapter_updatesFeedWithLatestChapterAndEarlyAccessAfterCommit() {
         CreatorEntity creator = newCreator();
         WorkEntity work = newWork(creator.getId());
@@ -125,16 +135,42 @@ class FeedSyncIntegrationTest {
     }
 
     @Test
+    @DisplayName("Reindexação do catálogo fora de requisição web resolve o autor LAZY sem OSIV e recria o documento")
     void syncAllWorksToFeed_reindexesWithoutLazyInitializationException_withOsivOff() {
         CreatorEntity creator = newCreator();
         WorkEntity work = newWork(creator.getId());
+        String workId = work.getId().toString();
 
-        // Chamada fora de requisição web (como o job agendado): sem OSIV, a associação LAZY do autor só
-        // é acessível porque syncAllWorksToFeed é @Transactional(readOnly = true).
+        // Remove o documento criado no afterCommit do cadastro: só assim a reindexação tem o que recriar,
+        // provando de fato que syncAllWorksToFeed materializa o documento (e não que ele já existia).
+        workFeedMongoRepository.deleteByWorkId(workId);
+        assertThat(workFeedMongoRepository.findByWorkId(workId)).isEmpty();
+
         int total = algorithmService.syncAllWorksToFeed();
 
         assertThat(total).isGreaterThanOrEqualTo(1);
-        assertThat(workFeedMongoRepository.findByWorkId(work.getId().toString())).isPresent();
+        WorkFeedDocument feed = workFeedMongoRepository.findByWorkId(workId).orElseThrow();
+        // O autor é uma associação LAZY: sem o @Transactional(readOnly = true) do serviço, esta leitura
+        // teria lançado LazyInitializationException (OSIV desligado).
+        assertThat(feed.getAuthorHandle()).isEqualTo("@" + creator.getHandle());
+        assertThat(feed.getWorkId()).isEqualTo(workId);
+    }
+
+    @Test
+    @DisplayName("Suspensão por moderação: obra é removida do feed no MongoDB no afterCommit")
+    void suspendWork_removesWorkFromFeedAfterCommit() {
+        CreatorEntity creator = newCreator();
+        WorkEntity work = newWork(creator.getId());
+        String workId = work.getId().toString();
+
+        // A obra está no feed (sincronizada no cadastro)...
+        assertThat(workFeedMongoRepository.findByWorkId(workId)).isPresent();
+
+        moderationApplicationService.suspendWork(work.getId(), "Teste de integração");
+
+        // ...e a suspensão remove o documento no afterCommit, além de marcar o status relacional.
+        assertThat(workRepository.findById(work.getId()).orElseThrow().getStatus()).isEqualTo("suspended");
+        assertThat(workFeedMongoRepository.findByWorkId(workId)).isEmpty();
     }
 
     private CreatorEntity newCreator() {

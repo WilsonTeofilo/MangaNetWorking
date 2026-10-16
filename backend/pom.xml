@@ -19,6 +19,8 @@
     <maven.compiler.source>21</maven.compiler.source>
     <maven.compiler.target>21</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <!-- Versão da API do Docker usada pelos testes de integração (Testcontainers). Docker Engine 29+ exige >= 1.44. -->
+    <docker.api.version>1.44</docker.api.version>
   </properties>
 
   <dependencies>
@@ -120,8 +122,8 @@
           <systemPropertyVariables>
             <!-- Docker Engine 29+ exige API mínima 1.44; o docker-java (via Testcontainers/JUnit) assume 1.24
                  por padrão e o endpoint /info responde HTTP 400, fazendo o Testcontainers não achar o daemon.
-                 Sobrescreva com -Dapi.version=... se o Docker local exigir outra versão. -->
-            <api.version>1.44</api.version>
+                 Override: mvn -Ddocker.api.version=... test -->
+            <api.version>${docker.api.version}</api.version>
           </systemPropertyVariables>
         </configuration>
       </plugin>
