@@ -217,12 +217,13 @@
 ## FASE 9: Homologação Final, Smoke Test E2E e Merge para a Main
 **Objetivo:** Executar validação de ponta a ponta com Docker Compose ativo e realizar a mesclagem oficial da branch `develop` para a `main`.
 
-- [ ] **9.1. Teste de Fumaça de Ponta a Ponta (E2E Smoke Test):**
+- [x] **9.1. Teste de Fumaça de Ponta a Ponta (E2E Smoke Test):**
   - ✅ **Backend/API:** PostgreSQL (25432) + MongoDB (27017) + Backend (8085) ativos (profile `dev`); jornada completa via HTTP **23/23** — cadastro 2FA → upload multipart real → obra/capítulos → leitura + guard de early access/cache → `reading-progress` → doação/VIP → extrato → denúncia → feed Mongo (`afterCommit`). Evidências em `docs/reviews/IMPLEMENTATION_STATUS.md` (passe 6).
   - ✅ **Frontend (5180):** feed/detalhe/leitor consumindo a API real (feed do Mongo, gêneros/early-access/membro), guard + `Cache-Control` corretos e imagem decodificada. Via proxy same-origin (cookie `SameSite=Lax`).
-  - ⏳ **Pendente:** apenas o merge/Pull Request (9.2) — depende de autorização explícita.
-- [ ] **9.2. Pull Request e Merge Oficial Develop ➔ Main:**
-  - Mesclagem limpa para `main` com tag `v1.0.0-release`.
+  - ✅ **Concluído:** merge oficial via **PR #2** (mesclado na `main`) e tag de release publicada (ver 9.2).
+- [x] **9.2. Pull Request e Merge Oficial Develop ➔ Main:**
+  - ✅ **PR #2** (`develop` ➔ `main`) mesclado; `main` @ `e7aefec`, com árvore idêntica a `develop` (`git diff` vazio).
+  - ✅ Tag **`v1.0.0-release`** publicada em `origin` (aponta para `e7aefec`).
 
 ---
 
@@ -235,7 +236,7 @@
 | **Banco NoSQL / Feed** | MongoDB 7 (Docker) | `27017` | Coleções `reading_progress` e `feed_works` ativas |
 | **Storage de Imagens** | Local Filesystem Sanitizado | `./data/uploads/` | Magic bytes allow-list; **páginas de capítulo protegidas por `ChapterFileAccessGuard`** (capa/avatar públicos) |
 | **Frontend Web** | React 19 / TypeScript / Vite | `5180` | Build aprovado; **leitor consome a API real** (`readChapter`) com fallback mock; descoberta/catálogo usam o feed real com fallback mock |
-| **Git Repositório** | GitHub (`WilsonTeofilo/MangaNetWorking.git`) | Remoto | `develop` @ `9a33fad`; **alterações locais não commitadas** |
+| **Git Repositório** | GitHub (`WilsonTeofilo/MangaNetWorking.git`) | Remoto | `develop` @ `46edd46`; `main` @ `e7aefec` (PR #2) com tag **`v1.0.0-release`** |
 
 ---
 
@@ -256,11 +257,11 @@
 
 **P2b — Contratos frontend ↔ backend (RESOLVIDO neste passe):** ✅ `authApi` (login/2FA/register) alinhado aos DTOs; `AuthContext` hidrata `/auth/me` + logout; `LoginPage` usa o fluxo 2FA real com fallback de demonstração; `Header` com ação de sair. ✅ Identidade de doação/assinatura resolvida pela sessão (`requireCurrentUserId`, novo + testado), sem `donorUserId`/`subscriberUserId` no corpo. ✅ Endpoint fantasma de anúncio removido (`recordAdImpression`); `getCreatorLedger` aponta para `/monetization/ledger/{id}`. ✅ `AuthorSummaryDto` (`authorId/authorName/authorHandle/authorAvatarUrl`) e gêneros (enum → rótulo) corrigidos no frontend. ✅ (passe 3) Tela de **cadastro real** no `LoginPage` (ENTRAR/CRIAR CONTA → `authApi.register` → 2FA) e `CreatorWorkspacePage` ligado a `GET /api/creators/workspace` via novo `creatorApi` (saldo, doações, nível, membros, boost e missões do servidor; demo apenas como fallback). ✅ Identidade de perfil só pela sessão (`UserProfileController` sem `X-Current-User-Id`) e **401 para anônimo** / 403 para papel insuficiente.
 
-**P3 — Fases 8/9:** ⚠️ Offline real é app nativo (fora do escopo deste repositório; backend de manifesto pronto). **Fase 9.1 parcialmente executada:** stack Docker (Postgres+Mongo) subida e a jornada E2E via API passou **23/23**; falta o smoke com o frontend e o merge (9.2).
+**P3 — Fases 8/9:** ⚠️ Offline real é app nativo (fora do escopo deste repositório; backend de manifesto pronto). ✅ **Fase 9 concluída:** E2E **23/23** (API) + validação na UI; merge oficial via **PR #2** e tag **`v1.0.0-release`** publicados. (Fase 8.2 nativa permanece fora do repositório.)
 
-**P4/P5 — Hardening do backend (2026-10-16, não commitado):** ✅ Vazamento do extrato financeiro corrigido (`LedgerEntryResponseDto` + ownership por sessão + `@JsonIgnore` em CPF/PIX). ✅ Transação JPA×Mongo via `afterCommit`. ✅ `GlobalExceptionHandler` semântico (4xx/5xx) e `FilePolicyException`. ✅ Cache de página de capítulo `private, no-store`. ✅ Obra suspensa não exposta. ✅ CORS/rate-limit parametrizados. ✅ **OSIV desligado** (`open-in-view: false`) e job agendado de feed transacional. ✅ `mvn test` → 107 testes verdes.
+**P4/P5 — Hardening do backend (2026-10-16, commitado em `46edd46`):** ✅ Vazamento do extrato financeiro corrigido (`LedgerEntryResponseDto` + ownership por sessão + `@JsonIgnore` em CPF/PIX). ✅ Transação JPA×Mongo via `afterCommit`. ✅ `GlobalExceptionHandler` semântico (4xx/5xx) e `FilePolicyException`. ✅ Cache de página de capítulo `private, no-store`. ✅ Obra suspensa não exposta. ✅ CORS/rate-limit parametrizados. ✅ **OSIV desligado** (`open-in-view: false`) e job agendado de feed transacional. ✅ `mvn test` → 107 testes verdes.
 
-**P6 — Achados da revisão independente incorporados (2026-10-16, não commitado):** ✅ **A1** contrato de `totalPages` (`ReaderPage`/`authApi` + 2 testes de contrato) — o tracking de leitura voltava 400 e o crédito de anúncio nunca disparava. ✅ **A2** Dev Outbox fail-closed (`@Profile({"dev","test","local"})` em vez de `!prod`; sem profile → **404** verificado em runtime; exige `SPRING_PROFILES_ACTIVE=dev` no run local — ver runbook abaixo). ✅ **B1** e-mail fora do log (LGPD). ✅ **B2** guarda de path unificada em `exists`/`deleteFile`. ✅ **B3** upload em lote fatiado no cliente (contagem + bytes). ✅ **M1** logs de `afterCommit` com causa. ✅ **M2** testes que protegem `@Transactional` do job e o adiamento para `afterCommit`. ✅ `mvn test` → **111 testes verdes**; `tsc --noEmit` + `npm run build` limpos; smoke **23/23** (API) + validação na UI (feed/detalhe/leitor).
+**P6 — Achados da revisão independente incorporados (2026-10-16, commitado em `46edd46`):** ✅ **A1** contrato de `totalPages` (`ReaderPage`/`authApi` + 2 testes de contrato) — o tracking de leitura voltava 400 e o crédito de anúncio nunca disparava. ✅ **A2** Dev Outbox fail-closed (`@Profile({"dev","test","local"})` em vez de `!prod`; sem profile → **404** verificado em runtime; exige `SPRING_PROFILES_ACTIVE=dev` no run local — ver runbook abaixo). ✅ **B1** e-mail fora do log (LGPD). ✅ **B2** guarda de path unificada em `exists`/`deleteFile`. ✅ **B3** upload em lote fatiado no cliente (contagem + bytes). ✅ **M1** logs de `afterCommit` com causa. ✅ **M2** testes que protegem `@Transactional` do job e o adiamento para `afterCommit`. ✅ `mvn test` → **111 testes verdes**; `tsc --noEmit` + `npm run build` limpos; smoke **23/23** (API) + validação na UI (feed/detalhe/leitor).
 
 **Runbook local (dev):**
 - `SPRING_PROFILES_ACTIVE=dev` habilita `GET /api/dev/outbox/latest` (leitura do OTP 2FA sem log). Sem profile/`prod` o endpoint **não existe** (o 2FA continua válido; apenas o atalho local fica indisponível).
