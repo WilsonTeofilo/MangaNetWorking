@@ -75,7 +75,7 @@ Para incentivar a produção contínua sem criar burocracias ou códigos excessi
   - *Recompensa:* **Boost de 72 horas no Feed** + Rotação garantida no **Banner Hero Principal do Feed** por 7 dias + Notificação push/destaque para os seguidores da obra.
 - **Nível 4 (Mestre da Temporada — Top Tier):**
   - *Como atingir:* Alta retenção de leitura (> 75% de páginas lidas por capítulo) e engajamento orgânico de apoiadores.
-  - *Recompensa:* **Desconto de Desempenho na Taxa da Plataforma** (a taxa cai de 17% para **10%** durante 15 dias, repassando 90% das doações ao autor) + Destaque fixo no topo da vitrine de criadores.
+  - *Recompensa:* **Desconto de Desempenho na Taxa da Plataforma** (a taxa cai de 17% para **10%** durante 15 dias, repassando 90% das doações ao autor) + Destaque oficial no topo da lista de criadores da temporada.
 
 ### 4.2 Missões Semanais Fáceis de Programar e Verificar
 As missões são baseadas em métricas nativas que o próprio backend já audita com precisão:
@@ -87,11 +87,17 @@ As missões são baseadas em métricas nativas que o próprio backend já audita
 
 ## 5. Regras Financeiras e Divisão da Monetização (Split)
 
-Valores calculados estritamente pelo servidor, com ledger append-only e idempotência:
-- **Doações Avulsas:** 83% repassado ao criador / 17% retido pela plataforma.
-- **Clube de Membros (`Membership`):** Faixas definidas pelo autor entre R$ 7,99 e R$ 45,99 mensais, com split de 83% criador / 17% plataforma.
+A plataforma **NÃO possui loja física, nem estoque, nem venda de produtos impressos**. Os fluxos são 100% digitais:
+- **Doações Avulsas ao Criador:** 83% repassado ao criador / 17% retido pela plataforma.
+- **Clube de Membros (`Membership` do Criador):** Faixas definidas pelo autor entre R$ 7,99 e R$ 45,99 mensais, com split de 83% criador / 17% plataforma. Dá acesso antecipado aos capítulos de membros do autor.
 - **Acesso Antecipado (`Early Access`):** Capítulos liberados primeiro para membros pagantes com base no campo `publicReleaseAt`, controlado com código HTTP 403 no backend.
 - **Anúncios no Leitor:** Exibição discreta a cada 30 páginas lidas, com participação de 58% para o criador e 42% para a plataforma.
+- **Assinatura VIP / Premium da Plataforma (~R$ 23 / 30 dias):**
+  - **Zero Anúncios:** Remove 100% da publicidade no leitor, feed e páginas da plataforma.
+  - **Selo VIP e Cosméticos:** Badge exclusivo nos comentários e borda de perfil de apoiador.
+  - **Leitura Offline no Futuro App Mobile:** Permite download de capítulos para leitura offline encapsulada e criptografada na sandbox do aplicativo (com flag nativa `FLAG_SECURE` para impedir print/gravação de tela e sem permitir extração de arquivos para o PC).
+  - **Sem furar o criador:** O Premium da plataforma **NÃO dá acesso antecipado** aos capítulos exclusivos de membros (o leitor só baixa offline os capítulos que tem direito de ler).
+  - **Zero loja:** Não há venda física, cupons ou descontos de loja.
 
 ---
 

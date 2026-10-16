@@ -128,15 +128,33 @@
 ---
 
 ## FASE 6: Monetização Digital Justa (Sem Loja Física)
-**Objetivo:** Implementar a divisão financeira digital (17% plataforma / 83% criador) e simulação de anúncios.
+**Objetivo:** Implementar a divisão financeira digital (17% plataforma / 83% criador), simulação de anúncios e assinatura VIP global.
 
-- [ ] **6.1. Doações e Clube de Membros (`Membership`):**
+- [ ] **6.1. Doações e Clube de Membros (`Membership` do Criador):**
   - Doações avulsas com split: 83% autor / 17% plataforma.
-  - Assinaturas de membros: Faixas de R$ 7,99 a R$ 45,99 definidas pelo autor com split 83%/17%.
+  - Assinaturas de membros: Faixas de R$ 7,99 a R$ 45,99 definidas pelo autor com split 83%/17% (libera capítulos em Early Access do autor).
 - [ ] **6.2. Anúncios no Leitor:**
   - Gatilho a cada 30 páginas lidas com split de 58% para o criador e 42% para a plataforma.
 - [ ] **6.3. Ledger Financeiro Append-Only e Adaptador Sandbox:**
   - Registro imutável de transações com controle de concorrência e idempotência.
   - Adaptador sandbox do Mercado Pago para testes locais sem credenciais reais.
+- [ ] **6.4. Assinatura VIP / Premium da Plataforma (~R$ 23 / 30 dias):**
+  - Remoção de 100% dos anúncios para o assinante em toda a plataforma.
+  - Badge VIP cosmético de apoiador da plataforma.
+  - **Zero Loja:** Sem venda de produtos físicos, sem estoque e sem descontos de loja.
+  - **Proteção ao Criador:** O VIP da plataforma **NÃO dá acesso antecipado** aos capítulos exclusivos de membros de autores (o criador mantém 100% do controle do seu fã-clube).
 
-**Critério de Conclusão da Fase 6:** Testes unitários do ledger comprovando cálculo exato do split de 17%/83%, prevenção de double spending e idempotência estrita.
+**Critério de Conclusão da Fase 6:** Testes unitários do ledger comprovando cálculo exato do split de 17%/83%, prevenção de double spending, idempotência estrita e ativação de status VIP.
+
+---
+
+## FASE 7: Roadmap do App Mobile & Leitura Offline Segura
+**Objetivo:** Desenvolver o aplicativo móvel reutilizando 100% do backend atual (API REST em Spring Boot + PostgreSQL + MongoDB), com sandbox local para leitura offline de assinantes VIP.
+
+- [ ] **7.1. Reutilização de API (Zero retrabalho de backend):**
+  - O mesmo backend e banco atendem Web e Mobile via JSON e tokens JWT/Bearer.
+- [ ] **7.2. Leitura Offline Segura no App (Exclusivo VIP):**
+  - Armazenamento encapsulado e criptografado na sandbox do aplicativo (sem acesso por USB ou exportação para PC).
+  - Bloqueio de capturas de tela e gravação com `FLAG_SECURE` nativo no Android e visualização protegida no iOS para prevenir vazamento e pirataria.
+  - O usuário só pode baixar offline os capítulos que já tem permissão de leitura (capítulos públicos ou de criadores dos quais é membro).
+
