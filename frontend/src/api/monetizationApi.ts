@@ -1,35 +1,31 @@
 import { request } from './client';
 
+/**
+ * Doação avulsa. A identidade do doador é resolvida pela sessão no servidor —
+ * por isso NÃO enviamos `donorUserId` (seria forjável pelo cliente).
+ */
 export interface DonateRequest {
   creatorId: string;
-  donorName: string;
-  donorEmail?: string;
+  workId?: string;
+  chapterId?: string;
   amountBrl: number;
   message?: string;
-  paymentMethod: 'pix' | 'credit_card';
   paymentExternalId?: string;
 }
 
+/**
+ * Assinatura do Clube de Membros. O assinante é resolvido pela sessão no servidor.
+ */
 export interface MembershipSubscribeRequest {
   creatorId: string;
-  subscriberUserId?: string;
-  amountBrl: number;
   paymentExternalId?: string;
 }
 
+/**
+ * Assinatura VIP da plataforma (~R$ 23,00 / 30 dias). O usuário vem da sessão.
+ */
 export interface VipSubscribeRequest {
-  userId?: string;
-  userEmail?: string;
-  amountBrl?: number; // Default 23.00
-  paymentMethod?: 'pix' | 'credit_card';
   paymentExternalId?: string;
-}
-
-export interface AdImpressionRequest {
-  workId: string;
-  creatorId: string;
-  chapterId?: string;
-  pagesRead?: number;
 }
 
 export const monetizationApi = {
@@ -56,35 +52,22 @@ export const monetizationApi = {
 
   /**
    * Assina o VIP da Plataforma (~R$ 23,00 / 30 dias).
-   * 100% sem anúncios, selo VIP cosmético e leitura offline no futuro app móvel.
-   * Não dá acesso aos capítulos de membros dos criadores.
+   * 100% sem anúncios e selo VIP cosmético. Não dá acesso a capítulos de membros.
    */
   subscribeVip(payload: VipSubscribeRequest = {}) {
     return request('/monetization/vip/subscribe', {
-      method: 'POST',
-      body: JSON.stringify({
-        amountBrl: 23.00,
-        paymentMethod: 'pix',
-        ...payload,
-      }),
-    });
-  },
-
-  /**
-   * Registra impressão de anúncio a cada 30 páginas lidas (58% criador / 42% plataforma).
-   */
-  recordAdImpression(payload: AdImpressionRequest) {
-    return request('/monetization/ad/impression', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
   },
 
   /**
-   * Consulta saldo consolidado e extrato do criador.
+   * Extrato consolidado do criador (ledger append-only) — `GET /monetization/ledger/{creatorId}`.
+   * O crédito de anúncios (30 páginas, 58%/42%) é calculado e gravado no servidor
+   * durante o tracking de leitura, não por um endpoint de impressão no cliente.
    */
-  getCreatorBalance(creatorId: string) {
-    return request(`/monetization/creator/balance/${creatorId}`, {
+  getCreatorLedger(creatorId: string) {
+    return request(`/monetization/ledger/${creatorId}`, {
       method: 'GET',
     });
   },

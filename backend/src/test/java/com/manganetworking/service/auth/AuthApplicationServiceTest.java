@@ -3,7 +3,7 @@ package com.manganetworking.service.auth;
 import com.manganetworking.domain.relational.UserEntity;
 import com.manganetworking.repository.jpa.CreatorRepository;
 import com.manganetworking.repository.jpa.UserRepository;
-import com.manganetworking.service.TwoFactorAuthService;
+import com.manganetworking.service.mfa.TwoFactorAuthService;
 import com.manganetworking.service.auth.dto.*;
 import com.manganetworking.service.mfa.DevOutboxNotificationSender;
 import com.manganetworking.service.mfa.DevOutboxRepository;

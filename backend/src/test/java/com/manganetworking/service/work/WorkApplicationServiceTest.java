@@ -11,6 +11,7 @@ import com.manganetworking.repository.jpa.ChapterRepository;
 import com.manganetworking.repository.jpa.CreatorRepository;
 import com.manganetworking.repository.jpa.MembershipSubscriptionRepository;
 import com.manganetworking.repository.jpa.WorkRepository;
+import com.manganetworking.service.recommendation.RecommendationAlgorithmService;
 import com.manganetworking.service.work.dto.CreateChapterRequestDto;
 import com.manganetworking.service.work.dto.CreateWorkRequestDto;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,6 +22,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -45,6 +48,9 @@ class WorkApplicationServiceTest {
 
     @Mock
     private CreatorRepository creatorRepository;
+
+    @Mock
+    private RecommendationAlgorithmService algorithmService;
 
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
@@ -96,6 +102,86 @@ class WorkApplicationServiceTest {
         assertEquals("Nova Obra Original", created.getTitle());
         assertEquals(author, created.getAuthor());
         verify(workRepository).save(any(WorkEntity.class));
+    }
+
+    @Test
+    @DisplayName("Sincroniza o feed após criar a obra e tolera falha do MongoDB sem derrubar o cadastro")
+    void shouldSyncFeedAfterCreateAndTolerateFeedFailure() {
+        when(creatorRepository.findById(creatorId)).thenReturn(Optional.of(author));
+        when(workRepository.findBySlug(any())).thenReturn(Optional.empty());
+        when(workRepository.save(any(WorkEntity.class))).thenAnswer(invocation -> {
+            WorkEntity saved = invocation.getArgument(0);
+            saved.setId(workId);
+            return saved;
+        });
+        when(workRepository.findById(workId)).thenReturn(Optional.of(work));
+        // Simula o MongoDB indisponível: a sincronização do feed deve falhar em silêncio.
+        when(algorithmService.syncWorkToFeed(work)).thenThrow(new RuntimeException("MongoDB indisponível"));
+
+        CreateWorkRequestDto dto = new CreateWorkRequestDto(
+                "Nova Obra Original",
+                "Original",
+                "Sinopse rica de mangá.",
+                "https://storage.local/capa.jpg",
+                null,
+                List.of(Genre.ACAO),
+                true
+        );
+
+        WorkEntity created = workService.createWork(creatorId, dto);
+
+        assertNotNull(created);
+        verify(algorithmService).syncWorkToFeed(work);
+    }
+
+    @Test
+    @DisplayName("Sincroniza o feed somente após o commit (não dentro da transação corrente)")
+    void shouldDeferFeedSyncToAfterCommit() {
+        when(creatorRepository.findById(creatorId)).thenReturn(Optional.of(author));
+        when(workRepository.findBySlug(any())).thenReturn(Optional.empty());
+        when(workRepository.save(any(WorkEntity.class))).thenAnswer(invocation -> {
+            WorkEntity saved = invocation.getArgument(0);
+            saved.setId(workId);
+            return saved;
+        });
+        when(workRepository.findById(workId)).thenReturn(Optional.of(work));
+
+        CreateWorkRequestDto dto = new CreateWorkRequestDto(
+                "Obra com sync diferido",
+                "Original",
+                "Sinopse rica de mangá.",
+                "https://storage.local/capa.jpg",
+                null,
+                List.of(Genre.ACAO),
+                true
+        );
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            workService.createWork(creatorId, dto);
+
+            // Ainda dentro da transação: o feed não pode ter sido sincronizado.
+            verify(algorithmService, never()).syncWorkToFeed(any());
+
+            // Simula o commit disparando as sincronizações registradas.
+            for (TransactionSynchronization sync : TransactionSynchronizationManager.getSynchronizations()) {
+                sync.afterCommit();
+            }
+
+            verify(algorithmService).syncWorkToFeed(work);
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
+    @Test
+    @DisplayName("Obra suspensa cautelarmente não é exposta no detalhe para visitante → 403")
+    void shouldHideSuspendedWorkFromPublicDetail() {
+        work.setStatus("suspended");
+        when(workRepository.findBySlug("cronicas-de-cyberpunk")).thenReturn(Optional.of(work));
+
+        assertThrows(AccessDeniedException.class, () ->
+                workService.getWorkBySlug("cronicas-de-cyberpunk"));
     }
 
     @Test

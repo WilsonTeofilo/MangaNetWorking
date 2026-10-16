@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Search, X, SlidersHorizontal } from 'lucide-react';
-import { MOCK_WORKS } from '../data/mockData';
+import { useCatalogWorks } from '../hooks/useCatalogWorks';
 import { Work, Genre } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { WorkCard } from '../components/ui/WorkCard';
@@ -30,9 +30,12 @@ export function CatalogPage({ onSelectWork }: CatalogPageProps) {
   const [statusFilter, setStatusFilter] = useState<'all' | 'ongoing' | 'completed'>('all');
   const [showFilters, setShowFilters] = useState(false);
 
+  // Catálogo real (feed) com fallback para mock.
+  const catalogWorks = useCatalogWorks();
+
   // Filtragem reativa do Catálogo
   const filteredWorks = useMemo(() => {
-    return MOCK_WORKS.filter((work) => {
+    return catalogWorks.filter((work) => {
       const term = searchTerm.toLowerCase().trim();
       const matchesSearch =
         !term ||
@@ -51,7 +54,7 @@ export function CatalogPage({ onSelectWork }: CatalogPageProps) {
 
       return matchesSearch && matchesGenre && matchesStatus;
     });
-  }, [searchTerm, selectedGenre, statusFilter]);
+  }, [searchTerm, selectedGenre, statusFilter, catalogWorks]);
 
   return (
     <div className="w-full space-y-8 select-none pb-16">

@@ -113,6 +113,7 @@ export interface UserProfile {
   email: string;
   avatarUrl: string;
   isCreator: boolean;
+  isModerator?: boolean;
   creatorId?: string;
   isVip?: boolean;
   vipExpiresAt?: string;

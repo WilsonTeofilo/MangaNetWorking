@@ -46,6 +46,9 @@ public class SessionAuthenticationFilter extends OncePerRequestFilter {
                 if (session.isCreator()) {
                     authorities.add(new SimpleGrantedAuthority("ROLE_CREATOR"));
                 }
+                if (session.isModerator()) {
+                    authorities.add(new SimpleGrantedAuthority("ROLE_MODERATOR"));
+                }
 
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                         session,

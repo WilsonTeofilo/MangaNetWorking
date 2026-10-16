@@ -1,5 +1,6 @@
 package com.manganetworking.controller;
 
+import com.manganetworking.config.security.SecurityContextUtils;
 import com.manganetworking.service.work.WorkApplicationService;
 import com.manganetworking.service.work.dto.ChapterReadResponseDto;
 import com.manganetworking.service.work.dto.WorkDetailsResponseDto;
@@ -26,12 +27,9 @@ public class WorkController {
     }
 
     @PostMapping
-    public ResponseEntity<Map<String, Object>> createWork(
-            @RequestHeader(value = "X-Creator-Id", required = false) UUID creatorId,
-            @Valid @RequestBody CreateWorkRequestDto dto
-    ) {
-        UUID effectiveCreatorId = com.manganetworking.config.security.SecurityContextUtils.resolveCurrentCreatorId(creatorId);
-        WorkEntity work = workService.createWork(effectiveCreatorId, dto);
+    public ResponseEntity<Map<String, Object>> createWork(@Valid @RequestBody CreateWorkRequestDto dto) {
+        UUID creatorId = SecurityContextUtils.requireCurrentCreatorId();
+        WorkEntity work = workService.createWork(creatorId, dto);
         return ResponseEntity.ok(Map.of(
                 "workId", work.getId(),
                 "title", work.getTitle(),
@@ -42,12 +40,11 @@ public class WorkController {
 
     @PostMapping("/{workId}/chapters")
     public ResponseEntity<Map<String, Object>> createChapter(
-            @RequestHeader(value = "X-Creator-Id", required = false) UUID creatorId,
             @PathVariable UUID workId,
             @Valid @RequestBody CreateChapterRequestDto dto
     ) {
-        UUID effectiveCreatorId = com.manganetworking.config.security.SecurityContextUtils.resolveCurrentCreatorId(creatorId);
-        ChapterEntity chapter = workService.createChapter(effectiveCreatorId, workId, dto);
+        UUID creatorId = SecurityContextUtils.requireCurrentCreatorId();
+        ChapterEntity chapter = workService.createChapter(creatorId, workId, dto);
         return ResponseEntity.ok(Map.of(
                 "chapterId", chapter.getId(),
                 "chapterNumber", chapter.getChapterNumber(),
@@ -66,9 +63,10 @@ public class WorkController {
     @GetMapping("/{slug}/chapters/{chapterNumber}")
     public ResponseEntity<ChapterReadResponseDto> readChapter(
             @PathVariable String slug,
-            @PathVariable Integer chapterNumber,
-            @RequestHeader(value = "X-Current-User-Id", required = false) UUID currentUserId
+            @PathVariable Integer chapterNumber
     ) {
+        // Identidade apenas pela sessão: nunca por header controlado pelo cliente (evita burlar o Early Access).
+        UUID currentUserId = SecurityContextUtils.resolveCurrentUserId(null);
         return ResponseEntity.ok(workService.readChapter(slug, chapterNumber, currentUserId));
     }
 }

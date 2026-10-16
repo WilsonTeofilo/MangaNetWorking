@@ -5,9 +5,6 @@ import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
 
 public record SubscribeMembershipRequestDto(
-        @NotNull(message = "O ID do assinante é obrigatório")
-        UUID subscriberUserId,
-
         @NotNull(message = "O ID do criador é obrigatório")
         UUID creatorId,
 

@@ -1,5 +1,8 @@
 package com.manganetworking.config.properties;
 
+import jakarta.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
@@ -15,7 +18,14 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "platform")
 public class PlatformProperties {
 
+    private static final Logger log = LoggerFactory.getLogger(PlatformProperties.class);
+
     private BigDecimal feePercentage = new BigDecimal("0.17");
+    /**
+     * Contrapartida informativa de {@link #feePercentage}. O split financeiro é calculado a partir de
+     * {@code feePercentage} (líquido = bruto − taxa), portanto este valor NÃO é aplicado na conta:
+     * serve de referência e precisa somar 1 com a taxa (validado em {@link #validateFinancialConsistency()}).
+     */
     private BigDecimal creatorSharePercentage = new BigDecimal("0.83");
     private BigDecimal vipPrice = new BigDecimal("23.00");
 
@@ -23,6 +33,19 @@ public class PlatformProperties {
     private Ads ads = new Ads();
     private Security security = new Security();
     private Storage storage = new Storage();
+
+    /** Detecta configuração financeira inconsistente (taxa + repasse ≠ 100%) no boot. */
+    @PostConstruct
+    void validateFinancialConsistency() {
+        if (feePercentage == null || creatorSharePercentage == null) {
+            return;
+        }
+        if (feePercentage.add(creatorSharePercentage).compareTo(BigDecimal.ONE) != 0) {
+            log.warn("[CONFIG] platform.fee-percentage ({}) + platform.creator-share-percentage ({}) != 1.00. "
+                    + "O split usa apenas fee-percentage (líquido = bruto - taxa); ajuste os dois valores.",
+                    feePercentage, creatorSharePercentage);
+        }
+    }
 
     public static class Membership {
         private BigDecimal minPrice = new BigDecimal("7.99");
@@ -60,6 +83,13 @@ public class PlatformProperties {
         private int rateLimitPerMinute = 120;
         private int authRateLimitPerMinute = 15;
 
+        /**
+         * Se {@code true}, o rate limit usa o primeiro IP de {@code X-Forwarded-For}.
+         * Deve permanecer {@code false} fora de um proxy reverso confiável — o header é
+         * controlável pelo cliente e, se confiado às cegas, permite burlar o throttling.
+         */
+        private boolean trustForwardedHeaders = false;
+
         public boolean isTwoFactorMandatory() { return twoFactorMandatory; }
         public void setTwoFactorMandatory(boolean twoFactorMandatory) { this.twoFactorMandatory = twoFactorMandatory; }
 
@@ -71,13 +101,22 @@ public class PlatformProperties {
 
         public int getAuthRateLimitPerMinute() { return authRateLimitPerMinute; }
         public void setAuthRateLimitPerMinute(int authRateLimitPerMinute) { this.authRateLimitPerMinute = authRateLimitPerMinute; }
+
+        public boolean isTrustForwardedHeaders() { return trustForwardedHeaders; }
+        public void setTrustForwardedHeaders(boolean trustForwardedHeaders) { this.trustForwardedHeaders = trustForwardedHeaders; }
     }
 
     public static class Storage {
         private String localUploadDir = "./data/uploads";
 
+        /** Tamanho máximo por arquivo enviado (defesa em profundidade; alinhado ao multipart do container). */
+        private long maxFileSizeMb = 15;
+
         public String getLocalUploadDir() { return localUploadDir; }
         public void setLocalUploadDir(String localUploadDir) { this.localUploadDir = localUploadDir; }
+
+        public long getMaxFileSizeMb() { return maxFileSizeMb; }
+        public void setMaxFileSizeMb(long maxFileSizeMb) { this.maxFileSizeMb = maxFileSizeMb; }
     }
 
     public BigDecimal getFeePercentage() { return feePercentage; }

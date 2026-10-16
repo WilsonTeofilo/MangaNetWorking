@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { 
   ArrowUpDown, 
   Heart, 
@@ -6,8 +6,10 @@ import {
   Calendar,
   Sparkles
 } from 'lucide-react';
-import { Work, Chapter } from '../types';
+import { Work, Chapter, Creator } from '../types';
 import { MOCK_CHAPTERS, MOCK_CREATORS } from '../data/mockData';
+import { workApi, AuthorSummaryDto } from '../api/workApi';
+import { mapChapterSummary } from '../utils/apiMappers';
 import { useAuth } from '../context/AuthContext';
 import { useModals } from '../context/ModalContext';
 import { isChapterEarlyAccess } from '../utils/discoveryAlgorithm';
@@ -31,16 +33,60 @@ export function WorkDetailPage({
 
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
-  const isFavorited = user.favorites.includes(work.id);
-  const creator = MOCK_CREATORS[work.authorId] || Object.values(MOCK_CREATORS)[0];
+  // Dados reais da obra vindos da API (fallback para mock quando indisponível).
+  const [realChapters, setRealChapters] = useState<Chapter[] | null>(null);
+  const [apiAuthor, setApiAuthor] = useState<AuthorSummaryDto | null>(null);
 
-  // Capítulos desta obra
+  useEffect(() => {
+    let active = true;
+    setRealChapters(null);
+    setApiAuthor(null);
+
+    workApi
+      .getWorkBySlug(work.slug)
+      .then((dto) => {
+        if (!active) return;
+        setApiAuthor(dto.author ?? null);
+        if (Array.isArray(dto.chapters) && dto.chapters.length > 0) {
+          setRealChapters(dto.chapters.map((c) => mapChapterSummary(c, dto.id)));
+        }
+      })
+      .catch(() => {
+        // Mantém capítulos/autor mock se a API falhar (obra não persistida no banco).
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [work.slug]);
+
+  const isFavorited = user.favorites.includes(work.id);
+  const mockCreator = MOCK_CREATORS[work.authorId] || Object.values(MOCK_CREATORS)[0];
+  // Prefere o autor real da API (evita atribuir doações a um criador mock).
+  const creator: Creator = apiAuthor
+    ? {
+        ...mockCreator,
+        id: apiAuthor.authorId,
+        name: apiAuthor.authorName,
+        handle: apiAuthor.authorHandle.replace(/^@/, ''),
+        avatarUrl: apiAuthor.authorAvatarUrl || mockCreator.avatarUrl,
+        membershipPriceBrl: apiAuthor.membershipPriceBrl ?? mockCreator.membershipPriceBrl,
+      }
+    : mockCreator;
+
+  // Capítulos desta obra: reais (API) quando houver, senão mock.
   const chapters = useMemo(() => {
-    const list = MOCK_CHAPTERS.filter((c) => c.workId === work.id);
-    const sorted = [...(list.length > 0 ? list : MOCK_CHAPTERS.slice(0, 3))];
+    const source =
+      realChapters && realChapters.length > 0
+        ? realChapters
+        : (() => {
+            const list = MOCK_CHAPTERS.filter((c) => c.workId === work.id);
+            return list.length > 0 ? list : MOCK_CHAPTERS.slice(0, 3);
+          })();
+    const sorted = [...source];
     sorted.sort((a, b) => (sortOrder === 'asc' ? a.number - b.number : b.number - a.number));
     return sorted;
-  }, [work.id, sortOrder]);
+  }, [work.id, sortOrder, realChapters]);
 
   const firstChapter = chapters[0] || MOCK_CHAPTERS[0];
 

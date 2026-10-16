@@ -1,18 +1,23 @@
-import { Heart, Sparkles, BookOpen, Compass, User as UserIcon, Crown } from 'lucide-react';
+import { Heart, Sparkles, BookOpen, Compass, User as UserIcon, Crown, ShieldAlert, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useModals } from '../../context/ModalContext';
 import logoSymbol from '../../assets/brand/logo-symbol.svg';
 
 interface HeaderProps {
-  currentTab: 'feed' | 'works' | 'library' | 'creator-workspace' | 'reader-profile' | 'login';
-  setCurrentTab: (tab: 'feed' | 'works' | 'library' | 'creator-workspace' | 'reader-profile' | 'login') => void;
+  currentTab: 'feed' | 'works' | 'library' | 'creator-workspace' | 'reader-profile' | 'login' | 'moderation';
+  setCurrentTab: (tab: 'feed' | 'works' | 'library' | 'creator-workspace' | 'reader-profile' | 'login' | 'moderation') => void;
   onOpenLogin?: () => void;
 }
 
 export function Header({ currentTab, setCurrentTab, onOpenLogin }: HeaderProps) {
-  const { user, toggleCreatorMode } = useAuth();
+  const { user, isAuthenticated, toggleCreatorMode, logout } = useAuth();
   const { openVip } = useModals();
-  const isLoggedIn = Boolean(user && user.uid && user.uid !== 'guest');
+  const isLoggedIn = isAuthenticated;
+
+  const handleLogout = async () => {
+    await logout();
+    setCurrentTab('feed');
+  };
 
   return (
     <>
@@ -114,23 +119,52 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin }: HeaderProps) 
               </button>
             )}
 
-            {isLoggedIn ? (
-              /* Usuário Autenticado: Mostra Avatar com Borda de Adesivo */
+            {/* O atalho é só conveniência; o servidor também valida o papel. */}
+            {user.isModerator && (
               <button
                 type="button"
-                onClick={() => setCurrentTab(user.isCreator ? 'creator-workspace' : 'reader-profile')}
-                className="flex items-center gap-2 p-1 bg-[#151517] border-2 border-[#34343A] hover:border-[#FFD400] shadow-[3px_3px_0_#FFD400] transition-all cursor-pointer"
-                title={`Perfil de ${user.name}`}
+                onClick={() => setCurrentTab('moderation')}
+                className={`p-1.5 border-2 transition-all ${
+                  currentTab === 'moderation'
+                    ? 'bg-[#E63946] text-[#FFFFFF] border-[#E63946]'
+                    : 'bg-[#151517] text-[#A9A59A] border-[#34343A] hover:text-[#E63946] hover:border-[#E63946]'
+                }`}
+                title="Acessar Mesa de Moderação Editorial"
+                aria-label="Acessar mesa de moderação editorial"
               >
-                <img
-                  src={user.avatarUrl}
-                  alt={user.name}
-                  className="w-8 h-8 object-cover border border-[#0B0B0C]"
-                />
-                <span className="hidden xl:inline font-display text-sm text-[#F4EFE3] uppercase pr-1.5">
-                  {user.name.split(' ')[0]}
-                </span>
+                <ShieldAlert size={14} />
               </button>
+            )}
+
+            {isLoggedIn ? (
+              /* Usuário Autenticado: Avatar com Borda de Adesivo + Sair */
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCurrentTab(user.isCreator ? 'creator-workspace' : 'reader-profile')}
+                  className="flex items-center gap-2 p-1 bg-[#151517] border-2 border-[#34343A] hover:border-[#FFD400] shadow-[3px_3px_0_#FFD400] transition-all cursor-pointer"
+                  title={`Perfil de ${user.name}`}
+                >
+                  <img
+                    src={user.avatarUrl}
+                    alt={user.name}
+                    className="w-8 h-8 object-cover border border-[#0B0B0C]"
+                  />
+                  <span className="hidden xl:inline font-display text-sm text-[#F4EFE3] uppercase pr-1.5">
+                    {user.name.split(' ')[0]}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="p-2 bg-[#151517] border-2 border-[#34343A] text-[#A9A59A] hover:text-[#FFD400] hover:border-[#FFD400] transition-all cursor-pointer"
+                  title="Sair da conta"
+                  aria-label="Sair da conta"
+                >
+                  <LogOut size={14} />
+                </button>
+              </div>
             ) : (
               /* Usuário Deslogado: Mostra o Único CTA Primário da Tela */
               <button

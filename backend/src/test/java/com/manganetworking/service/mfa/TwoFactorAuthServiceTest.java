@@ -1,7 +1,5 @@
-package com.manganetworking.service;
+package com.manganetworking.service.mfa;
 
-import com.manganetworking.service.mfa.DevOutboxNotificationSender;
-import com.manganetworking.service.mfa.DevOutboxRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

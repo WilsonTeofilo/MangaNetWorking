@@ -10,6 +10,7 @@ import { WorkDetailPage } from './pages/WorkDetailPage';
 import { LoginPage } from './pages/LoginPage';
 import { ReaderProfilePage } from './pages/ReaderProfilePage';
 import { CreatorWorkspacePage } from './pages/CreatorWorkspacePage';
+import { ModerationBackofficePage } from './pages/ModerationBackofficePage';
 import { ReaderPage } from './pages/ReaderPage';
 import { DonateModal } from './components/modals/DonateModal';
 import { MembershipModal } from './components/modals/MembershipModal';
@@ -18,10 +19,12 @@ import { VipModal } from './components/modals/VipModal';
 import { ReportModal } from './components/modals/ReportModal';
 import { Work, Chapter } from './types';
 import { MOCK_CHAPTERS } from './data/mockData';
+import { workApi } from './api/workApi';
+import { mapChapterSummary } from './utils/apiMappers';
 
 export function App() {
   const [currentTab, setCurrentTab] = useState<
-    'feed' | 'works' | 'library' | 'creator-workspace' | 'reader-profile' | 'login'
+    'feed' | 'works' | 'library' | 'creator-workspace' | 'reader-profile' | 'login' | 'moderation'
   >('feed');
   const [selectedWork, setSelectedWork] = useState<Work | null>(null);
   const [readingChapter, setReadingChapter] = useState<Chapter | null>(null);
@@ -40,16 +43,32 @@ export function App() {
 
   const handleNavigateChapter = (nextNumber: number) => {
     if (!selectedWork) return;
-    const nextCap = MOCK_CHAPTERS.find(
-      (c) => c.workId === selectedWork.id && c.number === nextNumber
-    );
-    if (nextCap) {
-      setReadingChapter(nextCap);
-    }
+
+    const fallbackToMock = () => {
+      const nextCap = MOCK_CHAPTERS.find(
+        (c) => c.workId === selectedWork.id && c.number === nextNumber
+      );
+      if (nextCap) {
+        setReadingChapter(nextCap);
+      }
+    };
+
+    // Tenta resolver o capítulo na obra real (API); cai no mock se indisponível.
+    workApi
+      .getWorkBySlug(selectedWork.slug)
+      .then((dto) => {
+        const found = (dto.chapters ?? []).find((c) => c.chapterNumber === nextNumber);
+        if (found) {
+          setReadingChapter(mapChapterSummary(found, dto.id));
+        } else {
+          fallbackToMock();
+        }
+      })
+      .catch(() => fallbackToMock());
   };
 
   const handleSwitchTab = (
-    tab: 'feed' | 'works' | 'library' | 'creator-workspace' | 'reader-profile' | 'login'
+    tab: 'feed' | 'works' | 'library' | 'creator-workspace' | 'reader-profile' | 'login' | 'moderation'
   ) => {
     setSelectedWork(null);
     setReadingChapter(null);
@@ -129,6 +148,12 @@ export function App() {
               {currentTab === 'creator-workspace' && (
                 <div className="max-w-7xl mx-auto px-4 py-6">
                   <CreatorWorkspacePage />
+                </div>
+              )}
+
+              {currentTab === 'moderation' && (
+                <div className="max-w-7xl mx-auto px-4 py-6">
+                  <ModerationBackofficePage onBack={() => handleSwitchTab('feed')} />
                 </div>
               )}
             </main>

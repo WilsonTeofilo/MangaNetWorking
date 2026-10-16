@@ -1,6 +1,7 @@
 /**
  * MangaNetWorking API Client
  * Centralized, anti-hardcoded HTTP client for backend interaction.
+ * Sessão por cookie HttpOnly (ADR-002): NÃO guardamos tokens em localStorage.
  */
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
@@ -17,21 +18,6 @@ export class ApiError extends Error {
   }
 }
 
-let authToken: string | null = localStorage.getItem('manganetworking_token');
-
-export function setAuthToken(token: string | null) {
-  authToken = token;
-  if (token) {
-    localStorage.setItem('manganetworking_token', token);
-  } else {
-    localStorage.removeItem('manganetworking_token');
-  }
-}
-
-export function getAuthToken(): string | null {
-  return authToken || localStorage.getItem('manganetworking_token');
-}
-
 export async function request<T = any>(
   endpoint: string,
   options: RequestInit = {}
@@ -43,14 +29,10 @@ export async function request<T = any>(
     ...(options.headers as Record<string, string> || {}),
   };
 
-  const token = getAuthToken();
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
   const response = await fetch(url, {
     ...options,
     headers,
+    credentials: 'include',
   });
 
   if (response.status === 204) {

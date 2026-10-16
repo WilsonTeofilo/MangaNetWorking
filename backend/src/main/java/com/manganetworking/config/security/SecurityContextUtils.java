@@ -46,6 +46,29 @@ public final class SecurityContextUtils {
     }
 
     /**
+     * Resolve o ID do usuário autenticado para operações que exigem identidade (doações, assinaturas).
+     * NÃO faz fallback para header/corpo controlado pelo cliente: sem sessão, nega o acesso.
+     */
+    public static UUID requireCurrentUserId() {
+        return getCurrentSession()
+                .map(SessionService.UserSession::userId)
+                .orElseThrow(() -> new AccessDeniedException(
+                        "Sessão autenticada é obrigatória para esta operação."));
+    }
+
+    /**
+     * Resolve o ID do criador autenticado para operações de escrita (publicação de obras/capítulos).
+     * NÃO faz fallback para headers controlados pelo cliente: sem sessão de criador, nega o acesso.
+     * Evita personificação de outro criador via {@code X-Creator-Id} por um leitor autenticado.
+     */
+    public static UUID requireCurrentCreatorId() {
+        return getCurrentSession()
+                .map(SessionService.UserSession::creatorId)
+                .orElseThrow(() -> new AccessDeniedException(
+                        "Sessão de criador autenticada é obrigatória para publicar conteúdo."));
+    }
+
+    /**
      * Assegura que o usuário que executa a requisição é o legítimo proprietário do recurso.
      */
     public static void assertOwnership(UUID targetUserId, String actionDescription) {

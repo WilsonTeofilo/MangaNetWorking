@@ -1,5 +1,6 @@
-package com.manganetworking.service;
+package com.manganetworking.service.monetization;
 
+import com.manganetworking.config.properties.PlatformProperties;
 import com.manganetworking.domain.enums.PaymentStatus;
 import com.manganetworking.domain.enums.PixKeyType;
 import com.manganetworking.domain.enums.TransactionType;
@@ -9,7 +10,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -45,7 +45,6 @@ class MonetizationServiceTest {
     @Mock
     private ChapterRepository chapterRepository;
 
-    @InjectMocks
     private MonetizationService monetizationService;
 
     private CreatorEntity creator;
@@ -73,6 +72,14 @@ class MonetizationServiceTest {
         user.setId(userId);
         user.setName("Leitor Apoiador");
         user.setEmail("leitor@gmail.com");
+
+        // Propriedades reais (0.17 de taxa etc.) injetadas explicitamente; antes o serviço
+        // dependia de fallback para constantes hardcoded quando as propriedades vinham nulas.
+        monetizationService = new MonetizationService(
+                donationRepository, membershipRepository, ledgerRepository,
+                creatorRepository, userRepository, workRepository, chapterRepository,
+                new PlatformProperties()
+        );
     }
 
     @Test

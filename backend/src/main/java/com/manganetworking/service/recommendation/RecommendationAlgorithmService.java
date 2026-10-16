@@ -9,6 +9,7 @@ import com.manganetworking.repository.jpa.WorkRepository;
 import com.manganetworking.repository.mongo.WorkFeedMongoRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,39 +19,128 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 
+/**
+ * Serviço autoritativo de ranking de obras (Fase 5 do plano).
+ *
+ * <p>Fórmula: {@code Score = (BaseOrgânica + BônusRecência) × DecaimentoTemporal × QualidadeEngajamento × BoostMissão}.
+ * O resultado é materializado na coleção MongoDB {@code feed_works}, que alimenta o feed público.</p>
+ *
+ * <p>É a única implementação de algoritmo do backend. A antiga duplicata em
+ * {@code com.manganetworking.algorithm} foi consolidada aqui para eliminar a colisão de bean
+ * ({@code recommendationAlgorithmService}) que impedia a aplicação de subir.</p>
+ */
 @Service
 public class RecommendationAlgorithmService {
 
     private static final Logger log = LoggerFactory.getLogger(RecommendationAlgorithmService.class);
 
+    private static final long RESCHEDULE_RATE_MS = 600_000L;
+    private static final double MAX_CREATOR_BOOST = 2.5;
+    private static final long MIN_VIEWS_FOR_QUALITY = 40;
+
     private final WorkRepository workRepository;
     private final ChapterRepository chapterRepository;
-    private final WorkFeedMongoRepository feedMongoRepository;
+    private final WorkFeedMongoRepository workFeedMongoRepository;
 
     public RecommendationAlgorithmService(
             WorkRepository workRepository,
             ChapterRepository chapterRepository,
-            WorkFeedMongoRepository feedMongoRepository
+            WorkFeedMongoRepository workFeedMongoRepository
     ) {
         this.workRepository = workRepository;
         this.chapterRepository = chapterRepository;
-        this.feedMongoRepository = feedMongoRepository;
+        this.workFeedMongoRepository = workFeedMongoRepository;
     }
 
     /**
-     * Sincroniza e calcula o score algorítmico de uma obra individual para o MongoDB feed_works
+     * Decaimento temporal logarítmico (estilo feeds do YouTube/Facebook).
+     * Obras antigas sem novos lançamentos perdem relevância suavemente.
+     */
+    public double calculateTimeDecay(LocalDateTime lastUpdate) {
+        if (lastUpdate == null) {
+            return 0.2;
+        }
+        long hours = Math.max(0, Duration.between(lastUpdate, LocalDateTime.now()).toHours());
+        return 1.0 / (1.0 + ((double) hours / 36.0));
+    }
+
+    /**
+     * Razão de engajamento real (likes/views) com piso anti-spam.
+     */
+    public double calculateEngagementQuality(long likes, long views) {
+        if (views < MIN_VIEWS_FOR_QUALITY) {
+            return 1.0;
+        }
+        double ratio = (double) likes / (double) views;
+        if (ratio >= 0.08) {
+            return 1.25;
+        }
+        if (ratio >= 0.04) {
+            return 1.10;
+        }
+        return 0.90;
+    }
+
+    /**
+     * Bônus de lançamento recente: obras com capítulo recente sobem no feed imediatamente.
+     */
+    public RecencyResult calculateRecencyBoost(LocalDateTime lastUpdate) {
+        if (lastUpdate == null) {
+            return new RecencyResult(0.0, false);
+        }
+        long hours = Math.max(0, Duration.between(lastUpdate, LocalDateTime.now()).toHours());
+        if (hours <= 24) {
+            return new RecencyResult(220.0, true);
+        }
+        if (hours <= 72) {
+            return new RecencyResult(140.0, true);
+        }
+        if (hours <= 168) {
+            return new RecencyResult(70.0, false);
+        }
+        if (hours <= 336) {
+            return new RecencyResult(30.0, false);
+        }
+        return new RecencyResult(0.0, false);
+    }
+
+    /**
+     * Calcula a pontuação de uma obra e materializa/atualiza o documento no MongoDB.
      */
     @Transactional(readOnly = true)
     public WorkFeedDocument syncWorkToFeed(WorkEntity work) {
-        CreatorEntity author = work.getAuthor();
+        CreatorEntity creator = work.getAuthor();
         List<ChapterEntity> chapters = chapterRepository.findAllByWorkIdOrderByChapterNumberDesc(work.getId());
         ChapterEntity latestChapter = chapters.isEmpty() ? null : chapters.get(0);
 
-        WorkFeedDocument doc = feedMongoRepository.findByWorkId(work.getId().toString())
+        LocalDateTime lastUpdate = latestChapter != null ? latestChapter.getCreatedAt() : work.getUpdatedAt();
+
+        double organicBase = (work.getTotalViews() * 1.0)
+                + (work.getTotalLikes() * 3.5)
+                + (work.getTotalComments() * 5.0)
+                + (work.getTotalChapters() * 3.0);
+
+        RecencyResult recency = calculateRecencyBoost(lastUpdate);
+        double baseWithRecency = organicBase + recency.points();
+
+        double decay = calculateTimeDecay(lastUpdate);
+        double quality = calculateEngagementQuality(work.getTotalLikes(), work.getTotalViews());
+
+        double creatorBoost = 1.0;
+        if (creator != null && creator.hasActiveBoost()) {
+            creatorBoost = Math.min(MAX_CREATOR_BOOST, creator.getEngagementBoostMul());
+        }
+
+        double discoveryScore = baseWithRecency * decay * quality * creatorBoost;
+        double trendingScore = (work.getTotalViews() * 1.0)
+                + (work.getTotalLikes() * 3.0)
+                + (work.getTotalComments() * 4.0);
+
+        WorkFeedDocument doc = workFeedMongoRepository.findByWorkId(work.getId().toString())
                 .orElseGet(() -> {
-                    WorkFeedDocument newDoc = new WorkFeedDocument();
-                    newDoc.setWorkId(work.getId().toString());
-                    return newDoc;
+                    WorkFeedDocument created = new WorkFeedDocument();
+                    created.setWorkId(work.getId().toString());
+                    return created;
                 });
 
         doc.setTitle(work.getTitle());
@@ -66,68 +156,65 @@ public class RecommendationAlgorithmService {
         doc.setTotalLikes(work.getTotalLikes());
         doc.setTotalComments(work.getTotalComments());
 
-        if (author != null) {
-            doc.setAuthorId(author.getId().toString());
-            doc.setAuthorHandle("@" + author.getHandle());
-            doc.setAuthorName(author.getUser() != null ? author.getUser().getName() : author.getHandle());
-            doc.setAuthorAvatarUrl(author.getAvatarUrl());
+        if (creator != null) {
+            doc.setAuthorId(creator.getId().toString());
+            doc.setAuthorHandle("@" + creator.getHandle());
+            doc.setAuthorName(creator.getUser() != null ? creator.getUser().getName() : creator.getHandle());
+            doc.setAuthorAvatarUrl(creator.getAvatarUrl());
         }
 
-        // Metadados do último capítulo
-        boolean isFresh = false;
         if (latestChapter != null) {
             doc.setLatestChapterNumber(latestChapter.getChapterNumber());
             doc.setLatestChapterTitle(latestChapter.getTitle());
             doc.setLatestChapterReleaseAt(latestChapter.getPublicReleaseAt().toInstant(ZoneOffset.UTC));
             doc.setLatestChapterIsEarlyAccess(latestChapter.isEarlyAccessForMembers());
-
-            long hoursSinceRelease = Duration.between(latestChapter.getCreatedAt(), LocalDateTime.now()).toHours();
-            isFresh = hoursSinceRelease <= 72;
         }
-        doc.setFreshRelease(isFresh);
-
-        // Boost de missão do Criador (Seasons Gamification)
-        double boostMul = 1.0;
-        if (author != null && author.hasActiveBoost()) {
-            boostMul = author.getEngagementBoostMul() != null ? author.getEngagementBoostMul() : 1.0;
-        }
-        doc.setCreatorBoostMul(boostMul);
-
-        // Cálculo do Score de Descoberta e Tendência
-        double organicBase = (work.getTotalViews() * 1.0) + (work.getTotalLikes() * 5.0) + (work.getTotalComments() * 3.0);
-        double recencyBonus = isFresh ? 220.0 : 0.0;
-        long daysSinceUpdate = Duration.between(work.getUpdatedAt(), LocalDateTime.now()).toDays();
-        double decayFactor = 1.0 / (1.0 + (daysSinceUpdate * 0.05));
-
-        double qualityRatio = 1.0;
-        if (work.getTotalViews() > 20) {
-            double ratio = (double) work.getTotalLikes() / work.getTotalViews();
-            qualityRatio = 1.0 + Math.min(ratio * 2.0, 1.0);
-        }
-
-        double discoveryScore = (organicBase + recencyBonus) * decayFactor * qualityRatio * boostMul;
-        double trendingScore = (organicBase * 0.5 + (isFresh ? 350.0 : 0.0)) * qualityRatio * boostMul;
 
         doc.setDiscoveryScore(Math.round(discoveryScore * 100.0) / 100.0);
         doc.setTrendingScore(Math.round(trendingScore * 100.0) / 100.0);
+        doc.setFreshRelease(recency.isFresh());
+        doc.setCreatorBoostMul(creatorBoost);
         doc.setUpdatedAt(Instant.now());
 
-        WorkFeedDocument saved = feedMongoRepository.save(doc);
-        log.info("[ALGORITMO] Obra '{}' sincronizada no Feed Mongo. DiscoveryScore: {}, TrendingScore: {}, Boost: {}x",
-                work.getTitle(), doc.getDiscoveryScore(), doc.getTrendingScore(), boostMul);
+        WorkFeedDocument saved = workFeedMongoRepository.save(doc);
+        log.debug("[ALGORITMO] Obra '{}' sincronizada. DiscoveryScore={}, TrendingScore={}, Boost={}x",
+                work.getTitle(), doc.getDiscoveryScore(), doc.getTrendingScore(), creatorBoost);
         return saved;
     }
 
     /**
-     * Sincroniza o catálogo inteiro para o MongoDB (usado em cron/job ou reindexação manual)
+     * Reindexa o catálogo inteiro (job agendado ou reindexação manual).
+     * Uma falha em uma obra não interrompe as demais.
      */
     @Transactional(readOnly = true)
     public int syncAllWorksToFeed() {
         List<WorkEntity> works = workRepository.findAll();
         for (WorkEntity work : works) {
-            syncWorkToFeed(work);
+            try {
+                syncWorkToFeed(work);
+            } catch (Exception e) {
+                log.error("[ALGORITMO] Falha ao sincronizar obra {}: {}", work.getId(), e.getMessage(), e);
+            }
         }
-        log.info("[ALGORITMO] Catálogo completo sincronizado no MongoDB. Total de obras: {}", works.size());
         return works.size();
     }
+
+    /**
+     * Job agendado: recalcula o ranking de todo o catálogo periodicamente.
+     *
+     * <p>{@code @Transactional(readOnly = true)} é obrigatório aqui: o agendador não passa por uma
+     * requisição web, então não há OSIV; sem a transação, {@code syncWorkToFeed} acessaria
+     * {@code work.getAuthor()} (associação LAZY) sobre entidades já desanexadas e lançaria
+     * {@code LazyInitializationException} para toda obra. A transação mantém a sessão aberta
+     * durante o laço.</p>
+     */
+    @Scheduled(fixedRate = RESCHEDULE_RATE_MS)
+    @Transactional(readOnly = true)
+    public void scheduleFeedRecalculation() {
+        log.info("[ALGORITMO] Iniciando recálculo do feed...");
+        int total = syncAllWorksToFeed();
+        log.info("[ALGORITMO] Feed recalculado. Obras processadas: {}", total);
+    }
+
+    public record RecencyResult(double points, boolean isFresh) {}
 }

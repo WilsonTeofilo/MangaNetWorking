@@ -7,7 +7,7 @@ import com.manganetworking.domain.relational.WorkEntity;
 import com.manganetworking.repository.jpa.CreatorRepository;
 import com.manganetworking.repository.jpa.WorkRepository;
 import com.manganetworking.repository.mongo.CreatorMissionMongoRepository;
-import com.manganetworking.service.MonetizationService;
+import com.manganetworking.service.monetization.MonetizationService;
 import com.manganetworking.service.creator.dto.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

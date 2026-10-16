@@ -1,19 +1,27 @@
 package com.manganetworking.service.work;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.manganetworking.config.exception.AccessDeniedException;
 import com.manganetworking.config.exception.ResourceNotFoundException;
+import com.manganetworking.config.security.SecurityContextUtils;
 import com.manganetworking.domain.relational.ChapterEntity;
 import com.manganetworking.domain.relational.CreatorEntity;
 import com.manganetworking.domain.relational.WorkEntity;
 import com.manganetworking.repository.jpa.ChapterRepository;
+import com.manganetworking.repository.jpa.CreatorRepository;
 import com.manganetworking.repository.jpa.MembershipSubscriptionRepository;
 import com.manganetworking.repository.jpa.WorkRepository;
+import com.manganetworking.service.recommendation.RecommendationAlgorithmService;
+import com.manganetworking.service.session.SessionService;
 import com.manganetworking.service.work.dto.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.manganetworking.repository.jpa.CreatorRepository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
@@ -22,30 +30,40 @@ import java.util.UUID;
 @Service
 public class WorkApplicationService {
 
+    private static final Logger log = LoggerFactory.getLogger(WorkApplicationService.class);
+
+    /** Status de obra suspensa cautelarmente pela moderação. */
+    private static final String STATUS_SUSPENDED = "suspended";
+
     private final WorkRepository workRepository;
     private final ChapterRepository chapterRepository;
     private final MembershipSubscriptionRepository membershipRepository;
     private final CreatorRepository creatorRepository;
     private final ObjectMapper objectMapper;
+    private final RecommendationAlgorithmService algorithmService;
 
     public WorkApplicationService(
             WorkRepository workRepository,
             ChapterRepository chapterRepository,
             MembershipSubscriptionRepository membershipRepository,
             CreatorRepository creatorRepository,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            RecommendationAlgorithmService algorithmService
     ) {
         this.workRepository = workRepository;
         this.chapterRepository = chapterRepository;
         this.membershipRepository = membershipRepository;
         this.creatorRepository = creatorRepository;
         this.objectMapper = objectMapper;
+        this.algorithmService = algorithmService;
     }
 
     @Transactional(readOnly = true)
     public WorkDetailsResponseDto getWorkBySlug(String slug) {
         WorkEntity work = workRepository.findBySlug(slug)
                 .orElseThrow(() -> new ResourceNotFoundException("Obra não encontrada: " + slug));
+
+        assertWorkVisible(work);
 
         List<ChapterEntity> chapters = chapterRepository.findAllByWorkIdOrderByChapterNumberDesc(work.getId());
         CreatorEntity author = work.getAuthor();
@@ -100,6 +118,8 @@ public class WorkApplicationService {
 
         ChapterEntity chapter = chapterRepository.findByWorkIdAndChapterNumber(work.getId(), chapterNumber)
                 .orElseThrow(() -> new ResourceNotFoundException("Capítulo #" + chapterNumber + " não encontrado na obra " + slug));
+
+        assertWorkVisible(work);
 
         CreatorEntity author = work.getAuthor();
         boolean isEarlyAccess = chapter.isEarlyAccessForMembers();
@@ -179,7 +199,9 @@ public class WorkApplicationService {
         work.setGenres(dto.genres());
         work.setStatus("ongoing");
 
-        return workRepository.save(work);
+        WorkEntity saved = workRepository.save(work);
+        syncWorkToFeedQuietly(saved.getId(), "cadastro");
+        return saved;
     }
 
     /**
@@ -201,7 +223,7 @@ public class WorkApplicationService {
         String pagesJson;
         try {
             pagesJson = objectMapper.writeValueAsString(dto.pages());
-        } catch (Exception e) {
+        } catch (JsonProcessingException e) {
             throw new IllegalArgumentException("Erro ao serializar páginas do capítulo: " + e.getMessage());
         }
 
@@ -219,8 +241,63 @@ public class WorkApplicationService {
 
         // Atualiza contadores na obra
         work.setTotalChapters(work.getTotalChapters() + 1);
-        workRepository.save(work);
+        WorkEntity updatedWork = workRepository.save(work);
+
+        syncWorkToFeedQuietly(updatedWork.getId(), "publicação de capítulo");
 
         return saved;
+    }
+
+    /**
+     * Obra suspensa cautelarmente só é visível ao próprio autor e à moderação.
+     * Sem esta checagem, a página de detalhe e o leitor continuavam servindo a obra (e a lista de
+     * páginas) mesmo depois da suspensão, embora o feed e as imagens já estivessem bloqueados.
+     */
+    private void assertWorkVisible(WorkEntity work) {
+        if (work == null || work.getStatus() == null || !STATUS_SUSPENDED.equalsIgnoreCase(work.getStatus())) {
+            return;
+        }
+
+        SessionService.UserSession session = SecurityContextUtils.getCurrentSession().orElse(null);
+        boolean isModerator = session != null && session.isModerator();
+        UUID sessionCreatorId = session != null ? session.creatorId() : null;
+        boolean isAuthor = sessionCreatorId != null && work.getAuthor() != null
+                && sessionCreatorId.equals(work.getAuthor().getId());
+
+        if (!isAuthor && !isModerator) {
+            throw new AccessDeniedException("Esta obra está suspensa cautelarmente e indisponível.");
+        }
+    }
+
+    /**
+     * Sincroniza a obra no feed (MongoDB) sem abortar a transação relacional caso o Mongo esteja indisponível.
+     *
+     * <p>O MongoDB não participa da transação JPA. Se a sincronização fosse executada dentro dela e o
+     * Mongo falhasse, o transceptor JPA marcaria a transação relacional como rollback-only e o commit
+     * resultaria em {@code UnexpectedRollbackException} — derrubando o cadastro da obra/capítulo. Por
+     * isso a sincronização é adiada para depois do commit (ou executada imediatamente se não houver
+     * transação ativa, como nos testes unitários).</p>
+     */
+    private void syncWorkToFeedQuietly(UUID workId, String context) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    runFeedSync(workId, context);
+                }
+            });
+        } else {
+            runFeedSync(workId, context);
+        }
+    }
+
+    private void runFeedSync(UUID workId, String context) {
+        try {
+            workRepository.findById(workId).ifPresent(algorithmService::syncWorkToFeed);
+        } catch (Exception e) {
+            // afterCommit ainda roda com a transação "ativa" (sessão JPA aberta) — o log com causa
+            // evita perder a stacktrace de falhas de LAZY/serialização num caminho silencioso.
+            log.warn("[FEED] Falha ao sincronizar obra {} após {}: {}", workId, context, e.getMessage(), e);
+        }
     }
 }

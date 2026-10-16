@@ -1,5 +1,6 @@
 package com.manganetworking.domain.relational;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.manganetworking.config.security.AesCryptoConverter;
 import com.manganetworking.domain.enums.PixKeyType;
 import jakarta.persistence.*;
@@ -40,10 +41,14 @@ public class CreatorEntity {
     @Column(nullable = false)
     private Integer monetizationLevel = 0;
 
+    // Nunca serializados diretamente: dados pessoais criptografados em repouso (LGPD).
+    // O acesso é feito apenas por DTOs explícitos (ex.: workspace do próprio autor).
+    @JsonIgnore
     @Column(nullable = false)
     @Convert(converter = AesCryptoConverter.class)
     private String documentCpf;
 
+    @JsonIgnore
     @Column(nullable = false)
     @Convert(converter = AesCryptoConverter.class)
     private String pixKey;

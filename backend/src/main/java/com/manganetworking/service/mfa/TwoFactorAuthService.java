@@ -1,6 +1,5 @@
-package com.manganetworking.service;
+package com.manganetworking.service.mfa;
 
-import com.manganetworking.service.mfa.MfaNotificationSender;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
@@ -8,10 +7,16 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Geração e validação de códigos 2FA (OTP) com cache em memória e proteção anti-força bruta.
+ */
 @Service
 public class TwoFactorAuthService {
 
     private static final long OTP_TTL_SECONDS = 300; // 5 minutos de validade
+    private static final int MAX_ATTEMPTS = 5;
+    private static final int OTP_MIN = 100_000;
+    private static final int OTP_RANGE = 900_000;
 
     private final SecureRandom secureRandom = new SecureRandom();
     private final MfaNotificationSender mfaNotificationSender;
@@ -27,7 +32,7 @@ public class TwoFactorAuthService {
      * Gera e envia código 2FA de 6 dígitos via canal isolado (Dev Outbox)
      */
     public String generateAndSendOtp(String userIdentifier, String destination) {
-        int number = secureRandom.nextInt(900000) + 100000;
+        int number = secureRandom.nextInt(OTP_RANGE) + OTP_MIN;
         String otpCode = String.valueOf(number);
 
         Instant expiresAt = Instant.now().plusSeconds(OTP_TTL_SECONDS);
@@ -54,7 +59,7 @@ public class TwoFactorAuthService {
             return false;
         }
 
-        if (entry.attempts() >= 5) {
+        if (entry.attempts() >= MAX_ATTEMPTS) {
             otpCache.remove(key);
             throw new SecurityException("Muitas tentativas incorretas. Código 2FA cancelado por proteção anti-força bruta.");
         }
@@ -65,7 +70,7 @@ public class TwoFactorAuthService {
             return true;
         } else {
             int newAttempts = entry.attempts() + 1;
-            if (newAttempts >= 5) {
+            if (newAttempts >= MAX_ATTEMPTS) {
                 otpCache.remove(key);
                 throw new SecurityException("Muitas tentativas incorretas. Código 2FA cancelado por proteção anti-força bruta.");
             }

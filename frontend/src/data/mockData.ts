@@ -317,6 +317,9 @@ export const CURRENT_USER: UserProfile = {
   avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
   isCreator: false,
   creatorId: undefined,
+  // Fila editorial acessível na demo. Em produção o papel vem do servidor (/auth/me → isModerator),
+  // nunca é concedido pelo cliente.
+  isModerator: true,
   activeMemberships: {}, // Inicia sem ser membro para que o usuário possa testar o modal de bloqueio!
   favorites: ['kokuin', 'lamina-carmesim']
 };

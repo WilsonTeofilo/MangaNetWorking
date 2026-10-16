@@ -77,7 +77,7 @@ export function VipModal() {
               </li>
               <li className="flex items-start gap-2">
                 <Smartphone size={14} className="text-[#FFD400] mt-0.5 shrink-0" />
-                <span><strong>Pronto para Leitura Offline:</strong> Download local seguro de capítulos no futuro app móvel.</span>
+                <span><strong>Leitura Offline (em breve):</strong> o download local seguro de capítulos chegará com o app móvel — ainda não está disponível.</span>
               </li>
             </ul>
           </div>

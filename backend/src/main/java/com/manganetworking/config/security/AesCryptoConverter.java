@@ -25,13 +25,21 @@ public class AesCryptoConverter implements AttributeConverter<String, String> {
     private static final int TAG_LENGTH_BIT = 128;
     private static final int IV_LENGTH_BYTE = 12;
 
+    /** Chave de desenvolvimento embutida; em produção deve ser sobrescrita por AES_SECRET_KEY. */
+    private static final String DEV_DEFAULT_KEY = "MangaNetWorking2026AESKeySecret!";
+
     private static volatile byte[] keyBytes = null;
 
     private static byte[] getKeyBytes() {
         if (keyBytes != null) return keyBytes;
         String envKey = System.getenv("AES_SECRET_KEY");
         if (envKey == null || envKey.isBlank()) {
-            envKey = System.getProperty("platform.security.aes-secret-key", "MangaNetWorking2026AESKeySecret!");
+            envKey = System.getProperty("platform.security.aes-secret-key");
+        }
+        if (envKey == null || envKey.isBlank()) {
+            log.warn("[AES-CRYPTO] AES_SECRET_KEY não configurada; usando chave padrão de desenvolvimento. "
+                    + "Defina AES_SECRET_KEY em produção — trocar a chave inviabiliza a leitura de dados já cifrados.");
+            envKey = DEV_DEFAULT_KEY;
         }
         byte[] raw = envKey.getBytes(StandardCharsets.UTF_8);
         byte[] key32 = new byte[32];

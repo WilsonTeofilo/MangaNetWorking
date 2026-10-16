@@ -34,6 +34,7 @@ class SecurityContextUtilsTest {
                 "autor@manganetworking.com",
                 "Autor Real",
                 true,
+                false,
                 authenticatedCreatorId,
                 "autor_real",
                 Instant.now().plusSeconds(3600)
@@ -71,6 +72,7 @@ class SecurityContextUtilsTest {
                 "teste@manganetworking.com",
                 "Teste",
                 false,
+                false,
                 null,
                 null,
                 Instant.now().plusSeconds(3600)
@@ -84,5 +86,82 @@ class SecurityContextUtilsTest {
         assertThrows(AccessDeniedException.class, () ->
                 SecurityContextUtils.assertOwnership(anotherUserId, "atualizar perfil")
         );
+    }
+
+    @Test
+    @DisplayName("Deve exigir sessão de criador para publicar, sem aceitar header do cliente")
+    void shouldRequireCreatorSessionForPublishing() {
+        assertThrows(AccessDeniedException.class, SecurityContextUtils::requireCurrentCreatorId);
+    }
+
+    @Test
+    @DisplayName("Sessão autenticada sem perfil de criador não pode publicar")
+    void shouldRejectReaderSessionForPublishing() {
+        SessionService.UserSession readerSession = new SessionService.UserSession(
+                "session-reader",
+                UUID.randomUUID(),
+                "leitor@manganetworking.com",
+                "Leitor",
+                false,
+                false,
+                null,
+                null,
+                Instant.now().plusSeconds(3600)
+        );
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(readerSession, null, Collections.emptyList())
+        );
+
+        assertThrows(AccessDeniedException.class, SecurityContextUtils::requireCurrentCreatorId);
+    }
+
+    @Test
+    @DisplayName("Deve retornar o creatorId autenticado para publicação")
+    void shouldReturnAuthenticatedCreatorId() {
+        UUID creatorId = UUID.randomUUID();
+        SessionService.UserSession creatorSession = new SessionService.UserSession(
+                "session-creator",
+                UUID.randomUUID(),
+                "autor@manganetworking.com",
+                "Autor",
+                true,
+                false,
+                creatorId,
+                "autor_real",
+                Instant.now().plusSeconds(3600)
+        );
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(creatorSession, null, Collections.emptyList())
+        );
+
+        assertEquals(creatorId, SecurityContextUtils.requireCurrentCreatorId());
+    }
+
+    @Test
+    @DisplayName("Deve exigir sessão autenticada para operações financeiras (doação/assinatura)")
+    void shouldRequireSessionForFinancialActions() {
+        assertThrows(AccessDeniedException.class, SecurityContextUtils::requireCurrentUserId);
+    }
+
+    @Test
+    @DisplayName("Deve retornar o userId da sessão para operações financeiras, ignorando qualquer corpo/header")
+    void shouldReturnAuthenticatedUserIdForFinancialActions() {
+        UUID userId = UUID.randomUUID();
+        SessionService.UserSession session = new SessionService.UserSession(
+                "session-doador",
+                userId,
+                "doador@manganetworking.com",
+                "Doador",
+                false,
+                false,
+                null,
+                null,
+                Instant.now().plusSeconds(3600)
+        );
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(session, null, Collections.emptyList())
+        );
+
+        assertEquals(userId, SecurityContextUtils.requireCurrentUserId());
     }
 }

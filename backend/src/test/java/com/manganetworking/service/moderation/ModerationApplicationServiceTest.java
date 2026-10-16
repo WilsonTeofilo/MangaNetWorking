@@ -8,6 +8,7 @@ import com.manganetworking.repository.jpa.ChapterRepository;
 import com.manganetworking.repository.jpa.ReportRepository;
 import com.manganetworking.repository.jpa.UserRepository;
 import com.manganetworking.repository.jpa.WorkRepository;
+import com.manganetworking.repository.mongo.WorkFeedMongoRepository;
 import com.manganetworking.service.moderation.dto.CreateReportRequestDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -39,6 +40,9 @@ class ModerationApplicationServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private WorkFeedMongoRepository workFeedMongoRepository;
 
     @InjectMocks
     private ModerationApplicationService moderationService;

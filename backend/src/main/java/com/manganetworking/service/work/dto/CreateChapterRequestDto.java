@@ -22,7 +22,5 @@ public record CreateChapterRequestDto(
         List<String> pages,
 
         @NotNull(message = "A data de liberação pública é obrigatória")
-        LocalDateTime publicReleaseAt,
-
-        boolean earlyAccessForMembers
+        LocalDateTime publicReleaseAt
 ) {}

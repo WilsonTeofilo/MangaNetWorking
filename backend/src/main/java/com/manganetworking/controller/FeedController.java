@@ -1,11 +1,9 @@
 package com.manganetworking.controller;
 
 import com.manganetworking.domain.nosql.WorkFeedDocument;
-import com.manganetworking.repository.mongo.WorkFeedMongoRepository;
-import com.manganetworking.service.recommendation.RecommendationAlgorithmService;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
+import com.manganetworking.service.feed.FeedApplicationService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -15,23 +13,19 @@ import java.util.Map;
 @RequestMapping("/api/feed")
 public class FeedController {
 
-    private final WorkFeedMongoRepository workFeedMongoRepository;
-    private final RecommendationAlgorithmService algorithmService;
+    private final FeedApplicationService feedService;
 
-    public FeedController(
-            WorkFeedMongoRepository workFeedMongoRepository,
-            RecommendationAlgorithmService algorithmService
-    ) {
-        this.workFeedMongoRepository = workFeedMongoRepository;
-        this.algorithmService = algorithmService;
+    public FeedController(FeedApplicationService feedService) {
+        this.feedService = feedService;
     }
 
     /**
      * Sincronização e recalculo do Feed no MongoDB
      */
     @PostMapping("/sync")
+    @PreAuthorize("hasRole('MODERATOR')")
     public ResponseEntity<Map<String, Object>> syncFeed() {
-        int count = algorithmService.syncAllWorksToFeed();
+        int count = feedService.syncCatalog();
         return ResponseEntity.ok(Map.of(
                 "message", "Feed sincronizado com sucesso no MongoDB.",
                 "totalWorksSynced", count
@@ -49,21 +43,7 @@ public class FeedController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        Pageable pageable = PageRequest.of(page, size);
-        List<WorkFeedDocument> result;
-
-        if (genre != null && !genre.isBlank() && !genre.equalsIgnoreCase("TODOS")) {
-            result = workFeedMongoRepository.findAllByGenresContainingOrderByDiscoveryScoreDesc(genre.toUpperCase(), pageable);
-            return ResponseEntity.ok(result);
-        }
-
-        switch (sort.toLowerCase()) {
-            case "trending" -> result = workFeedMongoRepository.findAllByOrderByTrendingScoreDesc(pageable);
-            case "fresh" -> result = workFeedMongoRepository.findAllByOrderByUpdatedAtDesc(pageable);
-            default -> result = workFeedMongoRepository.findAllByOrderByDiscoveryScoreDesc(pageable); // Recommended
-        }
-
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(feedService.getFeed(sort, genre, page, size));
     }
 
     /**
@@ -71,8 +51,7 @@ public class FeedController {
      */
     @GetMapping("/trending")
     public ResponseEntity<List<WorkFeedDocument>> getTrending(@RequestParam(defaultValue = "10") int limit) {
-        Pageable pageable = PageRequest.of(0, limit);
-        return ResponseEntity.ok(workFeedMongoRepository.findAllByOrderByTrendingScoreDesc(pageable));
+        return ResponseEntity.ok(feedService.getTrending(limit));
     }
 
     /**
@@ -80,7 +59,6 @@ public class FeedController {
      */
     @GetMapping("/fresh")
     public ResponseEntity<List<WorkFeedDocument>> getFreshReleases(@RequestParam(defaultValue = "10") int limit) {
-        Pageable pageable = PageRequest.of(0, limit);
-        return ResponseEntity.ok(workFeedMongoRepository.findAllByOrderByUpdatedAtDesc(pageable));
+        return ResponseEntity.ok(feedService.getFreshReleases(limit));
     }
 }

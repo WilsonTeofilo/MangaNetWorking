@@ -1,6 +1,17 @@
 # MangaNetWorking
 
-Plataforma digital para publicação, leitura e descoberta de mangás e quadrinhos originais independentes, com conexão direta entre leitores e criadores e monetização justa (Doações, Membros/Clube do Criador e Anúncios).
+Plataforma editorial digital para publicar, ler e descobrir mangás e quadrinhos originais independentes, conectando leitores e criadores.
+
+## Como navegar na documentação
+
+- `AGENTS.md`: instruções de trabalho e preservação de alterações locais.
+- `docs/reviews/`: contexto persistente — produto, regras de negócio, segurança e estado/handoff.
+- `docs/skills/`: procedimentos reutilizáveis por tipo de tarefa. Para UI, use `docs/skills/frontend-design/SKILL.md`.
+- `docs/IDENTIDADE_VISUAL.md`: especificação visual detalhada (referência da skill de frontend).
+- `docs/PLANO_DE_FASES.md`: roadmap e critérios de aceite.
+- `docs/decisions/`: decisões arquiteturais aprovadas.
+
+**Reviews explicam o que/por quê/estado; skills explicam como executar uma tarefa.** O README é uma porta de entrada, não a prova de que um requisito já está implementado.
 
 > ⚠️ **ESCOPO ESTATUTÁRIO FUNDAMENTAL:**
 > - **NÃO EXISTE LOJA FÍSICA NEM VITRINE DE PRODUTOS:** A plataforma é **100% digital e editorial**. Não há venda de produtos físicos, print-on-demand (POD), estoque, frete, correios ou despacho de mercadorias.
@@ -119,7 +130,11 @@ A plataforma **NÃO possui loja física, nem estoque, nem venda de produtos impr
 docker compose up -d
 
 # Executar backend (Porta 8085)
+# O profile "dev" habilita o Dev Outbox (GET /api/dev/outbox/latest) para ler o OTP 2FA
+# localmente. Sem profile (ou com "prod") o endpoint não existe — o 2FA continua válido,
+# apenas o atalho de leitura local fica indisponível. Nunca use "dev" em produção.
 cd backend
+$env:SPRING_PROFILES_ACTIVE = "dev"
 cmd /c mvn spring-boot:run
 
 # Executar frontend (Porta 5180)

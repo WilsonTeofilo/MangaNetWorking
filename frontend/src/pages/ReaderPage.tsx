@@ -3,8 +3,10 @@ import { ArrowLeft, ChevronLeft, ChevronRight, Heart, Flag } from 'lucide-react'
 import { Work, Chapter } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useModals } from '../context/ModalContext';
-import { monetizationApi } from '../api/monetizationApi';
 import { userApi } from '../api/authApi';
+import { workApi } from '../api/workApi';
+import { ApiError } from '../api/client';
+import { parsePagesJson } from '../utils/apiMappers';
 import { Button } from '../components/ui/Button';
 
 interface ReaderPageProps {
@@ -21,9 +23,42 @@ export function ReaderPage({ work, chapter, onBack, onNavigateChapter }: ReaderP
   const [currentPage, setCurrentPage] = useState(1);
   const [cumulativePages, setCumulativePages] = useState(0);
   const [showAdNotice, setShowAdNotice] = useState(false);
+  // Páginas reais do capítulo (API) com fallback para as páginas do mock.
+  const [pages, setPages] = useState<string[]>(chapter.pages ?? []);
+  const [earlyAccessLocked, setEarlyAccessLocked] = useState(false);
 
   const isLiked = user.favorites.includes(work.id);
-  const totalPages = chapter.pages?.length || 24;
+  const totalPages = pages.length || chapter.pages?.length || 24;
+
+  // Carrega as páginas reais do capítulo; se indisponível, mantém o fallback (mock).
+  useEffect(() => {
+    let active = true;
+    setPages(chapter.pages ?? []);
+    setEarlyAccessLocked(false);
+    setCurrentPage(1);
+
+    workApi
+      .readChapter(work.slug, chapter.number)
+      .then((resp) => {
+        if (!active) return;
+        const realPages = parsePagesJson(resp.pagesJson);
+        if (realPages.length > 0) {
+          setPages(realPages);
+        }
+      })
+      .catch((err) => {
+        if (!active) return;
+        // 403 = capítulo em acesso antecipado sem assinatura (bloqueio autoritativo do servidor).
+        if (err instanceof ApiError && err.status === 403) {
+          setEarlyAccessLocked(true);
+        }
+        // Demais erros: mantém fallback (chapter.pages) para não quebrar a leitura da demo.
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [work.slug, chapter.number, chapter.pages]);
 
   // Rastreio de leitura contínua no MongoDB
   useEffect(() => {
@@ -31,7 +66,7 @@ export function ReaderPage({ work, chapter, onBack, onNavigateChapter }: ReaderP
       workId: work.id,
       chapterId: chapter.id,
       page: currentPage,
-      completed: currentPage === totalPages,
+      totalPages,
     }).catch(() => {});
   }, [work.id, chapter.id, currentPage, totalPages]);
 
@@ -42,15 +77,10 @@ export function ReaderPage({ work, chapter, onBack, onNavigateChapter }: ReaderP
 
       const nextCumulative = cumulativePages + 1;
       if (nextCumulative >= 30) {
-        // Se usuário for VIP, 100% dos anúncios são suprimidos!
+        // VIP não vê anúncios. O crédito do anúncio (58%/42%) é gravado pelo servidor
+        // durante o tracking de leitura — não há endpoint de impressão no cliente.
         if (!user.isVip) {
           setShowAdNotice(true);
-          monetizationApi.recordAdImpression({
-            workId: work.id,
-            creatorId: work.authorId,
-            chapterId: chapter.id,
-            pagesRead: 30,
-          }).catch(() => {});
         }
         setCumulativePages(0);
       } else {
@@ -164,11 +194,26 @@ export function ReaderPage({ work, chapter, onBack, onNavigateChapter }: ReaderP
       {/* 4. Visualizador Centralizado em Coluna (Webtoon, Max ~800px, Sem Borda Decorativa) */}
       <main className="flex-1 max-w-[800px] mx-auto w-full py-4 px-2 flex flex-col items-center">
         <div className="relative w-full overflow-hidden bg-[#000000] flex justify-center">
-          <img
-            src={chapter.pages?.[currentPage - 1] || chapter.pages?.[0] || work.coverUrl}
-            alt={`Página ${currentPage} de ${work.title}`}
-            className="w-full h-auto object-contain select-none max-h-[85vh]"
-          />
+          {earlyAccessLocked ? (
+            <div className="w-full bg-[#151517] border border-[#34343A] p-10 text-center space-y-3">
+              <h3 className="font-display text-2xl text-[#FFD400] uppercase">
+                ACESSO ANTECIPADO PARA MEMBROS
+              </h3>
+              <p className="font-body text-sm text-[#A9A59A] max-w-md mx-auto">
+                Este capítulo é exclusivo para membros oficiais de {work.authorName}.
+                Torne-se membro na página da obra para ler agora.
+              </p>
+              <Button type="button" variant="primary" onClick={onBack} className="!min-h-[36px] !text-xs">
+                VOLTAR À OBRA
+              </Button>
+            </div>
+          ) : (
+            <img
+              src={pages[currentPage - 1] || pages[0] || work.coverUrl}
+              alt={`Página ${currentPage} de ${work.title}`}
+              className="w-full h-auto object-contain select-none max-h-[85vh]"
+            />
+          )}
         </div>
 
         {/* Navegação Entre Páginas */}

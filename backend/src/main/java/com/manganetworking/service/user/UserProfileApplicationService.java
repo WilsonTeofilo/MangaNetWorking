@@ -8,7 +8,7 @@ import com.manganetworking.domain.relational.WorkEntity;
 import com.manganetworking.repository.jpa.UserRepository;
 import com.manganetworking.repository.jpa.WorkRepository;
 import com.manganetworking.repository.mongo.ReadingProgressMongoRepository;
-import com.manganetworking.service.ReadingProgressService;
+import com.manganetworking.service.reading.ReadingProgressService;
 import com.manganetworking.service.user.dto.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

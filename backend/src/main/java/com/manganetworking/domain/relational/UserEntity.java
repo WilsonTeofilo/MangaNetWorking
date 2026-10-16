@@ -41,6 +41,9 @@ public class UserEntity {
 
     private String twoFactorSecret;
 
+    @Column(nullable = false)
+    private boolean isModerator = false;
+
     // Assinatura VIP da Plataforma (Remove 100% dos anúncios)
     @Column(nullable = false)
     private boolean isVip = false;
@@ -94,6 +97,9 @@ public class UserEntity {
 
     public Set<WorkEntity> getLikedWorks() { return likedWorks; }
     public void setLikedWorks(Set<WorkEntity> likedWorks) { this.likedWorks = likedWorks; }
+
+    public boolean isModerator() { return isModerator; }
+    public void setModerator(boolean moderator) { isModerator = moderator; }
 
     public boolean isVip() { return isVip; }
     public void setVip(boolean vip) { isVip = vip; }

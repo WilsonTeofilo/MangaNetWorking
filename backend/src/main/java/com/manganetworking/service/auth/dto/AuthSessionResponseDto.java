@@ -9,5 +9,6 @@ public record AuthSessionResponseDto(
         String avatarUrl,
         boolean isCreator,
         UUID creatorId,
-        String creatorHandle
+        String creatorHandle,
+        boolean isModerator
 ) {}

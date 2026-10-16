@@ -57,7 +57,8 @@ public class AuthController {
                         "email", session.email(),
                         "isCreator", session.isCreator(),
                         "creatorId", session.creatorId() != null ? session.creatorId() : "",
-                        "creatorHandle", session.creatorHandle() != null ? session.creatorHandle() : ""
+                        "creatorHandle", session.creatorHandle() != null ? session.creatorHandle() : "",
+                        "isModerator", session.isModerator()
                 )))
                 .orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
     }

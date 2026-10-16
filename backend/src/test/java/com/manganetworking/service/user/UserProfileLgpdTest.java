@@ -6,7 +6,7 @@ import com.manganetworking.domain.relational.WorkEntity;
 import com.manganetworking.repository.jpa.UserRepository;
 import com.manganetworking.repository.jpa.WorkRepository;
 import com.manganetworking.repository.mongo.ReadingProgressMongoRepository;
-import com.manganetworking.service.ReadingProgressService;
+import com.manganetworking.service.reading.ReadingProgressService;
 import com.manganetworking.service.user.dto.UserDataExportDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

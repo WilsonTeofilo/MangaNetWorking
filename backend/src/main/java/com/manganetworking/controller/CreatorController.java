@@ -27,30 +27,26 @@ public class CreatorController {
     }
 
     @GetMapping("/workspace")
-    public ResponseEntity<CreatorWorkspaceResponseDto> getCreatorWorkspace(
-            @RequestHeader(value = "X-Creator-Id", required = false) UUID creatorId
-    ) {
-        UUID effectiveCreatorId = com.manganetworking.config.security.SecurityContextUtils.resolveCurrentCreatorId(creatorId);
-        return ResponseEntity.ok(creatorService.getCreatorWorkspace(effectiveCreatorId));
+    public ResponseEntity<CreatorWorkspaceResponseDto> getCreatorWorkspace() {
+        UUID creatorId = com.manganetworking.config.security.SecurityContextUtils.requireCurrentCreatorId();
+        return ResponseEntity.ok(creatorService.getCreatorWorkspace(creatorId));
     }
 
     @PutMapping("/profile")
     public ResponseEntity<Map<String, String>> updateCreatorIdentity(
-            @RequestHeader(value = "X-Creator-Id", required = false) UUID creatorId,
             @Valid @RequestBody UpdateCreatorIdentityRequestDto dto
     ) {
-        UUID effectiveCreatorId = com.manganetworking.config.security.SecurityContextUtils.resolveCurrentCreatorId(creatorId);
-        creatorService.updateCreatorIdentity(effectiveCreatorId, dto);
+        UUID creatorId = com.manganetworking.config.security.SecurityContextUtils.requireCurrentCreatorId();
+        creatorService.updateCreatorIdentity(creatorId, dto);
         return ResponseEntity.ok(Map.of("message", "Perfil de autor atualizado com sucesso"));
     }
 
     @PutMapping("/membership-price")
     public ResponseEntity<Map<String, Object>> updateMembershipPrice(
-            @RequestHeader(value = "X-Creator-Id", required = false) UUID creatorId,
             @Valid @RequestBody UpdateMembershipPriceRequestDto dto
     ) {
-        UUID effectiveCreatorId = com.manganetworking.config.security.SecurityContextUtils.resolveCurrentCreatorId(creatorId);
-        BigDecimal updatedPrice = creatorService.updateMembershipPrice(effectiveCreatorId, dto.priceBrl());
+        UUID creatorId = com.manganetworking.config.security.SecurityContextUtils.requireCurrentCreatorId();
+        BigDecimal updatedPrice = creatorService.updateMembershipPrice(creatorId, dto.priceBrl());
         return ResponseEntity.ok(Map.of(
                 "message", "Preço de membros atualizado",
                 "membershipPriceBrl", updatedPrice
@@ -59,11 +55,10 @@ public class CreatorController {
 
     @PostMapping("/workspace/missions/{missionId}/claim")
     public ResponseEntity<Map<String, Object>> claimMissionReward(
-            @RequestHeader(value = "X-Creator-Id", required = false) UUID creatorId,
             @PathVariable String missionId
     ) {
-        UUID effectiveCreatorId = com.manganetworking.config.security.SecurityContextUtils.resolveCurrentCreatorId(creatorId);
-        CreatorEntity updatedCreator = creatorService.claimMissionReward(effectiveCreatorId, missionId);
+        UUID creatorId = com.manganetworking.config.security.SecurityContextUtils.requireCurrentCreatorId();
+        CreatorEntity updatedCreator = creatorService.claimMissionReward(creatorId, missionId);
         return ResponseEntity.ok(Map.of(
                 "message", "Recompensa da Season resgatada com sucesso!",
                 "boostMultiplier", updatedCreator.getEngagementBoostMul(),

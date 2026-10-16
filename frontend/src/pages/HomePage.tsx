@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { MOCK_WORKS, MOCK_CHAPTERS, MOCK_CREATORS } from '../data/mockData';
+import { MOCK_CHAPTERS, MOCK_CREATORS } from '../data/mockData';
+import { useCatalogWorks } from '../hooks/useCatalogWorks';
 import { isChapterEarlyAccess } from '../utils/discoveryAlgorithm';
 import { useAuth } from '../context/AuthContext';
 import { useModals } from '../context/ModalContext';
@@ -30,12 +31,15 @@ export function HomePage({
 
   const [heroIndex, setHeroIndex] = useState(0);
 
+  // Catálogo real (feed) com fallback para mock.
+  const catalogWorks = useCatalogWorks();
+
   // Obras em destaque para o Hero
-  const heroWorks = MOCK_WORKS.slice(0, 4);
-  const currentHero = heroWorks[heroIndex % heroWorks.length] || MOCK_WORKS[0];
+  const heroWorks = catalogWorks.slice(0, 4);
+  const currentHero = heroWorks[heroIndex % heroWorks.length] || catalogWorks[0];
 
   // Ranking Top 5 (Em Alta Agora)
-  const trendingRanking = [...MOCK_WORKS]
+  const trendingRanking = [...catalogWorks]
     .sort((a, b) => b.totalViews + b.totalLikes * 10 - (a.totalViews + a.totalLikes * 10))
     .slice(0, 5);
 
@@ -58,7 +62,7 @@ export function HomePage({
   };
 
   // Simulação de último lido para a seção "Continuar Lendo"
-  const lastReadWork = MOCK_WORKS[0];
+  const lastReadWork = catalogWorks[0];
   const lastReadChapter =
     MOCK_CHAPTERS.find((c) => c.workId === lastReadWork.id) || MOCK_CHAPTERS[0];
 
@@ -264,7 +268,7 @@ export function HomePage({
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
-            {MOCK_WORKS.slice(0, 8).map((work, idx) => (
+            {catalogWorks.slice(0, 8).map((work, idx) => (
               <WorkCard
                 key={work.id}
                 work={work}
