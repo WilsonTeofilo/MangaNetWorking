@@ -119,4 +119,47 @@ public class CreatorApplicationService {
         CreatorEntity updated = monetizationService.updateMembershipPrice(creatorId, newPriceBrl);
         return updated.getMembershipPriceBrl();
     }
+
+    /**
+     * Resgata a recompensa da missão da Season cumprida pelo autor, aplicando o Boost no Algoritmo do Feed
+     */
+    @Transactional
+    public CreatorEntity claimMissionReward(UUID creatorId, String missionId) {
+        CreatorEntity creator = creatorRepository.findById(creatorId)
+                .orElseThrow(() -> new ResourceNotFoundException("Criador não encontrado: " + creatorId));
+
+        CreatorMissionDocument mission = missionRepository.findById(missionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Missão não encontrada: " + missionId));
+
+        if (!mission.getCreatorId().equals(creatorId.toString())) {
+            throw new com.manganetworking.config.exception.AccessDeniedException("Esta missão pertence a outro autor.");
+        }
+
+        if (mission.isCompleted()) {
+            throw new IllegalStateException("Esta missão já foi resgatada anteriormente.");
+        }
+
+        if (mission.getCurrentProgress() < mission.getTargetGoal()) {
+            throw new IllegalStateException("Missão ainda não concluída. Progresso: "
+                    + mission.getCurrentProgress() + "/" + mission.getTargetGoal());
+        }
+
+        mission.setCompleted(true);
+        mission.setCompletedAt(java.time.Instant.now());
+        missionRepository.save(mission);
+
+        // Aplica o Boost de Algoritmo ganho na Season
+        double rewardMul = mission.getBoostRewardMultiplier() != null ? mission.getBoostRewardMultiplier() : 1.5;
+        int durationHours = mission.getBoostDurationHours() != null ? mission.getBoostDurationHours() : 48;
+
+        creator.setEngagementBoostMul(rewardMul);
+        creator.setEngagementBoostUntil(java.time.LocalDateTime.now().plusHours(durationHours));
+
+        // Se atingiu metas da temporada, avança nível de monetização
+        if (creator.getMonetizationLevel() < 2 && mission.getTargetGoal() >= 3) {
+            creator.setMonetizationLevel(2);
+        }
+
+        return creatorRepository.save(creator);
+    }
 }

@@ -6,6 +6,13 @@ import com.manganetworking.service.work.dto.WorkDetailsResponseDto;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.manganetworking.domain.relational.ChapterEntity;
+import com.manganetworking.domain.relational.WorkEntity;
+import com.manganetworking.service.work.dto.CreateChapterRequestDto;
+import com.manganetworking.service.work.dto.CreateWorkRequestDto;
+import jakarta.validation.Valid;
+
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -16,6 +23,37 @@ public class WorkController {
 
     public WorkController(WorkApplicationService workService) {
         this.workService = workService;
+    }
+
+    @PostMapping
+    public ResponseEntity<Map<String, Object>> createWork(
+            @RequestHeader("X-Creator-Id") UUID creatorId,
+            @Valid @RequestBody CreateWorkRequestDto dto
+    ) {
+        WorkEntity work = workService.createWork(creatorId, dto);
+        return ResponseEntity.ok(Map.of(
+                "workId", work.getId(),
+                "title", work.getTitle(),
+                "slug", work.getSlug(),
+                "message", "Obra criada com sucesso. Autoria original confirmada."
+        ));
+    }
+
+    @PostMapping("/{workId}/chapters")
+    public ResponseEntity<Map<String, Object>> createChapter(
+            @RequestHeader("X-Creator-Id") UUID creatorId,
+            @PathVariable UUID workId,
+            @Valid @RequestBody CreateChapterRequestDto dto
+    ) {
+        ChapterEntity chapter = workService.createChapter(creatorId, workId, dto);
+        return ResponseEntity.ok(Map.of(
+                "chapterId", chapter.getId(),
+                "chapterNumber", chapter.getChapterNumber(),
+                "title", chapter.getTitle(),
+                "publicReleaseAt", chapter.getPublicReleaseAt(),
+                "isEarlyAccess", chapter.isEarlyAccessForMembers(),
+                "message", "Capítulo cadastrado com sucesso."
+        ));
     }
 
     @GetMapping("/{slug}")

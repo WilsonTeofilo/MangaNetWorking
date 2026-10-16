@@ -131,4 +131,61 @@ public class UserProfileApplicationService {
 
         return new TrackPageResponseDto(result.progress().getPage(), result.triggerAd());
     }
+
+    /**
+     * Direito de Portabilidade do Titular de Dados (Art. 18, V da LGPD)
+     */
+    @Transactional(readOnly = true)
+    public UserDataExportDto exportUserData(UUID currentUserId) {
+        UserEntity user = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado: " + currentUserId));
+
+        List<LikedWorkSummaryDto> likedWorks = user.getLikedWorks().stream()
+                .map(work -> new LikedWorkSummaryDto(
+                        work.getId(),
+                        work.getTitle(),
+                        work.getSlug(),
+                        work.getCoverUrl(),
+                        work.getAuthor() != null ? work.getAuthor().getHandle() : ""
+                ))
+                .toList();
+
+        List<ReadingProgressDocument> readingHistory = progressRepository.findAllByUserIdOrderByUpdatedAtDesc(currentUserId.toString());
+
+        return new UserDataExportDto(
+                user.getId(),
+                user.getName(),
+                user.getEmail(),
+                user.getAvatarUrl(),
+                user.isCreator(),
+                user.isVipActive(),
+                user.getCreatedAt(),
+                likedWorks,
+                readingHistory
+        );
+    }
+
+    /**
+     * Direito ao Esquecimento / Eliminação dos Dados Pessoais (Art. 18, VI da LGPD)
+     * Anonimiza dados pessoais enquanto preserva integridade fiscal do ledger de transações.
+     */
+    @Transactional
+    public void deleteUserAccountLgpd(UUID currentUserId) {
+        UserEntity user = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado: " + currentUserId));
+
+        // 1. Anonimizar credenciais e dados cadastrais no PostgreSQL
+        user.setName("Usuário Removido (LGPD)");
+        user.setEmail("anon-" + user.getId() + "@deleted.manganetworking");
+        user.setAvatarUrl(null);
+        user.setPasswordHash(null);
+        user.setTwoFactorEnabled(false);
+        user.setTwoFactorSecret(null);
+        user.setProfilePublic(false);
+        user.getLikedWorks().clear();
+        userRepository.save(user);
+
+        // 2. Excluir telemetria e progresso de leitura no MongoDB
+        progressRepository.deleteAllByUserId(currentUserId.toString());
+    }
 }

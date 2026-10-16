@@ -197,4 +197,45 @@ public class MonetizationService {
         creator.setMembershipPriceBrl(newPriceBrl);
         return creatorRepository.save(creator);
     }
+
+    public static final BigDecimal PLATFORM_VIP_PRICE_BRL = new BigDecimal("23.00");
+
+    /**
+     * Assinatura VIP da Plataforma (~R$ 23 / 30 dias)
+     * Remove 100% dos anúncios no leitor e concede badge VIP.
+     * NÃO concede acesso antecipado aos capítulos de criadores (reserva exclusiva do fã-clube do criador).
+     */
+    @Transactional
+    public UserEntity subscribePlatformVip(UUID userId, String paymentExternalId) {
+        if (ledgerRepository.findByPaymentExternalId(paymentExternalId).isPresent()) {
+            throw new IllegalStateException("Assinatura VIP já processada: " + paymentExternalId);
+        }
+
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado: " + userId));
+
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime expiresAt = (user.isVipActive() ? user.getVipExpiresAt() : now).plusDays(30);
+
+        user.setVip(true);
+        user.setVipExpiresAt(expiresAt);
+        userRepository.save(user);
+
+        // Gravar transação no Ledger Financeiro da Plataforma
+        FinancialLedgerEntity ledger = new FinancialLedgerEntity();
+        ledger.setPaymentExternalId(paymentExternalId);
+        ledger.setUser(user);
+        ledger.setCreator(null);
+        ledger.setTransactionType(TransactionType.ASSINATURA_VIP_PLATAFORMA);
+        ledger.setGrossAmountBrl(PLATFORM_VIP_PRICE_BRL);
+        ledger.setFeeRatePercent(new BigDecimal("100.00"));
+        ledger.setPlatformFeeBrl(PLATFORM_VIP_PRICE_BRL);
+        ledger.setCreatorNetBrl(BigDecimal.ZERO);
+        ledger.setWalletBalanceAfterBrl(BigDecimal.ZERO);
+        ledger.setDescription("Assinatura VIP MangaNetWorking (Sem Anúncios): " + user.getName());
+        ledgerRepository.save(ledger);
+
+        log.info("[VIP PLATAFORMA] Assinatura VIP ativada para {} até {}", user.getEmail(), expiresAt);
+        return user;
+    }
 }

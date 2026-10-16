@@ -1,5 +1,6 @@
 package com.manganetworking.controller;
 
+import com.manganetworking.domain.relational.CreatorEntity;
 import com.manganetworking.service.creator.CreatorApplicationService;
 import com.manganetworking.service.creator.dto.*;
 import jakarta.validation.Valid;
@@ -48,6 +49,20 @@ public class CreatorController {
         return ResponseEntity.ok(Map.of(
                 "message", "Preço de membros atualizado",
                 "membershipPriceBrl", updatedPrice
+        ));
+    }
+
+    @PostMapping("/workspace/missions/{missionId}/claim")
+    public ResponseEntity<Map<String, Object>> claimMissionReward(
+            @RequestHeader("X-Creator-Id") UUID creatorId,
+            @PathVariable String missionId
+    ) {
+        CreatorEntity updatedCreator = creatorService.claimMissionReward(creatorId, missionId);
+        return ResponseEntity.ok(Map.of(
+                "message", "Recompensa da Season resgatada com sucesso!",
+                "boostMultiplier", updatedCreator.getEngagementBoostMul(),
+                "boostUntil", updatedCreator.getEngagementBoostUntil(),
+                "monetizationLevel", updatedCreator.getMonetizationLevel()
         ));
     }
 }

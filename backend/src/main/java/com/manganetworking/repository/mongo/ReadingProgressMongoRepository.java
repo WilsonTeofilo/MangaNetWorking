@@ -13,4 +13,6 @@ public interface ReadingProgressMongoRepository extends MongoRepository<ReadingP
     Optional<ReadingProgressDocument> findByUserIdAndWorkId(String userId, String workId);
 
     List<ReadingProgressDocument> findAllByUserIdOrderByUpdatedAtDesc(String userId);
+
+    void deleteAllByUserId(String userId);
 }

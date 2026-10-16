@@ -2,21 +2,40 @@ package com.manganetworking.controller;
 
 import com.manganetworking.domain.nosql.WorkFeedDocument;
 import com.manganetworking.repository.mongo.WorkFeedMongoRepository;
+import com.manganetworking.service.recommendation.RecommendationAlgorithmService;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/feed")
 public class FeedController {
 
     private final WorkFeedMongoRepository workFeedMongoRepository;
+    private final RecommendationAlgorithmService algorithmService;
 
-    public FeedController(WorkFeedMongoRepository workFeedMongoRepository) {
+    public FeedController(
+            WorkFeedMongoRepository workFeedMongoRepository,
+            RecommendationAlgorithmService algorithmService
+    ) {
         this.workFeedMongoRepository = workFeedMongoRepository;
+        this.algorithmService = algorithmService;
+    }
+
+    /**
+     * Sincronização e recalculo do Feed no MongoDB
+     */
+    @PostMapping("/sync")
+    public ResponseEntity<Map<String, Object>> syncFeed() {
+        int count = algorithmService.syncAllWorksToFeed();
+        return ResponseEntity.ok(Map.of(
+                "message", "Feed sincronizado com sucesso no MongoDB.",
+                "totalWorksSynced", count
+        ));
     }
 
     /**

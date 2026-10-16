@@ -1,5 +1,6 @@
 package com.manganetworking.domain.relational;
 
+import com.manganetworking.config.security.AesCryptoConverter;
 import com.manganetworking.domain.enums.PixKeyType;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -40,9 +41,11 @@ public class CreatorEntity {
     private Integer monetizationLevel = 0;
 
     @Column(nullable = false)
+    @Convert(converter = AesCryptoConverter.class)
     private String documentCpf;
 
     @Column(nullable = false)
+    @Convert(converter = AesCryptoConverter.class)
     private String pixKey;
 
     @Enumerated(EnumType.STRING)

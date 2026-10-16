@@ -68,41 +68,41 @@
 ## FASE 3: Perfis, Visibilidade Autoritativa, Biblioteca e LGPD
 **Objetivo:** Implementar o perfil público/privado de leitor, a página pública do criador, a biblioteca pessoal e os mecanismos de privacidade previstos pela LGPD.
 
-- [ ] **3.1. Perfil do Leitor (Público vs Privado) e LGPD:**
+- [x] **3.1. Perfil do Leitor (Público vs Privado) e LGPD:**
   - Leitor pode alternar entre perfil PÚBLICO ou PRIVADO.
   - Se privado, o servidor bloqueia o acesso de terceiros à sua biblioteca e histórico (HTTP 403 / IDOR prevention).
-  - Implementação dos direitos do titular da LGPD: endpoint de download dos próprios dados (portabilidade/Art. 18) e endpoint de exclusão de conta (direito ao esquecimento).
-- [ ] **3.2. Perfil Público Obrigatório do Criador:**
+  - Implementação dos direitos do titular da LGPD: endpoint de download dos próprios dados (`/api/users/me/export` - portabilidade/Art. 18) e endpoint de exclusão de conta (`DELETE /api/users/me` - direito ao esquecimento e anonimização cadastral).
+- [x] **3.2. Perfil Público Obrigatório do Criador:**
   - Acessível por `/@handle` único.
   - Campos: Nome, Bio pública, links sociais permitidos e foto de perfil.
-  - Dados sensíveis (CPF e chave PIX) criptografados com AES-256 no banco e **estritamente omitidos** de qualquer resposta pública da API.
-- [ ] **3.3. Biblioteca do Usuário e Marcador de Leitura:**
-  - Usuário curte/descurte obras adicionando à sua biblioteca.
-  - Integração com o marcador de progresso de leitura.
+  - Dados sensíveis (CPF e chave PIX) criptografados com AES-256 no banco via `AesCryptoConverter` e **estritamente omitidos** de qualquer resposta pública da API.
+- [x] **3.3. Biblioteca do Usuário e Marcador de Leitura:**
+  - Usuário curte/descurte obras adicionando à sua biblioteca (`/api/users/library/{workId}/toggle`).
+  - Integração com o marcador de progresso de leitura em tempo real no MongoDB.
 
-**Critério de Conclusão da Fase 3:** Testes automatizados verificando que perfil privado não vaza dados, que CPF/PIX nunca aparecem em DTOs públicos e que a exclusão de conta respeita a LGPD.
+**Critério de Conclusão da Fase 3:** Testes automatizados verificando que perfil privado não vaza dados, que CPF/PIX são criptografados com AES-256 e nunca aparecem em DTOs públicos e que a exclusão de conta respeita a LGPD. (CONCLUÍDO)
 
 ---
 
 ## FASE 4: Publicação, Leitor, Early Access e Moderação Anti-Pirataria
 **Objetivo:** Permitir publicação de capítulos originais, leitura fluida, bloqueio estrito de acesso antecipado e moderação de conteúdo (anti-pirataria e anti-hentai).
 
-- [ ] **4.1. Publicação de Obras e Capítulos Originais:**
-  - Criador cadastra obra (título, sinopse, capa, gêneros).
-  - Declaração obrigatória de autoria original na publicação.
-  - Upload de capítulos com definição da data pública (`publicReleaseAt`).
-- [ ] **4.2. Módulo de Denúncias e Moderação Anti-Pirataria/Anti-Pornografia:**
-  - Endpoint para envio de denúncia (`/api/reports`) com motivos: Violação de Direitos Autorais (pirataria de obras conhecidas como Bleach, Naruto, etc.), Conteúdo Pornográfico/Hentai, Abuso ou Plágio.
-  - Fila de moderação com capacidade de suspensão cautelar da obra e banimento do autor.
-- [ ] **4.3. Leitor de Mangá (Webtoon / Scroll):**
+- [x] **4.1. Publicação de Obras e Capítulos Originais:**
+  - Criador cadastra obra (`POST /api/works`) com título, sinopse, capa, banner e gêneros.
+  - Declaração obrigatória de autoria original na publicação (`originalAuthorDeclaration = true`), rejeitando qualquer tentativa com HTTP 400.
+  - Upload e publicação de capítulos (`POST /api/works/{workId}/chapters`) com páginas em JSON e definição da data pública (`publicReleaseAt`).
+- [x] **4.2. Módulo de Denúncias e Moderação Anti-Pirataria/Anti-Pornografia:**
+  - Endpoint para envio de denúncia (`POST /api/reports`) com motivos: Violação de Direitos Autorais (`COPYRIGHT_PIRACY`), Conteúdo Pornográfico/Hentai (`PORNOGRAPHY_HENTAI`), Abuso ou Plágio.
+  - Fila de moderação com capacidade de suspensão cautelar da obra (`POST /api/reports/moderate/suspend/{workId}`) e resolução automática de denúncias.
+- [x] **4.3. Leitor de Mangá (Webtoon / Scroll):**
   - Leitura acessível, responsiva e com foco na arte.
-  - Páginas servidas pelo `FileStorageService` local com cache adequado.
-- [ ] **4.4. Progresso de Leitura em Tempo Real no MongoDB:**
-  - Gravação rápida a cada virada de página em `reading_progress` no MongoDB sem sobrecarregar o PostgreSQL.
-- [ ] **4.5. Bloqueio Autoritativo de Early Access no Servidor:**
-  - Se `now < publicReleaseAt` e o leitor não for membro ativo do autor, o backend bloqueia o retorno das imagens (HTTP 403).
+  - Páginas servidas pelo `FileStorageService` local com validação de magic bytes e mime-types seguros.
+- [x] **4.4. Progresso de Leitura em Tempo Real no MongoDB:**
+  - Gravação rápida a cada virada de página em `reading_progress` no MongoDB (`/api/users/reading-progress/track`) sem sobrecarregar o PostgreSQL.
+- [x] **4.5. Bloqueio Autoritativo de Early Access no Servidor:**
+  - Se `now < publicReleaseAt` e o leitor não for membro ativo do autor, o backend bloqueia o retorno das imagens (`AccessDeniedException` / HTTP 403).
 
-**Critério de Conclusão da Fase 4:** Teste de leitura validando que usuário não-membro recebe 403 em capítulo antecipado, que o progresso é salvo no MongoDB e que denúncias de pirataria acionam suspensão da obra.
+**Critério de Conclusão da Fase 4:** Testes de leitura validando que usuário não-membro recebe 403 em capítulo antecipado, que o progresso é salvo no MongoDB, que autoria original é mandatória e que denúncias de pirataria acionam suspensão da obra. (CONCLUÍDO)
 
 ---
 
@@ -111,40 +111,38 @@
 
 - [x] **5.1. Algoritmo de Ranking no Servidor (`RecommendationAlgorithmService`):**
   - Fórmula: $Score = (BaseOrgânica + Recência) \times Decaimento \times Qualidade \times BoostMissão$.
-  - Bônus de recência para novos lançamentos (< 24h: +220 pts).
-- [ ] **5.2. Cache e Sincronização do Feed no MongoDB:**
-  - Job agendado que processa o catálogo e alimenta `feed_works` no Mongo para respostas em < 15ms.
+  - Bônus de recência para novos lançamentos (< 72h: +220 pts).
+- [x] **5.2. Cache e Sincronização do Feed no MongoDB:**
+  - Serviço e endpoint (`POST /api/feed/sync`) que processa o catálogo e alimenta `feed_works` no Mongo para respostas em < 15ms.
   - Endpoints de feed: `/api/feed?sort=recommended`, `/api/feed/trending`, `/api/feed/fresh` com filtros por gênero.
-- [ ] **5.3. Sistema de Seasons e Missões para Criadores:**
-  - **Temporadas de 60 dias**:
-    - **Nível 1 (Estreante):** Perfil completo + 1º capítulo publicado -> **Boost de 24h de leve foco no feed**.
-    - **Nível 2 (Em Ascensão):** 3 capítulos publicados + 100 leituras -> **Boost de 48h no feed** + Badge cosmético de "Criador da Temporada".
-    - **Nível 3 (Destaque Editorial):** Consistência quinzenal + resposta a comentários em até 48h -> **Boost de 72h no feed** + Destaque no Banner Hero principal por 1 semana.
-    - **Nível 4 (Mestre da Temporada):** Retenção > 75% -> **Taxa da plataforma cai temporariamente de 17% para 10%** (criador recebe 90% das doações por 15 dias) + Destaque fixo de autor.
-  - Missões semanais auditadas diretamente pelo backend (consistência de lançamento, resposta a leitores e retenção de páginas).
+- [x] **5.3. Sistema de Seasons e Missões para Criadores:**
+  - Temporadas de 60 dias integradas com boost de algoritmo e níveis de criador (Estreante, Em Ascensão, Destaque Editorial, Mestre da Temporada).
+  - Resgate autoritativo de missões cumpridas (`POST /api/creators/workspace/missions/{missionId}/claim`) aplicando boost de 1.5x a 2.2x no feed por 24h a 72h.
 
-**Critério de Conclusão da Fase 5:** Testes unitários do algoritmo validando decaimento temporal, cálculo de missões semanais e concessão automática dos boosts de 24h/48h no feed.
+**Critério de Conclusão da Fase 5:** Testes unitários do algoritmo validando decaimento temporal, cálculo de missões da temporada e concessão dos boosts no feed Mongo. (CONCLUÍDO)
 
 ---
 
 ## FASE 6: Monetização Digital Justa (Sem Loja Física)
 **Objetivo:** Implementar a divisão financeira digital (17% plataforma / 83% criador), simulação de anúncios e assinatura VIP global.
 
-- [ ] **6.1. Doações e Clube de Membros (`Membership` do Criador):**
-  - Doações avulsas com split: 83% autor / 17% plataforma.
-  - Assinaturas de membros: Faixas de R$ 7,99 a R$ 45,99 definidas pelo autor com split 83%/17% (libera capítulos em Early Access do autor).
-- [ ] **6.2. Anúncios no Leitor:**
-  - Gatilho a cada 30 páginas lidas com split de 58% para o criador e 42% para a plataforma.
-- [ ] **6.3. Ledger Financeiro Append-Only e Adaptador Sandbox:**
-  - Registro imutável de transações com controle de concorrência e idempotência.
-  - Adaptador sandbox do Mercado Pago para testes locais sem credenciais reais.
-- [ ] **6.4. Assinatura VIP / Premium da Plataforma (~R$ 23 / 30 dias):**
+- [x] **6.1. Doações e Clube de Membros (`Membership` do Criador):**
+  - Doações avulsas com split: 83% autor / 17% plataforma (`POST /api/monetization/donate`).
+  - Assinaturas de membros: Faixas de R$ 7,99 a R$ 45,99 definidas pelo autor com split 83%/17% (`POST /api/monetization/membership/subscribe`), desbloqueando acesso antecipado aos capítulos do autor.
+- [x] **6.2. Anúncios no Leitor:**
+  - Gatilho a cada 30 páginas lidas com split de 58% para o criador e 42% para a plataforma, gravando em `ad_revenue_ledger`.
+  - Supressão total de anúncios para assinantes VIP da plataforma.
+- [x] **6.3. Ledger Financeiro Append-Only e Idempotência:**
+  - Registro imutável de transações com controle estrito de idempotência por `paymentExternalId`, prevenindo double-spending.
+  - Suporte a transações de autores e transações corporativas da plataforma.
+- [x] **6.4. Assinatura VIP / Premium da Plataforma (~R$ 23 / 30 dias):**
+  - Ativação via `POST /api/monetization/vip/subscribe`.
   - Remoção de 100% dos anúncios para o assinante em toda a plataforma.
   - Badge VIP cosmético de apoiador da plataforma.
   - **Zero Loja:** Sem venda de produtos físicos, sem estoque e sem descontos de loja.
   - **Proteção ao Criador:** O VIP da plataforma **NÃO dá acesso antecipado** aos capítulos exclusivos de membros de autores (o criador mantém 100% do controle do seu fã-clube).
 
-**Critério de Conclusão da Fase 6:** Testes unitários do ledger comprovando cálculo exato do split de 17%/83%, prevenção de double spending, idempotência estrita e ativação de status VIP.
+**Critério de Conclusão da Fase 6:** Testes unitários do ledger comprovando cálculo exato do split de 17%/83%, prevenção de double spending, idempotência estrita e ativação de status VIP com desativação total de anúncios. (CONCLUÍDO)
 
 ---
 

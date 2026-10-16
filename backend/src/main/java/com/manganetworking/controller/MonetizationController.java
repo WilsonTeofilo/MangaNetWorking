@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -72,6 +73,26 @@ public class MonetizationController {
                 sub.getMonthlyPriceBrl(),
                 sub.getExpiresAt(),
                 "Você agora é membro oficial! Acesso antecipado desbloqueado."
+        ));
+    }
+
+    @PostMapping("/vip/subscribe")
+    public ResponseEntity<Map<String, Object>> subscribeVip(
+            @RequestHeader("X-Current-User-Id") UUID userId,
+            @RequestBody(required = false) Map<String, String> body
+    ) {
+        String paymentId = (body != null && body.containsKey("paymentExternalId") && !body.get("paymentExternalId").isBlank())
+                ? body.get("paymentExternalId")
+                : "VIP_SUB_" + UUID.randomUUID();
+
+        var user = monetizationService.subscribePlatformVip(userId, paymentId);
+
+        return ResponseEntity.ok(Map.of(
+                "status", "ACTIVE",
+                "isVip", user.isVip(),
+                "vipExpiresAt", user.getVipExpiresAt(),
+                "monthlyPriceBrl", MonetizationService.PLATFORM_VIP_PRICE_BRL,
+                "message", "Assinatura VIP MangaNetWorking ativada! Anúncios foram 100% desativados para sua conta."
         ));
     }
 

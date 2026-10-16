@@ -60,4 +60,21 @@ public class UserProfileController {
     ) {
         return ResponseEntity.ok(profileService.trackPage(currentUserId, dto));
     }
+
+    @GetMapping("/me/export")
+    public ResponseEntity<UserDataExportDto> exportMyData(
+            @RequestHeader("X-Current-User-Id") UUID currentUserId
+    ) {
+        return ResponseEntity.ok(profileService.exportUserData(currentUserId));
+    }
+
+    @DeleteMapping("/me")
+    public ResponseEntity<Map<String, String>> deleteAccount(
+            @RequestHeader("X-Current-User-Id") UUID currentUserId
+    ) {
+        profileService.deleteUserAccountLgpd(currentUserId);
+        return ResponseEntity.ok(Map.of(
+                "message", "Conta anonimizada e dados pessoais removidos com sucesso em conformidade com a LGPD."
+        ));
+    }
 }

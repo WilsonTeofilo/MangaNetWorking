@@ -34,19 +34,22 @@ public class ReadingProgressService {
     private final ChapterRepository chapterRepository;
     private final CreatorRepository creatorRepository;
     private final AdRevenueLedgerRepository adRevenueLedgerRepository;
+    private final com.manganetworking.repository.jpa.UserRepository userRepository;
 
     public ReadingProgressService(
             ReadingProgressMongoRepository progressMongoRepository,
             WorkRepository workRepository,
             ChapterRepository chapterRepository,
             CreatorRepository creatorRepository,
-            AdRevenueLedgerRepository adRevenueLedgerRepository
+            AdRevenueLedgerRepository adRevenueLedgerRepository,
+            com.manganetworking.repository.jpa.UserRepository userRepository
     ) {
         this.progressMongoRepository = progressMongoRepository;
         this.workRepository = workRepository;
         this.chapterRepository = chapterRepository;
         this.creatorRepository = creatorRepository;
         this.adRevenueLedgerRepository = adRevenueLedgerRepository;
+        this.userRepository = userRepository;
     }
 
     /**
@@ -77,10 +80,22 @@ public class ReadingProgressService {
         int cumulative = (doc.getCumulativePagesRead() == null ? 0 : doc.getCumulativePagesRead()) + 1;
         boolean shouldTriggerAd = false;
 
+        // Verifica se o usuário é assinante VIP (isento de 100% dos anúncios)
+        boolean isVip = false;
+        try {
+            if (userId != null && !userId.isBlank()) {
+                isVip = userRepository.findById(UUID.fromString(userId))
+                        .map(com.manganetworking.domain.relational.UserEntity::isVipActive)
+                        .orElse(false);
+            }
+        } catch (Exception ignored) {}
+
         if (cumulative >= PAGES_PER_AD) {
-            shouldTriggerAd = true;
             cumulative = 0; // Reinicia o ciclo de 30 páginas
-            processAdImpression(workId);
+            if (!isVip) {
+                shouldTriggerAd = true;
+                processAdImpression(workId);
+            }
         }
 
         doc.setCumulativePagesRead(cumulative);

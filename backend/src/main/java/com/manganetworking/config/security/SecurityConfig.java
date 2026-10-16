@@ -53,6 +53,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/works/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/creators/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/profile/public/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/reports").permitAll()
+                        .requestMatchers("/api/monetization/**").permitAll()
                         .requestMatchers("/error").permitAll()
                         // Qualquer outra rota exige sessão autenticada
                         .anyRequest().authenticated()
