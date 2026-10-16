@@ -182,22 +182,22 @@
 
 ---
 
-## FASE 7: Upload Real de Arquivos e Backoffice de Moderação (EM ANDAMENTO)
+## FASE 7: Upload Real de Arquivos e Backoffice de Moderação (CONCLUÍDA)
 **Objetivo:** Permitir cadastro de obras reais com upload de imagens (capas, banners e páginas) no frontend e fornecer painel editorial de moderação cautelar.
 
-- [~] **7.1. Upload Real de Obras no Workspace do Criador:**
+- [x] **7.1. Upload Real de Obras no Workspace do Criador:**
   - Formulário com upload de arquivos de imagem locais: Capa vertical 2:3, Banner horizontal 16:9.
-  - Upload via `multipart/form-data` → `FileStorageController` com `StoredFileResponseDto`, rejeição de vazio e limites (300 arquivos/lote; 15MB/arquivo; 200MB/requisição). `FileStorageControllerTest` cobre entrega/404/403; **falta** teste do fluxo de upload ponta a ponta (multipart → arquivo persistido).
+  - Upload via `multipart/form-data` → `FileStorageController` com `StoredFileResponseDto`, rejeição de vazio e limites (300 arquivos/lote; 15MB/arquivo; 200MB/requisição). `FileStorageControllerTest` cobre entrega/404/403 e `FileStorageUploadTest` cobre o fluxo ponta a ponta (multipart real → disco → entrega, lote e guard 403); o smoke E2E confirmou 3 uploads reais.
 - [x] **7.2. Upload em Lote de Páginas do Capítulo:**
   - Seletor de arquivos múltiplos; arquivos associados aos capítulos via `createChapter`.
   - `ReaderPage` passa a consumir `workApi.readChapter(slug, n)` (rota real `GET /api/works/{slug}/chapters/{n}`) e renderiza `pagesJson`; HTTP 403 exibe o aviso de acesso antecipado. `WorkDetailPage` e `App` passam a resolver capítulos/obra pela API.
   - **Fallback:** quando a obra não existe no banco (dados de demonstração), cai nos `MOCK_*` para não quebrar a navegação.
-- [~] **7.3. Painel Administrativo de Moderação Cautelar (Backoffice Editorial):**
+- [x] **7.3. Painel Administrativo de Moderação Cautelar (Backoffice Editorial):**
   - `ModerationBackofficePage.tsx` gated por `user.isModerator`; `isModerator` exposto em `/auth/2fa/verify` e `/auth/me`.
   - Botão autoritativo "Suspender Obra Imediatamente" (`POST /api/reports/moderate/suspend/{workId}`).
   - **Cobertura (passe 3):** `BackofficeAuthorizationTest` valida a matriz no servidor — anônimo → **401**, leitor → **403**, moderador → **200** — em `GET /api/reports/pending` e `POST /api/reports/moderate/suspend/{workId}`, via infra de slice `@WebMvcTest` + `spring-security-test` (sem exigir DB).
 
-**Critério de Conclusão da Fase 7:** Quadrinista faz upload de imagens reais, capítulo é lido no leitor com as páginas enviadas e denúncia aciona suspensão visível no catálogo. **Atingido no código e na cobertura de teste:** leitor consome as páginas reais da API (com fallback mock), o backoffice/upload existem, a sessão real (cadastro/login 2FA → `/auth/me` → `isModerator`) dirige a UI, o upload multipart é testado ponta a ponta (`FileStorageUploadTest`) e a autorização do backoffice tem cobertura (`BackofficeAuthorizationTest`). Falta apenas o smoke E2E com stack real (bloqueado sem daemon Docker).
+**Critério de Conclusão da Fase 7:** Quadrinista faz upload de imagens reais, capítulo é lido no leitor com as páginas enviadas e denúncia aciona suspensão visível no catálogo. **Atingido no código, na cobertura de teste e no smoke real:** leitor consome as páginas reais da API (com fallback mock), o backoffice/upload existem, a sessão real (cadastro/login 2FA → `/auth/me` → `isModerator`) dirige a UI, o upload multipart é testado ponta a ponta (`FileStorageUploadTest`) e a autorização do backoffice tem cobertura (`BackofficeAuthorizationTest`). **Smoke E2E com stack real executado:** 23/23 via API (Postgres+Mongo+backend `dev`) e validado na UI (feed/detalhe/leitor).
 
 ---
 
