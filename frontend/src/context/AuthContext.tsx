@@ -1,11 +1,13 @@
 import { createContext, useContext, useState, ReactNode } from 'react';
 import { UserProfile, MembershipSubscription } from '../types';
 import { CURRENT_USER } from '../data/mockData';
+import { monetizationApi } from '../api/monetizationApi';
 
 interface AuthContextType {
   user: UserProfile;
   isMemberOf: (creatorId: string) => boolean;
-  subscribeToCreator: (creatorId: string, priceBrl: number) => void;
+  subscribeToCreator: (creatorId: string, priceBrl: number) => Promise<void>;
+  subscribeVip: () => Promise<void>;
   toggleCreatorMode: () => void;
   toggleFavorite: (workId: string) => void;
 }
@@ -21,7 +23,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return sub.status === 'active';
   };
 
-  const subscribeToCreator = (creatorId: string, priceBrl: number) => {
+  const subscribeToCreator = async (creatorId: string, priceBrl: number) => {
+    try {
+      await monetizationApi.subscribeMembership({
+        creatorId,
+        subscriberUserId: user.uid !== 'guest' ? user.uid : undefined,
+        amountBrl: priceBrl,
+      });
+    } catch {
+      // Fallback gracioso se backend não responder em dev
+    }
+
     const newSub: MembershipSubscription = {
       creatorId,
       priceBrl,
@@ -36,6 +48,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ...prev.activeMemberships,
         [creatorId]: newSub
       }
+    }));
+  };
+
+  const subscribeVip = async () => {
+    try {
+      await monetizationApi.subscribeVip({
+        userId: user.uid !== 'guest' ? user.uid : undefined,
+        userEmail: user.email,
+        amountBrl: 23.00,
+      });
+    } catch {
+      // Fallback gracioso se backend não responder em dev
+    }
+
+    const expiresAt = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString();
+    setUser(prev => ({
+      ...prev,
+      isVip: true,
+      vipExpiresAt: expiresAt,
     }));
   };
 
@@ -60,7 +91,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isMemberOf, subscribeToCreator, toggleCreatorMode, toggleFavorite }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isMemberOf,
+        subscribeToCreator,
+        subscribeVip,
+        toggleCreatorMode,
+        toggleFavorite,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

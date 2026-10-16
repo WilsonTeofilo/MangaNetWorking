@@ -1,5 +1,6 @@
-import { Heart, Sparkles, BookOpen, Compass, User as UserIcon } from 'lucide-react';
+import { Heart, Sparkles, BookOpen, Compass, User as UserIcon, Crown } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useModals } from '../../context/ModalContext';
 import logoSymbol from '../../assets/brand/logo-symbol.svg';
 
 interface HeaderProps {
@@ -10,6 +11,7 @@ interface HeaderProps {
 
 export function Header({ currentTab, setCurrentTab, onOpenLogin }: HeaderProps) {
   const { user, toggleCreatorMode } = useAuth();
+  const { openVip } = useModals();
   const isLoggedIn = Boolean(user && user.uid && user.uid !== 'guest');
 
   return (
@@ -90,6 +92,27 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin }: HeaderProps) 
               <Sparkles size={12} className="text-[#FFD400]" />
               {user.isCreator ? 'MODO CRIADOR' : 'MODO LEITOR'}
             </button>
+
+            {/* VIP Status / Assinar VIP */}
+            {user.isVip ? (
+              <div
+                className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#FFD400] text-[#0B0B0C] border-2 border-[#0B0B0C] shadow-[2px_2px_0_#F4EFE3] font-pixel text-[10px] uppercase font-bold tracking-wider"
+                title="Assinante VIP MangaNetWorking — 100% Livre de Anúncios"
+              >
+                <Crown size={12} className="fill-[#0B0B0C]" />
+                <span>VIP</span>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={openVip}
+                className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 border-2 border-[#FFD400] text-[#FFD400] hover:bg-[#FFD400] hover:text-[#0B0B0C] font-pixel text-[10px] uppercase tracking-wider transition-all"
+                title="Assinar VIP MangaNetWorking — Remova todos os anúncios da leitura"
+              >
+                <Crown size={12} />
+                <span>VIP</span>
+              </button>
+            )}
 
             {isLoggedIn ? (
               /* Usuário Autenticado: Mostra Avatar com Borda de Adesivo */

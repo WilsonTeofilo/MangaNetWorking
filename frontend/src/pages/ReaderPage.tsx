@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, ChevronLeft, ChevronRight, Heart } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Heart, Flag } from 'lucide-react';
 import { Work, Chapter } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useModals } from '../context/ModalContext';
+import { monetizationApi } from '../api/monetizationApi';
+import { userApi } from '../api/authApi';
 import { Button } from '../components/ui/Button';
 
 interface ReaderPageProps {
@@ -14,7 +16,7 @@ interface ReaderPageProps {
 
 export function ReaderPage({ work, chapter, onBack, onNavigateChapter }: ReaderPageProps) {
   const { user, toggleFavorite } = useAuth();
-  const { openDonate } = useModals();
+  const { openDonate, openReport } = useModals();
 
   const [currentPage, setCurrentPage] = useState(1);
   const [cumulativePages, setCumulativePages] = useState(0);
@@ -23,6 +25,16 @@ export function ReaderPage({ work, chapter, onBack, onNavigateChapter }: ReaderP
   const isLiked = user.favorites.includes(work.id);
   const totalPages = chapter.pages?.length || 24;
 
+  // Rastreio de leitura contínua no MongoDB
+  useEffect(() => {
+    userApi.trackReadingProgress({
+      workId: work.id,
+      chapterId: chapter.id,
+      page: currentPage,
+      completed: currentPage === totalPages,
+    }).catch(() => {});
+  }, [work.id, chapter.id, currentPage, totalPages]);
+
   const handleNextPage = () => {
     if (currentPage < totalPages) {
       const nextPage = currentPage + 1;
@@ -30,7 +42,16 @@ export function ReaderPage({ work, chapter, onBack, onNavigateChapter }: ReaderP
 
       const nextCumulative = cumulativePages + 1;
       if (nextCumulative >= 30) {
-        setShowAdNotice(true);
+        // Se usuário for VIP, 100% dos anúncios são suprimidos!
+        if (!user.isVip) {
+          setShowAdNotice(true);
+          monetizationApi.recordAdImpression({
+            workId: work.id,
+            creatorId: work.authorId,
+            chapterId: chapter.id,
+            pagesRead: 30,
+          }).catch(() => {});
+        }
         setCumulativePages(0);
       } else {
         setCumulativePages(nextCumulative);
@@ -99,6 +120,15 @@ export function ReaderPage({ work, chapter, onBack, onNavigateChapter }: ReaderP
           >
             APOIAR
           </Button>
+
+          <button
+            type="button"
+            onClick={() => openReport(work.id, work.title, chapter.id)}
+            className="p-1.5 border border-[#34343A] bg-[#151517] text-[#A9A59A] hover:text-[#E63946] hover:border-[#E63946] transition-colors"
+            title="Denunciar pirataria, pornografia ou violação"
+          >
+            <Flag size={14} />
+          </button>
         </div>
       </header>
 

@@ -27,7 +27,7 @@ export function WorkDetailPage({
   onOpenChapter,
 }: WorkDetailPageProps) {
   const { user, toggleFavorite, isMemberOf } = useAuth();
-  const { openEarlyAccess, openDonate, openMembership } = useModals();
+  const { openEarlyAccess, openDonate, openMembership, openReport } = useModals();
 
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
@@ -248,7 +248,7 @@ export function WorkDetailPage({
           <div className="pt-4 flex justify-end">
             <button
               type="button"
-              onClick={() => alert('Canal de Denúncia: Violações autorais ou conduta inadequada são apuradas em até 24h pela moderação.')}
+              onClick={() => openReport(work.id, work.title)}
               className="inline-flex items-center gap-1.5 font-body text-xs text-[#A9A59A] hover:text-[#E8402F] transition-colors"
             >
               <Flag size={13} />

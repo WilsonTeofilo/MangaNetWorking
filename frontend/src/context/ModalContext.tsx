@@ -26,11 +26,24 @@ interface PayoutModalData {
   creator: Creator | null;
 }
 
+interface VipModalData {
+  isOpen: boolean;
+}
+
+interface ReportModalData {
+  isOpen: boolean;
+  workId: string;
+  workTitle: string;
+  chapterId?: string;
+}
+
 interface ModalContextType {
   donateData: DonateModalData;
   membershipData: MembershipModalData;
   earlyAccessData: EarlyAccessModalData;
   payoutData: PayoutModalData;
+  vipData: VipModalData;
+  reportData: ReportModalData;
   openDonate: (creatorId: string, creatorName: string, workTitle?: string, workId?: string) => void;
   closeDonate: () => void;
   openMembership: (creator: Creator) => void;
@@ -39,6 +52,10 @@ interface ModalContextType {
   closeEarlyAccess: () => void;
   openPayout: (creator: Creator) => void;
   closePayout: () => void;
+  openVip: () => void;
+  closeVip: () => void;
+  openReport: (workId: string, workTitle: string, chapterId?: string) => void;
+  closeReport: () => void;
 }
 
 const ModalContext = createContext<ModalContextType | undefined>(undefined);
@@ -67,6 +84,16 @@ export function ModalProvider({ children }: { children: ReactNode }) {
     creator: null,
   });
 
+  const [vipData, setVipData] = useState<VipModalData>({
+    isOpen: false,
+  });
+
+  const [reportData, setReportData] = useState<ReportModalData>({
+    isOpen: false,
+    workId: '',
+    workTitle: '',
+  });
+
   const openDonate = (creatorId: string, creatorName: string, workTitle?: string, workId?: string) => {
     setDonateData({ isOpen: true, creatorId, creatorName, workTitle, workId });
   };
@@ -87,6 +114,14 @@ export function ModalProvider({ children }: { children: ReactNode }) {
   };
   const closePayout = () => setPayoutData(prev => ({ ...prev, isOpen: false }));
 
+  const openVip = () => setVipData({ isOpen: true });
+  const closeVip = () => setVipData({ isOpen: false });
+
+  const openReport = (workId: string, workTitle: string, chapterId?: string) => {
+    setReportData({ isOpen: true, workId, workTitle, chapterId });
+  };
+  const closeReport = () => setReportData(prev => ({ ...prev, isOpen: false }));
+
   return (
     <ModalContext.Provider
       value={{
@@ -94,6 +129,8 @@ export function ModalProvider({ children }: { children: ReactNode }) {
         membershipData,
         earlyAccessData,
         payoutData,
+        vipData,
+        reportData,
         openDonate,
         closeDonate,
         openMembership,
@@ -102,6 +139,10 @@ export function ModalProvider({ children }: { children: ReactNode }) {
         closeEarlyAccess,
         openPayout,
         closePayout,
+        openVip,
+        closeVip,
+        openReport,
+        closeReport,
       }}
     >
       {children}

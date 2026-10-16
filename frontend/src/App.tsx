@@ -14,6 +14,8 @@ import { ReaderPage } from './pages/ReaderPage';
 import { DonateModal } from './components/modals/DonateModal';
 import { MembershipModal } from './components/modals/MembershipModal';
 import { EarlyAccessModal } from './components/modals/EarlyAccessModal';
+import { VipModal } from './components/modals/VipModal';
+import { ReportModal } from './components/modals/ReportModal';
 import { Work, Chapter } from './types';
 import { MOCK_CHAPTERS } from './data/mockData';
 
@@ -139,6 +141,8 @@ export function App() {
         <DonateModal />
         <MembershipModal />
         <EarlyAccessModal />
+        <VipModal />
+        <ReportModal />
       </ModalProvider>
     </AuthProvider>
   );
