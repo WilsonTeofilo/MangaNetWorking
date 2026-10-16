@@ -61,10 +61,10 @@ export function CatalogPage({ onSelectWork }: CatalogPageProps) {
         <div className="mn-container space-y-6">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
-              <span className="font-pixel text-xs tracking-wider text-[#0B0B0C] font-bold block">
+              <span className="font-pixel text-xs tracking-wider text-[#0B0B0C] font-bold block mb-2.5">
                 EDITORIAL INDEPENDENTE
               </span>
-              <h1 className="font-display text-4xl sm:text-6xl text-[#0B0B0C] leading-none uppercase">
+              <h1 className="font-display text-4xl sm:text-6xl text-[#0B0B0C] leading-[1.08] pt-1 uppercase">
                 CATÁLOGO DE OBRAS
               </h1>
               <p className="font-body text-xs sm:text-sm text-[#0B0B0C] font-medium mt-1 max-w-xl">

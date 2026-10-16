@@ -79,8 +79,18 @@ export function WorkDetailPage({
         <span className="text-[#F4EFE3] font-bold truncate max-w-xs">{work.title}</span>
       </nav>
 
-      {/* 2. Hero da Obra (Design Editorial: Capa 2:3 + Título em Anton + Ações Táteis) */}
+      {/* 2. Hero da Obra com Banner de Arte ao Fundo (Manga Plus / MangaTeofilo) */}
       <section className="border-2 border-[#34343A] bg-[#151517] shadow-[6px_6px_0_#F4EFE3] p-6 sm:p-8 relative overflow-hidden">
+        {/* Banner Horizontal de Arte Ilustrada ao Fundo */}
+        {work.bannerUrl && (
+          <div
+            className="absolute inset-0 bg-cover bg-center opacity-30 pointer-events-none filter saturate-125"
+            style={{ backgroundImage: `url(${work.bannerUrl})` }}
+          />
+        )}
+        {/* Scrim Gradiente Nanquim */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#151517] via-[#151517]/90 to-[#151517]/40 pointer-events-none" />
+
         <div className="flex flex-col md:flex-row gap-8 items-start relative z-10">
           
           {/* Capa Vertical 2:3 */}
@@ -96,19 +106,19 @@ export function WorkDetailPage({
 
           {/* Dados da Obra */}
           <div className="flex-1 space-y-4">
-            <div className="space-y-1">
-              <div className="flex flex-wrap items-center gap-2">
+            <div>
+              <div className="flex flex-wrap items-center gap-2 mb-2">
                 <span className="font-pixel text-xs text-[#FFD400] font-bold tracking-widest uppercase">
                   OBRA NACIONAL ORIGINAL
                 </span>
                 {work.status === 'completed' && <Sticker kind="complete" />}
               </div>
 
-              <h1 className="font-display text-4xl sm:text-5xl md:text-6xl text-[#F4EFE3] leading-[0.95] uppercase">
+              <h1 className="font-display text-4xl sm:text-5xl md:text-6xl text-[#F4EFE3] leading-[1.08] pt-1 uppercase tracking-tight">
                 {work.title}
               </h1>
 
-              <p className="font-body text-sm text-[#A9A59A]">
+              <p className="font-body text-sm text-[#A9A59A] mt-1.5">
                 Criado por{' '}
                 <strong className="text-[#FFD400] font-semibold">{work.authorName}</strong>
               </p>
@@ -266,7 +276,7 @@ export function WorkDetailPage({
                     {creator.name}
                   </h4>
                   <span className="font-body text-xs text-[#A9A59A]">
-                    @{creator.handle}
+                    @{creator.handle.replace(/^@/, '')}
                   </span>
                 </div>
               </div>
@@ -275,20 +285,20 @@ export function WorkDetailPage({
                 {creator.bio}
               </p>
 
-              <div className="pt-2 border-t border-[#34343A] flex flex-col gap-2">
+              <div className="pt-2 border-t border-[#34343A] flex flex-col gap-2.5">
                 <button
                   type="button"
                   onClick={() => openMembership(creator)}
-                  className="w-full py-2 bg-[#FFD400] text-[#0B0B0C] border-2 border-[#0B0B0C] font-display text-sm tracking-wider uppercase shadow-[3px_3px_0_#0B0B0C] hover:bg-[#E0B800] transition-colors flex items-center justify-center gap-1.5"
+                  className="w-full py-2.5 bg-[#FFD400] text-[#0B0B0C] border-2 border-[#0B0B0C] font-display text-sm sm:text-base tracking-wider uppercase shadow-[3px_3px_0_#0B0B0C] hover:bg-[#E0B800] transition-colors flex items-center justify-center gap-1.5"
                 >
-                  <Sparkles size={14} />
+                  <Sparkles size={16} />
                   <span>VIRAR MEMBRO (R$ {creator.membershipPriceBrl.toFixed(2)}/mês)</span>
                 </button>
 
                 <Button
                   variant="secondary"
                   onClick={() => openDonate(creator.id, creator.name, work.title, work.id)}
-                  className="w-full !text-xs !py-1.5"
+                  className="w-full !min-h-[44px] !text-sm !py-2.5 font-display tracking-wider uppercase"
                 >
                   DOAR QUALQUER VALOR
                 </Button>

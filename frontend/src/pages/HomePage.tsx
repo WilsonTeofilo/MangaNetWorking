@@ -83,7 +83,7 @@ export function HomePage({
               </span>
             </div>
 
-            <h1 className="font-display text-4xl sm:text-6xl md:text-7xl leading-[0.88] uppercase text-[#0B0B0C] tracking-tight">
+            <h1 className="font-display text-4xl sm:text-6xl md:text-7xl leading-[1.05] pt-1.5 uppercase text-[#0B0B0C] tracking-tight">
               {currentHero.title}
             </h1>
 

@@ -34,13 +34,13 @@ export function ReaderProfilePage({ onSelectWork }: ReaderProfilePageProps) {
       <div className="border-2 border-[#34343A] bg-[#151517] shadow-[6px_6px_0_#F4EFE3] p-6 sm:p-8 space-y-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 border-b-2 border-[#34343A] pb-6">
           
-          {/* Avatar com Borda de Adesivo Off-White */}
-          <div className="flex items-center gap-5">
-            <div className="relative p-1 bg-[#F4EFE3] border-2 border-[#0B0B0C] shadow-[4px_4px_0_#FFD400] -rotate-1">
+          {/* Avatar com Borda de Adesivo Off-White Ampliada (~30px maior) */}
+          <div className="flex items-center gap-6">
+            <div className="relative p-1.5 bg-[#F4EFE3] border-[3px] border-[#0B0B0C] shadow-[6px_6px_0_#FFD400] -rotate-1 shrink-0">
               <img
                 src={user.avatarUrl}
                 alt={user.name}
-                className="w-16 h-16 sm:w-20 sm:h-20 object-cover border border-[#0B0B0C]"
+                className="w-24 h-24 sm:w-28 sm:h-28 object-cover border-2 border-[#0B0B0C]"
               />
             </div>
 

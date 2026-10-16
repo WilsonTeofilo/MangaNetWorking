@@ -92,26 +92,29 @@
   }
 }
 
-/* Tipografia em Escala */
+/* Tipografia em Escala (com espaço para diacríticos/acentos do pt-BR) */
 .text-display-xl {
   font-family: var(--font-display);
   font-size: clamp(56px, 9vw, 128px);
-  line-height: 0.88;
+  line-height: 1.02;
   text-transform: uppercase;
+  padding-top: 4px;
 }
 
 .text-display-l {
   font-family: var(--font-display);
   font-size: clamp(40px, 6vw, 72px);
-  line-height: 0.92;
+  line-height: 1.05;
   text-transform: uppercase;
+  padding-top: 4px;
 }
 
 .text-display-m {
   font-family: var(--font-display);
   font-size: 40px;
-  line-height: 0.95;
+  line-height: 1.08;
   text-transform: uppercase;
+  padding-top: 2px;
 }
 
 .text-display-title {
