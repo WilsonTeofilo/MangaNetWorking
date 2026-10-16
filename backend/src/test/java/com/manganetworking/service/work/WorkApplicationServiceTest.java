@@ -5,8 +5,10 @@ import com.manganetworking.config.exception.AccessDeniedException;
 import com.manganetworking.config.exception.ResourceNotFoundException;
 import com.manganetworking.domain.enums.Genre;
 import com.manganetworking.domain.relational.ChapterEntity;
+import com.manganetworking.domain.relational.ChapterFileEntity;
 import com.manganetworking.domain.relational.CreatorEntity;
 import com.manganetworking.domain.relational.WorkEntity;
+import com.manganetworking.repository.jpa.ChapterFileRepository;
 import com.manganetworking.repository.jpa.ChapterRepository;
 import com.manganetworking.repository.jpa.CreatorRepository;
 import com.manganetworking.repository.jpa.MembershipSubscriptionRepository;
@@ -18,6 +20,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
@@ -41,6 +44,9 @@ class WorkApplicationServiceTest {
 
     @Mock
     private ChapterRepository chapterRepository;
+
+    @Mock
+    private ChapterFileRepository chapterFileRepository;
 
     @Mock
     private MembershipSubscriptionRepository membershipRepository;
@@ -145,6 +151,65 @@ class WorkApplicationServiceTest {
         workService.createChapter(creatorId, workId, dto);
 
         verify(eventPublisher).publishEvent(new WorkFeedSyncEvent(workId, "publicação de capítulo"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    @DisplayName("Publicar capítulo registra a relação arquivo→capítulo com o nome do arquivo normalizado")
+    void shouldRegisterChapterFilesOnChapterPublish() {
+        UUID chapterId = UUID.randomUUID();
+        when(workRepository.findById(workId)).thenReturn(Optional.of(work));
+        when(chapterRepository.findByWorkIdAndChapterNumber(workId, 1)).thenReturn(Optional.empty());
+        when(chapterRepository.save(any(ChapterEntity.class))).thenAnswer(invocation -> {
+            ChapterEntity saved = invocation.getArgument(0);
+            saved.setId(chapterId);
+            return saved;
+        });
+        when(workRepository.save(any(WorkEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        CreateChapterRequestDto dto = new CreateChapterRequestDto(
+                1, "Capítulo 1", null,
+                List.of("/api/storage/aaa.png", "/api/uploads/bbb.png", "ccc.png"),
+                LocalDateTime.now().plusDays(2));
+
+        workService.createChapter(creatorId, workId, dto);
+
+        ArgumentCaptor<List<ChapterFileEntity>> captor = ArgumentCaptor.forClass(List.class);
+        verify(chapterFileRepository).saveAll(captor.capture());
+        List<ChapterFileEntity> files = captor.getValue();
+        assertEquals(List.of("aaa.png", "bbb.png", "ccc.png"),
+                files.stream().map(ChapterFileEntity::getFilename).toList(),
+                "A URL da página deve ser reduzida ao nome do arquivo que o guard recebe");
+        assertEquals(List.of(0, 1, 2), files.stream().map(ChapterFileEntity::getPosition).toList());
+        assertTrue(files.stream().allMatch(file -> chapterId.equals(file.getChapterId())));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    @DisplayName("Página repetida no mesmo capítulo é registrada uma única vez (filename é único em toda a tabela)")
+    void shouldDeduplicateRepeatedChapterPages() {
+        UUID chapterId = UUID.randomUUID();
+        when(workRepository.findById(workId)).thenReturn(Optional.of(work));
+        when(chapterRepository.findByWorkIdAndChapterNumber(workId, 1)).thenReturn(Optional.empty());
+        when(chapterRepository.save(any(ChapterEntity.class))).thenAnswer(invocation -> {
+            ChapterEntity saved = invocation.getArgument(0);
+            saved.setId(chapterId);
+            return saved;
+        });
+        when(workRepository.save(any(WorkEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // A mesma página enviada em duas formas (URL e nome puro) canonicaliza para um único arquivo.
+        CreateChapterRequestDto dto = new CreateChapterRequestDto(
+                1, "Capítulo 1", null,
+                List.of("/api/storage/dup.png", "dup.png"),
+                LocalDateTime.now().plusDays(2));
+
+        workService.createChapter(creatorId, workId, dto);
+
+        ArgumentCaptor<List<ChapterFileEntity>> captor = ArgumentCaptor.forClass(List.class);
+        verify(chapterFileRepository).saveAll(captor.capture());
+        assertEquals(List.of("dup.png"),
+                captor.getValue().stream().map(ChapterFileEntity::getFilename).toList());
     }
 
     @Test

@@ -1,8 +1,10 @@
 package com.manganetworking.service.storage;
 
 import com.manganetworking.domain.relational.ChapterEntity;
+import com.manganetworking.domain.relational.ChapterFileEntity;
 import com.manganetworking.domain.relational.CreatorEntity;
 import com.manganetworking.domain.relational.WorkEntity;
+import com.manganetworking.repository.jpa.ChapterFileRepository;
 import com.manganetworking.repository.jpa.ChapterRepository;
 import com.manganetworking.repository.jpa.MembershipSubscriptionRepository;
 import com.manganetworking.service.session.SessionService;
@@ -26,7 +28,8 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -34,6 +37,9 @@ class ChapterFileAccessGuardTest {
 
     @Mock
     private ChapterRepository chapterRepository;
+
+    @Mock
+    private ChapterFileRepository chapterFileRepository;
 
     @Mock
     private MembershipSubscriptionRepository membershipRepository;
@@ -66,12 +72,20 @@ class ChapterFileAccessGuardTest {
 
     private ChapterEntity chapterReleasingAt(LocalDateTime release) {
         ChapterEntity chapter = new ChapterEntity();
+        chapter.setId(UUID.randomUUID());
         chapter.setWork(work);
         chapter.setChapterNumber(1);
         chapter.setTitle("Capítulo de teste");
         chapter.setPagesJson("[\"/api/storage/page.jpg\"]");
         chapter.setPublicReleaseAt(release);
         return chapter;
+    }
+
+    /** Liga o arquivo ao capítulo — é exatamente o que a linha de {@code chapter_files} representa. */
+    private void chapterFilePointsTo(String filename, ChapterEntity chapter) {
+        when(chapterFileRepository.findByFilename(filename))
+                .thenReturn(Optional.of(new ChapterFileEntity(chapter.getId(), filename, 0)));
+        when(chapterRepository.findById(chapter.getId())).thenReturn(Optional.of(chapter));
     }
 
     private void authenticateAs(UUID userId, UUID creatorId, boolean moderator) {
@@ -85,10 +99,16 @@ class ChapterFileAccessGuardTest {
     }
 
     @Test
-    @DisplayName("Arquivos que não são página de capítulo (capa/avatar) permanecem públicos")
+    @DisplayName("Arquivos que não são página de capítulo (capa/avatar) permanecem públicos e cacheáveis")
     void allowsNonChapterFilesPublicly() {
-        when(chapterRepository.findFirstByPagesJsonContaining("capa.jpg")).thenReturn(Optional.empty());
-        assertTrue(guard.canRead("capa.jpg"));
+        when(chapterFileRepository.findByFilename("capa.jpg")).thenReturn(Optional.empty());
+
+        ChapterFileAccessGuard.AccessDecision decision = guard.evaluate("capa.jpg");
+
+        assertTrue(decision.allowed());
+        assertFalse(decision.privateContent());
+        // Sem página associada, o guard nem consulta os capítulos.
+        verifyNoInteractions(chapterRepository);
     }
 
     @Test
@@ -98,18 +118,33 @@ class ChapterFileAccessGuardTest {
     }
 
     @Test
-    @DisplayName("Página de capítulo público é liberada para anônimo")
+    @DisplayName("Consulta é por igualdade exata: nome parecido não é tratado como página de capítulo")
+    void lookupIsByExactFilenameNotSubstring() {
+        // "page.jpg" é página de capítulo; "capa-page.jpg" não é. Com LIKE, o segundo casaria com o primeiro.
+        when(chapterFileRepository.findByFilename("capa-page.jpg")).thenReturn(Optional.empty());
+
+        assertTrue(guard.canRead("capa-page.jpg"));
+
+        verify(chapterFileRepository).findByFilename("capa-page.jpg");
+        verifyNoInteractions(chapterRepository);
+    }
+
+    @Test
+    @DisplayName("Página de capítulo público é liberada para anônimo e marcada como privada (não cacheável)")
     void allowsPublicChapterAnonymously() {
-        when(chapterRepository.findFirstByPagesJsonContaining("page.jpg"))
-                .thenReturn(Optional.of(chapterReleasingAt(LocalDateTime.now().minusDays(2))));
-        assertTrue(guard.canRead("page.jpg"));
+        chapterFilePointsTo("page.jpg", chapterReleasingAt(LocalDateTime.now().minusDays(2)));
+
+        ChapterFileAccessGuard.AccessDecision decision = guard.evaluate("page.jpg");
+
+        assertTrue(decision.allowed());
+        assertTrue(decision.privateContent());
     }
 
     @Test
     @DisplayName("Página de capítulo em early access é negada para anônimo")
     void blocksEarlyAccessAnonymously() {
-        when(chapterRepository.findFirstByPagesJsonContaining("page.jpg"))
-                .thenReturn(Optional.of(chapterReleasingAt(LocalDateTime.now().plusDays(5))));
+        chapterFilePointsTo("page.jpg", chapterReleasingAt(LocalDateTime.now().plusDays(5)));
+
         assertFalse(guard.canRead("page.jpg"));
     }
 
@@ -118,8 +153,7 @@ class ChapterFileAccessGuardTest {
     void allowsEarlyAccessForMember() {
         UUID userId = UUID.randomUUID();
         authenticateAs(userId, null, false);
-        when(chapterRepository.findFirstByPagesJsonContaining("page.jpg"))
-                .thenReturn(Optional.of(chapterReleasingAt(LocalDateTime.now().plusDays(5))));
+        chapterFilePointsTo("page.jpg", chapterReleasingAt(LocalDateTime.now().plusDays(5)));
         when(membershipRepository.existsBySubscriberIdAndCreatorIdAndStatusAndExpiresAtAfter(
                 eq(userId), eq(authorCreatorId), eq("ACTIVE"), any(LocalDateTime.class)))
                 .thenReturn(true);
@@ -132,8 +166,7 @@ class ChapterFileAccessGuardTest {
     void blocksEarlyAccessForNonMember() {
         UUID userId = UUID.randomUUID();
         authenticateAs(userId, null, false);
-        when(chapterRepository.findFirstByPagesJsonContaining("page.jpg"))
-                .thenReturn(Optional.of(chapterReleasingAt(LocalDateTime.now().plusDays(5))));
+        chapterFilePointsTo("page.jpg", chapterReleasingAt(LocalDateTime.now().plusDays(5)));
         when(membershipRepository.existsBySubscriberIdAndCreatorIdAndStatusAndExpiresAtAfter(
                 eq(userId), eq(authorCreatorId), eq("ACTIVE"), any(LocalDateTime.class)))
                 .thenReturn(false);
@@ -145,8 +178,7 @@ class ChapterFileAccessGuardTest {
     @DisplayName("Página de early access é liberada para o próprio autor (sem exigir assinatura)")
     void allowsEarlyAccessForAuthor() {
         authenticateAs(UUID.randomUUID(), authorCreatorId, true);
-        when(chapterRepository.findFirstByPagesJsonContaining("page.jpg"))
-                .thenReturn(Optional.of(chapterReleasingAt(LocalDateTime.now().plusDays(5))));
+        chapterFilePointsTo("page.jpg", chapterReleasingAt(LocalDateTime.now().plusDays(5)));
 
         assertTrue(guard.canRead("page.jpg"));
     }
@@ -155,8 +187,7 @@ class ChapterFileAccessGuardTest {
     @DisplayName("Página de obra suspensa é negada para anônimo")
     void blocksSuspendedWorkAnonymously() {
         work.setStatus("suspended");
-        when(chapterRepository.findFirstByPagesJsonContaining("page.jpg"))
-                .thenReturn(Optional.of(chapterReleasingAt(LocalDateTime.now().minusDays(2))));
+        chapterFilePointsTo("page.jpg", chapterReleasingAt(LocalDateTime.now().minusDays(2)));
 
         assertFalse(guard.canRead("page.jpg"));
     }
@@ -166,9 +197,22 @@ class ChapterFileAccessGuardTest {
     void allowsSuspendedWorkForModerator() {
         work.setStatus("suspended");
         authenticateAs(UUID.randomUUID(), null, true);
-        lenient().when(chapterRepository.findFirstByPagesJsonContaining("page.jpg"))
-                .thenReturn(Optional.of(chapterReleasingAt(LocalDateTime.now().minusDays(2))));
+        chapterFilePointsTo("page.jpg", chapterReleasingAt(LocalDateTime.now().minusDays(2)));
 
         assertTrue(guard.canRead("page.jpg"));
+    }
+
+    @Test
+    @DisplayName("Referência órfã (arquivo sem capítulo) falha fechada: nega e não permite cache")
+    void deniesWhenChapterIsMissing() {
+        UUID chapterId = UUID.randomUUID();
+        when(chapterFileRepository.findByFilename("page.jpg"))
+                .thenReturn(Optional.of(new ChapterFileEntity(chapterId, "page.jpg", 0)));
+        when(chapterRepository.findById(chapterId)).thenReturn(Optional.empty());
+
+        ChapterFileAccessGuard.AccessDecision decision = guard.evaluate("page.jpg");
+
+        assertFalse(decision.allowed());
+        assertTrue(decision.privateContent());
     }
 }

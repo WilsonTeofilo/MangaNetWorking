@@ -6,8 +6,10 @@ import com.manganetworking.config.exception.AccessDeniedException;
 import com.manganetworking.config.exception.ResourceNotFoundException;
 import com.manganetworking.config.security.SecurityContextUtils;
 import com.manganetworking.domain.relational.ChapterEntity;
+import com.manganetworking.domain.relational.ChapterFileEntity;
 import com.manganetworking.domain.relational.CreatorEntity;
 import com.manganetworking.domain.relational.WorkEntity;
+import com.manganetworking.repository.jpa.ChapterFileRepository;
 import com.manganetworking.repository.jpa.ChapterRepository;
 import com.manganetworking.repository.jpa.CreatorRepository;
 import com.manganetworking.repository.jpa.MembershipSubscriptionRepository;
@@ -15,13 +17,17 @@ import com.manganetworking.repository.jpa.WorkRepository;
 import com.manganetworking.service.feed.event.WorkFeedSyncEvent;
 import com.manganetworking.service.session.SessionService;
 import com.manganetworking.service.work.dto.*;
+import com.manganetworking.util.StorageFileNames;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -32,6 +38,7 @@ public class WorkApplicationService {
 
     private final WorkRepository workRepository;
     private final ChapterRepository chapterRepository;
+    private final ChapterFileRepository chapterFileRepository;
     private final MembershipSubscriptionRepository membershipRepository;
     private final CreatorRepository creatorRepository;
     private final ObjectMapper objectMapper;
@@ -40,6 +47,7 @@ public class WorkApplicationService {
     public WorkApplicationService(
             WorkRepository workRepository,
             ChapterRepository chapterRepository,
+            ChapterFileRepository chapterFileRepository,
             MembershipSubscriptionRepository membershipRepository,
             CreatorRepository creatorRepository,
             ObjectMapper objectMapper,
@@ -47,6 +55,7 @@ public class WorkApplicationService {
     ) {
         this.workRepository = workRepository;
         this.chapterRepository = chapterRepository;
+        this.chapterFileRepository = chapterFileRepository;
         this.membershipRepository = membershipRepository;
         this.creatorRepository = creatorRepository;
         this.objectMapper = objectMapper;
@@ -233,6 +242,7 @@ public class WorkApplicationService {
         chapter.setPublicReleaseAt(dto.publicReleaseAt());
 
         ChapterEntity saved = chapterRepository.save(chapter);
+        registerChapterFiles(saved.getId(), dto.pages());
 
         // Atualiza contadores na obra
         work.setTotalChapters(work.getTotalChapters() + 1);
@@ -241,6 +251,37 @@ public class WorkApplicationService {
         publishFeedSync(updatedWork.getId(), "publicação de capítulo");
 
         return saved;
+    }
+
+    /**
+     * Registra a relação arquivo -> capítulo consultada pelo {@code ChapterFileAccessGuard}.
+     *
+     * <p>O contrato do leitor guarda a URL da página ({@code /api/storage/<arquivo>}) em
+     * {@code pages_json}; o guard recebe apenas o nome do arquivo. Normalizar aqui (e não no guard)
+     * mantém uma única representação indexada e permite que a checagem seja por igualdade.</p>
+     *
+     * <p>Nomes repetidos na mesma lista são registrados uma única vez: o índice de
+     * {@code chapter_files.filename} é único em toda a tabela (é o que garante a busca sem
+     * ambiguidade do guard), então uma página duplicada violaria a restrição. O leitor continua
+     * recebendo a lista original em {@code pages_json}; só a relação de acesso é deduplicada.</p>
+     */
+    private void registerChapterFiles(UUID chapterId, List<String> pages) {
+        if (chapterId == null || pages == null || pages.isEmpty()) {
+            return;
+        }
+
+        List<ChapterFileEntity> files = new ArrayList<>(pages.size());
+        Set<String> registered = new HashSet<>(pages.size());
+        for (int i = 0; i < pages.size(); i++) {
+            String filename = StorageFileNames.fromPageToken(pages.get(i));
+            if (filename != null && registered.add(filename)) {
+                files.add(new ChapterFileEntity(chapterId, filename, i));
+            }
+        }
+
+        if (!files.isEmpty()) {
+            chapterFileRepository.saveAll(files);
+        }
     }
 
     /**

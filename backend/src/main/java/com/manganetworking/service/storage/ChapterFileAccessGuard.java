@@ -2,8 +2,10 @@ package com.manganetworking.service.storage;
 
 import com.manganetworking.config.security.SecurityContextUtils;
 import com.manganetworking.domain.relational.ChapterEntity;
+import com.manganetworking.domain.relational.ChapterFileEntity;
 import com.manganetworking.domain.relational.CreatorEntity;
 import com.manganetworking.domain.relational.WorkEntity;
+import com.manganetworking.repository.jpa.ChapterFileRepository;
 import com.manganetworking.repository.jpa.ChapterRepository;
 import com.manganetworking.repository.jpa.MembershipSubscriptionRepository;
 import com.manganetworking.service.session.SessionService;
@@ -21,6 +23,10 @@ import java.util.UUID;
  * controle de acesso do capítulo a que pertencem: capítulos em early access exigem assinatura
  * ativa do autor e obras suspensas ficam restritas ao autor e à moderação. Sem este guard, a URL
  * opaca do arquivo funcionaria como se fosse um controle de acesso — o que ela não é.</p>
+ *
+ * <p>A associação arquivo -> capítulo é resolvida pela relação {@code chapter_files}, consultada
+ * por igualdade no nome do arquivo (índice único). O guard avaliou antes com {@code LIKE} em
+ * {@code chapters.pages_json}, que varria a tabela e casava substrings indevidas.</p>
  */
 @Service
 public class ChapterFileAccessGuard {
@@ -28,13 +34,16 @@ public class ChapterFileAccessGuard {
     private static final String STATUS_SUSPENDED = "suspended";
 
     private final ChapterRepository chapterRepository;
+    private final ChapterFileRepository chapterFileRepository;
     private final MembershipSubscriptionRepository membershipRepository;
 
     public ChapterFileAccessGuard(
             ChapterRepository chapterRepository,
+            ChapterFileRepository chapterFileRepository,
             MembershipSubscriptionRepository membershipRepository
     ) {
         this.chapterRepository = chapterRepository;
+        this.chapterFileRepository = chapterFileRepository;
         this.membershipRepository = membershipRepository;
     }
 
@@ -54,13 +63,20 @@ public class ChapterFileAccessGuard {
             return new AccessDecision(false, false);
         }
 
-        Optional<ChapterEntity> chapterRef = chapterRepository.findFirstByPagesJsonContaining(filename);
-        if (chapterRef.isEmpty()) {
+        Optional<UUID> chapterId = chapterFileRepository.findByFilename(filename)
+                .map(ChapterFileEntity::getChapterId);
+        if (chapterId.isEmpty()) {
             // Não é página de capítulo (capa/banner/avatar): conteúdo público.
             return new AccessDecision(true, false);
         }
 
-        ChapterEntity chapter = chapterRef.get();
+        ChapterEntity chapter = chapterRepository.findById(chapterId.get()).orElse(null);
+        if (chapter == null) {
+            // Referência órfã (não deveria existir: o vínculo é ON DELETE CASCADE). O arquivo é uma
+            // página de capítulo, então a resposta é negar e não cachear — falha fechada.
+            return new AccessDecision(false, true);
+        }
+
         WorkEntity work = chapter.getWork();
         CreatorEntity author = work != null ? work.getAuthor() : null;
 
