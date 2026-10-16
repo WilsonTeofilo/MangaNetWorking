@@ -18,6 +18,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Serviço autoritativo de ranking de obras (Fase 5 do plano).
@@ -37,6 +38,9 @@ public class RecommendationAlgorithmService {
     private static final long RESCHEDULE_RATE_MS = 600_000L;
     private static final double MAX_CREATOR_BOOST = 2.5;
     private static final long MIN_VIEWS_FOR_QUALITY = 40;
+
+    /** Obra suspensa cautelarmente pela moderação: não pode existir no feed. */
+    private static final String SUSPENDED_STATUS = "suspended";
 
     private final WorkRepository workRepository;
     private final ChapterRepository chapterRepository;
@@ -106,9 +110,22 @@ public class RecommendationAlgorithmService {
 
     /**
      * Calcula a pontuação de uma obra e materializa/atualiza o documento no MongoDB.
+     *
+     * <p><b>Invariante:</b> obra suspensa cautelarmente não pode existir no feed. Quando a obra está
+     * suspensa, o documento é removido do MongoDB e o método retorna {@code null}. Sem essa guarda, o
+     * recálculo agendado (ou a publicação de capítulo pelo próprio autor) recriaria o documento que a
+     * moderação removeu no {@code afterCommit} da suspensão.</p>
+     *
+     * @return o documento materializado, ou {@code null} se a obra estiver suspensa (removida do feed)
      */
     @Transactional(readOnly = true)
     public WorkFeedDocument syncWorkToFeed(WorkEntity work) {
+        if (isSuspended(work)) {
+            workFeedMongoRepository.deleteByWorkId(work.getId().toString());
+            log.debug("[ALGORITMO] Obra '{}' suspensa: removida do feed.", work.getTitle());
+            return null;
+        }
+
         CreatorEntity creator = work.getAuthor();
         List<ChapterEntity> chapters = chapterRepository.findAllByWorkIdOrderByChapterNumberDesc(work.getId());
         ChapterEntity latestChapter = chapters.isEmpty() ? null : chapters.get(0);
@@ -183,8 +200,29 @@ public class RecommendationAlgorithmService {
     }
 
     /**
+     * Busca a obra por id e materializa/atualiza o feed na mesma transação.
+     *
+     * <p>Ponto de entrada para o tratamento de evento {@code AFTER_COMMIT}: ao abrir a própria transação,
+     * a leitura da associação LAZY do autor ocorre com a sessão JPA aberta (OSIV desligado) e deixa de
+     * depender de a sessão da requisição original ainda estar viva na fase {@code afterCommit}.</p>
+     *
+     * @return o documento materializado, ou {@code null} se a obra não existir ou estiver suspensa
+     */
+    @Transactional(readOnly = true)
+    public WorkFeedDocument syncWorkById(UUID workId) {
+        return workRepository.findById(workId)
+                .map(this::syncWorkToFeed)
+                .orElse(null);
+    }
+
+    private boolean isSuspended(WorkEntity work) {
+        return work.getStatus() != null && SUSPENDED_STATUS.equalsIgnoreCase(work.getStatus());
+    }
+
+    /**
      * Reindexa o catálogo inteiro (job agendado ou reindexação manual).
-     * Uma falha em uma obra não interrompe as demais.
+     * Uma falha em uma obra não interrompe as demais; obras suspensas são removidas do feed
+     * (ver {@link #syncWorkToFeed(WorkEntity)}).
      */
     @Transactional(readOnly = true)
     public int syncAllWorksToFeed() {

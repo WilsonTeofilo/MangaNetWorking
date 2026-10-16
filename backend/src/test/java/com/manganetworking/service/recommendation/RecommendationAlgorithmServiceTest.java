@@ -18,9 +18,13 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
@@ -29,11 +33,10 @@ import static org.mockito.Mockito.when;
  */
 class RecommendationAlgorithmServiceTest {
 
-    private final RecommendationAlgorithmService service = new RecommendationAlgorithmService(
-            mock(WorkRepository.class),
-            mock(ChapterRepository.class),
-            mock(WorkFeedMongoRepository.class)
-    );
+    private final WorkRepository workRepo = mock(WorkRepository.class);
+    private final ChapterRepository chapterRepo = mock(ChapterRepository.class);
+    private final WorkFeedMongoRepository feedRepo = mock(WorkFeedMongoRepository.class);
+    private final RecommendationAlgorithmService service = new RecommendationAlgorithmService(workRepo, chapterRepo, feedRepo);
 
     @Test
     @DisplayName("Decaimento temporal: sem data retorna piso 0.2 e 'agora' retorna 1.0")
@@ -131,6 +134,77 @@ class RecommendationAlgorithmServiceTest {
         assertNotNull(scheduled, "scheduleFeedRecalculation precisa de @Transactional: o agendador não tem "
                 + "OSIV e o laço toca associações LAZY");
         assertNotNull(reindex, "syncAllWorksToFeed precisa de @Transactional");
+    }
+
+    @Test
+    @DisplayName("Obra suspensa é removida do feed e não é rematerializada")
+    void removesSuspendedWorkFromFeed() {
+        RecommendationAlgorithmService algorithm = newService();
+
+        WorkEntity suspended = suspendedWork();
+
+        WorkFeedDocument result = algorithm.syncWorkToFeed(suspended);
+
+        assertNull(result, "Obra suspensa não deve ser materializada no feed");
+        verify(feedRepo).deleteByWorkId(suspended.getId().toString());
+        verify(feedRepo, never()).save(any(WorkFeedDocument.class));
+    }
+
+    @Test
+    @DisplayName("Reindexação não ressuscita obra suspensa e ainda sincroniza as ativas")
+    void reindexDoesNotResurrectSuspendedWork() {
+        RecommendationAlgorithmService algorithm = newService();
+
+        WorkEntity active = boostedWork(1.0);
+        WorkEntity suspended = suspendedWork();
+        when(workRepo.findAll()).thenReturn(List.of(active, suspended));
+        when(chapterRepo.findAllByWorkIdOrderByChapterNumberDesc(any())).thenReturn(List.of());
+        when(feedRepo.findByWorkId(active.getId().toString())).thenReturn(Optional.empty());
+        when(feedRepo.save(any(WorkFeedDocument.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        int total = algorithm.syncAllWorksToFeed();
+
+        assertEquals(2, total);
+        verify(feedRepo).save(any(WorkFeedDocument.class));            // apenas a obra ativa
+        verify(feedRepo).deleteByWorkId(suspended.getId().toString()); // suspensa permanece fora do feed
+    }
+
+    @Test
+    @DisplayName("syncWorkById busca a obra e materializa o feed na própria transação")
+    void syncWorkByIdFindsAndSyncs() {
+        RecommendationAlgorithmService algorithm = newService();
+        WorkEntity suspended = suspendedWork();
+        when(workRepo.findById(suspended.getId())).thenReturn(Optional.of(suspended));
+
+        assertNull(algorithm.syncWorkById(suspended.getId()));
+
+        verify(feedRepo).deleteByWorkId(suspended.getId().toString());
+    }
+
+    @Test
+    @DisplayName("syncWorkById de obra inexistente não toca o feed")
+    void syncWorkByIdAbsentDoesNotTouchFeed() {
+        RecommendationAlgorithmService algorithm = newService();
+        UUID missing = UUID.randomUUID();
+        when(workRepo.findById(missing)).thenReturn(Optional.empty());
+
+        assertNull(algorithm.syncWorkById(missing));
+
+        verifyNoInteractions(feedRepo);
+    }
+
+    private RecommendationAlgorithmService newService() {
+        return new RecommendationAlgorithmService(workRepo, chapterRepo, feedRepo);
+    }
+
+    private WorkEntity suspendedWork() {
+        WorkEntity work = new WorkEntity();
+        work.setId(UUID.randomUUID());
+        work.setTitle("Obra Suspensa");
+        work.setSlug("obra-suspensa");
+        work.setCoverUrl("/api/storage/cover.jpg");
+        work.setStatus("suspended");
+        return work;
     }
 
     private WorkEntity boostedWork(double boostMul) {

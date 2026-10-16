@@ -8,7 +8,7 @@ import com.manganetworking.repository.jpa.ChapterRepository;
 import com.manganetworking.repository.jpa.ReportRepository;
 import com.manganetworking.repository.jpa.UserRepository;
 import com.manganetworking.repository.jpa.WorkRepository;
-import com.manganetworking.repository.mongo.WorkFeedMongoRepository;
+import com.manganetworking.service.feed.event.WorkFeedRemovalEvent;
 import com.manganetworking.service.moderation.dto.CreateReportRequestDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -17,8 +17,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.List;
 import java.util.Optional;
@@ -44,7 +43,7 @@ class ModerationApplicationServiceTest {
     private UserRepository userRepository;
 
     @Mock
-    private WorkFeedMongoRepository workFeedMongoRepository;
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private ModerationApplicationService moderationService;
@@ -103,31 +102,7 @@ class ModerationApplicationServiceTest {
 
         verify(workRepository).save(work);
         verify(reportRepository).save(pendingReport);
-        // Sem transação ativa (unitário), a remoção do feed ocorre imediatamente.
-        verify(workFeedMongoRepository).deleteByWorkId(workId.toString());
-    }
-
-    @Test
-    @DisplayName("Remoção do feed na suspensão é adiada para o afterCommit (não dentro da transação corrente)")
-    void shouldDeferFeedRemovalToAfterCommit() {
-        when(workRepository.findById(workId)).thenReturn(Optional.of(work));
-        when(reportRepository.findAllByWorkIdOrderByCreatedAtDesc(workId)).thenReturn(List.of());
-
-        TransactionSynchronizationManager.initSynchronization();
-        try {
-            moderationService.suspendWork(workId, "Motivo de teste");
-
-            // Ainda dentro da transação: nada foi removido do MongoDB.
-            verify(workFeedMongoRepository, never()).deleteByWorkId(any());
-
-            // Simula o commit disparando as sincronizações registradas.
-            for (TransactionSynchronization sync : TransactionSynchronizationManager.getSynchronizations()) {
-                sync.afterCommit();
-            }
-
-            verify(workFeedMongoRepository).deleteByWorkId(workId.toString());
-        } finally {
-            TransactionSynchronizationManager.clearSynchronization();
-        }
+        // A remoção do feed é delegada ao listener de evento (AFTER_COMMIT), não escrita aqui.
+        verify(eventPublisher).publishEvent(new WorkFeedRemovalEvent(workId));
     }
 }

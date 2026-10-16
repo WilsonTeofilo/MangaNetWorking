@@ -10,6 +10,7 @@ import com.manganetworking.repository.jpa.CreatorRepository;
 import com.manganetworking.repository.jpa.UserRepository;
 import com.manganetworking.repository.jpa.WorkRepository;
 import com.manganetworking.repository.mongo.WorkFeedMongoRepository;
+import com.manganetworking.service.feed.FeedApplicationService;
 import com.manganetworking.service.moderation.ModerationApplicationService;
 import com.manganetworking.service.recommendation.RecommendationAlgorithmService;
 import com.manganetworking.service.work.WorkApplicationService;
@@ -76,6 +77,9 @@ class FeedSyncIntegrationTest {
 
     @Autowired
     private ModerationApplicationService moderationApplicationService;
+
+    @Autowired
+    private FeedApplicationService feedApplicationService;
 
     @Autowired
     private RecommendationAlgorithmService algorithmService;
@@ -171,6 +175,47 @@ class FeedSyncIntegrationTest {
         // ...e a suspensão remove o documento no afterCommit, além de marcar o status relacional.
         assertThat(workRepository.findById(work.getId()).orElseThrow().getStatus()).isEqualTo("suspended");
         assertThat(workFeedMongoRepository.findByWorkId(workId)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Recálculo agendado não ressuscita obra suspensa no feed (invariante de moderação)")
+    void syncAllWorksToFeed_doesNotResurrectSuspendedWork() {
+        CreatorEntity creator = newCreator();
+        WorkEntity work = newWork(creator.getId());
+        String workId = work.getId().toString();
+        assertThat(workFeedMongoRepository.findByWorkId(workId)).isPresent();
+
+        moderationApplicationService.suspendWork(work.getId(), "Teste de integração");
+        assertThat(workFeedMongoRepository.findByWorkId(workId)).isEmpty();
+
+        // O job periódico reindexa o catálogo inteiro: a obra suspensa precisa continuar fora do feed.
+        algorithmService.syncAllWorksToFeed();
+
+        assertThat(workFeedMongoRepository.findByWorkId(workId)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Consulta do feed já exclui suspensas: a página é preenchida mesmo com suspensa no topo")
+    void getFeed_fillsPageEvenWithSuspendedDocRankedFirst() {
+        CreatorEntity creator = newCreator();
+        newWork(creator.getId());
+        newWork(creator.getId());
+
+        // Cenário de borda: um documento suspenso no topo do ranking (não pode consumir slot da página).
+        WorkFeedDocument suspended = new WorkFeedDocument();
+        suspended.setWorkId(UUID.randomUUID().toString());
+        suspended.setSlug("oculta-" + UUID.randomUUID().toString().substring(0, 6));
+        suspended.setTitle("Oculta");
+        suspended.setStatus("suspended");
+        suspended.setDiscoveryScore(99_999_999.0);
+        suspended.setTrendingScore(99_999_999.0);
+        workFeedMongoRepository.save(suspended);
+
+        List<WorkFeedDocument> page = feedApplicationService.getFeed("recommended", null, 0, 2);
+
+        assertThat(page).hasSize(2);
+        assertThat(page).extracting(WorkFeedDocument::getWorkId)
+                .doesNotContain(suspended.getWorkId());
     }
 
     private CreatorEntity newCreator() {

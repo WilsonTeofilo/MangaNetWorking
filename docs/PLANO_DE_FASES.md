@@ -231,7 +231,7 @@
 
 | Camada | Tecnologia | Porta Local | Estado |
 |---|---|---|---|
-| **Backend API** | Spring Boot 3.4.2 / Java 26.0.1 | `8085` | 116 testes passando (0 falhas; inclui 4 de integração Testcontainers); OSIV desligado; **smoke E2E 23/23** (Postgres+Mongo) |
+| **Backend API** | Spring Boot 3.4.2 / Java 26.0.1 | `8085` | 129 testes passando (0 falhas; inclui 6 de integração Testcontainers); OSIV desligado; **smoke E2E 23/23** (Postgres+Mongo) |
 | **Banco Relacional** | PostgreSQL 16 (Docker) | `25432` | Flyway V1 + V2 + V3 aplicadas |
 | **Banco NoSQL / Feed** | MongoDB 7 (Docker) | `27017` | Coleções `reading_progress` e `feed_works` ativas |
 | **Storage de Imagens** | Local Filesystem Sanitizado | `./data/uploads/` | Magic bytes allow-list; **páginas de capítulo protegidas por `ChapterFileAccessGuard`** (capa/avatar públicos) |
@@ -268,19 +268,15 @@
 - `isModerator` é resolvido **no login**: promover alguém (`UPDATE users SET is_moderator = TRUE WHERE ...`) exige o usuário **relogar** (nada no servidor confia em UI/header).
 - Nunca editar migração Flyway já aplicada (mudar o arquivo quebra o checksum e derruba o boot); para ajustar comentário, crie uma nova migração.
 
-**Concluído recentemente (passe 8/9 — commitado em `37d2d75`):** ✅ **Testcontainers** — 4 cenários de integração reais (PostgreSQL 16 + MongoDB 7 efêmeros): OSIV desligado, sync de feed em `afterCommit` (obra/capítulo com early access), reindexação fora de requisição web sem `LazyInitializationException` e remoção do feed na suspensão por moderação. `api.version` virou propriedade parametrizável (`mvn -Ddocker.api.version=... test`). Sem daemon Docker os testes de integração são ignorados (`disabledWithoutDocker = true` → `Skipped`).
+**Concluído recentemente (passes 8-11):** ✅ **Testcontainers** — integração real (PostgreSQL 16 + MongoDB 7 efêmeros): OSIV desligado, sync de feed em `afterCommit` (obra/capítulo com early access), reindexação sem `LazyInitializationException`, remoção do feed na suspensão por moderação e **não-ressurreição da obra suspensa na reindexação**; `api.version` parametrizável (`mvn -Ddocker.api.version=... test`); sem daemon Docker os testes de integração são ignorados (`disabledWithoutDocker = true` → `Skipped`). ✅ **P1 — Coerência funcional do feed (passe 10):** `syncWorkToFeed` **remove** obra suspensa do feed (antes o recálculo agendado a reinseria) e o feed público filtra `status != suspended` **na consulta do Mongo**, preservando o tamanho da página. ✅ **Robustez JPA×Mongo (passe 11):** o sync/remoção do feed saiu do `TransactionSynchronizationManager` manual para `@TransactionalEventListener(phase = AFTER_COMMIT)` (`FeedSynchronizationListener`); a sincronização abre a própria transação (`RecommendationAlgorithmService.syncWorkById`) e deixa de depender de a sessão JPA da requisição estar aberta na fase `afterCommit`.
 
-**Próximos passos priorizados (pós-passe 9).** Cada item é independente e verificável; nenhum bloqueia o release atual.
+**Próximos passos priorizados (pós-passe 11).** Cada item é independente e verificável; nenhum bloqueia o release atual.
 
-1. **Correção funcional do feed (P1 — menor esforço, ganho real; pré-existente, fora do passe 9):**
-   - `syncAllWorksToFeed` **reinsere obras suspensas** em `feed_works`: a remoção feita no `afterCommit` da suspensão é desfeita pelo recálculo agendado. Hoje só o filtro de leitura (`FeedApplicationService`) neutraliza. Corrigir: pular/remover status `suspended` na reindexação, com teste.
-   - `FeedApplicationService.getFeed` **pagina antes de filtrar** suspensas → a página retorna menos itens que `size`. Corrigir: filtrar na consulta antes da paginação.
-2. **Consistência de camadas (P2):** DTOs de apresentação para os read-models NoSQL hoje expostos como modelo (`ReadingProgressDocument`, `WorkFeedDocument`) — padronização, sem lazy loading envolvido.
-3. **Robustez JPA×Mongo (P2):** trocar o sync manual em `afterCommit` (`WorkApplicationService`/`ModerationApplicationService`) por `@TransactionalEventListener(phase = AFTER_COMMIT)` — hoje depende de a sessão JPA estar aberta na fase `afterCommit`.
-4. **Performance do guard (P2):** `ChapterFileAccessGuard` usa `LIKE %filename%` → relação dedicada `file → capítulo` com índice (exige nova migração Flyway + Postgres real).
-5. **Escala (P3):** `RateLimitingFilter`/`SessionService` são **em memória** — store distribuído se houver múltiplas instâncias.
-6. **Docker antigo (P3):** com API < 1.44 (Docker ≤ 24) a integração é ignorada em silêncio; rodar `mvn -Ddocker.api.version=<versão> test`.
-7. **Frontend (P3):** substituir placeholders de XP/Season em `CreatorWorkspacePage` e alinhar `#E63946`/`text-white` à paleta `--color-red: #E8402F`.
-8. **Higiene/segredos (P3):** remover/rotacionar a chave AES de fallback e a senha default do Postgres em `application.yml` (pré-existente, já público) para variáveis de ambiente.
-9. **Fase 8.2 (bloqueada):** leitura offline nativa (Android/iOS) — app fora deste repositório; o backend de manifesto é o limite.
-10. **Processo:** abrir PR `develop` ➔ `main` para alinhar a `main` (hoje 3 commits à frente + o passe 9, quando autorizado o commit).
+1. **Consistência de camadas (P2):** DTOs de apresentação para os read-models NoSQL hoje expostos como modelo (`ReadingProgressDocument`, `WorkFeedDocument`) — padronização, sem lazy loading envolvido. Atenção: altera o contrato JSON do frontend.
+2. **Performance do guard (P2):** `ChapterFileAccessGuard` usa `LIKE %filename%` → relação dedicada `file → capítulo` com índice (exige nova migração Flyway + Postgres real).
+3. **Escala (P3):** `RateLimitingFilter`/`SessionService` são **em memória** — store distribuído se houver múltiplas instâncias.
+4. **Docker antigo (P3):** com API < 1.44 (Docker ≤ 24) a integração é ignorada em silêncio; rodar `mvn -Ddocker.api.version=<versão> test`.
+5. **Frontend (P3):** substituir placeholders de XP/Season em `CreatorWorkspacePage` e alinhar `#E63946`/`text-white` à paleta `--color-red: #E8402F`.
+6. **Higiene/segredos (P3):** remover/rotacionar a chave AES de fallback e a senha default do Postgres em `application.yml` (pré-existente, já público) para variáveis de ambiente.
+7. **Fase 8.2 (bloqueada):** leitura offline nativa (Android/iOS) — app fora deste repositório; o backend de manifesto é o limite.
+8. **Processo:** abrir PR `develop` ➔ `main` para alinhar a `main` (hoje 5 commits à frente — `017d2e0`, `80eec1c`, `37d2d75`, `15cc982` — mais os passes 10/11, ainda não commitados).

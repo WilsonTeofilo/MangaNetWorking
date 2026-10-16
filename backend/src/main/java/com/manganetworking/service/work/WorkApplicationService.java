@@ -12,15 +12,12 @@ import com.manganetworking.repository.jpa.ChapterRepository;
 import com.manganetworking.repository.jpa.CreatorRepository;
 import com.manganetworking.repository.jpa.MembershipSubscriptionRepository;
 import com.manganetworking.repository.jpa.WorkRepository;
-import com.manganetworking.service.recommendation.RecommendationAlgorithmService;
+import com.manganetworking.service.feed.event.WorkFeedSyncEvent;
 import com.manganetworking.service.session.SessionService;
 import com.manganetworking.service.work.dto.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -30,8 +27,6 @@ import java.util.UUID;
 @Service
 public class WorkApplicationService {
 
-    private static final Logger log = LoggerFactory.getLogger(WorkApplicationService.class);
-
     /** Status de obra suspensa cautelarmente pela moderação. */
     private static final String STATUS_SUSPENDED = "suspended";
 
@@ -40,7 +35,7 @@ public class WorkApplicationService {
     private final MembershipSubscriptionRepository membershipRepository;
     private final CreatorRepository creatorRepository;
     private final ObjectMapper objectMapper;
-    private final RecommendationAlgorithmService algorithmService;
+    private final ApplicationEventPublisher eventPublisher;
 
     public WorkApplicationService(
             WorkRepository workRepository,
@@ -48,14 +43,14 @@ public class WorkApplicationService {
             MembershipSubscriptionRepository membershipRepository,
             CreatorRepository creatorRepository,
             ObjectMapper objectMapper,
-            RecommendationAlgorithmService algorithmService
+            ApplicationEventPublisher eventPublisher
     ) {
         this.workRepository = workRepository;
         this.chapterRepository = chapterRepository;
         this.membershipRepository = membershipRepository;
         this.creatorRepository = creatorRepository;
         this.objectMapper = objectMapper;
-        this.algorithmService = algorithmService;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional(readOnly = true)
@@ -200,7 +195,7 @@ public class WorkApplicationService {
         work.setStatus("ongoing");
 
         WorkEntity saved = workRepository.save(work);
-        syncWorkToFeedQuietly(saved.getId(), "cadastro");
+        publishFeedSync(saved.getId(), "cadastro");
         return saved;
     }
 
@@ -243,7 +238,7 @@ public class WorkApplicationService {
         work.setTotalChapters(work.getTotalChapters() + 1);
         WorkEntity updatedWork = workRepository.save(work);
 
-        syncWorkToFeedQuietly(updatedWork.getId(), "publicação de capítulo");
+        publishFeedSync(updatedWork.getId(), "publicação de capítulo");
 
         return saved;
     }
@@ -270,34 +265,12 @@ public class WorkApplicationService {
     }
 
     /**
-     * Sincroniza a obra no feed (MongoDB) sem abortar a transação relacional caso o Mongo esteja indisponível.
-     *
-     * <p>O MongoDB não participa da transação JPA. Se a sincronização fosse executada dentro dela e o
-     * Mongo falhasse, o transceptor JPA marcaria a transação relacional como rollback-only e o commit
-     * resultaria em {@code UnexpectedRollbackException} — derrubando o cadastro da obra/capítulo. Por
-     * isso a sincronização é adiada para depois do commit (ou executada imediatamente se não houver
-     * transação ativa, como nos testes unitários).</p>
+     * Publica o pedido de sincronização do feed. O MongoDB não participa da transação JPA: se a escrita
+     * fosse feita dentro dela e o Mongo falhasse, o transceptor JPA marcaria a transação relacional como
+     * rollback-only e o commit resultaria em {@code UnexpectedRollbackException}, derrubando o cadastro.
+     * O tratamento é feito por {@code FeedSynchronizationListener} em {@code AFTER_COMMIT}.
      */
-    private void syncWorkToFeedQuietly(UUID workId, String context) {
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    runFeedSync(workId, context);
-                }
-            });
-        } else {
-            runFeedSync(workId, context);
-        }
-    }
-
-    private void runFeedSync(UUID workId, String context) {
-        try {
-            workRepository.findById(workId).ifPresent(algorithmService::syncWorkToFeed);
-        } catch (Exception e) {
-            // afterCommit ainda roda com a transação "ativa" (sessão JPA aberta) — o log com causa
-            // evita perder a stacktrace de falhas de LAZY/serialização num caminho silencioso.
-            log.warn("[FEED] Falha ao sincronizar obra {} após {}: {}", workId, context, e.getMessage(), e);
-        }
+    private void publishFeedSync(UUID workId, String context) {
+        eventPublisher.publishEvent(new WorkFeedSyncEvent(workId, context));
     }
 }

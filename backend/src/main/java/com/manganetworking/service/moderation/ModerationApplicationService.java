@@ -11,15 +11,14 @@ import com.manganetworking.repository.jpa.ChapterRepository;
 import com.manganetworking.repository.jpa.ReportRepository;
 import com.manganetworking.repository.jpa.UserRepository;
 import com.manganetworking.repository.jpa.WorkRepository;
-import com.manganetworking.repository.mongo.WorkFeedMongoRepository;
+import com.manganetworking.service.feed.event.WorkFeedRemovalEvent;
 import com.manganetworking.service.moderation.dto.CreateReportRequestDto;
 import com.manganetworking.service.moderation.dto.PendingReportResponseDto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -34,20 +33,20 @@ public class ModerationApplicationService {
     private final WorkRepository workRepository;
     private final ChapterRepository chapterRepository;
     private final UserRepository userRepository;
-    private final WorkFeedMongoRepository workFeedMongoRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     public ModerationApplicationService(
             ReportRepository reportRepository,
             WorkRepository workRepository,
             ChapterRepository chapterRepository,
             UserRepository userRepository,
-            WorkFeedMongoRepository workFeedMongoRepository
+            ApplicationEventPublisher eventPublisher
     ) {
         this.reportRepository = reportRepository;
         this.workRepository = workRepository;
         this.chapterRepository = chapterRepository;
         this.userRepository = userRepository;
-        this.workFeedMongoRepository = workFeedMongoRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -101,11 +100,11 @@ public class ModerationApplicationService {
             }
         }
 
-        // Remove a obra suspensa do Feed no MongoDB. A escrita é adiada para DEPOIS do commit: o Mongo
-        // não participa da transação JPA e uma falha aqui marcaria a transação relacional como
-        // rollback-only (UnexpectedRollbackException), derrubando a própria suspensão.
-        // O feed também filtra por status na leitura, garantindo defesa extra caso o Mongo esteja indisponível.
-        scheduleFeedRemoval(workId);
+        // Pede a remoção da obra do Feed (MongoDB). O evento é tratado em AFTER_COMMIT pelo
+        // FeedSynchronizationListener: o Mongo não participa da transação JPA e uma falha dentro dela
+        // marcaria a transação relacional como rollback-only, derrubando a própria suspensão.
+        // O feed também filtra por status na leitura, garantindo defesa extra.
+        eventPublisher.publishEvent(new WorkFeedRemovalEvent(workId));
 
         log.warn("[MODERAÇÃO] Obra '{}' foi SUSPENSA cautelarmente da plataforma. Motivo: {}", work.getTitle(), reasonNotes);
     }
@@ -145,27 +144,5 @@ public class ModerationApplicationService {
                 report.getStatus() != null ? report.getStatus().name() : "PENDING",
                 report.getCreatedAt() != null ? report.getCreatedAt().toString() : null
         );
-    }
-
-    /** Executa a remoção do feed depois do commit da transação corrente (ou já, se não houver transação). */
-    private void scheduleFeedRemoval(UUID workId) {
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    removeFromFeedQuietly(workId);
-                }
-            });
-        } else {
-            removeFromFeedQuietly(workId);
-        }
-    }
-
-    private void removeFromFeedQuietly(UUID workId) {
-        try {
-            workFeedMongoRepository.deleteByWorkId(workId.toString());
-        } catch (Exception e) {
-            log.warn("[MODERAÇÃO] Falha ao remover obra {} do feed Mongo: {}", workId, e.getMessage(), e);
-        }
     }
 }

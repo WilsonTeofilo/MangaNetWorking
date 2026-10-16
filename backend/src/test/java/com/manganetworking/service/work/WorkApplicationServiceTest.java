@@ -11,7 +11,7 @@ import com.manganetworking.repository.jpa.ChapterRepository;
 import com.manganetworking.repository.jpa.CreatorRepository;
 import com.manganetworking.repository.jpa.MembershipSubscriptionRepository;
 import com.manganetworking.repository.jpa.WorkRepository;
-import com.manganetworking.service.recommendation.RecommendationAlgorithmService;
+import com.manganetworking.service.feed.event.WorkFeedSyncEvent;
 import com.manganetworking.service.work.dto.CreateChapterRequestDto;
 import com.manganetworking.service.work.dto.CreateWorkRequestDto;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,8 +22,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -50,7 +49,7 @@ class WorkApplicationServiceTest {
     private CreatorRepository creatorRepository;
 
     @Mock
-    private RecommendationAlgorithmService algorithmService;
+    private ApplicationEventPublisher eventPublisher;
 
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
@@ -105,8 +104,8 @@ class WorkApplicationServiceTest {
     }
 
     @Test
-    @DisplayName("Sincroniza o feed após criar a obra e tolera falha do MongoDB sem derrubar o cadastro")
-    void shouldSyncFeedAfterCreateAndTolerateFeedFailure() {
+    @DisplayName("Publica evento de sincronização do feed ao criar a obra (tratado fora da transação, em AFTER_COMMIT)")
+    void shouldPublishFeedSyncEventAfterCreate() {
         when(creatorRepository.findById(creatorId)).thenReturn(Optional.of(author));
         when(workRepository.findBySlug(any())).thenReturn(Optional.empty());
         when(workRepository.save(any(WorkEntity.class))).thenAnswer(invocation -> {
@@ -114,12 +113,9 @@ class WorkApplicationServiceTest {
             saved.setId(workId);
             return saved;
         });
-        when(workRepository.findById(workId)).thenReturn(Optional.of(work));
-        // Simula o MongoDB indisponível: a sincronização do feed deve falhar em silêncio.
-        when(algorithmService.syncWorkToFeed(work)).thenThrow(new RuntimeException("MongoDB indisponível"));
 
         CreateWorkRequestDto dto = new CreateWorkRequestDto(
-                "Nova Obra Original",
+                "Obra com sync por evento",
                 "Original",
                 "Sinopse rica de mangá.",
                 "https://storage.local/capa.jpg",
@@ -131,47 +127,24 @@ class WorkApplicationServiceTest {
         WorkEntity created = workService.createWork(creatorId, dto);
 
         assertNotNull(created);
-        verify(algorithmService).syncWorkToFeed(work);
+        // O serviço não escreve no Mongo: publica o pedido; quem sincroniza é o FeedSynchronizationListener.
+        verify(eventPublisher).publishEvent(new WorkFeedSyncEvent(workId, "cadastro"));
     }
 
     @Test
-    @DisplayName("Sincroniza o feed somente após o commit (não dentro da transação corrente)")
-    void shouldDeferFeedSyncToAfterCommit() {
-        when(creatorRepository.findById(creatorId)).thenReturn(Optional.of(author));
-        when(workRepository.findBySlug(any())).thenReturn(Optional.empty());
-        when(workRepository.save(any(WorkEntity.class))).thenAnswer(invocation -> {
-            WorkEntity saved = invocation.getArgument(0);
-            saved.setId(workId);
-            return saved;
-        });
+    @DisplayName("Publica evento de sincronização do feed ao publicar capítulo")
+    void shouldPublishFeedSyncEventOnChapterPublish() {
         when(workRepository.findById(workId)).thenReturn(Optional.of(work));
+        when(chapterRepository.findByWorkIdAndChapterNumber(workId, 1)).thenReturn(Optional.empty());
+        when(chapterRepository.save(any(ChapterEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(workRepository.save(any(WorkEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        CreateWorkRequestDto dto = new CreateWorkRequestDto(
-                "Obra com sync diferido",
-                "Original",
-                "Sinopse rica de mangá.",
-                "https://storage.local/capa.jpg",
-                null,
-                List.of(Genre.ACAO),
-                true
-        );
+        CreateChapterRequestDto dto = new CreateChapterRequestDto(
+                1, "Capítulo 1", null, List.of("p1.png"), LocalDateTime.now().plusDays(2));
 
-        TransactionSynchronizationManager.initSynchronization();
-        try {
-            workService.createWork(creatorId, dto);
+        workService.createChapter(creatorId, workId, dto);
 
-            // Ainda dentro da transação: o feed não pode ter sido sincronizado.
-            verify(algorithmService, never()).syncWorkToFeed(any());
-
-            // Simula o commit disparando as sincronizações registradas.
-            for (TransactionSynchronization sync : TransactionSynchronizationManager.getSynchronizations()) {
-                sync.afterCommit();
-            }
-
-            verify(algorithmService).syncWorkToFeed(work);
-        } finally {
-            TransactionSynchronizationManager.clearSynchronization();
-        }
+        verify(eventPublisher).publishEvent(new WorkFeedSyncEvent(workId, "publicação de capítulo"));
     }
 
     @Test
