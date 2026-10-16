@@ -2,6 +2,7 @@ package com.manganetworking.service.feed;
 
 import com.manganetworking.domain.nosql.WorkFeedDocument;
 import com.manganetworking.repository.mongo.WorkFeedMongoRepository;
+import com.manganetworking.service.feed.dto.FeedWorkResponseDto;
 import com.manganetworking.service.recommendation.RecommendationAlgorithmService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -30,9 +31,9 @@ class FeedApplicationServiceTest {
         when(repository.findAllByStatusNotOrderByDiscoveryScoreDesc(eq("suspended"), any(Pageable.class)))
                 .thenReturn(List.of(active));
 
-        List<WorkFeedDocument> results = service.getFeed("recommended", null, 0, 20);
+        List<FeedWorkResponseDto> results = service.getFeed("recommended", null, 0, 20);
 
-        assertEquals(List.of(active), results);
+        assertEquals(List.of("active-work"), results.stream().map(FeedWorkResponseDto::workId).toList());
         verify(repository).findAllByStatusNotOrderByDiscoveryScoreDesc(eq("suspended"), any(Pageable.class));
     }
 
@@ -43,7 +44,7 @@ class FeedApplicationServiceTest {
         when(repository.findAllByStatusNotOrderByDiscoveryScoreDesc(eq("suspended"), any(Pageable.class)))
                 .thenReturn(List.of(suspended));
 
-        List<WorkFeedDocument> results = service.getFeed("recommended", null, 0, 20);
+        List<FeedWorkResponseDto> results = service.getFeed("recommended", null, 0, 20);
 
         assertTrue(results.isEmpty());
     }

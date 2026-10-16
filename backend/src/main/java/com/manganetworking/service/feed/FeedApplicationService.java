@@ -2,6 +2,7 @@ package com.manganetworking.service.feed;
 
 import com.manganetworking.domain.nosql.WorkFeedDocument;
 import com.manganetworking.repository.mongo.WorkFeedMongoRepository;
+import com.manganetworking.service.feed.dto.FeedWorkResponseDto;
 import com.manganetworking.service.recommendation.RecommendationAlgorithmService;
 import com.manganetworking.util.GenreNormalizer;
 import org.springframework.data.domain.PageRequest;
@@ -30,15 +31,15 @@ public class FeedApplicationService {
         return algorithmService.syncAllWorksToFeed();
     }
 
-    public List<WorkFeedDocument> getFeed(String sort, String genre, int page, int size) {
+    public List<FeedWorkResponseDto> getFeed(String sort, String genre, int page, int size) {
         Pageable pageable = PageRequest.of(Math.max(page, 0), clampSize(size));
 
         if (genre != null && !genre.isBlank() && !genre.equalsIgnoreCase("TODOS")) {
             String normalizedGenre = GenreNormalizer.normalize(genre);
-            return excludeSuspended(
+            return toResponse(excludeSuspended(
                     workFeedMongoRepository.findAllByGenresContainingAndStatusNotOrderByDiscoveryScoreDesc(
                             normalizedGenre, SUSPENDED_STATUS, pageable)
-            );
+            ));
         }
 
         String sortKey = sort == null ? "recommended" : sort.toLowerCase();
@@ -47,17 +48,23 @@ public class FeedApplicationService {
             case "fresh" -> workFeedMongoRepository.findAllByStatusNotOrderByUpdatedAtDesc(SUSPENDED_STATUS, pageable);
             default -> workFeedMongoRepository.findAllByStatusNotOrderByDiscoveryScoreDesc(SUSPENDED_STATUS, pageable);
         };
-        return excludeSuspended(result);
+        return toResponse(excludeSuspended(result));
     }
 
-    public List<WorkFeedDocument> getTrending(int limit) {
+    public List<FeedWorkResponseDto> getTrending(int limit) {
         Pageable pageable = PageRequest.of(0, clampSize(limit));
-        return excludeSuspended(workFeedMongoRepository.findAllByStatusNotOrderByTrendingScoreDesc(SUSPENDED_STATUS, pageable));
+        return toResponse(excludeSuspended(
+                workFeedMongoRepository.findAllByStatusNotOrderByTrendingScoreDesc(SUSPENDED_STATUS, pageable)));
     }
 
-    public List<WorkFeedDocument> getFreshReleases(int limit) {
+    public List<FeedWorkResponseDto> getFreshReleases(int limit) {
         Pageable pageable = PageRequest.of(0, clampSize(limit));
-        return excludeSuspended(workFeedMongoRepository.findAllByStatusNotOrderByUpdatedAtDesc(SUSPENDED_STATUS, pageable));
+        return toResponse(excludeSuspended(
+                workFeedMongoRepository.findAllByStatusNotOrderByUpdatedAtDesc(SUSPENDED_STATUS, pageable)));
+    }
+
+    private List<FeedWorkResponseDto> toResponse(List<WorkFeedDocument> documents) {
+        return documents.stream().map(FeedWorkResponseDto::from).toList();
     }
 
     /**

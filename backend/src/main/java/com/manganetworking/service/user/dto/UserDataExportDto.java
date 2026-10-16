@@ -1,7 +1,5 @@
 package com.manganetworking.service.user.dto;
 
-import com.manganetworking.domain.nosql.ReadingProgressDocument;
-
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -15,5 +13,5 @@ public record UserDataExportDto(
         boolean isVip,
         LocalDateTime createdAt,
         List<LikedWorkSummaryDto> likedWorks,
-        List<ReadingProgressDocument> readingHistory
+        List<ReadingProgressResponseDto> readingHistory
 ) {}

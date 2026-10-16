@@ -11,6 +11,7 @@ import com.manganetworking.repository.jpa.UserRepository;
 import com.manganetworking.repository.jpa.WorkRepository;
 import com.manganetworking.repository.mongo.WorkFeedMongoRepository;
 import com.manganetworking.service.feed.FeedApplicationService;
+import com.manganetworking.service.feed.dto.FeedWorkResponseDto;
 import com.manganetworking.service.moderation.ModerationApplicationService;
 import com.manganetworking.service.recommendation.RecommendationAlgorithmService;
 import com.manganetworking.service.work.WorkApplicationService;
@@ -211,10 +212,10 @@ class FeedSyncIntegrationTest {
         suspended.setTrendingScore(99_999_999.0);
         workFeedMongoRepository.save(suspended);
 
-        List<WorkFeedDocument> page = feedApplicationService.getFeed("recommended", null, 0, 2);
+        List<FeedWorkResponseDto> page = feedApplicationService.getFeed("recommended", null, 0, 2);
 
         assertThat(page).hasSize(2);
-        assertThat(page).extracting(WorkFeedDocument::getWorkId)
+        assertThat(page).extracting(FeedWorkResponseDto::workId)
                 .doesNotContain(suspended.getWorkId());
     }
 
