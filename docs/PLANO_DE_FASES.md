@@ -273,5 +273,5 @@
 - Endpoints de leitura que devolvem modelos **NoSQL** (`ReadingProgressDocument`, `WorkFeedDocument`) podem ganhar DTOs de apresentação por consistência de camadas (sem lazy loading envolvido).
 - `RateLimitingFilter`/`SessionService` mantêm estado **em memória** (não distribuído) — revisar se a topologia passar a ter múltiplas instâncias.
 - Sync de feed em `afterCommit` (`WorkApplicationService`/`ModerationApplicationService`): hoje depende de a sessão JPA ainda estar aberta na fase `afterCommit` (validado no smoke). Candidato a `@TransactionalEventListener(phase = AFTER_COMMIT)` ou `REQUIRES_NEW` para não depender desse detalhe do Spring.
-- Teste de contexto real (Testcontainers) para OSIV/`afterCommit`/job agendado — hoje coberto por smoke E2E + testes unitários.
+- ✅ **Testcontainers (implementado, não commitado):** `FeedSyncIntegrationTest` sobe PostgreSQL 16 + MongoDB 7 efêmeros e cobre OSIV desligado, sync de feed em `afterCommit` (obra e capítulo com early access) e reindexação fora de requisição web. Nota de ambiente: o docker-java assume API 1.24 e o Docker Engine 29+ exige ≥ 1.44 — o surefire fixa `api.version=1.44` (sem daemon Docker o teste é ignorado via `disabledWithoutDocker`).
 - Frontend: substituir placeholders de XP/Season em `CreatorWorkspacePage` e alinhar `#E63946`/`text-white` à paleta `--color-red: #E8402F`.

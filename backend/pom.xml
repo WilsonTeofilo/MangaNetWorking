@@ -78,6 +78,25 @@
       <artifactId>spring-security-test</artifactId>
       <scope>test</scope>
     </dependency>
+
+    <!-- Testcontainers: contexto de integração real (PostgreSQL + MongoDB efêmeros).
+         Cobertura de OSIV desligado, sync de feed em afterCommit e job agendado, sem depender do Docker local
+         (as classes usam disabledWithoutDocker = true e são ignoradas quando não há daemon). -->
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>postgresql</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>mongodb</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
@@ -98,6 +117,12 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <configuration>
           <argLine>-Dnet.bytebuddy.experimental=true -XX:+EnableDynamicAgentLoading</argLine>
+          <systemPropertyVariables>
+            <!-- Docker Engine 29+ exige API mínima 1.44; o docker-java (via Testcontainers/JUnit) assume 1.24
+                 por padrão e o endpoint /info responde HTTP 400, fazendo o Testcontainers não achar o daemon.
+                 Sobrescreva com -Dapi.version=... se o Docker local exigir outra versão. -->
+            <api.version>1.44</api.version>
+          </systemPropertyVariables>
         </configuration>
       </plugin>
     </plugins>
