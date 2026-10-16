@@ -3,6 +3,7 @@ package com.manganetworking.service.storage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.springframework.http.HttpStatus;
 
 import java.nio.file.Path;
 
@@ -17,7 +18,7 @@ class FileStorageServiceTest {
 
     @BeforeEach
     void setUp() {
-        storageService = new LocalFileStorageService(tempDir.toString());
+        storageService = new LocalFileStorageService(tempDir.toString(), 15);
     }
 
     @Test
@@ -40,18 +41,29 @@ class FileStorageServiceTest {
         // Arquivo fingindo ser PNG mas contendo texto simples
         byte[] fakeBytes = "console.log('malware')".getBytes();
 
-        SecurityException exception = assertThrows(SecurityException.class, () ->
+        FilePolicyException exception = assertThrows(FilePolicyException.class, () ->
                 storageService.storeFile(fakeBytes, "exploit.png", "image/png")
         );
         assertTrue(exception.getMessage().contains("Assinatura do arquivo"));
+        // Rejeição de política é 415 (formato inválido), não 401 (credencial).
+        assertEquals(HttpStatus.UNSUPPORTED_MEDIA_TYPE, exception.getStatus());
     }
 
     @Test
     void shouldRejectPathTraversalAttemptsOnLoad() {
         // Tentativa de carregar arquivo usando diretório relativo ou traversal
-        assertThrows(SecurityException.class, () ->
+        FilePolicyException exception = assertThrows(FilePolicyException.class, () ->
                 storageService.loadFile("../../../windows/system32/cmd.exe")
         );
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());
+    }
+
+    @Test
+    void shouldRejectUnsupportedMimeTypeWithUnsupportedMedia() {
+        FilePolicyException exception = assertThrows(FilePolicyException.class, () ->
+                storageService.storeFile(new byte[]{'<', 's', 'v', 'g', '>'}, "malicioso.svg", "image/svg+xml")
+        );
+        assertEquals(HttpStatus.UNSUPPORTED_MEDIA_TYPE, exception.getStatus());
     }
 
     @Test

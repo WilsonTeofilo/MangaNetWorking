@@ -3,6 +3,7 @@ package com.manganetworking.service.storage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -18,7 +19,6 @@ import java.util.UUID;
 public class LocalFileStorageService implements FileStorageService {
 
     private static final Logger log = LoggerFactory.getLogger(LocalFileStorageService.class);
-    private static final long MAX_FILE_SIZE = 15 * 1024 * 1024; // 15MB max
 
     private static final List<String> ALLOWED_MIME_TYPES = Arrays.asList(
             "image/jpeg",
@@ -27,13 +27,20 @@ public class LocalFileStorageService implements FileStorageService {
     );
 
     private final Path uploadDir;
+    private final long maxFileSizeBytes;
+    private final long maxFileSizeMb;
 
-    public LocalFileStorageService(@Value("${platform.storage.local-upload-dir:./data/uploads}") String uploadPath) {
+    public LocalFileStorageService(
+            @Value("${platform.storage.local-upload-dir:./data/uploads}") String uploadPath,
+            @Value("${platform.storage.max-file-size-mb:15}") long maxFileSizeMb
+    ) {
         this.uploadDir = Paths.get(uploadPath).toAbsolutePath().normalize();
+        this.maxFileSizeMb = maxFileSizeMb;
+        this.maxFileSizeBytes = maxFileSizeMb * 1024 * 1024;
         try {
             Files.createDirectories(this.uploadDir);
         } catch (IOException e) {
-            throw new RuntimeException("Não foi possível criar o diretório de uploads local: " + this.uploadDir, e);
+            throw new StorageException("Não foi possível criar o diretório de uploads local: " + this.uploadDir, e);
         }
     }
 
@@ -43,13 +50,15 @@ public class LocalFileStorageService implements FileStorageService {
             throw new IllegalArgumentException("Arquivo vazio não é permitido.");
         }
 
-        if (fileBytes.length > MAX_FILE_SIZE) {
-            throw new IllegalArgumentException("Tamanho do arquivo excede o limite máximo permitido de 15MB.");
+        if (fileBytes.length > maxFileSizeBytes) {
+            throw new IllegalArgumentException(
+                    "Tamanho do arquivo excede o limite máximo permitido de " + maxFileSizeMb + "MB.");
         }
 
         // Validação estrita de tipo MIME (SVG e executáveis são bloqueados)
         if (contentType == null || !ALLOWED_MIME_TYPES.contains(contentType.toLowerCase())) {
-            throw new SecurityException("Formato de arquivo não suportado. Apenas JPEG, PNG e WebP são aceitos.");
+            throw new FilePolicyException(HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+                    "Formato de arquivo não suportado. Apenas JPEG, PNG e WebP são aceitos.");
         }
 
         // Validação de Magic Bytes para impedir spoofing de extensão
@@ -60,7 +69,8 @@ public class LocalFileStorageService implements FileStorageService {
 
         Path targetPath = this.uploadDir.resolve(safeFilename).normalize();
         if (!targetPath.startsWith(this.uploadDir)) {
-            throw new SecurityException("Tentativa de Path Traversal bloqueada: " + originalFilename);
+            throw new FilePolicyException(HttpStatus.BAD_REQUEST,
+                    "Tentativa de Path Traversal bloqueada: " + originalFilename);
         }
 
         try {
@@ -68,14 +78,14 @@ public class LocalFileStorageService implements FileStorageService {
             log.info("[STORAGE] Arquivo armazenado com sucesso no filesystem local: {}", safeFilename);
             return safeFilename;
         } catch (IOException e) {
-            throw new RuntimeException("Erro de I/O ao salvar arquivo no disco local", e);
+            throw new StorageException("Erro de I/O ao salvar arquivo no disco local", e);
         }
     }
 
     @Override
     public byte[] loadFile(String filename) {
         if (filename == null || filename.contains("..") || filename.contains("/") || filename.contains("\\")) {
-            throw new SecurityException("Nome de arquivo inválido para leitura");
+            throw new FilePolicyException(HttpStatus.BAD_REQUEST, "Nome de arquivo inválido para leitura");
         }
 
         Path filePath = this.uploadDir.resolve(filename).normalize();
@@ -86,49 +96,72 @@ public class LocalFileStorageService implements FileStorageService {
         try {
             return Files.readAllBytes(filePath);
         } catch (IOException e) {
-            throw new RuntimeException("Erro ao ler arquivo do disco local", e);
+            throw new StorageException("Erro ao ler arquivo do disco local", e);
         }
     }
 
     @Override
     public void deleteFile(String filename) {
-        if (filename == null || filename.contains("..")) return;
+        if (!isSafeStorageFilename(filename)) return;
         Path filePath = this.uploadDir.resolve(filename).normalize();
         try {
             Files.deleteIfExists(filePath);
-        } catch (IOException ignored) {}
+        } catch (IOException e) {
+            // Remoção é melhor esforço (ex.: arquivo bloqueado no Windows); registra sem falhar a operação.
+            log.warn("[STORAGE] Não foi possível remover o arquivo {}: {}", filename, e.getMessage());
+        }
     }
 
     @Override
     public boolean exists(String filename) {
-        if (filename == null || filename.contains("..")) return false;
+        if (!isSafeStorageFilename(filename)) return false;
         Path filePath = this.uploadDir.resolve(filename).normalize();
         return Files.exists(filePath);
     }
 
+    /**
+     * Guarda comum a {@link #exists(String)} e {@link #deleteFile(String)}: o nome
+     * não pode ser nulo, conter traversal nem separadores, e a resolução precisa
+     * permanecer dentro de {@code uploadDir} (caminho absoluto também é rejeitado).
+     */
+    private boolean isSafeStorageFilename(String filename) {
+        if (filename == null || filename.contains("..")
+                || filename.contains("/") || filename.contains("\\")) {
+            return false;
+        }
+        try {
+            return this.uploadDir.resolve(filename).normalize().startsWith(this.uploadDir);
+        } catch (RuntimeException invalidPath) {
+            return false;
+        }
+    }
+
     private void validateMagicBytes(byte[] bytes, String contentType) {
         if (bytes.length < 4) {
-            throw new SecurityException("Arquivo corrompido");
+            throw new FilePolicyException(HttpStatus.BAD_REQUEST, "Arquivo corrompido");
         }
 
         // JPEG: FF D8 FF
         if (contentType.equalsIgnoreCase("image/jpeg")) {
             if ((bytes[0] & 0xFF) != 0xFF || (bytes[1] & 0xFF) != 0xD8 || (bytes[2] & 0xFF) != 0xFF) {
-                throw new SecurityException("Assinatura do arquivo não corresponde a uma imagem JPEG válida.");
+                throw new FilePolicyException(HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+                        "Assinatura do arquivo não corresponde a uma imagem JPEG válida.");
             }
         }
         // PNG: 89 50 4E 47
         else if (contentType.equalsIgnoreCase("image/png")) {
             if ((bytes[0] & 0xFF) != 0x89 || (bytes[1] & 0xFF) != 0x50 ||
                 (bytes[2] & 0xFF) != 0x4E || (bytes[3] & 0xFF) != 0x47) {
-                throw new SecurityException("Assinatura do arquivo não corresponde a uma imagem PNG válida.");
+                throw new FilePolicyException(HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+                        "Assinatura do arquivo não corresponde a uma imagem PNG válida.");
             }
         }
         // WebP: RIFF ... WEBP
         else if (contentType.equalsIgnoreCase("image/webp")) {
             if ((bytes[0] & 0xFF) != 'R' || (bytes[1] & 0xFF) != 'I' ||
                 (bytes[2] & 0xFF) != 'F' || (bytes[3] & 0xFF) != 'F') {
-                throw new SecurityException("Assinatura do arquivo não corresponde a uma imagem WebP válida.");
+                throw new FilePolicyException(HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+                        "Assinatura do arquivo não corresponde a uma imagem WebP válida.");
             }
         }
     }

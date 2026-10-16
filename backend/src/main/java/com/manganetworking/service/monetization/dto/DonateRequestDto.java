@@ -7,9 +7,6 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 public record DonateRequestDto(
-        @NotNull(message = "O ID do leitor doador é obrigatório")
-        UUID donorUserId,
-
         @NotNull(message = "O ID do criador é obrigatório")
         UUID creatorId,
 

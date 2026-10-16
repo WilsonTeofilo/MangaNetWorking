@@ -105,7 +105,8 @@ class AuthControllerTest {
                 "",
                 false,
                 null,
-                null
+                null,
+                false
         );
 
         when(authApplicationService.verify2Fa(any(), any())).thenReturn(sessionDto);

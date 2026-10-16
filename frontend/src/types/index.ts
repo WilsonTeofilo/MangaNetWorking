@@ -113,7 +113,10 @@ export interface UserProfile {
   email: string;
   avatarUrl: string;
   isCreator: boolean;
+  isModerator?: boolean;
   creatorId?: string;
+  isVip?: boolean;
+  vipExpiresAt?: string;
   activeMemberships: Record<string, MembershipSubscription>; // creatorId -> subscription
   favorites: string[]; // workIds
 }
@@ -126,4 +129,19 @@ export interface ReadingProgress {
   page: number;
   coverUrl: string;
   updatedAt: string;
+}
+
+export type ReportReason =
+  | 'COPYRIGHT_PIRACY'
+  | 'PORNOGRAPHY_HENTAI'
+  | 'PLAGIARISM'
+  | 'ABUSIVE_CONTENT'
+  | 'OTHER';
+
+export interface ReportPayload {
+  workId: string;
+  chapterId?: string;
+  reason: ReportReason;
+  description: string;
+  reporterEmail?: string;
 }

@@ -26,4 +26,7 @@ public interface WorkFeedMongoRepository extends MongoRepository<WorkFeedDocumen
 
     // Lançamentos Recentes (Novos Capítulos)
     List<WorkFeedDocument> findAllByOrderByUpdatedAtDesc(Pageable pageable);
+
+    // Remoção imediata do Feed em caso de suspensão cautelar por moderação
+    void deleteByWorkId(String workId);
 }

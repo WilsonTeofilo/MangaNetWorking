@@ -5,7 +5,7 @@ import com.manganetworking.domain.relational.CreatorEntity;
 import com.manganetworking.domain.relational.UserEntity;
 import com.manganetworking.repository.jpa.CreatorRepository;
 import com.manganetworking.repository.jpa.UserRepository;
-import com.manganetworking.service.TwoFactorAuthService;
+import com.manganetworking.service.mfa.TwoFactorAuthService;
 import com.manganetworking.service.auth.dto.*;
 import com.manganetworking.service.session.SessionService;
 import jakarta.servlet.http.Cookie;
@@ -148,7 +148,8 @@ public class AuthApplicationService {
                 user.getAvatarUrl() != null ? user.getAvatarUrl() : "",
                 user.isCreator(),
                 creator != null ? creator.getId() : null,
-                creator != null ? creator.getHandle() : null
+                creator != null ? creator.getHandle() : null,
+                user.isModerator()
         );
     }
 

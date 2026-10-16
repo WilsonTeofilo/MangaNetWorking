@@ -36,6 +36,7 @@ public class SessionService {
                 user.getEmail(),
                 user.getName(),
                 user.isCreator(),
+                user.isModerator(),
                 creator != null ? creator.getId() : null,
                 creator != null ? creator.getHandle() : null,
                 expiresAt
@@ -87,6 +88,7 @@ public class SessionService {
             String email,
             String name,
             boolean isCreator,
+            boolean isModerator,
             UUID creatorId,
             String creatorHandle,
             Instant expiresAt

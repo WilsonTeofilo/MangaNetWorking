@@ -1,0 +1,167 @@
+import { request } from './client';
+
+export interface CreateWorkPayload {
+  title: string;
+  originalTitle?: string;
+  synopsis: string;
+  coverUrl?: string;
+  bannerUrl?: string;
+  genres: string[];
+  originalAuthorDeclaration: boolean;
+}
+
+export interface CreateChapterPayload {
+  chapterNumber: number;
+  title: string;
+  pages: string[];
+  publicReleaseAt: string;
+}
+
+/** Projeção do item de feed (MongoDB) retornada por `GET /api/feed`. */
+export interface FeedWorkDto {
+  workId: string;
+  title: string;
+  slug: string;
+  originalTitle?: string | null;
+  synopsis: string;
+  coverUrl?: string | null;
+  bannerUrl?: string | null;
+  authorId?: string | null;
+  authorName?: string | null;
+  authorHandle?: string | null;
+  authorAvatarUrl?: string | null;
+  genres: string[];
+  status?: string | null;
+  totalViews?: number | null;
+  totalLikes?: number | null;
+  totalComments?: number | null;
+  totalChapters?: number | null;
+  latestChapterNumber?: number | null;
+  latestChapterTitle?: string | null;
+  latestChapterReleaseAt?: string | null;
+  latestChapterIsEarlyAccess?: boolean;
+  discoveryScore?: number | null;
+  trendingScore?: number | null;
+  freshRelease?: boolean;
+  creatorBoostMul?: number | null;
+  updatedAt?: string | null;
+}
+
+export interface ChapterSummaryDto {
+  id: string;
+  chapterNumber: number;
+  title: string;
+  coverUrl?: string | null;
+  publicReleaseAt?: string | null;
+  isEarlyAccess: boolean;
+  views: number;
+  likes: number;
+}
+
+export interface AuthorSummaryDto {
+  authorId: string;
+  authorName: string;
+  authorHandle: string;
+  authorAvatarUrl?: string | null;
+  membershipPriceBrl: number;
+  isMonetized: boolean;
+}
+
+/** `GET /api/works/{slug}` */
+export interface WorkDetailsDto {
+  id: string;
+  title: string;
+  slug: string;
+  originalTitle?: string | null;
+  synopsis: string;
+  coverUrl?: string | null;
+  bannerUrl?: string | null;
+  status?: string | null;
+  genres: string[];
+  totalChapters: number;
+  totalViews: number;
+  totalLikes: number;
+  author?: AuthorSummaryDto | null;
+  chapters: ChapterSummaryDto[];
+}
+
+/** `GET /api/works/{slug}/chapters/{chapterNumber}` */
+export interface ChapterReadDto {
+  locked: boolean;
+  chapterId: string;
+  workTitle: string;
+  chapterNumber: number;
+  chapterTitle: string;
+  pagesJson: string;
+  likes: number;
+  authorHandle: string;
+  authorId?: string | null;
+}
+
+export const workApi = {
+  /**
+   * Feed de descoberta (MongoDB): recomendado, em alta ou lançamentos recentes.
+   */
+  getFeed(sort: 'recommended' | 'trending' | 'fresh' = 'recommended', genre?: string, size?: number) {
+    const params = new URLSearchParams();
+    params.set('sort', sort);
+    if (genre) params.set('genre', genre);
+    if (size) params.set('size', String(size));
+    return request<FeedWorkDto[]>(`/feed?${params.toString()}`);
+  },
+
+  /**
+   * Catálogo por obra (alias do feed para manter compatibilidade).
+   */
+  getWorks(genre?: string) {
+    return workApi.getFeed('recommended', genre, 50);
+  },
+
+  /**
+   * Detalhe de uma obra pelo slug, incluindo a lista de capítulos.
+   */
+  getWorkBySlug(slug: string) {
+    return request<WorkDetailsDto>(`/works/${slug}`);
+  },
+
+  getWorkById(workId: string) {
+    return workApi.getWorkBySlug(workId);
+  },
+
+  /**
+   * Publicar nova obra com declaração de autoria mandatória.
+   */
+  createWork(payload: CreateWorkPayload) {
+    return request('/works', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  /**
+   * Adicionar capítulo a uma obra.
+   */
+  createChapter(workId: string, payload: CreateChapterPayload) {
+    return request(`/works/${workId}/chapters`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  /**
+   * Leitura de capítulo com validação autoritativa de Early Access no servidor.
+   * Retorna HTTP 403 quando o capítulo está em acesso antecipado e o leitor não é membro.
+   */
+  readChapter(slug: string, chapterNumber: number) {
+    return request<ChapterReadDto>(`/works/${slug}/chapters/${chapterNumber}`);
+  },
+
+  /**
+   * Resgate de missão da temporada de criadores com boost de algoritmo.
+   */
+  claimMission(missionId: string) {
+    return request('/creators/workspace/missions/' + missionId + '/claim', {
+      method: 'POST',
+    });
+  },
+};

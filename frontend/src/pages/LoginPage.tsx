@@ -4,6 +4,9 @@ import { Button } from '../components/ui/Button';
 import { Field } from '../components/ui/Field';
 import { OtpInput } from '../components/ui/OtpInput';
 import { Win } from '../components/ui/Win';
+import { ApiError } from '../api/client';
+import { authApi } from '../api/authApi';
+import { useAuth } from '../context/AuthContext';
 import mascotSvg from '../assets/brand/mascot-placeholder.svg';
 import logoWordmark from '../assets/brand/logo-wordmark.svg';
 
@@ -12,32 +15,92 @@ interface LoginPageProps {
   onLoginSuccess?: () => void;
 }
 
+/** OTP aleatório usado apenas no modo demonstração (backend indisponível). */
+function randomOtp(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
 export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
+  const { refreshSession } = useAuth();
+  const [mode, setMode] = useState<'login' | 'register'>('login');
   const [roleIntent, setRoleIntent] = useState<'reader' | 'creator'>('reader');
   const [step, setStep] = useState<'credentials' | 'two-factor'>('credentials');
+  const [name, setName] = useState('');
+  const [handle, setHandle] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [twoFactorCode, setTwoFactorCode] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Simulação do código 2FA enviado para Dev Outbox
-  const [mockDevOtp, setMockDevOtp] = useState('742891');
+  // E-mail que identifica o desafio 2FA no servidor e modo demonstração (sem backend).
+  const [challengeEmail, setChallengeEmail] = useState('');
+  const [isDemoMode, setIsDemoMode] = useState(false);
+  // Código 2FA para conveniência em desenvolvimento (Dev Outbox). Vazio em produção.
+  const [devOtpHint, setDevOtpHint] = useState('');
+
+  const completeLogin = async () => {
+    // Hidrata a sessão real (pode não haver sessão em modo demonstração).
+    await refreshSession();
+    if (onLoginSuccess) {
+      onLoginSuccess();
+    } else {
+      onBackToFeed();
+    }
+  };
+
+  const switchMode = (next: 'login' | 'register') => {
+    setMode(next);
+    setErrorMessage('');
+  };
 
   const handleCredentialsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
+
+    if (mode === 'register' && !name.trim()) {
+      setErrorMessage('Informe seu nome para criar a conta.');
+      return;
+    }
     if (!email || !password) {
       setErrorMessage('Preencha seu e-mail e senha.');
       return;
     }
 
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      setMockDevOtp(Math.floor(100000 + Math.random() * 900000).toString());
+    try {
+      // Cadastro e login devolvem o mesmo desafio 2FA (o e-mail identifica o desafio).
+      const challenge =
+        mode === 'register'
+          ? await authApi.register({
+              name: name.trim(),
+              email,
+              password,
+              isCreator: roleIntent === 'creator',
+              handle: roleIntent === 'creator' ? handle.trim() || undefined : undefined,
+            })
+          : await authApi.login({ email, password });
+
+      const targetEmail = challenge.email || email;
+      setChallengeEmail(targetEmail);
+      setIsDemoMode(false);
+      setDevOtpHint((await authApi.fetchDevOtp(targetEmail)) ?? '');
       setStep('two-factor');
-    }, 400);
+    } catch (err) {
+      if (err instanceof ApiError && err.status >= 400 && err.status < 500) {
+        // O backend respondeu: credenciais inválidas, dados incompletos ou e-mail já cadastrado.
+        const data = err.data as { message?: string } | undefined;
+        setErrorMessage(data?.message || 'Não foi possível continuar. Verifique os dados informados.');
+      } else {
+        // Backend indisponível: segue no modo demonstração local.
+        setIsDemoMode(true);
+        setChallengeEmail(email);
+        setDevOtpHint(randomOtp());
+        setStep('two-factor');
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleTwoFactorSubmit = async (e: React.FormEvent) => {
@@ -49,14 +112,22 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
     }
 
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      if (onLoginSuccess) {
-        onLoginSuccess();
-      } else {
-        onBackToFeed();
+    try {
+      if (!isDemoMode) {
+        await authApi.verify2fa({ email: challengeEmail || email, code: twoFactorCode });
       }
-    }, 500);
+      await completeLogin();
+    } catch (err) {
+      if (err instanceof ApiError && err.status >= 400 && err.status < 500) {
+        const data = err.data as { message?: string } | undefined;
+        setErrorMessage(data?.message || 'Código inválido ou expirado. Tente novamente.');
+      } else {
+        // Backend caiu no meio do fluxo: conclui em modo demonstração.
+        await completeLogin();
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -114,41 +185,96 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
             <form onSubmit={handleCredentialsSubmit} className="space-y-6">
               <div>
                 <h2 className="font-display text-3xl sm:text-4xl text-[#F4EFE3] uppercase tracking-wide">
-                  ENTRAR / CADASTRO
+                  {mode === 'login' ? 'ENTRAR NA CONTA' : 'CRIAR CONTA'}
                 </h2>
                 <p className="font-body text-xs text-[#A9A59A] mt-1">
-                  Selecione como deseja navegar na plataforma:
+                  {mode === 'login'
+                    ? 'Acesse com seu e-mail e senha. O 2FA é obrigatório.'
+                    : 'Cadastro com verificação em 2 etapas obrigatória.'}
                 </p>
               </div>
 
-              {/* Botões Grandes de Seleção de Papel */}
-              <div className="grid grid-cols-2 gap-3">
+              {/* Alternar entre Entrar e Criar Conta */}
+              <div className="grid grid-cols-2 border-2 border-[#34343A]">
                 <button
                   type="button"
-                  onClick={() => setRoleIntent('reader')}
-                  className={`p-3 border-2 font-display text-base tracking-wider uppercase transition-all ${
-                    roleIntent === 'reader'
-                      ? 'bg-[#FFD400] text-[#0B0B0C] border-[#0B0B0C] shadow-[3px_3px_0_#F4EFE3]'
-                      : 'bg-[#212125] text-[#A9A59A] border-[#34343A] hover:text-[#F4EFE3]'
+                  onClick={() => switchMode('login')}
+                  className={`py-2 font-pixel text-xs uppercase tracking-wider transition-all ${
+                    mode === 'login'
+                      ? 'bg-[#F4EFE3] text-[#0B0B0C]'
+                      : 'bg-[#212125] text-[#A9A59A] hover:text-[#F4EFE3]'
                   }`}
                 >
-                  SOU LEITOR
+                  ENTRAR
                 </button>
-
                 <button
                   type="button"
-                  onClick={() => setRoleIntent('creator')}
-                  className={`p-3 border-2 font-display text-base tracking-wider uppercase transition-all ${
-                    roleIntent === 'creator'
-                      ? 'bg-[#FFD400] text-[#0B0B0C] border-[#0B0B0C] shadow-[3px_3px_0_#F4EFE3]'
-                      : 'bg-[#212125] text-[#A9A59A] border-[#34343A] hover:text-[#F4EFE3]'
+                  onClick={() => switchMode('register')}
+                  className={`py-2 font-pixel text-xs uppercase tracking-wider border-l-2 border-[#34343A] transition-all ${
+                    mode === 'register'
+                      ? 'bg-[#F4EFE3] text-[#0B0B0C]'
+                      : 'bg-[#212125] text-[#A9A59A] hover:text-[#F4EFE3]'
                   }`}
                 >
-                  SOU CRIADOR
+                  CRIAR CONTA
                 </button>
               </div>
 
+              {/* Botões Grandes de Seleção de Papel (apenas no cadastro) */}
+              {mode === 'register' && (
+                <div className="space-y-2">
+                  <span className="font-pixel text-[10px] text-[#A9A59A] tracking-wider uppercase block">
+                    CRIAR COMO:
+                  </span>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setRoleIntent('reader')}
+                      className={`p-3 border-2 font-display text-base tracking-wider uppercase transition-all ${
+                        roleIntent === 'reader'
+                          ? 'bg-[#FFD400] text-[#0B0B0C] border-[#0B0B0C] shadow-[3px_3px_0_#F4EFE3]'
+                          : 'bg-[#212125] text-[#A9A59A] border-[#34343A] hover:text-[#F4EFE3]'
+                      }`}
+                    >
+                      SOU LEITOR
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setRoleIntent('creator')}
+                      className={`p-3 border-2 font-display text-base tracking-wider uppercase transition-all ${
+                        roleIntent === 'creator'
+                          ? 'bg-[#FFD400] text-[#0B0B0C] border-[#0B0B0C] shadow-[3px_3px_0_#F4EFE3]'
+                          : 'bg-[#212125] text-[#A9A59A] border-[#34343A] hover:text-[#F4EFE3]'
+                      }`}
+                    >
+                      SOU CRIADOR
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-4">
+                {mode === 'register' && (
+                  <Field
+                    label="NOME"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Seu nome completo"
+                    required
+                  />
+                )}
+
+                {mode === 'register' && roleIntent === 'creator' && (
+                  <Field
+                    label="HANDLE PÚBLICO (@)"
+                    value={handle}
+                    onChange={(e) => setHandle(e.target.value)}
+                    placeholder="ex: seu_estudio"
+                    helperText="Identificador público do seu perfil de autor"
+                  />
+                )}
+
                 <Field
                   label="E-MAIL"
                   type="email"
@@ -182,7 +308,11 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
                 disabled={isLoading}
                 className="w-full !min-h-[48px] !text-lg"
               >
-                {isLoading ? 'VERIFICANDO...' : 'CONTINUAR COM 2FA'}
+                {isLoading
+                  ? 'VERIFICANDO...'
+                  : mode === 'register'
+                    ? 'CRIAR CONTA E ATIVAR 2FA'
+                    : 'CONTINUAR COM 2FA'}
               </Button>
             </form>
           ) : (
@@ -238,19 +368,21 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
               </div>
 
               {/* Dev Outbox em Janela Retrô <Win> (Apenas Fora de Prod) */}
-              <Win title="DEV_OUTBOX.EXE" className="mt-4">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-pixel text-[#A9A59A]">CÓDIGO DE TESTE:</span>
-                  <button
-                    type="button"
-                    onClick={() => setTwoFactorCode(mockDevOtp)}
-                    className="font-display text-base text-[#FFD400] hover:underline"
-                    title="Clique para preencher automaticamente"
-                  >
-                    {mockDevOtp} (COLAR)
-                  </button>
-                </div>
-              </Win>
+              {devOtpHint && (
+                <Win title="DEV_OUTBOX.EXE" className="mt-4">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-pixel text-[#A9A59A]">CÓDIGO DE TESTE:</span>
+                    <button
+                      type="button"
+                      onClick={() => setTwoFactorCode(devOtpHint)}
+                      className="font-display text-base text-[#FFD400] hover:underline"
+                      title="Clique para preencher automaticamente"
+                    >
+                      {devOtpHint} (COLAR)
+                    </button>
+                  </div>
+                </Win>
+              )}
             </form>
           )}
 

@@ -22,6 +22,10 @@ spring:
     hibernate:
       ddl-auto: validate # Flyway gerencia o schema autoritativamente
     show-sql: false
+    # Sem OSIV: a sessão Hibernate encerra ao fim do serviço transacional. Assim, serializar
+    # uma associação LAZY fora da transação falha alto (em vez de disparar queries silenciosas
+    # durante a renderização) e a conexão não fica presa durante a camada web.
+    open-in-view: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
@@ -32,18 +36,34 @@ spring:
     mongodb:
       uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/manganetworking_events}
 
+  # Limites de upload aplicados antes de ler arquivos inteiros em memória (anti-DoS)
+  servlet:
+    multipart:
+      max-file-size: ${STORAGE_MAX_FILE_SIZE_MB:15}MB # Mesma variável de platform.storage.max-file-size-mb
+      max-request-size: 200MB # Cobre o upload em lote de páginas de um capítulo
+
 # Parâmetros de Negócio da Plataforma MangaNetWorking
 platform:
   fee-percentage: 0.17 # 17% retido pela plataforma sobre doações e membros
   creator-share-percentage: 0.83 # 83% repasse líquido ao criador
+  vip-price: 23.00 # R$ 23 / 30 dias para remoção total de anúncios
   membership:
     min-price: 7.99
     max-price: 45.99
   ads:
     pages-per-ad: 30 # Anúncio a cada 30 páginas lidas
+    cpm-brl: 0.05 # R$ 0,05 de CPM base estimado
     creator-share-percentage: 0.58 # 58% para o criador monetizado
     platform-share-percentage: 0.42 # 42% para a plataforma
   security:
     two-factor-mandatory: true # 2FA obrigatório até mesmo para login com Google
+    aes-secret-key: ${AES_SECRET_KEY:MangaNetWorking2026AESKeySecret!} # Chave de 256 bits para dados de criadores
+    rate-limit-per-minute: 120 # Throttling global por IP
+    auth-rate-limit-per-minute: 15 # Throttling estrito para login/cadastro/2fa
+    trust-forwarded-headers: false # Só habilitar atrás de um proxy reverso confiável (evita burlar o rate limit via X-Forwarded-For)
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5180,http://localhost:5173,http://localhost:3000,http://127.0.0.1:5180,http://127.0.0.1:5173,http://127.0.0.1:3000} # Origens autorizadas (CORS), separadas por vírgula
   storage:
     local-upload-dir: ${UPLOAD_DIR:./data/uploads} # Diretório isolado local para páginas e avatares
+    max-file-size-mb: ${STORAGE_MAX_FILE_SIZE_MB:15} # Limite por arquivo (defesa em profundidade; alinhado ao multipart)
+

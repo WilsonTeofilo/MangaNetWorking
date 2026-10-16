@@ -1,5 +1,6 @@
-package com.manganetworking.service;
+package com.manganetworking.service.monetization;
 
+import com.manganetworking.config.properties.PlatformProperties;
 import com.manganetworking.domain.enums.PaymentStatus;
 import com.manganetworking.domain.enums.TransactionType;
 import com.manganetworking.domain.relational.*;
@@ -19,10 +20,8 @@ public class MonetizationService {
 
     private static final Logger log = LoggerFactory.getLogger(MonetizationService.class);
 
-    public static final BigDecimal PLATFORM_FEE_RATE = new BigDecimal("0.17"); // 17%
-    public static final BigDecimal CREATOR_NET_RATE = new BigDecimal("0.83"); // 83%
-    public static final BigDecimal MIN_MEMBERSHIP_PRICE = new BigDecimal("7.99");
-    public static final BigDecimal MAX_MEMBERSHIP_PRICE = new BigDecimal("45.99");
+    /** Fator para converter a taxa decimal (0.17) em percentual no ledger (17.00). */
+    private static final BigDecimal PERCENT_FACTOR = new BigDecimal("100");
 
     private final DonationRepository donationRepository;
     private final MembershipSubscriptionRepository membershipRepository;
@@ -31,6 +30,7 @@ public class MonetizationService {
     private final UserRepository userRepository;
     private final WorkRepository workRepository;
     private final ChapterRepository chapterRepository;
+    private final PlatformProperties properties;
 
     public MonetizationService(
             DonationRepository donationRepository,
@@ -39,7 +39,8 @@ public class MonetizationService {
             CreatorRepository creatorRepository,
             UserRepository userRepository,
             WorkRepository workRepository,
-            ChapterRepository chapterRepository
+            ChapterRepository chapterRepository,
+            PlatformProperties properties
     ) {
         this.donationRepository = donationRepository;
         this.membershipRepository = membershipRepository;
@@ -48,6 +49,7 @@ public class MonetizationService {
         this.userRepository = userRepository;
         this.workRepository = workRepository;
         this.chapterRepository = chapterRepository;
+        this.properties = properties;
     }
 
     /**
@@ -75,8 +77,9 @@ public class MonetizationService {
         WorkEntity work = workId != null ? workRepository.findById(workId).orElse(null) : null;
         ChapterEntity chapter = chapterId != null ? chapterRepository.findById(chapterId).orElse(null) : null;
 
-        // Split Financeiro: 17% para MangaNetWorking, 83% repasse líquido ao Criador
-        BigDecimal platformFee = grossAmountBrl.multiply(PLATFORM_FEE_RATE).setScale(2, RoundingMode.HALF_UP);
+        // Split Financeiro: retém taxa da plataforma e repassa o líquido ao Criador
+        BigDecimal feeRate = properties.getFeePercentage();
+        BigDecimal platformFee = grossAmountBrl.multiply(feeRate).setScale(2, RoundingMode.HALF_UP);
         BigDecimal creatorNet = grossAmountBrl.subtract(platformFee);
 
         // Atualizar saldo líquido da carteira do criador
@@ -105,15 +108,15 @@ public class MonetizationService {
         ledger.setCreator(creator);
         ledger.setTransactionType(TransactionType.DOACAO);
         ledger.setGrossAmountBrl(grossAmountBrl);
-        ledger.setFeeRatePercent(new BigDecimal("17.00"));
+        ledger.setFeeRatePercent(feeRate.multiply(PERCENT_FACTOR).setScale(2, RoundingMode.HALF_UP));
         ledger.setPlatformFeeBrl(platformFee);
         ledger.setCreatorNetBrl(creatorNet);
         ledger.setWalletBalanceAfterBrl(newBalance);
         ledger.setDescription("Doação de leitor: " + (message != null ? message : "Apoio direto"));
         ledgerRepository.save(ledger);
 
-        log.info("[MONETIZAÇÃO] Doação processada. Bruto: R$ {}, Taxa (17%): R$ {}, Criador (83%): R$ {}",
-                grossAmountBrl, platformFee, creatorNet);
+        log.info("[MONETIZAÇÃO] Doação processada. Bruto: R$ {}, Taxa da plataforma: R$ {} ({}), Líquido ao criador: R$ {}",
+                grossAmountBrl, platformFee, feeRate.setScale(2, RoundingMode.HALF_UP), creatorNet);
 
         return donation;
     }
@@ -138,7 +141,8 @@ public class MonetizationService {
                 .orElseThrow(() -> new IllegalArgumentException("Criador não encontrado: " + creatorId));
 
         BigDecimal monthlyPrice = creator.getMembershipPriceBrl();
-        BigDecimal platformFee = monthlyPrice.multiply(PLATFORM_FEE_RATE).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal feeRate = properties.getFeePercentage();
+        BigDecimal platformFee = monthlyPrice.multiply(feeRate).setScale(2, RoundingMode.HALF_UP);
         BigDecimal creatorNet = monthlyPrice.subtract(platformFee);
 
         // Atualizar saldo do criador
@@ -170,7 +174,7 @@ public class MonetizationService {
         ledger.setCreator(creator);
         ledger.setTransactionType(TransactionType.ASSINATURA_MEMBRO);
         ledger.setGrossAmountBrl(monthlyPrice);
-        ledger.setFeeRatePercent(new BigDecimal("17.00"));
+        ledger.setFeeRatePercent(feeRate.multiply(PERCENT_FACTOR).setScale(2, RoundingMode.HALF_UP));
         ledger.setPlatformFeeBrl(platformFee);
         ledger.setCreatorNetBrl(creatorNet);
         ledger.setWalletBalanceAfterBrl(newBalance);
@@ -183,12 +187,15 @@ public class MonetizationService {
     }
 
     /**
-     * Atualiza o valor mensal do clube de membros (Validação de R$ 7,99 a R$ 45,99)
+     * Atualiza o valor mensal do clube de membros (Validação com limites dinâmicos)
      */
     @Transactional
     public CreatorEntity updateMembershipPrice(UUID creatorId, BigDecimal newPriceBrl) {
-        if (newPriceBrl.compareTo(MIN_MEMBERSHIP_PRICE) < 0 || newPriceBrl.compareTo(MAX_MEMBERSHIP_PRICE) > 0) {
-            throw new IllegalArgumentException("O preço da assinatura deve estar entre R$ 7,99 e R$ 45,99.");
+        BigDecimal minPrice = properties.getMembership().getMinPrice();
+        BigDecimal maxPrice = properties.getMembership().getMaxPrice();
+
+        if (newPriceBrl.compareTo(minPrice) < 0 || newPriceBrl.compareTo(maxPrice) > 0) {
+            throw new IllegalArgumentException("O preço da assinatura deve estar entre R$ " + minPrice + " e R$ " + maxPrice + ".");
         }
 
         CreatorEntity creator = creatorRepository.findById(creatorId)
@@ -196,5 +203,46 @@ public class MonetizationService {
 
         creator.setMembershipPriceBrl(newPriceBrl);
         return creatorRepository.save(creator);
+    }
+
+    /**
+     * Assinatura VIP da Plataforma (preço configurável em {@code platform.vip-price}, padrão R$ 23 / 30 dias).
+     * Remove 100% dos anúncios no leitor e concede badge VIP.
+     * NÃO concede acesso antecipado aos capítulos de criadores (reserva exclusiva do fã-clube do criador).
+     */
+    @Transactional
+    public UserEntity subscribePlatformVip(UUID userId, String paymentExternalId) {
+        if (ledgerRepository.findByPaymentExternalId(paymentExternalId).isPresent()) {
+            throw new IllegalStateException("Assinatura VIP já processada: " + paymentExternalId);
+        }
+
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado: " + userId));
+
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime expiresAt = (user.isVipActive() ? user.getVipExpiresAt() : now).plusDays(30);
+
+        user.setVip(true);
+        user.setVipExpiresAt(expiresAt);
+        userRepository.save(user);
+
+        BigDecimal vipPrice = properties.getVipPrice();
+
+        // Gravar transação no Ledger Financeiro da Plataforma
+        FinancialLedgerEntity ledger = new FinancialLedgerEntity();
+        ledger.setPaymentExternalId(paymentExternalId);
+        ledger.setUser(user);
+        ledger.setCreator(null);
+        ledger.setTransactionType(TransactionType.ASSINATURA_VIP_PLATAFORMA);
+        ledger.setGrossAmountBrl(vipPrice);
+        ledger.setFeeRatePercent(PERCENT_FACTOR.setScale(2, RoundingMode.HALF_UP));
+        ledger.setPlatformFeeBrl(vipPrice);
+        ledger.setCreatorNetBrl(BigDecimal.ZERO);
+        ledger.setWalletBalanceAfterBrl(BigDecimal.ZERO);
+        ledger.setDescription("Assinatura VIP MangaNetWorking (Sem Anúncios): " + user.getName());
+        ledgerRepository.save(ledger);
+
+        log.info("[VIP PLATAFORMA] Assinatura VIP ativada para {} até {}", user.getEmail(), expiresAt);
+        return user;
     }
 }

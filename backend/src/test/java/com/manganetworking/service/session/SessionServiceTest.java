@@ -44,6 +44,21 @@ class SessionServiceTest {
     }
 
     @Test
+    void shouldIncludeModeratorRoleInCreatedSession() {
+        UserEntity user = new UserEntity();
+        user.setId(UUID.randomUUID());
+        user.setEmail("moderador@teste.com");
+        user.setName("Moderador Teste");
+        user.setModerator(true);
+
+        SessionService.UserSession session = sessionService.createSession(
+                user, null, new MockHttpServletResponse()
+        );
+
+        assertTrue(session.isModerator());
+    }
+
+    @Test
     void shouldValidateAndRevokeSession() {
         UserEntity user = new UserEntity();
         user.setId(UUID.randomUUID());
