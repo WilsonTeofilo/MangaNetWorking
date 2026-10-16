@@ -59,9 +59,15 @@
   - Endpoints de autenticação `/me` e `/logout` seguro que invalida a sessão e expira o cookie no cliente.
 - [x] **2.4. Hardening de Segurança:**
   - Anti-Mass Assignment: DTOs Java Records com validações estritas (`@NotBlank`, `@Email`, `@Size`, `@Pattern`).
-  - Suíte completa de 20 testes automatizados no backend cobrindo bypass de 2FA, força bruta, hash BCrypt, integridade de storage e validação de sessão.
+  - Suíte completa de testes automatizados no backend cobrindo bypass de 2FA, força bruta, hash BCrypt, integridade de storage e validação de sessão.
+- [x] **2.5. Segurança Intermediária e Anti-Spoofing (IDOR, Rate Limiting, Anti-XSS e Anti-Hardcoding):**
+  - Resolução autoritativa de identidade via `SecurityContextUtils`: extrai usuário e criador diretamente da sessão criptografada no `SecurityContextHolder`, impossibilitando falsificação de headers HTTP (`X-Current-User-Id` / `X-Creator-Id`).
+  - `RateLimitingFilter`: Throttling por IP em memória (15 req/min para rotas de auth e reports; 120 req/min global) com resposta padronizada HTTP 429 Too Many Requests.
+  - Headers HTTP defensivos em `SecurityConfig`: X-Frame-Options (DENY anti-clickjacking), X-Content-Type-Options (nosniff), XSS-Protection e Referrer-Policy.
+  - Sanitização editorial contra Stored XSS via `SanitizationUtils` em títulos, sinopses, bios e denúncias.
+  - Configuração desacoplada e anti-hardcoded via `PlatformProperties` (`@ConfigurationProperties(prefix = "platform")`).
 
-**Critério de Conclusão da Fase 2:** Testes unitários e de integração cobrindo tentativa de bypass de 2FA, rejeição de mass assignment e login completo com código da Dev Outbox rodando e passando 100%. (CONCLUÍDO)
+**Critério de Conclusão da Fase 2:** Testes unitários e de integração cobrindo tentativa de bypass de 2FA, rejeição de mass assignment, rate limiting, anti-spoofing e login completo com código da Dev Outbox rodando e passando 100%. (CONCLUÍDO)
 
 ---
 

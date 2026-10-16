@@ -103,9 +103,9 @@ public class CreatorApplicationService {
                 .orElseThrow(() -> new ResourceNotFoundException("Criador não encontrado"));
 
         if (dto.name() != null && !dto.name().isBlank() && creator.getUser() != null) {
-            creator.getUser().setName(dto.name().trim());
+            creator.getUser().setName(com.manganetworking.util.SanitizationUtils.stripAllHtml(dto.name().trim()));
         }
-        if (dto.bio() != null) creator.setBio(dto.bio().trim());
+        if (dto.bio() != null) creator.setBio(com.manganetworking.util.SanitizationUtils.sanitizeText(dto.bio().trim()));
         if (dto.instagramUrl() != null) creator.setInstagramUrl(dto.instagramUrl().trim());
         if (dto.youtubeUrl() != null) creator.setYoutubeUrl(dto.youtubeUrl().trim());
         if (dto.portfolioUrl() != null) creator.setPortfolioUrl(dto.portfolioUrl().trim());

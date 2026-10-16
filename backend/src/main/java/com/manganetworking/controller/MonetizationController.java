@@ -78,14 +78,15 @@ public class MonetizationController {
 
     @PostMapping("/vip/subscribe")
     public ResponseEntity<Map<String, Object>> subscribeVip(
-            @RequestHeader("X-Current-User-Id") UUID userId,
+            @RequestHeader(value = "X-Current-User-Id", required = false) UUID userId,
             @RequestBody(required = false) Map<String, String> body
     ) {
+        UUID effectiveUserId = com.manganetworking.config.security.SecurityContextUtils.resolveCurrentUserId(userId);
         String paymentId = (body != null && body.containsKey("paymentExternalId") && !body.get("paymentExternalId").isBlank())
                 ? body.get("paymentExternalId")
                 : "VIP_SUB_" + UUID.randomUUID();
 
-        var user = monetizationService.subscribePlatformVip(userId, paymentId);
+        var user = monetizationService.subscribePlatformVip(effectiveUserId, paymentId);
 
         return ResponseEntity.ok(Map.of(
                 "status", "ACTIVE",

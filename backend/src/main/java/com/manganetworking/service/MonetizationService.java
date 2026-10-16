@@ -31,6 +31,7 @@ public class MonetizationService {
     private final UserRepository userRepository;
     private final WorkRepository workRepository;
     private final ChapterRepository chapterRepository;
+    private final com.manganetworking.config.properties.PlatformProperties properties;
 
     public MonetizationService(
             DonationRepository donationRepository,
@@ -39,7 +40,8 @@ public class MonetizationService {
             CreatorRepository creatorRepository,
             UserRepository userRepository,
             WorkRepository workRepository,
-            ChapterRepository chapterRepository
+            ChapterRepository chapterRepository,
+            com.manganetworking.config.properties.PlatformProperties properties
     ) {
         this.donationRepository = donationRepository;
         this.membershipRepository = membershipRepository;
@@ -48,6 +50,7 @@ public class MonetizationService {
         this.userRepository = userRepository;
         this.workRepository = workRepository;
         this.chapterRepository = chapterRepository;
+        this.properties = properties;
     }
 
     /**
@@ -75,8 +78,9 @@ public class MonetizationService {
         WorkEntity work = workId != null ? workRepository.findById(workId).orElse(null) : null;
         ChapterEntity chapter = chapterId != null ? chapterRepository.findById(chapterId).orElse(null) : null;
 
-        // Split Financeiro: 17% para MangaNetWorking, 83% repasse líquido ao Criador
-        BigDecimal platformFee = grossAmountBrl.multiply(PLATFORM_FEE_RATE).setScale(2, RoundingMode.HALF_UP);
+        // Split Financeiro: retém taxa da plataforma e repassa o líquido ao Criador
+        BigDecimal feeRate = getFeeRate();
+        BigDecimal platformFee = grossAmountBrl.multiply(feeRate).setScale(2, RoundingMode.HALF_UP);
         BigDecimal creatorNet = grossAmountBrl.subtract(platformFee);
 
         // Atualizar saldo líquido da carteira do criador
@@ -138,7 +142,8 @@ public class MonetizationService {
                 .orElseThrow(() -> new IllegalArgumentException("Criador não encontrado: " + creatorId));
 
         BigDecimal monthlyPrice = creator.getMembershipPriceBrl();
-        BigDecimal platformFee = monthlyPrice.multiply(PLATFORM_FEE_RATE).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal feeRate = getFeeRate();
+        BigDecimal platformFee = monthlyPrice.multiply(feeRate).setScale(2, RoundingMode.HALF_UP);
         BigDecimal creatorNet = monthlyPrice.subtract(platformFee);
 
         // Atualizar saldo do criador
@@ -170,7 +175,7 @@ public class MonetizationService {
         ledger.setCreator(creator);
         ledger.setTransactionType(TransactionType.ASSINATURA_MEMBRO);
         ledger.setGrossAmountBrl(monthlyPrice);
-        ledger.setFeeRatePercent(new BigDecimal("17.00"));
+        ledger.setFeeRatePercent(feeRate.multiply(new BigDecimal("100")).setScale(2, RoundingMode.HALF_UP));
         ledger.setPlatformFeeBrl(platformFee);
         ledger.setCreatorNetBrl(creatorNet);
         ledger.setWalletBalanceAfterBrl(newBalance);
@@ -183,12 +188,15 @@ public class MonetizationService {
     }
 
     /**
-     * Atualiza o valor mensal do clube de membros (Validação de R$ 7,99 a R$ 45,99)
+     * Atualiza o valor mensal do clube de membros (Validação com limites dinâmicos)
      */
     @Transactional
     public CreatorEntity updateMembershipPrice(UUID creatorId, BigDecimal newPriceBrl) {
-        if (newPriceBrl.compareTo(MIN_MEMBERSHIP_PRICE) < 0 || newPriceBrl.compareTo(MAX_MEMBERSHIP_PRICE) > 0) {
-            throw new IllegalArgumentException("O preço da assinatura deve estar entre R$ 7,99 e R$ 45,99.");
+        BigDecimal minPrice = getMinMembershipPrice();
+        BigDecimal maxPrice = getMaxMembershipPrice();
+
+        if (newPriceBrl.compareTo(minPrice) < 0 || newPriceBrl.compareTo(maxPrice) > 0) {
+            throw new IllegalArgumentException("O preço da assinatura deve estar entre R$ " + minPrice + " e R$ " + maxPrice + ".");
         }
 
         CreatorEntity creator = creatorRepository.findById(creatorId)
@@ -221,15 +229,17 @@ public class MonetizationService {
         user.setVipExpiresAt(expiresAt);
         userRepository.save(user);
 
+        BigDecimal vipPrice = getVipPrice();
+
         // Gravar transação no Ledger Financeiro da Plataforma
         FinancialLedgerEntity ledger = new FinancialLedgerEntity();
         ledger.setPaymentExternalId(paymentExternalId);
         ledger.setUser(user);
         ledger.setCreator(null);
         ledger.setTransactionType(TransactionType.ASSINATURA_VIP_PLATAFORMA);
-        ledger.setGrossAmountBrl(PLATFORM_VIP_PRICE_BRL);
+        ledger.setGrossAmountBrl(vipPrice);
         ledger.setFeeRatePercent(new BigDecimal("100.00"));
-        ledger.setPlatformFeeBrl(PLATFORM_VIP_PRICE_BRL);
+        ledger.setPlatformFeeBrl(vipPrice);
         ledger.setCreatorNetBrl(BigDecimal.ZERO);
         ledger.setWalletBalanceAfterBrl(BigDecimal.ZERO);
         ledger.setDescription("Assinatura VIP MangaNetWorking (Sem Anúncios): " + user.getName());
@@ -237,5 +247,29 @@ public class MonetizationService {
 
         log.info("[VIP PLATAFORMA] Assinatura VIP ativada para {} até {}", user.getEmail(), expiresAt);
         return user;
+    }
+
+    private BigDecimal getFeeRate() {
+        return (properties != null && properties.getFeePercentage() != null)
+                ? properties.getFeePercentage()
+                : PLATFORM_FEE_RATE;
+    }
+
+    private BigDecimal getMinMembershipPrice() {
+        return (properties != null && properties.getMembership() != null && properties.getMembership().getMinPrice() != null)
+                ? properties.getMembership().getMinPrice()
+                : MIN_MEMBERSHIP_PRICE;
+    }
+
+    private BigDecimal getMaxMembershipPrice() {
+        return (properties != null && properties.getMembership() != null && properties.getMembership().getMaxPrice() != null)
+                ? properties.getMembership().getMaxPrice()
+                : MAX_MEMBERSHIP_PRICE;
+    }
+
+    private BigDecimal getVipPrice() {
+        return (properties != null && properties.getVipPrice() != null)
+                ? properties.getVipPrice()
+                : PLATFORM_VIP_PRICE_BRL;
     }
 }

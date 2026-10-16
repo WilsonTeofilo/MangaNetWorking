@@ -164,12 +164,16 @@ public class WorkApplicationService {
             finalSlug = baseSlug + "-" + UUID.randomUUID().toString().substring(0, 6);
         }
 
+        String safeTitle = com.manganetworking.util.SanitizationUtils.stripAllHtml(dto.title().trim());
+        String safeSynopsis = com.manganetworking.util.SanitizationUtils.sanitizeText(dto.synopsis().trim());
+        String safeOriginalTitle = dto.originalTitle() != null ? com.manganetworking.util.SanitizationUtils.stripAllHtml(dto.originalTitle().trim()) : null;
+
         WorkEntity work = new WorkEntity();
         work.setAuthor(author);
-        work.setTitle(dto.title().trim());
+        work.setTitle(safeTitle);
         work.setSlug(finalSlug);
-        work.setOriginalTitle(dto.originalTitle() != null ? dto.originalTitle().trim() : null);
-        work.setSynopsis(dto.synopsis().trim());
+        work.setOriginalTitle(safeOriginalTitle);
+        work.setSynopsis(safeSynopsis);
         work.setCoverUrl(dto.coverUrl().trim());
         work.setBannerUrl(dto.bannerUrl() != null ? dto.bannerUrl().trim() : null);
         work.setGenres(dto.genres());
@@ -201,10 +205,12 @@ public class WorkApplicationService {
             throw new IllegalArgumentException("Erro ao serializar páginas do capítulo: " + e.getMessage());
         }
 
+        String safeTitle = com.manganetworking.util.SanitizationUtils.stripAllHtml(dto.title().trim());
+
         ChapterEntity chapter = new ChapterEntity();
         chapter.setWork(work);
         chapter.setChapterNumber(dto.chapterNumber());
-        chapter.setTitle(dto.title().trim());
+        chapter.setTitle(safeTitle);
         chapter.setCoverUrl(dto.coverUrl() != null ? dto.coverUrl().trim() : null);
         chapter.setPagesJson(pagesJson);
         chapter.setPublicReleaseAt(dto.publicReleaseAt());

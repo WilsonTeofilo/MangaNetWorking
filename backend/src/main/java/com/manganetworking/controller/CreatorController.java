@@ -27,25 +27,30 @@ public class CreatorController {
     }
 
     @GetMapping("/workspace")
-    public ResponseEntity<CreatorWorkspaceResponseDto> getCreatorWorkspace(@RequestHeader("X-Creator-Id") UUID creatorId) {
-        return ResponseEntity.ok(creatorService.getCreatorWorkspace(creatorId));
+    public ResponseEntity<CreatorWorkspaceResponseDto> getCreatorWorkspace(
+            @RequestHeader(value = "X-Creator-Id", required = false) UUID creatorId
+    ) {
+        UUID effectiveCreatorId = com.manganetworking.config.security.SecurityContextUtils.resolveCurrentCreatorId(creatorId);
+        return ResponseEntity.ok(creatorService.getCreatorWorkspace(effectiveCreatorId));
     }
 
     @PutMapping("/profile")
     public ResponseEntity<Map<String, String>> updateCreatorIdentity(
-            @RequestHeader("X-Creator-Id") UUID creatorId,
+            @RequestHeader(value = "X-Creator-Id", required = false) UUID creatorId,
             @Valid @RequestBody UpdateCreatorIdentityRequestDto dto
     ) {
-        creatorService.updateCreatorIdentity(creatorId, dto);
+        UUID effectiveCreatorId = com.manganetworking.config.security.SecurityContextUtils.resolveCurrentCreatorId(creatorId);
+        creatorService.updateCreatorIdentity(effectiveCreatorId, dto);
         return ResponseEntity.ok(Map.of("message", "Perfil de autor atualizado com sucesso"));
     }
 
     @PutMapping("/membership-price")
     public ResponseEntity<Map<String, Object>> updateMembershipPrice(
-            @RequestHeader("X-Creator-Id") UUID creatorId,
+            @RequestHeader(value = "X-Creator-Id", required = false) UUID creatorId,
             @Valid @RequestBody UpdateMembershipPriceRequestDto dto
     ) {
-        BigDecimal updatedPrice = creatorService.updateMembershipPrice(creatorId, dto.priceBrl());
+        UUID effectiveCreatorId = com.manganetworking.config.security.SecurityContextUtils.resolveCurrentCreatorId(creatorId);
+        BigDecimal updatedPrice = creatorService.updateMembershipPrice(effectiveCreatorId, dto.priceBrl());
         return ResponseEntity.ok(Map.of(
                 "message", "Preço de membros atualizado",
                 "membershipPriceBrl", updatedPrice
@@ -54,10 +59,11 @@ public class CreatorController {
 
     @PostMapping("/workspace/missions/{missionId}/claim")
     public ResponseEntity<Map<String, Object>> claimMissionReward(
-            @RequestHeader("X-Creator-Id") UUID creatorId,
+            @RequestHeader(value = "X-Creator-Id", required = false) UUID creatorId,
             @PathVariable String missionId
     ) {
-        CreatorEntity updatedCreator = creatorService.claimMissionReward(creatorId, missionId);
+        UUID effectiveCreatorId = com.manganetworking.config.security.SecurityContextUtils.resolveCurrentCreatorId(creatorId);
+        CreatorEntity updatedCreator = creatorService.claimMissionReward(effectiveCreatorId, missionId);
         return ResponseEntity.ok(Map.of(
                 "message", "Recompensa da Season resgatada com sucesso!",
                 "boostMultiplier", updatedCreator.getEngagementBoostMul(),

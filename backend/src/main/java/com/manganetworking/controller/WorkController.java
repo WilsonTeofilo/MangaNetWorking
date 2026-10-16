@@ -27,10 +27,11 @@ public class WorkController {
 
     @PostMapping
     public ResponseEntity<Map<String, Object>> createWork(
-            @RequestHeader("X-Creator-Id") UUID creatorId,
+            @RequestHeader(value = "X-Creator-Id", required = false) UUID creatorId,
             @Valid @RequestBody CreateWorkRequestDto dto
     ) {
-        WorkEntity work = workService.createWork(creatorId, dto);
+        UUID effectiveCreatorId = com.manganetworking.config.security.SecurityContextUtils.resolveCurrentCreatorId(creatorId);
+        WorkEntity work = workService.createWork(effectiveCreatorId, dto);
         return ResponseEntity.ok(Map.of(
                 "workId", work.getId(),
                 "title", work.getTitle(),
@@ -41,11 +42,12 @@ public class WorkController {
 
     @PostMapping("/{workId}/chapters")
     public ResponseEntity<Map<String, Object>> createChapter(
-            @RequestHeader("X-Creator-Id") UUID creatorId,
+            @RequestHeader(value = "X-Creator-Id", required = false) UUID creatorId,
             @PathVariable UUID workId,
             @Valid @RequestBody CreateChapterRequestDto dto
     ) {
-        ChapterEntity chapter = workService.createChapter(creatorId, workId, dto);
+        UUID effectiveCreatorId = com.manganetworking.config.security.SecurityContextUtils.resolveCurrentCreatorId(creatorId);
+        ChapterEntity chapter = workService.createChapter(effectiveCreatorId, workId, dto);
         return ResponseEntity.ok(Map.of(
                 "chapterId", chapter.getId(),
                 "chapterNumber", chapter.getChapterNumber(),

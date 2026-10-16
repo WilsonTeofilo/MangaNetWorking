@@ -63,7 +63,7 @@ public class ModerationApplicationService {
         report.setWork(work);
         report.setChapter(chapter);
         report.setReason(dto.reason());
-        report.setDescription(dto.description());
+        report.setDescription(com.manganetworking.util.SanitizationUtils.stripAllHtml(dto.description().trim()));
         report.setStatus(ReportStatus.PENDING);
 
         ReportEntity saved = reportRepository.save(report);

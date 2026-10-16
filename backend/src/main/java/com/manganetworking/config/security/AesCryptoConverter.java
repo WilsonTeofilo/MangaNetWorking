@@ -25,8 +25,29 @@ public class AesCryptoConverter implements AttributeConverter<String, String> {
     private static final int TAG_LENGTH_BIT = 128;
     private static final int IV_LENGTH_BYTE = 12;
 
-    // Chave de 256 bits (32 bytes). Em produção, obtida de variável de ambiente ou HSM/KMS.
-    private static final byte[] DEFAULT_KEY_BYTES = "MangaNetWorking2026AESKeySecret!".getBytes(StandardCharsets.UTF_8);
+    private static volatile byte[] keyBytes = null;
+
+    private static byte[] getKeyBytes() {
+        if (keyBytes != null) return keyBytes;
+        String envKey = System.getenv("AES_SECRET_KEY");
+        if (envKey == null || envKey.isBlank()) {
+            envKey = System.getProperty("platform.security.aes-secret-key", "MangaNetWorking2026AESKeySecret!");
+        }
+        byte[] raw = envKey.getBytes(StandardCharsets.UTF_8);
+        byte[] key32 = new byte[32];
+        System.arraycopy(raw, 0, key32, 0, Math.min(raw.length, 32));
+        keyBytes = key32;
+        return keyBytes;
+    }
+
+    public static void setCustomKey(String customKey) {
+        if (customKey != null) {
+            byte[] raw = customKey.getBytes(StandardCharsets.UTF_8);
+            byte[] key32 = new byte[32];
+            System.arraycopy(raw, 0, key32, 0, Math.min(raw.length, 32));
+            keyBytes = key32;
+        }
+    }
 
     @Override
     public String convertToDatabaseColumn(String attribute) {
@@ -40,7 +61,7 @@ public class AesCryptoConverter implements AttributeConverter<String, String> {
 
             Cipher cipher = Cipher.getInstance(ALGORITHM);
             GCMParameterSpec parameterSpec = new GCMParameterSpec(TAG_LENGTH_BIT, iv);
-            SecretKeySpec keySpec = new SecretKeySpec(DEFAULT_KEY_BYTES, "AES");
+            SecretKeySpec keySpec = new SecretKeySpec(getKeyBytes(), "AES");
             cipher.init(Cipher.ENCRYPT_MODE, keySpec, parameterSpec);
 
             byte[] cipherText = cipher.doFinal(attribute.getBytes(StandardCharsets.UTF_8));
@@ -79,7 +100,7 @@ public class AesCryptoConverter implements AttributeConverter<String, String> {
 
             Cipher cipher = Cipher.getInstance(ALGORITHM);
             GCMParameterSpec parameterSpec = new GCMParameterSpec(TAG_LENGTH_BIT, iv);
-            SecretKeySpec keySpec = new SecretKeySpec(DEFAULT_KEY_BYTES, "AES");
+            SecretKeySpec keySpec = new SecretKeySpec(getKeyBytes(), "AES");
             cipher.init(Cipher.DECRYPT_MODE, keySpec, parameterSpec);
 
             byte[] plainText = cipher.doFinal(cipherText);

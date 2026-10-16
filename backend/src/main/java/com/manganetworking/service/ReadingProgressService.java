@@ -35,6 +35,7 @@ public class ReadingProgressService {
     private final CreatorRepository creatorRepository;
     private final AdRevenueLedgerRepository adRevenueLedgerRepository;
     private final com.manganetworking.repository.jpa.UserRepository userRepository;
+    private final com.manganetworking.config.properties.PlatformProperties properties;
 
     public ReadingProgressService(
             ReadingProgressMongoRepository progressMongoRepository,
@@ -42,7 +43,8 @@ public class ReadingProgressService {
             ChapterRepository chapterRepository,
             CreatorRepository creatorRepository,
             AdRevenueLedgerRepository adRevenueLedgerRepository,
-            com.manganetworking.repository.jpa.UserRepository userRepository
+            com.manganetworking.repository.jpa.UserRepository userRepository,
+            com.manganetworking.config.properties.PlatformProperties properties
     ) {
         this.progressMongoRepository = progressMongoRepository;
         this.workRepository = workRepository;
@@ -50,6 +52,7 @@ public class ReadingProgressService {
         this.creatorRepository = creatorRepository;
         this.adRevenueLedgerRepository = adRevenueLedgerRepository;
         this.userRepository = userRepository;
+        this.properties = properties;
     }
 
     /**
@@ -90,8 +93,12 @@ public class ReadingProgressService {
             }
         } catch (Exception ignored) {}
 
-        if (cumulative >= PAGES_PER_AD) {
-            cumulative = 0; // Reinicia o ciclo de 30 páginas
+        int pagesPerAd = (properties != null && properties.getAds() != null)
+                ? properties.getAds().getPagesPerAd()
+                : PAGES_PER_AD;
+
+        if (cumulative >= pagesPerAd) {
+            cumulative = 0; // Reinicia o ciclo de páginas
             if (!isVip) {
                 shouldTriggerAd = true;
                 processAdImpression(workId);
@@ -116,8 +123,19 @@ public class ReadingProgressService {
                 return;
             }
 
-            BigDecimal grossAd = DEFAULT_AD_CPM_BRL;
-            BigDecimal creatorShare = grossAd.multiply(CREATOR_AD_SHARE_RATE).setScale(4, RoundingMode.HALF_UP);
+            BigDecimal grossAd = (properties != null && properties.getAds() != null)
+                    ? properties.getAds().getCpmBrl()
+                    : DEFAULT_AD_CPM_BRL;
+
+            BigDecimal creatorShareRate = (properties != null && properties.getAds() != null)
+                    ? properties.getAds().getCreatorSharePercentage()
+                    : CREATOR_AD_SHARE_RATE;
+
+            int threshold = (properties != null && properties.getAds() != null)
+                    ? properties.getAds().getPagesPerAd()
+                    : PAGES_PER_AD;
+
+            BigDecimal creatorShare = grossAd.multiply(creatorShareRate).setScale(4, RoundingMode.HALF_UP);
             BigDecimal platformShare = grossAd.subtract(creatorShare);
 
             // Credita na carteira do autor
@@ -128,7 +146,7 @@ public class ReadingProgressService {
             AdRevenueLedgerEntity adLedger = new AdRevenueLedgerEntity();
             adLedger.setCreator(creator);
             adLedger.setWork(work);
-            adLedger.setPagesReadThreshold(PAGES_PER_AD);
+            adLedger.setPagesReadThreshold(threshold);
             adLedger.setGrossAdValueBrl(grossAd);
             adLedger.setCreatorShareBrl(creatorShare);
             adLedger.setPlatformShareBrl(platformShare);

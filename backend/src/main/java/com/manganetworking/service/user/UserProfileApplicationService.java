@@ -81,7 +81,7 @@ public class UserProfileApplicationService {
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado"));
 
         if (dto.name() != null && !dto.name().isBlank()) {
-            user.setName(dto.name().trim());
+            user.setName(com.manganetworking.util.SanitizationUtils.stripAllHtml(dto.name().trim()));
         }
         if (dto.avatarUrl() != null) {
             user.setAvatarUrl(dto.avatarUrl().trim());

@@ -16,6 +16,9 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
+import org.springframework.security.web.header.writers.XXssProtectionHeaderWriter;
+
 import java.util.List;
 
 @Configuration
@@ -24,9 +27,14 @@ import java.util.List;
 public class SecurityConfig {
 
     private final SessionAuthenticationFilter sessionAuthenticationFilter;
+    private final RateLimitingFilter rateLimitingFilter;
 
-    public SecurityConfig(SessionAuthenticationFilter sessionAuthenticationFilter) {
+    public SecurityConfig(
+            SessionAuthenticationFilter sessionAuthenticationFilter,
+            RateLimitingFilter rateLimitingFilter
+    ) {
         this.sessionAuthenticationFilter = sessionAuthenticationFilter;
+        this.rateLimitingFilter = rateLimitingFilter;
     }
 
     @Bean
@@ -42,6 +50,12 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
+                .headers(headers -> headers
+                        .frameOptions(frame -> frame.deny())
+                        .contentTypeOptions(content -> {})
+                        .xssProtection(xss -> xss.headerValue(XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
+                        .referrerPolicy(referrer -> referrer.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+                )
                 .authorizeHttpRequests(auth -> auth
                         // Endpoints Públicos de Autenticação e Dev Outbox
                         .requestMatchers("/api/auth/**").permitAll()
@@ -59,6 +73,7 @@ public class SecurityConfig {
                         // Qualquer outra rota exige sessão autenticada
                         .anyRequest().authenticated()
                 )
+                .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(sessionAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

@@ -36,14 +36,20 @@ spring:
 platform:
   fee-percentage: 0.17 # 17% retido pela plataforma sobre doações e membros
   creator-share-percentage: 0.83 # 83% repasse líquido ao criador
+  vip-price: 23.00 # R$ 23 / 30 dias para remoção total de anúncios
   membership:
     min-price: 7.99
     max-price: 45.99
   ads:
     pages-per-ad: 30 # Anúncio a cada 30 páginas lidas
+    cpm-brl: 0.05 # R$ 0,05 de CPM base estimado
     creator-share-percentage: 0.58 # 58% para o criador monetizado
     platform-share-percentage: 0.42 # 42% para a plataforma
   security:
     two-factor-mandatory: true # 2FA obrigatório até mesmo para login com Google
+    aes-secret-key: ${AES_SECRET_KEY:MangaNetWorking2026AESKeySecret!} # Chave de 256 bits para dados de criadores
+    rate-limit-per-minute: 120 # Throttling global por IP
+    auth-rate-limit-per-minute: 15 # Throttling estrito para login/cadastro/2fa
   storage:
     local-upload-dir: ${UPLOAD_DIR:./data/uploads} # Diretório isolado local para páginas e avatares
+
