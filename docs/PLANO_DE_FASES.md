@@ -225,6 +225,11 @@
   - ✅ **PR #2** (`develop` ➔ `main`) mesclado; `main` @ `e7aefec`, com árvore idêntica a `develop` (`git diff` vazio).
   - ✅ Tag **`v1.0.0-release`** publicada em `origin` (aponta para `e7aefec`).
 
+- [x] **10. Higiene de Segredos e Configurações (Passe 14):**
+  - Remoção de chaves e senhas default dos arquivos rastreados (`application.yml` sem defaults para `aes.secret-key` e `spring.datasource.password`).
+  - Criação de `.env.example` e `README_SECRETS.md` documentando as variáveis obrigatórias.
+  - Fail-fast seguro: sem `AES_SECRET_KEY` em produção o serviço recusa inicializar; ambiente de desenvolvimento/teste utiliza fallback exclusivo não produtivo.
+
 ---
 
 ## Resumo Técnico de Execução
@@ -236,7 +241,12 @@
 | **Banco NoSQL / Feed** | MongoDB 7 (Docker) | `27017` | Coleções `reading_progress` e `feed_works` ativas |
 | **Storage de Imagens** | Local Filesystem Sanitizado | `./data/uploads/` | Magic bytes allow-list; **páginas de capítulo protegidas por `ChapterFileAccessGuard`**, que resolve arquivo→capítulo por índice único (`chapter_files.filename`) em vez de `LIKE` (capa/avatar públicos) |
 | **Frontend Web** | React 19 / TypeScript / Vite | `5180` | Build aprovado; **leitor consome a API real** (`readChapter`) com fallback mock; descoberta/catálogo usam o feed real com fallback mock |
-| **Git Repositório** | GitHub (`WilsonTeofilo/MangaNetWorking.git`) | Remoto | `develop` @ `a12e52e` (passes 10/11 publicados); `main` @ `e7aefec` (PR #2) com tag **`v1.0.0-release`**; `main` 5 commits atrás de `develop` |
+| **Git Repositório** | GitHub (`WilsonTeofilo/MangaNetWorking.git`) | Remoto | `develop` @ `58ffd71` (passes 10-14 publicados); `main` @ `e7aefec` (PR #2) com tag **`v1.0.0-release`**; `main` 8 commits atrás de `develop` |
+
+- [x] **10. Higiene de Segredos e Configurações (Passe 14):**
+  - Remoção de chaves e senhas default dos arquivos rastreados (`application.yml` sem defaults para `aes.secret-key` e `spring.datasource.password`).
+  - Criação de `.env.example` e `README_SECRETS.md` documentando as variáveis obrigatórias.
+  - Fail-fast seguro: sem `AES_SECRET_KEY` em produção o serviço recusa inicializar; ambiente de desenvolvimento/teste utiliza fallback exclusivo não produtivo.
 
 ---
 
@@ -268,7 +278,7 @@
 - `isModerator` é resolvido **no login**: promover alguém (`UPDATE users SET is_moderator = TRUE WHERE ...`) exige o usuário **relogar** (nada no servidor confia em UI/header).
 - Nunca editar migração Flyway já aplicada (mudar o arquivo quebra o checksum e derruba o boot); para ajustar comentário, crie uma nova migração.
 
-**Concluído recentemente (passes 8-14):** ✅ **Testcontainers** — integração real (PostgreSQL 16 + MongoDB 7 efêmeros): OSIV desligado, sync de feed em `afterCommit` (obra/capítulo com early access), reindexação sem `LazyInitializationException`, remoção do feed na suspensão por moderação e **não-ressurreição da obra suspensa na reindexação**; `api.version` parametrizável (`mvn -Ddocker.api.version=... test`); sem daemon Docker os testes de integração são ignorados (`disabledWithoutDocker = true` → `Skipped`). ✅ **P1 — Coerência funcional do feed (passe 10):** `syncWorkToFeed` **remove** obra suspensa do feed (antes o recálculo agendado a reinseria) e o feed público filtra `status != suspended` **na consulta do Mongo**, preservando o tamanho da página. ✅ **Robustez JPA×Mongo (passe 11):** o sync/remoção do feed saiu do `TransactionSynchronizationManager` manual para `@TransactionalEventListener(phase = AFTER_COMMIT)` (`FeedSynchronizationListener`); a sincronização abre a própria transação (`RecommendationAlgorithmService.syncWorkById`) e deixa de depender de a sessão JPA da requisição estar aberta na fase `afterCommit`. ✅ **Consistência de camadas (passe 12):** os read-models NoSQL deixaram de vazar como modelo — `FeedWorkResponseDto` (`GET /api/feed*`) e `ReadingProgressResponseDto` (histórico de leitura + exportação LGPD) espelham os nomes de campo do documento, logo o **contrato JSON do frontend não muda** (travado por testes que comparam a árvore JSON do DTO e do documento). ✅ **Performance do guard (passe 13):** `ChapterFileAccessGuard` deixou de usar `LIKE %arquivo%` em `chapters.pages_json` (varredura completa + falso positivo de substring) e passou a consultar a relação dedicada **`chapter_files`** por igualdade no índice único `filename` (migração **V4**, com backfill dos capítulos existentes). ✅ **Higiene/segredos (passe 14):** chave AES de fallback e senha default do Postgres removidas dos arquivos versionados; `application.yml` agora usa placeholders vazios (`${VAR:}`), exigindo definição via variáveis de ambiente em produção; documentação com `.env.example` e `README_SECRETS.md`; chave de desenvolvimento local substituída por uma mais segura.
+**Concluído recentemente (passes 8-14):** ✅ **Testcontainers** — integração real (PostgreSQL 16 + MongoDB 7 efêmeros): OSIV desligado, sync de feed em `afterCommit` (obra/capítulo com early access), reindexação sem `LazyInitializationException`, remoção do feed na suspensão por moderação e **não-ressurreição da obra suspensa na reindexação**; `api.version` parametrizável (`mvn -Ddocker.api.version=... test`); sem daemon Docker os testes de integração são ignorados (`disabledWithoutDocker = true` → `Skipped`). ✅ **P1 — Coerência funcional do feed (passe 10):** `syncWorkToFeed` **remove** obra suspensa do feed (antes o recálculo agendado a reinseria) e o feed público filtra `status != suspended` **na consulta do Mongo**, preservando o tamanho da página. ✅ **Robustez JPA×Mongo (passe 11):** o sync/remoção do feed saiu do `TransactionSynchronizationManager` manual para `@TransactionalEventListener(phase = AFTER_COMMIT)` (`FeedSynchronizationListener`); a sincronização abre a própria transação (`RecommendationAlgorithmService.syncWorkById`) e deixa de depender de a sessão JPA da requisição estar aberta na fase `afterCommit`. ✅ **Consistência de camadas (passe 12):** os read-models NoSQL deixaram de vazar como modelo — `FeedWorkResponseDto` (`GET /api/feed*`) e `ReadingProgressResponseDto` (histórico de leitura + exportação LGPD) espelham os nomes de campo do documento, logo o **contrato JSON do frontend não muda** (travado por testes que comparam a árvore JSON do DTO e do documento). ✅ **Performance do guard (passe 13):** `ChapterFileAccessGuard` deixou de usar `LIKE %arquivo%` em `chapters.pages_json` (varredura completa + falso positivo de substring) e passou a consultar a relação dedicada **`chapter_files`** por igualdade no índice único `filename` (migração **V4**, com backfill dos capítulos existentes). ✅ **Higiene/segredos (passe 14):** chave AES de fallback e senha default do Postgres removidas dos arquivos versionados; `application.yml` agora usa placeholders vazios para `aes.secret-key` e `spring.datasource.password`; criação de `.env.example` e `README_SECRETS.md` documentando as variáveis obrigatórias; fail-fast seguro: sem `AES_SECRET_KEY` em produção o serviço recusa inicializar.
 
 **Próximos passos priorizados (pós-passe 14).** Cada item é independente e verificável; nenhum bloqueia o release atual.
 
@@ -276,4 +286,4 @@
 2. **Docker antigo (P3):** com API < 1.44 (Docker ≤ 24) a integração é ignorada em silêncio; rodar `mvn -Ddocker.api.version=<versão> test`.
 3. **Frontend (P3):** substituir placeholders de XP/Season em `CreatorWorkspacePage` e alinhar `#E63946`/`text-white` à paleta `--color-red: #E8402F`.
 4. **Fase 8.2 (bloqueada):** leitura offline nativa (Android/iOS) — app fora deste repositório; o backend de manifesto é o limite.
-5. **Processo:** abrir PR `develop` ➔ `main` para alinhar a `main` (hoje 7 commits à frente — `017d2e0`, `80eec1c`, `37d2d75`, `15cc982`, `a12e52e`, `f948996`, `a1c6ea2` + o passe 14).
+5. **Processo:** abrir PR `develop` ➔ `main` para alinhar a `main` (hoje 8 commits à frente — `017d2e0`, `80eec1c`, `37d2d75`, `15cc982`, `a12e52e`, `f948996`, `a1c6ea2`, `58ffd71`).
