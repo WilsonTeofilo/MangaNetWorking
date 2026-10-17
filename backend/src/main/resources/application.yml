@@ -64,6 +64,7 @@ platform:
     aes-secret-key: ${AES_SECRET_KEY:}
     rate-limit-per-minute: 120 # Throttling global por IP
     auth-rate-limit-per-minute: 15 # Throttling estrito para login/cadastro/2fa
+    session-cleanup-interval-ms: 3600000 # Limpeza ativa de sessões expiradas a cada 1 hora (prevenção de memory leaks OWASP)
     trust-forwarded-headers: false # Só habilitar atrás de um proxy reverso confiável (evita burlar o rate limit via X-Forwarded-For)
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5180,http://localhost:5173,http://localhost:3000,http://127.0.0.1:5180,http://127.0.0.1:5173,http://127.0.0.1:3000} # Origens autorizadas (CORS), separadas por vírgula

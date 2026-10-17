@@ -119,6 +119,17 @@ public class PlatformProperties {
         private String aesSecretKey;
         private int rateLimitPerMinute = 120;
         private int authRateLimitPerMinute = 15;
+        /**
+         * Intervalo em milissegundos para execução da rotina de limpeza ativa de sessões expiradas.
+         * <p>
+         * Referência OWASP Session Management Cheat Sheet: expiração forçada periódica
+         * para prevenir memory leaks e esgotamento de recursos (Unbounded Memory Allocation).
+         * </p>
+         * <p>
+         * Valor padrão: 3.600.000 ms (1 hora).
+         * </p>
+         */
+        private long sessionCleanupIntervalMs = 3_600_000L; // 1 hora
 
         /**
          * Se {@code true}, o rate limit usa o primeiro IP de {@code X-Forwarded-For}.
@@ -138,6 +149,9 @@ public class PlatformProperties {
 
         public int getAuthRateLimitPerMinute() { return authRateLimitPerMinute; }
         public void setAuthRateLimitPerMinute(int authRateLimitPerMinute) { this.authRateLimitPerMinute = authRateLimitPerMinute; }
+
+        public long getSessionCleanupIntervalMs() { return sessionCleanupIntervalMs; }
+        public void setSessionCleanupIntervalMs(long sessionCleanupIntervalMs) { this.sessionCleanupIntervalMs = sessionCleanupIntervalMs; }
 
         public boolean isTrustForwardedHeaders() { return trustForwardedHeaders; }
         public void setTrustForwardedHeaders(boolean trustForwardedHeaders) { this.trustForwardedHeaders = trustForwardedHeaders; }
