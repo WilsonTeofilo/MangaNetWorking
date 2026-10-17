@@ -79,7 +79,13 @@ public class PlatformProperties {
 
     public static class Security {
         private boolean twoFactorMandatory = true;
-        private String aesSecretKey = "MangaNetWorking2026AESKeySecret!";
+        /**
+         * Chave AES para criptografia de dados sensíveis (CPF/PIX).
+         * Em produção, deve ser definida via {@code platform.security.aes-secret-key} no YAML
+         * ou pela variável de ambiente {@code AES_SECRET_KEY}.
+         * Se não definida, o {@link AesCryptoConverter} usará sua chave de desenvolvimento.
+         */
+        private String aesSecretKey;
         private int rateLimitPerMinute = 120;
         private int authRateLimitPerMinute = 15;
 

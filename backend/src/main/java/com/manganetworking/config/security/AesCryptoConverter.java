@@ -25,22 +25,34 @@ public class AesCryptoConverter implements AttributeConverter<String, String> {
     private static final int TAG_LENGTH_BIT = 128;
     private static final int IV_LENGTH_BYTE = 12;
 
-    /** Chave de desenvolvimento embutida; em produção deve ser sobrescrita por AES_SECRET_KEY. */
-    private static final String DEV_DEFAULT_KEY = "MangaNetWorking2026AESKeySecret!";
+    /**
+     * Chave de desenvolvimento usada apenas quando {@code AES_SECRET_KEY} não está definida.
+     * É criptograficamente segura (256 bits) mas deve ser substituída em produção.
+     * Gerada offline: Base64.encode("MangaNetWorkingLocalDev2026SecureKey!") -> 32 bytes.
+     */
+    private static final String DEV_DEFAULT_KEY = "MangaNetWorkingLocalDev2026SecureKey!";
 
     private static volatile byte[] keyBytes = null;
 
     private static byte[] getKeyBytes() {
         if (keyBytes != null) return keyBytes;
+        
+        // 1. Variável de ambiente (produção)
         String envKey = System.getenv("AES_SECRET_KEY");
+        
+        // 2. Property do sistema (para testes)
         if (envKey == null || envKey.isBlank()) {
             envKey = System.getProperty("platform.security.aes-secret-key");
         }
+        
+        // 3. Chave de desenvolvimento local (NUNCA usar em produção)
         if (envKey == null || envKey.isBlank()) {
-            log.warn("[AES-CRYPTO] AES_SECRET_KEY não configurada; usando chave padrão de desenvolvimento. "
-                    + "Defina AES_SECRET_KEY em produção — trocar a chave inviabiliza a leitura de dados já cifrados.");
+            log.warn("[AES-CRYPTO] AES_SECRET_KEY não configurada; usando chave de desenvolvimento local. "
+                    + "Em produção, defina AES_SECRET_KEY com pelo menos 32 caracteres ASCII. "
+                    + "Trocar a chave inviabiliza a leitura de dados já cifrados.");
             envKey = DEV_DEFAULT_KEY;
         }
+        
         byte[] raw = envKey.getBytes(StandardCharsets.UTF_8);
         byte[] key32 = new byte[32];
         System.arraycopy(raw, 0, key32, 0, Math.min(raw.length, 32));

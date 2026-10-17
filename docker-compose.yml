@@ -9,7 +9,8 @@ services:
     environment:
       POSTGRES_DB: manganetworking
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgrespassword
+      # Em produção, substitua por uma senha segura via variável de ambiente ou secrets.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:manga_dev_local_secure_2026}
     ports:
       - "25432:5432"
     volumes:
