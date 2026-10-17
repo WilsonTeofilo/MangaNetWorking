@@ -1,14 +1,15 @@
 package com.manganetworking.config.properties;
 
+import com.manganetworking.config.security.AesCryptoConverter;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
+import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
-
-import org.springframework.stereotype.Component;
 
 /**
  * Propriedades centralizadas da plataforma MangaNetWorking.
@@ -19,6 +20,9 @@ import org.springframework.stereotype.Component;
 public class PlatformProperties {
 
     private static final Logger log = LoggerFactory.getLogger(PlatformProperties.class);
+
+    @Autowired(required = false)
+    private Environment environment;
 
     private BigDecimal feePercentage = new BigDecimal("0.17");
     /**
@@ -34,8 +38,13 @@ public class PlatformProperties {
     private Security security = new Security();
     private Storage storage = new Storage();
 
-    /** Detecta configuração financeira inconsistente (taxa + repasse ≠ 100%) no boot. */
     @PostConstruct
+    void init() {
+        validateFinancialConsistency();
+        initSecurityAndCrypto();
+    }
+
+    /** Detecta configuração financeira inconsistente (taxa + repasse ≠ 100%) no boot. */
     void validateFinancialConsistency() {
         if (feePercentage == null || creatorSharePercentage == null) {
             return;
@@ -45,6 +54,28 @@ public class PlatformProperties {
                     + "O split usa apenas fee-percentage (líquido = bruto - taxa); ajuste os dois valores.",
                     feePercentage, creatorSharePercentage);
         }
+    }
+
+    /**
+     * Sincroniza a chave AES configurada no application.yml com o conversor JPA {@link AesCryptoConverter}
+     * e garante fail-fast no perfil de produção caso a chave secreta não seja informada.
+     */
+    void initSecurityAndCrypto() {
+        String key = (security != null) ? security.getAesSecretKey() : null;
+        if (key != null && !key.isBlank()) {
+            AesCryptoConverter.setCustomKey(key);
+            log.info("[AES-CRYPTO] Chave AES-256 configurada com sucesso a partir de platform.security.aes-secret-key.");
+        } else {
+            boolean isProd = environment != null && environment.matchesProfiles("prod");
+            if (isProd) {
+                throw new IllegalStateException("[SEGURANÇA CRÍTICA] Perfil 'prod' ativo mas AES_SECRET_KEY não foi configurada! "
+                        + "Defina a variável de ambiente AES_SECRET_KEY com pelo menos 32 caracteres ASCII.");
+            }
+        }
+    }
+
+    public void setEnvironment(Environment environment) {
+        this.environment = environment;
     }
 
     public static class Membership {

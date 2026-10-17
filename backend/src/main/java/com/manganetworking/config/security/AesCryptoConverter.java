@@ -69,6 +69,10 @@ public class AesCryptoConverter implements AttributeConverter<String, String> {
         }
     }
 
+    public static void resetKey() {
+        keyBytes = null;
+    }
+
     @Override
     public String convertToDatabaseColumn(String attribute) {
         if (attribute == null || attribute.isBlank()) {

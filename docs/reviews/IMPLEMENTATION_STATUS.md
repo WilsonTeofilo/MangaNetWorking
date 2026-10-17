@@ -77,6 +77,22 @@ Fechamento do item #1 do backlog ("Performance do guard"). Antes, `ChapterFileAc
 - **Verificação:** `cmd /c mvn test` → **BUILD SUCCESS**, `Tests run: 144, Failures: 0, Errors: 0, Skipped: 0` (Docker Desktop 29.7.2; integração 8/8). Sem daemon Docker, os 8 de integração são ignorados.
 - **Atenção operacional:** a V4 é aplicada no primeiro boot com Postgres. Como toda migração já aplicada, **não editar** o arquivo depois (quebra o checksum); qualquer ajuste exige nova migração. A V4 é aditiva e idempotente (`CREATE TABLE IF NOT EXISTS` + `ON CONFLICT DO NOTHING`).
 
+## Passe 14 — higiene de segredos e variáveis de ambiente (2026-10-16, commit `58ffd71`)
+
+- **Remoção de segredos versionados:** valores padrão de senhas e chaves foram removidos de `application.yml` (`password: ${SPRING_DATASOURCE_PASSWORD:}` e `aes-secret-key: ${AES_SECRET_KEY:}`).
+- **Documentação de produção:** criação de `.env.example` e `README_SECRETS.md` com instruções completas para geração de chave AES de 256 bits (`openssl rand -base64 32`) e rotação de credenciais.
+- **Docker Compose:** fallback seguro explícito apenas para desenvolvimento local (`POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:manga_dev_local_secure_2026}`).
+
+## Passe 15 — ponte Spring/JPA para AES e fail-fast em produção (2026-10-17)
+
+Fechamento do achado diagnosticado na retomada ("o conversor JPA ignora o `application.yml`, criando configuração morta e sem fail-fast real em produção"):
+
+- **Diagnóstico:** Como `AesCryptoConverter` é instanciado diretamente pelo provedor JPA (Hibernate) via reflexão e não gerenciado como bean Spring, ele lia apenas `System.getenv()` ou `System.getProperty()`, ignorando a propriedade tipada `platform.security.aes-secret-key` mapeada pelo Spring Boot em `PlatformProperties`. Além disso, se nenhuma chave fosse fornecida em ambiente produtivo, o sistema apenas emitia um aviso no log e continuava usando a chave padrão de desenvolvimento.
+- **Solução implementada:** `PlatformProperties` agora injeta o Spring `Environment` e, em seu `@PostConstruct`, configura autoritativamente `AesCryptoConverter.setCustomKey(key)` usando o valor resolvido pelo Spring.
+- **Fail-Fast em Produção:** Se o perfil ativo for `prod` e a chave secreta AES não estiver definida (ou vazia), `PlatformProperties` aborta a inicialização lançando `IllegalStateException`, impedindo que a aplicação suba em produção com chaves fracas/inseguras.
+- **Testes novos:** `PlatformPropertiesTest` (4 testes: configuração da chave customizada, fail-fast no perfil `prod`, tolerância em ambiente `dev`/default com fallback, e consistência percentual 17% + 83% = 100%).
+- **Verificação:** `cmd /c mvn test` → **BUILD SUCCESS**, `Tests run: 148, Failures: 0, Errors: 0, Skipped: 8` (8 de integração ignorados sem daemon Docker).
+
 ## Contexto
 
 Trabalho interrompido da Fase 7 (upload real + backoffice de moderação), com trilha parcial do manifesto de leitura offline (Fase 8). Alvo: fechar as pontas com segurança server-side, injeção por construtor, contratos alinhados e testes verdes.
