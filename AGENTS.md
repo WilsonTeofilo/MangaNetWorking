@@ -9,16 +9,25 @@ Antes de qualquer alteração, leia `docs/reviews/README.md` e `docs/reviews/PRO
 - `docs/decisions/`: decisões arquiteturais aprovadas (ADRs). Leia as decisões relacionadas ao componente antes de mudar arquitetura.
 - `docs/IDENTIDADE_VISUAL.md`: especificação visual detalhada; use junto da skill `docs/skills/frontend-design/SKILL.md` ao trabalhar no frontend.
 
-## Orquestração e subagentes
+## Orquestração e subagentes (File-Based Handshake)
 
-Para não arrastar contexto gigante, prefira **delegar** por tipo de trabalho. Cada subagente carrega só a skill e o contexto mínimo da sua área; a janela principal orquestra e valida.
+Este ecossistema opera sob a separação estrita de papéis entre **Tech Lead / Orquestrador (Hermes)** e **Workers Especialistas (OpenCode)**:
 
-| Trabalho | Subagente | Skill | Contexto mínimo |
+- **Regra Fundamental do Tech Lead (Hermes):** O Tech Lead **NUNCA ESCREVE CÓDIGO FONTE DIRETAMENTE** (nas pastas `backend/src/`, `frontend/src/`, etc.). Seu trabalho é 100% feito através de especificações técnicas (`docs/orquestracao/*/tasks/`) e auditorias de código (`docs/orquestracao/auditoria/`).
+- **Protocolo de Comunicação:** Toda troca de tarefas ocorre via disco conforme `docs/orquestracao/PROTOCOLO-ORQUESTRACAO.md`.
+  - `docs/orquestracao/backend/tasks/`: Onde o Tech Lead emite a ordem de serviço para o Backend.
+  - `docs/orquestracao/backend/relatorios/`: Onde o OpenCode Backend entrega o relatório do que foi feito e os contratos liberados.
+  - `docs/orquestracao/frontend/tasks/`: Onde o Tech Lead especifica a interface com base nos contratos reais liberados.
+  - `docs/orquestracao/frontend/relatorios/`: Onde o OpenCode Frontend entrega a interface implementada.
+  - `docs/orquestracao/auditoria/`: Onde o Tech Lead emite os pareceres técnicos de aprovação ou revisão.
+
+| Trabalho | Papel / Agente | Skill | Contexto mínimo |
 |---|---|---|---|
-| Telas/componentes React, identidade visual, acessibilidade | `frontend` | `frontend-design` | `PROJECT_CONTEXT` + `visual-principles` + contrato em `frontend/src/api` |
-| Endpoints, services, domínio, segurança de servidor | `backend` | `backend-spring` | `SECURITY_REQUIREMENTS` + ADR da área + `architecture.md` |
-| Modelagem, migrações Flyway, índices, integridade | `data` | `database-design` | ADR-001/003 + `architecture.md` + migrações |
-| Revisar diff, contratos, autorização, testes, regressões | `review` | `code-review` | `SECURITY_REQUIREMENTS` + `BUSINESS_RULES` + diff completo |
+| Tech Lead & Orquestração | `hermes` | Orquestração & Auditoria | `PROJECT_CONTEXT` + `PROTOCOLO-ORQUESTRACAO` + diff |
+| Telas/componentes React, UI | `frontend` (OpenCode) | `frontend-design` | `PROJECT_CONTEXT` + `visual-principles` + contratos liberados em `relatorios/` |
+| Endpoints, services, segurança | `backend` (OpenCode) | `backend-spring` | `SECURITY_REQUIREMENTS` + ADR da área + `architecture.md` |
+| Modelagem, migrações, índices | `data` (OpenCode) | `database-design` | ADR-001/003 + `architecture.md` + migrações |
+| Revisar diff, contratos, testes | `review` (OpenCode) | `code-review` | `SECURITY_REQUIREMENTS` + `BUSINESS_RULES` + diff completo |
 
 Definições em `.opencode/agents/`; índice em `docs/skills/README.md`.
 
