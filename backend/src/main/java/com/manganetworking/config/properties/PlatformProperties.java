@@ -132,6 +132,19 @@ public class PlatformProperties {
         private long sessionCleanupIntervalMs = 3_600_000L; // 1 hora
 
         /**
+         * Intervalo em milissegundos para execução da rotina de limpeza ativa de rate limiting.
+         * <p>
+         * Referência OWASP DoS Prevention Cheat Sheet: expiração forçada periódica
+         * para prevenir memory leaks e esgotamento de recursos (Unbounded Memory Allocation)
+         * sob ataques de spoofing com ampla gama de IPs.
+         * </p>
+         * <p>
+         * Valor padrão: 300.000 ms (5 minutos).
+         * </p>
+         */
+        private long rateLimitCleanupIntervalMs = 300_000L;
+
+        /**
          * Se {@code true}, o rate limit usa o primeiro IP de {@code X-Forwarded-For}.
          * Deve permanecer {@code false} fora de um proxy reverso confiável — o header é
          * controlável pelo cliente e, se confiado às cegas, permite burlar o throttling.
@@ -152,6 +165,9 @@ public class PlatformProperties {
 
         public long getSessionCleanupIntervalMs() { return sessionCleanupIntervalMs; }
         public void setSessionCleanupIntervalMs(long sessionCleanupIntervalMs) { this.sessionCleanupIntervalMs = sessionCleanupIntervalMs; }
+
+        public long getRateLimitCleanupIntervalMs() { return rateLimitCleanupIntervalMs; }
+        public void setRateLimitCleanupIntervalMs(long rateLimitCleanupIntervalMs) { this.rateLimitCleanupIntervalMs = rateLimitCleanupIntervalMs; }
 
         public boolean isTrustForwardedHeaders() { return trustForwardedHeaders; }
         public void setTrustForwardedHeaders(boolean trustForwardedHeaders) { this.trustForwardedHeaders = trustForwardedHeaders; }

@@ -16,15 +16,13 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Rate limiting e throttling em memória (por IP e por bucket de rota).
  *
- * <p>Protege a API contra força bruta em autenticação, spam de denúncias e DoS. O mapa de contadores
- * é podado a cada virada de minuto para não crescer indefinidamente.</p>
+ * <p>Protege a API contra força bruta em autenticação, spam de denúncias e DoS. O armazenamento
+ * e expuração de contadores é delegado a {@link RateLimitStore} (porta de domínio), permitindo
+ * futura troca para Redis em ambiente distribuído sem alterar a lógica de decisão deste filtro.</p>
  */
 @Component
 public class RateLimitingFilter extends OncePerRequestFilter {
@@ -38,16 +36,18 @@ public class RateLimitingFilter extends OncePerRequestFilter {
 
     private final PlatformProperties properties;
     private final ObjectMapper objectMapper;
-
-    private final Map<String, RequestCounter> requestCounts = new ConcurrentHashMap<>();
-    private final AtomicLong lastSweepMinute = new AtomicLong(0);
+    private final RateLimitStore rateLimitStore;
 
     public RateLimitingFilter(
             @Autowired(required = false) PlatformProperties properties,
-            @Autowired(required = false) ObjectMapper objectMapper
+            @Autowired(required = false) ObjectMapper objectMapper,
+            @Autowired(required = false) RateLimitStore rateLimitStore
     ) {
         this.properties = properties != null ? properties : new PlatformProperties();
         this.objectMapper = objectMapper != null ? objectMapper : new ObjectMapper();
+        // Em produção, InMemoryRateLimitStore (Component) sempre resolve. O fallback protege
+        // contextos de teste WebMvcTest onde componentes não-web não são escaneados.
+        this.rateLimitStore = rateLimitStore != null ? rateLimitStore : new InMemoryRateLimitStore();
     }
 
     @Override
@@ -69,34 +69,17 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         String key = clientIp + ":" + bucket;
         long currentMinute = System.currentTimeMillis() / 60_000;
 
-        evictStaleBuckets(currentMinute);
+        // Expurgo inline no primeiro request do minuto (guarda idempotente dentro do store).
+        rateLimitStore.evictStale(currentMinute);
 
-        RequestCounter counter = requestCounts.compute(key, (k, existing) -> {
-            if (existing == null || existing.minuteBucket != currentMinute) {
-                return new RequestCounter(currentMinute, new AtomicInteger(1));
-            }
-            existing.count.incrementAndGet();
-            return existing;
-        });
+        int currentCount = rateLimitStore.incrementAndGet(key, currentMinute);
 
-        if (counter.count.get() > maxAllowed) {
+        if (currentCount > maxAllowed) {
             writeTooManyRequests(request, response);
             return;
         }
 
         filterChain.doFilter(request, response);
-    }
-
-    /**
-     * Remove contadores de minutos anteriores. Sem isso, cada IP visto ficaria retido para sempre
-     * (vazamento de memória explorável com uma faixa ampla de IPs).
-     */
-    private void evictStaleBuckets(long currentMinute) {
-        long previous = lastSweepMinute.get();
-        if (previous == currentMinute || !lastSweepMinute.compareAndSet(previous, currentMinute)) {
-            return;
-        }
-        requestCounts.entrySet().removeIf(entry -> entry.getValue().minuteBucket < currentMinute);
     }
 
     private void writeTooManyRequests(HttpServletRequest request, HttpServletResponse response) throws IOException {
@@ -129,15 +112,5 @@ public class RateLimitingFilter extends OncePerRequestFilter {
             }
         }
         return request.getRemoteAddr();
-    }
-
-    private static class RequestCounter {
-        final long minuteBucket;
-        final AtomicInteger count;
-
-        RequestCounter(long minuteBucket, AtomicInteger count) {
-            this.minuteBucket = minuteBucket;
-            this.count = count;
-        }
     }
 }

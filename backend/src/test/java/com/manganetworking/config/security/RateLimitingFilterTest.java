@@ -32,13 +32,15 @@ class RateLimitingFilterTest {
 
     private RateLimitingFilter rateLimitingFilter;
     private PlatformProperties properties;
+    private InMemoryRateLimitStore rateLimitStore;
 
     @BeforeEach
     void setUp() {
         properties = new PlatformProperties();
         properties.getSecurity().setAuthRateLimitPerMinute(3); // Limite baixo para testar
         properties.getSecurity().setRateLimitPerMinute(10);
-        rateLimitingFilter = new RateLimitingFilter(properties, new ObjectMapper());
+        rateLimitStore = new InMemoryRateLimitStore();
+        rateLimitingFilter = new RateLimitingFilter(properties, new ObjectMapper(), rateLimitStore);
     }
 
     @Test
