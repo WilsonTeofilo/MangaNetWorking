@@ -1,36 +1,33 @@
-# PROTOCOLO DE ORQUESTRAÇÃO — OPENCODE (TECH LEAD & WORKER)
+# PROTOCOLO DE ORQUESTRAÇÃO — OPENCODE DESKTOP
 
-Este repositório é operado exclusivamente pelo **OpenCode Desktop** dividido em duas sessões/modos:
-1. **Chat Tech Lead (Modo Plan)** — Planeja, inspeciona o backlog, quebra tarefas e audita.
-2. **Chat Worker (Modo Build)** — Implementa código, executa testes e gera relatórios.
-
----
-
-## 1. Regra Fundamental: Separação de Papéis
-
-### Modo Plan (Tech Lead / Arquiteto)
-- **NUNCA ALTERA CÓDIGO FONTE** em `backend/src/` ou `frontend/src/`.
-- Trabalha 100% via documentação em `docs/orquestracao/`.
-- **PROIBIDO ALUCINAR O ESTADO DO PROJETO:**
-  - Nunca afirme que leu um arquivo sem efetivamente inspecioná-lo.
-  - Nunca invente número de TASK que não existe no backlog.
-  - Nunca recomende comando sem verificar se o arquivo alvo existe no disco.
-  - Verifique sempre `git status` e `git log -n 5` antes de emitir parecer.
-- Ao definir uma tarefa, crie `docs/orquestracao/<backend|frontend>/tasks/TASK-XXX.md` listando no máximo **2 a 3 arquivos de contexto**.
-
-### Modo Build (Worker / Pedreiro de Código)
-- Implementa estritamente o que está em `TASK-XXX.md`.
-- Lê **APENAS** os arquivos autorizados na tarefa e no `ROTEADOR-DE-CONTEXTO.md`.
-- Não refatora código fora do escopo da tarefa.
-- Executa a suíte de testes (`mvn test` ou `npm test`) antes de considerar o trabalho concluído.
-- Gera o relatório em `docs/orquestracao/<backend|frontend>/relatorios/RELATORIO-XXX.md`.
+Este repositório é operado exclusivamente pelo **OpenCode Desktop** através de agentes especializados com papéis estritos:
+1. **`@techlead`** (Modo Plan / Principal) — Planeja, inspeciona o backlog, valida com `@spec-review` e gera a tarefa.
+2. **`@spec-review`** (Subagente) — Valida a especificação da tarefa antes de qualquer linha de código.
+3. **`@backend` / `@frontend`** (Modo Build / Principal) — Implementam código, rodam testes e geram relatórios.
+4. **`@review`** (Subagente QA) — Audita o diff real e os testes pós-implementação.
 
 ---
 
-## 2. Blindagem de Tokens (Orçamento Máximo por Turno)
+## 1. Protocolo de Trabalho Obrigatório
 
-1. **Contexto Atômico:** O Worker nunca deve ler o repositório inteiro. Cada tarefa deve tocar no máximo 2–3 arquivos.
-2. **Limpeza de Terminal:** Saídas de testes devem ser inspecionadas apenas na linha de resumo (`Tests run: X, Failures: 0, Errors: 0`), nunca mantendo stack traces gigantes no histórico.
+- **Tech Lead planeja; worker implementa; reviewer verifica.**
+- **Nenhum agente afirma ter lido um arquivo sem ter realmente consultado seu conteúdo.**
+- O estado do Git, o backlog e os caminhos citados devem ser verificados antes de qualquer decisão.
+- Nenhum identificador de tarefa ou arquivo pode ser presumido como existente.
+- Cada tarefa deve delimitar arquivos autorizados (normalmente 2 a 3), critérios de aceite e testes.
+- O Tech Lead **não modifica código-fonte** em `backend/src/` ou `frontend/src/`.
+- O worker só implementa o escopo definido na tarefa aprovada.
+- O reviewer não modifica código nem aprova somente com base no relato do worker.
+- Testes são considerados aprovados somente quando sua execução e resultado forem comprovados (`Tests run: X, Failures: 0, Errors: 0`).
+- Se um requisito, arquivo, dependência ou resultado não puder ser verificado, isso deve ser declarado explicitamente.
+- Não executar push, merge, reset destrutivo ou alterações de credenciais sem autorização.
+
+---
+
+## 2. Blindagem de Tokens (Orçamento de Contexto)
+
+1. **Contexto Atômico:** O Worker nunca deve ler o repositório inteiro. Cada tarefa deve tocar no máximo 2–3 arquivos de código.
+2. **Poda de Terminal:** Logs de testes são podados automaticamente pelo OpenCode (`compaction.prune: true`).
 3. **Novos Chats por Tarefa:** Ao concluir uma TASK e gerar o relatório, abra um chat novo para a próxima TASK para zerar a janela de contexto.
 
 ---
@@ -38,5 +35,7 @@ Este repositório é operado exclusivamente pelo **OpenCode Desktop** dividido e
 ## 3. Assinaturas Obrigatórias
 
 - Tech Lead: `Assinado por: OpenCode Tech Lead (Modo Plan)`
-- Worker Backend: `Assinado por: OpenCode Backend (Modo Build)`
-- Worker Frontend: `Assinado por: OpenCode Frontend (Modo Build)`
+- Spec Reviewer: `Assinado por: OpenCode Spec Reviewer`
+- Worker Backend: `Assinado por: OpenCode Backend`
+- Worker Frontend: `Assinado por: OpenCode Frontend`
+- Reviewer QA: `Assinado por: OpenCode Reviewer (QA)`

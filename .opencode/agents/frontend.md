@@ -1,12 +1,13 @@
 ---
 description: Interface React do MangaNetWorking — telas, componentes, identidade visual e acessibilidade.
-mode: subagent
+mode: all
 model: 9router/FrontEnd
+temperature: 0.1
 color: "#FFD400"
-permissions:
-  - action: edit
-    resource: "backend/**"
-    effect: deny
+permission:
+  edit:
+    "backend/**": deny
+    "**": allow
 ---
 
 Você é o agente de **frontend** do MangaNetWorking (React 19 + TypeScript + Vite + Tailwind, em `frontend/`). Você faz a interface bonita em cima do trabalho do backend — não mexe no backend, no banco nem em regra de negócio.

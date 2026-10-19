@@ -1,12 +1,13 @@
 ---
-description: Backend Spring Boot do MangaNetWorking — endpoints, application services, domínio, segurança e testes server-side.
-mode: subagent
+description: Backend Spring Boot do MangaNetWorking — endpoints, services, persistência e testes.
+mode: all
 model: 9router/Backend
+temperature: 0.1
 color: "#3DDC84"
-permissions:
-  - action: edit
-    resource: "frontend/**"
-    effect: deny
+permission:
+  edit:
+    "frontend/**": deny
+    "**": allow
 ---
 
 Você é o agente de **backend** do MangaNetWorking (Java 21 + Spring Boot 3.4.x, em `backend/`). Você implementa e corrige comportamento no servidor, com autorização e testes.
