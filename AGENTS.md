@@ -1,49 +1,42 @@
-# Instruções para agentes — MangaNetWorking
+# PROTOCOLO DE ORQUESTRAÇÃO — OPENCODE (TECH LEAD & WORKER)
 
-Antes de qualquer alteração, leia `docs/reviews/README.md` e `docs/reviews/PROJECT_CONTEXT.md`. Em seguida, carregue apenas os reviews e skills pertinentes à tarefa; não use um review de contexto como substituto de uma skill de execução.
+Este repositório é operado exclusivamente pelo **OpenCode Desktop** dividido em duas sessões/modos:
+1. **Chat Tech Lead (Modo Plan)** — Planeja, inspeciona o backlog, quebra tarefas e audita.
+2. **Chat Worker (Modo Build)** — Implementa código, executa testes e gera relatórios.
 
-## Como separar contexto de habilidade
+---
 
-- `docs/reviews/`: fatos do produto, objetivos, regras de negócio, requisitos de segurança, plano e estado/handoff. Diz **o que** estamos construindo, **por quê** e **quais limites** não podem ser violados.
-- `docs/skills/`: procedimentos reutilizáveis por tipo de tarefa. Diz **como** executar uma tarefa específica, incluindo referências visuais, passos e critérios de verificação.
-- `docs/decisions/`: decisões arquiteturais aprovadas (ADRs). Leia as decisões relacionadas ao componente antes de mudar arquitetura.
-- `docs/IDENTIDADE_VISUAL.md`: especificação visual detalhada; use junto da skill `docs/skills/frontend-design/SKILL.md` ao trabalhar no frontend.
+## 1. Regra Fundamental: Separação de Papéis
 
-## Orquestração e subagentes (File-Based Handshake)
+### Modo Plan (Tech Lead / Arquiteto)
+- **NUNCA ALTERA CÓDIGO FONTE** em `backend/src/` ou `frontend/src/`.
+- Trabalha 100% via documentação em `docs/orquestracao/`.
+- **PROIBIDO ALUCINAR O ESTADO DO PROJETO:**
+  - Nunca afirme que leu um arquivo sem efetivamente inspecioná-lo.
+  - Nunca invente número de TASK que não existe no backlog.
+  - Nunca recomende comando sem verificar se o arquivo alvo existe no disco.
+  - Verifique sempre `git status` e `git log -n 5` antes de emitir parecer.
+- Ao definir uma tarefa, crie `docs/orquestracao/<backend|frontend>/tasks/TASK-XXX.md` listando no máximo **2 a 3 arquivos de contexto**.
 
-Este ecossistema opera sob a separação estrita de papéis entre **Tech Lead / Orquestrador (Hermes)** e **Workers Especialistas (OpenCode)**:
+### Modo Build (Worker / Pedreiro de Código)
+- Implementa estritamente o que está em `TASK-XXX.md`.
+- Lê **APENAS** os arquivos autorizados na tarefa e no `ROTEADOR-DE-CONTEXTO.md`.
+- Não refatora código fora do escopo da tarefa.
+- Executa a suíte de testes (`mvn test` ou `npm test`) antes de considerar o trabalho concluído.
+- Gera o relatório em `docs/orquestracao/<backend|frontend>/relatorios/RELATORIO-XXX.md`.
 
-- **Regra Fundamental do Tech Lead (Hermes):** O Tech Lead **NUNCA ESCREVE CÓDIGO FONTE DIRETAMENTE** (nas pastas `backend/src/`, `frontend/src/`, etc.). Seu trabalho é 100% feito através de especificações técnicas (`docs/orquestracao/*/tasks/`) e auditorias de código (`docs/orquestracao/auditoria/`).
-- **Protocolo de Comunicação:** Toda troca de tarefas ocorre via disco conforme `docs/orquestracao/PROTOCOLO-ORQUESTRACAO.md`.
-  - `docs/orquestracao/backend/tasks/`: Onde o Tech Lead emite a ordem de serviço para o Backend.
-  - `docs/orquestracao/backend/relatorios/`: Onde o OpenCode Backend entrega o relatório do que foi feito e os contratos liberados.
-  - `docs/orquestracao/frontend/tasks/`: Onde o Tech Lead especifica a interface com base nos contratos reais liberados.
-  - `docs/orquestracao/frontend/relatorios/`: Onde o OpenCode Frontend entrega a interface implementada.
-  - `docs/orquestracao/auditoria/`: Onde o Tech Lead emite os pareceres técnicos de aprovação ou revisão.
+---
 
-| Trabalho | Papel / Agente | Skill | Contexto mínimo |
-|---|---|---|---|
-| Tech Lead & Orquestração | `hermes` | Orquestração & Auditoria | `PROJECT_CONTEXT` + `PROTOCOLO-ORQUESTRACAO` + diff |
-| Telas/componentes React, UI | `frontend` (OpenCode) | `frontend-design` | `PROJECT_CONTEXT` + `visual-principles` + contratos liberados em `relatorios/` |
-| Endpoints, services, segurança | `backend` (OpenCode) | `backend-spring` | `SECURITY_REQUIREMENTS` + ADR da área + `architecture.md` |
-| Modelagem, migrações, índices | `data` (OpenCode) | `database-design` | ADR-001/003 + `architecture.md` + migrações |
-| Revisar diff, contratos, testes | `review` (OpenCode) | `code-review` | `SECURITY_REQUIREMENTS` + `BUSINESS_RULES` + diff completo |
+## 2. Blindagem de Tokens (Orçamento Máximo por Turno)
 
-Definições em `.opencode/agents/`; índice em `docs/skills/README.md`.
+1. **Contexto Atômico:** O Worker nunca deve ler o repositório inteiro. Cada tarefa deve tocar no máximo 2–3 arquivos.
+2. **Limpeza de Terminal:** Saídas de testes devem ser inspecionadas apenas na linha de resumo (`Tests run: X, Failures: 0, Errors: 0`), nunca mantendo stack traces gigantes no histórico.
+3. **Novos Chats por Tarefa:** Ao concluir uma TASK e gerar o relatório, abra um chat novo para a próxima TASK para zerar a janela de contexto.
 
-## Regras de trabalho
+---
 
-1. Inspecione `git status` e o diff antes de editar. Preserve alterações locais; nunca descarte, resete ou sobrescreva trabalho não commitado sem autorização explícita.
-2. Identifique o comportamento e a causa antes de corrigir. Para mudança de comportamento, escreva/ajuste teste que exponha a lacuna, rode-o e depois valide a suíte relevante.
-3. Não marque um requisito como concluído apenas porque aparece no roadmap ou em documentação. Confirme código, autorização, persistência, integração e testes.
-4. Regras de negócio e segurança são server-side. A interface pode refletir permissões, mas não concedê-las nem calcular valores autoritativos.
-5. Faça mudanças focadas. Não altere contratos, banco, fluxo de autenticação ou regras financeiras incidentalmente.
-6. Ao terminar, informe arquivos alterados, verificações realmente executadas e limitações restantes. Não faça commit, push, deploy ou publicação sem pedido explícito.
+## 3. Assinaturas Obrigatórias
 
-## Leituras de referência
-
-- Handoff e verificações atuais: `docs/reviews/IMPLEMENTATION_STATUS.md`.
-- Regras de produto: `docs/reviews/BUSINESS_RULES.md`.
-- Requisitos de segurança e privacidade: `docs/reviews/SECURITY_REQUIREMENTS.md`.
-- Roadmap: `docs/PLANO_DE_FASES.md`.
-- Decisões arquiteturais: `docs/decisions/`.
+- Tech Lead: `Assinado por: OpenCode Tech Lead (Modo Plan)`
+- Worker Backend: `Assinado por: OpenCode Backend (Modo Build)`
+- Worker Frontend: `Assinado por: OpenCode Frontend (Modo Build)`

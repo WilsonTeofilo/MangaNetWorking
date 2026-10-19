@@ -1,6 +1,8 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  // As skills vivem em docs/skills (contexto e procedimentos no mesmo lugar).
-  // Cada subpasta com SKILL.md vira uma skill; o ID é o nome da pasta.
-  "skills": ["./docs/skills"]
+  "skills": ["./docs/skills"],
+  "compaction": {
+    "prune": true,
+    "reserved": 15000
+  }
 }

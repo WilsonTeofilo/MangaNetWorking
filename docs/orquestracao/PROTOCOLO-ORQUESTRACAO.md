@@ -1,26 +1,35 @@
-# PROTOCOLO DE ORQUESTRAÇÃO: HERMES (TECH LEAD) & WORKERS (OPENCODE)
+# PROTOCOLO DE ORQUESTRAÇÃO: OPENCODE TECH LEAD & WORKERS
 
-## 1. Visão Geral da Arquitetura de Agentes
+## 1. Visão Geral da Arquitetura de Agentes (OpenCode Desktop)
 
-Este ecossistema opera sob o modelo **Tech Lead Orquestrador vs Operários Especialistas**:
+Este ecossistema opera sob o modelo **OpenCode Tech Lead vs OpenCode Workers Especializados**, eliminando ferramentas externas pesadas:
 
 ```
 +-------------------------------------------------------------+
-|                   HERMES AGENT (Tech Lead)                  |
-|  - Lê contexto completo (reviews, ADRs, plano de fases)     |
-|  - NÃO escreve código de produção (apenas Markdown)         |
-|  - Especifica tarefas técnicas em docs/orquestracao/*/tasks |
-|  - Audita relatórios e decide aprovação/reprovação          |
+|             OPENCODE DESKTOP — MODO PLAN (Tech Lead)         |
+|  - Modelo: 9router/Backend (ou Gemini 3.8 / Nemotron)       |
+|  - Lê apenas backlog e estado do git (zero alucinação)      |
+|  - NÃO edita código em src/                                  |
+|  - Especifica tarefas atômicas em docs/orquestracao/*/tasks |
 +-------------------------------------------------------------+
              |                                 ^
-             | 1. Delega Task.md               | 3. Devolve Relatorio.md
+             | 1. Gera TASK-XXX.md             | 3. Devolve RELATORIO-XXX.md
              v                                 |
 +-------------------------------------------------------------+
-|               OPENCODE WORKERS (Janelas Isoladas)           |
-|  [Janela 1: Backend / Segurança / Infra]                    |
-|  [Janela 2: Frontend / Design / UI]                         |
-|  - Implementam código real e testes unitários               |
-|  - Informam o que foi feito, o que quebrou e contratos API  |
+|            OPENCODE DESKTOP — MODO BUILD (Workers)           |
+|  [Sessão 1: @backend — Java 21 / Spring Boot]                |
+|  [Sessão 2: @frontend — React 19 / Vite / Tailwind]          |
+|  - Lê APENAS a task e os 2 arquivos autorizados              |
+|  - Implementa código e roda testes automatizados             |
+|  - Gera relatório objetivo com evidências reais              |
++-------------------------------------------------------------+
+             |
+             | 4. Submete para conferência
+             v
++-------------------------------------------------------------+
+|            OPENCODE DESKTOP — SUBAGENTE QA (@review)         |
+|  - Inspeciona git diff e resultados de testes                |
+|  - Emite parecer: Aprovado ou Reprovado com linha exata      |
 +-------------------------------------------------------------+
 ```
 
@@ -28,86 +37,38 @@ Este ecossistema opera sob o modelo **Tech Lead Orquestrador vs Operários Espec
 
 ## 2. Estrutura de Diretórios de Comunicação (File-Based Handshake)
 
-Todas as interações entre o Hermes e os Workers acontecem através do disco:
+Todas as interações acontecem através de arquivos no disco:
 
 ```
 docs/orquestracao/
 |-- backend/
-|   |-- tasks/          <- Hermes escreve as ordens de serviço (ex: TASK-001-backend.md)
-|   `-- relatorios/     <- OpenCode Backend escreve os relatórios (ex: RELATORIO-001-backend.md)
+|   |-- tasks/          <- Tech Lead escreve a ordem de serviço (TASK-XXX.md)
+|   `-- relatorios/     <- Worker Backend escreve o relatório (RELATORIO-XXX.md)
 |-- frontend/
-|   |-- tasks/          <- Hermes escreve ordens do Front (ex: TASK-001-frontend.md)
-|   `-- relatorios/     <- OpenCode Frontend escreve os relatórios (ex: RELATORIO-001-frontend.md)
-`-- auditoria/          <- Hermes registra pareceres de revisão e aprovação final (PARECER-XXX.md)
+|   |-- tasks/          <- Tech Lead escreve ordens do Front (TASK-XXX.md)
+|   `-- relatorios/     <- Worker Frontend escreve o relatório (RELATORIO-XXX.md)
+`-- auditoria/          <- Tech Lead / QA registra o parecer final (PARECER-XXX-APROVADO.md)
 ```
 
 ---
 
-## 3. Contrato de Entrada: Especificação de Tarefa pelo Hermes
+## 3. Protocolo Anti-Estupro de Tokens (Regras de Ouro)
 
-Toda tarefa gerada pelo Hermes DEVE seguir o padrão abaixo:
-
-```markdown
-# TASK-XXX: [Nome Sucinto da Funcionalidade]
-**Responsável:** [Backend / Frontend]
-**Fase do Projeto:** [Ex: Fase 8 / Hardening de Segurança]
-**Dependências Prévias:** [Ex: Migração V4 aplicada]
-
-### 1. Objetivo Técnico
-[Explicação clara do que deve ser construído sem código de implementação]
-
-### 2. Contratos & Regras de Negócio
-- Entidade / Schema: [Ex: campos required, tipos, chaves]
-- Regras de Segurança: [Ex: validação de token, idempotência, checagem de role]
-- Tratamento de Erros: [Ex: Exceptions específicas, retorno amigável sem vazar dados]
-
-### 3. Critérios de Aceite
-- [ ] Critério 1
-- [ ] Critério 2
-- [ ] Critério 3
-
-### 4. Instruções para o Relatório do Operário
-Ao finalizar, gere docs/orquestracao/[backend|frontend]/relatorios/RELATORIO-XXX.md
-informando os endpoints/funções liberados para o Frontend.
-```
+1. **Nunca leia o projeto inteiro:**
+   - O Worker só deve carregar o `TASK-XXX.md` e os arquivos indicados nele.
+   - O Tech Lead só lê o backlog e o histórico do git (`git log -n 5`).
+2. **Novo Chat por Tarefa:**
+   - Cada funcionalidade concluída = novo chat no OpenCode Desktop. Nunca reutilize uma sessão com 15 turnos anteriores para iniciar uma tarefa nova.
+3. **Poda Ativa de Terminal (`prune`):**
+   - Logs de `mvn test` ou `npm run build` são podados automaticamente pelo OpenCode (`compaction.prune: true`).
+4. **Verificação Prévia Obrigatória:**
+   - Antes de mandar o Worker rodar, o Tech Lead valida se os arquivos existem no disco.
 
 ---
 
-## 4. Contrato de Saída: Relatório do Operário (OpenCode)
+## 4. Assinaturas Obrigatórias
 
-O OpenCode DEVE estruturar seu relatório no seguinte formato:
-
-```markdown
-# RELATORIO-XXX: [Nome da Funcionalidade]
-**Data/Hora:** [Timestamp]
-**Status:** [CONCLUÍDO | BLOQUEADO | PARCIAL]
-
-### 1. O que foi implementado
-- [Classes / Funções / Componentes criados ou alterados]
-
-### 2. O que passou nos testes
-- [Casos de teste validados com sucesso via mvn test ou npm test]
-
-### 3. O que falhou / Dificuldades encontradas
-- [Erros, limitações de API ou impedimentos]
-
-### 4. Contrato Liberado para o Frontend (Importante!)
-- Endpoints / Hooks / Paths liberados:
-  * Ex: `GET /api/capitulo/:id/lock-status`
-- O que o Frontend JÁ PODE fazer:
-  * Ex: Desenhar card de contagem regressiva e selo VIP.
-- O que o Frontend NÃO PODE fazer ainda:
-  * Ex: Ação de compra ainda em homologação.
-```
-
----
-
-## 5. Ciclo de Auditoria e Fechamento pelo Hermes
-
-1. Hermes lê `RELATORIO-XXX.md`.
-2. Hermes inspeciona o código e os testes implementados pelo operário.
-3. Se houver falha ou critérios pendentes:
-   - Hermes emite `docs/orquestracao/auditoria/PARECER-XXX-REVISAO.md` com os apontamentos técnicos.
-4. Se aprovado:
-   - Hermes emite `docs/orquestracao/auditoria/PARECER-XXX-APROVADO.md`.
-   - Hermes desbloqueia a `TASK-XXX` correspondente para a próxima etapa (ex: Frontend).
+- Tech Lead: `Assinado por: OpenCode Tech Lead (Modo Plan)`
+- Worker Backend: `Assinado por: OpenCode Backend`
+- Worker Frontend: `Assinado por: OpenCode Frontend`
+- Auditor/QA: `Assinado por: OpenCode Reviewer`
