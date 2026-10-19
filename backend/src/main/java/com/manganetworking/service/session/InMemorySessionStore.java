@@ -1,5 +1,6 @@
 package com.manganetworking.service.session;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -25,6 +26,7 @@ import java.util.concurrent.ConcurrentMap;
  * </p>
  */
 @Component
+@ConditionalOnProperty(name = "platform.session.store", havingValue = "inmemory", matchIfMissing = true)
 public class InMemorySessionStore implements SessionStore {
 
     private final ConcurrentMap<String, SessionService.UserSession> sessions = new ConcurrentHashMap<>();

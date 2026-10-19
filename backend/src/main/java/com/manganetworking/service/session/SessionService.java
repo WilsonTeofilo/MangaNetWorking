@@ -187,5 +187,9 @@ public class SessionService {
             UUID creatorId,
             String creatorHandle,
             Instant expiresAt
-    ) {}
+    ) {
+        public boolean isExpired() {
+            return expiresAt != null && expiresAt.isBefore(Instant.now());
+        }
+    }
 }

@@ -1,5 +1,6 @@
 package com.manganetworking.config.security;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -25,6 +26,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * </p>
  */
 @Component
+@ConditionalOnProperty(name = "platform.ratelimit.store", havingValue = "inmemory", matchIfMissing = true)
 public class InMemoryRateLimitStore implements RateLimitStore {
 
     private final ConcurrentHashMap<String, MinuteCounter> counters = new ConcurrentHashMap<>();

@@ -39,6 +39,7 @@ public class ReadingProgressService {
     private final AdRevenueLedgerRepository adRevenueLedgerRepository;
     private final UserRepository userRepository;
     private final PlatformProperties properties;
+    private final com.manganetworking.config.observability.ObservabilityMetricsService observabilityMetricsService;
 
     public ReadingProgressService(
             ReadingProgressMongoRepository progressMongoRepository,
@@ -47,7 +48,8 @@ public class ReadingProgressService {
             CreatorRepository creatorRepository,
             AdRevenueLedgerRepository adRevenueLedgerRepository,
             UserRepository userRepository,
-            PlatformProperties properties
+            PlatformProperties properties,
+            com.manganetworking.config.observability.ObservabilityMetricsService observabilityMetricsService
     ) {
         this.progressMongoRepository = progressMongoRepository;
         this.workRepository = workRepository;
@@ -56,6 +58,7 @@ public class ReadingProgressService {
         this.adRevenueLedgerRepository = adRevenueLedgerRepository;
         this.userRepository = userRepository;
         this.properties = properties;
+        this.observabilityMetricsService = observabilityMetricsService;
     }
 
     /**
@@ -85,6 +88,7 @@ public class ReadingProgressService {
         // Incrementa páginas acumuladas
         int cumulative = (doc.getCumulativePagesRead() == null ? 0 : doc.getCumulativePagesRead()) + 1;
         boolean shouldTriggerAd = false;
+        observabilityMetricsService.recordPageRead();
 
         // Verifica se o usuário é assinante VIP (isento de 100% dos anúncios)
         boolean isVip = false;
@@ -106,6 +110,7 @@ public class ReadingProgressService {
             if (!isVip) {
                 shouldTriggerAd = true;
                 processAdImpression(workId);
+                observabilityMetricsService.recordAdImpression();
             }
         }
 

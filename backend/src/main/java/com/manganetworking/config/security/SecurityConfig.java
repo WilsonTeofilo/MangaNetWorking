@@ -92,6 +92,9 @@ public class SecurityConfig {
                         .referrerPolicy(referrer -> referrer.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
                 )
                 .authorizeHttpRequests(auth -> auth
+                        // Observabilidade e Healthcheck de Containers / Prometheus
+                        .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
+                        .requestMatchers("/actuator/prometheus", "/actuator/metrics/**").permitAll()
                         // Endpoints Públicos de Autenticação
                         .requestMatchers("/api/auth/**").permitAll()
                         // Dev outbox: apenas em perfis locais (defesa em profundidade além do @Profile do controller).

@@ -168,14 +168,17 @@ O **MangaNetWorking** é uma plataforma editorial **100% digital** voltada para 
 
 ## 6. Próximas Fases de Engenharia e Roadmap de Produto
 
-### FASE 12: Observabilidade, Métricas & Transição para Redis
+### FASE 12: Observabilidade, Métricas & Transição para Redis `[CONCLUÍDO]`
 **Objetivo:** Preparar a aplicação para escala horizontal sem estado em múltiplos servidores.
 
-- [ ] **12.1. Spring Boot Actuator & Prometheus:**
-  - Métricas de requisições HTTP, tempo de renderização de páginas e contagem de leituras a cada 30 páginas.
-  - Healthchecks granulares (`/actuator/health/readiness` e `liveness`).
-- [ ] **12.2. Implementação do Store Redis Distribuído:**
-  - Migração de `InMemorySessionStore` e `InMemoryRateLimitStore` para Redis compartilhado quando houver réplicas da API, com fallback transparente para InMemory no perfil dev.
+- [x] **12.1. Spring Boot Actuator & Prometheus:**
+  - Métricas de requisições HTTP, contagem de páginas consumidas (`manganetworking.pages.read.total`), anúncios engatilhados a cada 30 páginas (`manganetworking.ads.impression.total`) via Micrometer.
+  - Healthchecks granulares (`/actuator/health/readiness` e `liveness`) liberados no `SecurityConfig.java` para orquestradores de container.
+- [x] **12.2. Implementação do Store Redis Distribuído:**
+  - Implementado `RedisSessionStore` com TTL atômico e índice reverso por `userId` para revogação em massa LGPD Art. 18.
+  - Implementado `RedisRateLimitStore` com contador atômico (`INCR`) e auto-expurgo em 120 segundos.
+  - Anotações `@ConditionalOnProperty` garantindo alternância transparente entre `inmemory` (dev/testes) e `redis` (produção).
+  - Orquestração no `docker-compose.prod.yml` com container `redis:7-alpine` e healthcheck nativo.
 
 ### FASE 13: Analytics do Criador & Gamificação Avançada
 **Objetivo:** Entregar dados editoriais ricos para os quadrinistas e impulsionar o engajamento com Seasons.
@@ -187,7 +190,7 @@ O **MangaNetWorking** é uma plataforma editorial **100% digital** voltada para 
 
 ---
 
-## 7. Histórico Consolidado de Passes de Engenharia (Passes 10 ao 18)
+## 7. Histórico Consolidado de Passes de Engenharia (Passes 10 ao 19)
 
 | Passe | Data | Escopo Principal | Evidência / Resultado |
 |---|---|---|---|
@@ -200,6 +203,7 @@ O **MangaNetWorking** é uma plataforma editorial **100% digital** voltada para 
 | **Passe 16** | 19/10/2026 | **Hardening LGPD Core, Step-Up 2FA & Integridade Frontend:**<br>- Flyway V5 (`terms_accepted_at`, `birth_date`).<br>- Step-Up 2FA obrigatório em `PUT /api/creators/pix-key`.<br>- Validação de maioridade (18+) no nível 2 de monetização.<br>- Despublicação de obras no esquecimento (`status = 'archived_lgpd'`).<br>- Revogação imediata de sessões no delete de conta (`SessionStore.removeByUserId`).<br>- Purga definitiva de saldos fictícios na UI (`CreatorWorkspacePage.tsx`). | **189 testes verdes** (`mvn test` 189/189, 0 falhas). Frontend compilando limpo em 2.05s (`npm run build`). |
 | **Passe 17** | 19/10/2026 | **Validação E2E com Docker Daemon & Testcontainers:**<br>- 8 testes de integração com Testcontainers verdes (197/197 total).<br>- **Smoke Test E2E 12/12 Live Aprovado** (`smoke_test_e2e.ps1` executado contra PostgreSQL 16 e MongoDB 7 reais): cadastro LGPD, 2FA, Step-Up PIX, upload PNG, criação de obra, capítulo, doação 83/17, exportação e anonimização imediata. | **197 testes verdes no backend**, build do frontend em 2.47s, **Smoke Test E2E 12/12 100% verde**. |
 | **Passe 18** | 19/10/2026 | **Dockerização de Produção (CI/CD) & Leitura Offline PWA VIP:**<br>- Backend `Dockerfile` multi-stage (Temurin 21 Alpine non-root + G1GC tuning).<br>- Frontend `Dockerfile` + Nginx Alpine com reverse proxy `/api/` e SPA router.<br>- `docker-compose.prod.yml` orquestrando postgres, mongo, backend e frontend.<br>- Pipeline GitHub Actions `.github/workflows/ci.yml`.<br>- PWA Service Worker (`sw.js`), `manifest.webmanifest` e `offlineStorage.ts`.<br>- Download e leitura de capítulos offline para assinantes VIP com fallback transparente no `ReaderPage.tsx`. | **Build Docker do Backend OK**, **Build Docker do Frontend OK**, **Build do Frontend Vite em 2.13s OK** (1642 módulos). |
+| **Passe 19** | 19/10/2026 | **Observabilidade Actuator/Prometheus & Store Redis Distribuído:**<br>- Spring Boot Actuator, Micrometer Prometheus e Health Probes (`/actuator/health/readiness` e `liveness`).<br>- `ObservabilityMetricsService` registrando leituras de páginas e impressões de anúncios.<br>- `RedisSessionStore` com TTL atômico e índice reverso por `userId` para purge LGPD.<br>- `RedisRateLimitStore` com contadores atômicos e TTL nativo de 120s.<br>- Suporte multi-nó Stateless no `docker-compose.prod.yml` com `redis:7-alpine`. | **197 testes do backend verdes (100% BUILD SUCCESS)**, **Build do frontend Vite OK (2.14s)**, **Docker Compose config validado**. |
 
 ---
 

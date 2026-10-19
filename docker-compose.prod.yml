@@ -42,6 +42,23 @@ services:
       retries: 5
 
   # ----------------------------------------------------
+  # BANCO DE DADOS DISTRIBUÍDO EM MEMÓRIA: Redis 7
+  # ----------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: manganetworking-redis-prod
+    restart: always
+    volumes:
+      - redis_prod_data:/data
+    networks:
+      - internal_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ----------------------------------------------------
   # BACKEND API: Spring Boot 3.4 (Java 21)
   # ----------------------------------------------------
   backend:
@@ -55,12 +72,18 @@ services:
         condition: service_healthy
       mongodb:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: prod
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/manganetworking
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no ambiente}
       SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/manganetworking_events
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      PLATFORM_SESSION_STORE: redis
+      PLATFORM_RATELIMIT_STORE: redis
       AES_SECRET_KEY: ${AES_SECRET_KEY:?Defina AES_SECRET_KEY com chave de 256 bits}
       COOKIE_SECURE: "true"
       STORAGE_UPLOAD_DIR: /data/uploads
@@ -69,7 +92,7 @@ services:
     networks:
       - internal_network
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8085/api/feed || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8085/actuator/health/readiness || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -105,6 +128,8 @@ volumes:
     name: manganetworking_postgres_prod_data
   mongo_prod_data:
     name: manganetworking_mongo_prod_data
+  redis_prod_data:
+    name: manganetworking_redis_prod_data
   storage_prod_uploads:
     name: manganetworking_storage_prod_uploads
 
@@ -112,3 +137,4 @@ networks:
   internal_network:
     name: manganetworking_prod_network
     driver: bridge
+
