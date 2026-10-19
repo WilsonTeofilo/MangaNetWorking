@@ -1,4 +1,4 @@
-import { Heart, Sparkles, BookOpen, Compass, User as UserIcon, Crown, ShieldAlert, LogOut } from 'lucide-react';
+import { Heart, BookOpen, Compass, User as UserIcon, Crown, ShieldAlert, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useModals } from '../../context/ModalContext';
 import logoSymbol from '../../assets/brand/logo-symbol.svg';
@@ -21,12 +21,14 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin }: HeaderProps) 
 
   return (
     <>
-      <header className="sticky top-0 z-50 w-full min-h-[72px] flex items-center bg-[#0B0B0C] border-b-2 border-[#34343A] select-none">
-        <div className="mn-container flex items-center justify-between gap-4">
+      <header className="sticky top-0 z-50 w-full min-h-[70px] md:min-h-[82px] flex items-center bg-[#0B0B0C] border-b-2 border-[#34343A] select-none">
+        {/* Container próprio da barra: mais largo que o mn-container (1200px) e com
+            respiro crescente, no padrão do header do MangaTeofilo. */}
+        <div className="w-full max-w-[1440px] 2xl:max-w-[1680px] mx-auto px-4 sm:px-5 2xl:px-10 flex items-center justify-between gap-6">
           
           {/* Brand Oficial com Logo em Adesivo */}
           <div
-            className="flex items-center gap-3 cursor-pointer group"
+            className="flex items-center gap-3 cursor-pointer group shrink-0"
             onClick={() => setCurrentTab('feed')}
             title="MangaNetWorking — A Banca Digital do Mangá Independente"
           >
@@ -46,11 +48,11 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin }: HeaderProps) 
           </div>
 
           {/* Navegação Central Oficial (Desktop: Anton 16px, Bloco Amarelo no Ativo) */}
-          <nav className="hidden md:flex items-center gap-2">
+          <nav className="hidden md:flex items-center gap-2 lg:gap-4 2xl:gap-6">
             <button
               type="button"
               onClick={() => setCurrentTab('feed')}
-              className={`px-3 py-1.5 font-display text-base tracking-wider uppercase transition-all ${
+              className={`px-3 py-1.5 font-display text-sm lg:text-base tracking-wider uppercase transition-all ${
                 currentTab === 'feed'
                   ? 'bg-[#FFD400] text-[#0B0B0C] border-2 border-[#0B0B0C] shadow-[3px_3px_0_#0B0B0C]'
                   : 'text-[#F4EFE3] hover:text-[#FFD400] border-2 border-transparent'
@@ -62,7 +64,7 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin }: HeaderProps) 
             <button
               type="button"
               onClick={() => setCurrentTab('works')}
-              className={`px-3 py-1.5 font-display text-base tracking-wider uppercase transition-all ${
+              className={`px-3 py-1.5 font-display text-sm lg:text-base tracking-wider uppercase transition-all ${
                 currentTab === 'works'
                   ? 'bg-[#FFD400] text-[#0B0B0C] border-2 border-[#0B0B0C] shadow-[3px_3px_0_#0B0B0C]'
                   : 'text-[#F4EFE3] hover:text-[#FFD400] border-2 border-transparent'
@@ -74,7 +76,7 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin }: HeaderProps) 
             <button
               type="button"
               onClick={() => setCurrentTab('library')}
-              className={`px-3 py-1.5 font-display text-base tracking-wider uppercase flex items-center gap-1.5 transition-all ${
+              className={`px-3 py-1.5 font-display text-sm lg:text-base tracking-wider uppercase flex items-center gap-1.5 transition-all ${
                 currentTab === 'library'
                   ? 'bg-[#FFD400] text-[#0B0B0C] border-2 border-[#0B0B0C] shadow-[3px_3px_0_#0B0B0C]'
                   : 'text-[#F4EFE3] hover:text-[#FFD400] border-2 border-transparent'
@@ -86,15 +88,14 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin }: HeaderProps) 
           </nav>
 
           {/* Ações da Direita Dirigidas pelo Estado de Sessão */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 lg:gap-4 shrink-0">
             {/* Alternar Modo Criador / Leitor (Secondary button) */}
             <button
               type="button"
               onClick={toggleCreatorMode}
-              className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1.5 border-2 border-[#34343A] bg-[#151517] text-[#F4EFE3] hover:border-[#FFD400] font-pixel text-[12px] uppercase tracking-wider transition-all"
+              className="hidden xl:inline-flex items-center px-3.5 py-1.5 border-2 border-[#34343A] bg-[#151517] text-[#F4EFE3] hover:border-[#FFD400] font-pixel text-[12px] uppercase tracking-wider transition-all whitespace-nowrap"
               title="Alternar entre perfil de criador e leitor"
             >
-              <Sparkles size={12} className="text-[#FFD400]" />
               {user.isCreator ? 'MODO CRIADOR' : 'MODO LEITOR'}
             </button>
 

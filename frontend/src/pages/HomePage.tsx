@@ -204,7 +204,7 @@ export function HomePage({
         <section className="space-y-4 max-w-xl">
           <Win title="CONTINUAR_LENDO.EXE">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-[72px] shrink-0 border border-[#34343A]">
+              <div className="w-[68px] h-[102px] shrink-0 border border-[#34343A]">
                 <Cover
                   src={lastReadWork.coverUrl}
                   title={lastReadWork.title}
