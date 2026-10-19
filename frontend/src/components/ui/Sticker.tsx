@@ -48,7 +48,7 @@ export function Sticker({
 
   return (
     <span
-      className={`inline-flex items-center gap-1 px-2 py-0.5 font-pixel text-[11px] font-bold tracking-wider uppercase select-none shadow-[2px_2px_0_#0B0B0C] ${styleClasses} ${rotClass} ${className}`}
+      className={`inline-flex items-center gap-1 px-2 py-0.5 font-pixel text-[12px] font-bold tracking-wider uppercase select-none shadow-[2px_2px_0_#0B0B0C] ${styleClasses} ${rotClass} ${className}`}
     >
       {showLock && <Lock size={10} className="stroke-[2.5]" />}
       <span>{label || defaultLabel}</span>

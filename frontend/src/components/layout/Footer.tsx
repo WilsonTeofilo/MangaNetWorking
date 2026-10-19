@@ -67,7 +67,7 @@ export function Footer() {
             <strong className="text-[#F4EFE3]">17% de taxa</strong> sobre membros e doações ·{' '}
             <strong className="text-[#F4EFE3]">58% dos anúncios</strong> vão para o autor · sem intermediários.
           </p>
-          <span className="font-pixel text-[11px] text-[#A9A59A]">
+          <span className="font-pixel text-[12px] text-[#A9A59A]">
             © 2026 MANGANETWORKING. OBRAS ORIGINAIS PROTEGIDAS.
           </span>
         </div>

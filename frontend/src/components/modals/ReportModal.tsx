@@ -74,19 +74,19 @@ export function ReportModal() {
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="bg-[#151517] border border-[#E63946] p-3 text-left space-y-1">
-            <div className="flex items-center gap-1.5 text-[#E63946] font-pixel text-[10px] uppercase font-bold">
+          <div className="bg-[#151517] border border-[#E8402F] p-3 text-left space-y-1">
+            <div className="flex items-center gap-1.5 text-[#E8402F] font-pixel text-[12px] uppercase font-bold">
               <ShieldAlert size={14} />
               <span>POLÍTICA DE TOLERÂNCIA ZERO</span>
             </div>
-            <p className="font-body text-[11px] text-[#A9A59A]">
+            <p className="font-body text-[12px] text-[#A9A59A]">
               Pirataria (obras de terceiros sem autorização) e pornografia/hentai são expressamente proibidos nas diretrizes do MangaNetWorking.
             </p>
           </div>
 
           {/* Seleção do Motivo */}
           <div className="space-y-1">
-            <label className="font-pixel text-[11px] uppercase tracking-wider text-[#A9A59A] block">
+            <label className="font-pixel text-[12px] uppercase tracking-wider text-[#A9A59A] block">
               MOTIVO DA DENÚNCIA:
             </label>
             <select
@@ -104,7 +104,7 @@ export function ReportModal() {
 
           {/* Descrição Detalhada */}
           <div className="space-y-1">
-            <label className="font-pixel text-[11px] uppercase tracking-wider text-[#A9A59A] block">
+            <label className="font-pixel text-[12px] uppercase tracking-wider text-[#A9A59A] block">
               DETALHES DA OCORRÊNCIA / LINKS DE COMPROVAÇÃO:
             </label>
             <textarea
@@ -118,7 +118,7 @@ export function ReportModal() {
 
           {/* E-mail de Contato (Opcional) */}
           <div className="space-y-1">
-            <label className="font-pixel text-[11px] uppercase tracking-wider text-[#A9A59A] block">
+            <label className="font-pixel text-[12px] uppercase tracking-wider text-[#A9A59A] block">
               SEU E-MAIL PARA CONTATO (OPCIONAL):
             </label>
             <input
@@ -131,7 +131,7 @@ export function ReportModal() {
           </div>
 
           {errorMsg && (
-            <div className="flex items-center gap-2 text-[#E63946] text-xs font-body bg-[#E63946]/10 p-2 border border-[#E63946]">
+            <div className="flex items-center gap-2 text-[#E8402F] text-xs font-body bg-[#E8402F]/10 p-2 border border-[#E8402F]">
               <AlertTriangle size={14} className="shrink-0" />
               <span>{errorMsg}</span>
             </div>

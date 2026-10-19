@@ -16,7 +16,7 @@ export function XpBar({
 
   return (
     <div className={`space-y-1.5 select-none ${className}`}>
-      <div className="flex justify-between items-center text-xs font-pixel tracking-wider">
+      <div className="flex justify-between items-center font-pixel text-[12px] tracking-wider">
         <span className="text-[#A9A59A]">PROGRESSO DA TEMPORADA</span>
         <span className="text-[#FFD400] font-bold tabular-nums">
           XP {value}/{max}

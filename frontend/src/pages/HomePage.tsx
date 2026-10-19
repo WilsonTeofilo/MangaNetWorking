@@ -82,7 +82,7 @@ export function HomePage({
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <Sticker kind="new" label="DESTAQUE AGORA" rotate={-2} />
-              <span className="font-pixel text-xs tracking-wider text-[#0B0B0C] font-bold">
+              <span className="font-pixel text-[12px] tracking-wider text-[#0B0B0C] font-bold">
                 POR {currentHero.authorName}
               </span>
             </div>
@@ -180,7 +180,7 @@ export function HomePage({
               <button
                 type="button"
                 onClick={onNavigateToCatalog}
-                className="flex items-center gap-1 font-pixel text-xs text-[#FFD400] hover:underline"
+                className="flex items-center gap-1 font-pixel text-[12px] text-[#FFD400] hover:underline"
               >
                 <span>VER TODOS</span>
                 <ArrowRight size={13} />
@@ -214,7 +214,7 @@ export function HomePage({
               </div>
 
               <div className="flex-1 min-w-0">
-                <span className="font-pixel text-[10px] text-[#FFD400] block uppercase tracking-wider">
+                <span className="font-pixel text-[12px] text-[#FFD400] block uppercase tracking-wider">
                   PAROU NA PÁG. 12
                 </span>
                 <h4 className="font-display text-lg text-[#F4EFE3] truncate uppercase">
@@ -260,7 +260,7 @@ export function HomePage({
               <button
                 type="button"
                 onClick={onNavigateToCatalog}
-                className="font-pixel text-xs text-[#FFD400] hover:underline"
+                className="font-pixel text-[12px] text-[#FFD400] hover:underline"
               >
                 CATÁLOGO COMPLETO →
               </button>
@@ -284,7 +284,7 @@ export function HomePage({
         <section className="relative w-full bg-[#FFD400] text-[#0B0B0C] border-2 border-[#0B0B0C] shadow-[6px_6px_0_#F4EFE3] p-6 sm:p-8 space-y-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b-2 border-[#0B0B0C] pb-4">
             <div>
-              <span className="font-pixel text-xs tracking-wider text-[#0B0B0C] font-bold block">
+              <span className="font-pixel text-[12px] tracking-wider text-[#0B0B0C] font-bold block">
                 GAMIFICAÇÃO EDITORIAL
               </span>
               <h3 className="font-display text-3xl sm:text-4xl text-[#0B0B0C] uppercase">

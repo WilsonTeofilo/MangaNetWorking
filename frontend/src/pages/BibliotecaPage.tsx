@@ -48,7 +48,7 @@ export function BibliotecaPage({
       {/* Header da Biblioteca */}
       <header className="border-b-2 border-[#34343A] pb-4 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <span className="font-pixel text-xs text-[#FFD400] tracking-widest block uppercase font-bold">
+          <span className="font-pixel text-[12px] text-[#FFD400] tracking-widest block uppercase font-bold">
             COLEÇÃO DO LEITOR
           </span>
           <h1 className="font-display text-4xl sm:text-5xl text-[#F4EFE3] uppercase">
@@ -65,7 +65,7 @@ export function BibliotecaPage({
           <span className="font-display text-lg text-[#F4EFE3] tabular-nums">
             {favoriteCards.length}
           </span>
-          <span className="font-pixel text-[10px] text-[#A9A59A]">TÍTULOS</span>
+          <span className="font-pixel text-[12px] text-[#A9A59A]">TÍTULOS</span>
         </div>
       </header>
 
@@ -114,7 +114,7 @@ export function BibliotecaPage({
                   />
 
                   {/* Contador de Capítulos no Canto Superior */}
-                  <span className="absolute top-2 right-2 bg-[#0B0B0C] border border-[#FFD400] text-[#FFD400] px-1.5 py-0.5 font-pixel text-[10px] tabular-nums">
+                  <span className="absolute top-2 right-2 bg-[#0B0B0C] border border-[#FFD400] text-[#FFD400] px-1.5 py-0.5 font-pixel text-[12px] tabular-nums">
                     {totalCapitulos} CAPS
                   </span>
                 </div>
@@ -129,7 +129,7 @@ export function BibliotecaPage({
                     >
                       {obra.title}
                     </h3>
-                    <p className="font-body text-[11px] text-[#A9A59A] truncate mt-0.5">
+                    <p className="font-body text-[12px] text-[#A9A59A] truncate mt-0.5">
                       por {obra.authorName}
                     </p>
                   </div>
@@ -158,7 +158,7 @@ export function BibliotecaPage({
                       <button
                         type="button"
                         onClick={() => onSelectWork(obra)}
-                        className="font-pixel text-[10px] text-[#A9A59A] hover:text-[#FFD400]"
+                        className="font-pixel text-[12px] text-[#A9A59A] hover:text-[#FFD400]"
                       >
                         DETALHES →
                       </button>

@@ -64,7 +64,7 @@ export function CatalogPage({ onSelectWork }: CatalogPageProps) {
         <div className="mn-container space-y-6">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
-              <span className="font-pixel text-xs tracking-wider text-[#0B0B0C] font-bold block mb-2.5">
+              <span className="font-pixel text-[12px] tracking-wider text-[#0B0B0C] font-bold block mb-2.5">
                 EDITORIAL INDEPENDENTE
               </span>
               <h1 className="font-display text-4xl sm:text-6xl text-[#0B0B0C] leading-[1.08] pt-1 uppercase">
@@ -110,7 +110,7 @@ export function CatalogPage({ onSelectWork }: CatalogPageProps) {
                   key={genre}
                   type="button"
                   onClick={() => setSelectedGenre(genre)}
-                  className={`px-3 py-1 font-pixel text-xs tracking-wider uppercase border-2 border-[#0B0B0C] whitespace-nowrap transition-all ${
+                  className={`px-3 py-1 font-pixel text-[12px] tracking-wider uppercase border-2 border-[#0B0B0C] whitespace-nowrap transition-all ${
                     isSelected
                       ? 'bg-[#0B0B0C] text-[#FFD400] shadow-[2px_2px_0_#0B0B0C]'
                       : 'bg-transparent text-[#0B0B0C] hover:bg-[rgba(11,11,12,0.1)]'
@@ -124,7 +124,7 @@ export function CatalogPage({ onSelectWork }: CatalogPageProps) {
             <button
               type="button"
               onClick={() => setShowFilters(!showFilters)}
-              className={`px-3 py-1 font-pixel text-xs tracking-wider uppercase border-2 border-[#0B0B0C] flex items-center gap-1.5 whitespace-nowrap ml-auto ${
+              className={`px-3 py-1 font-pixel text-[12px] tracking-wider uppercase border-2 border-[#0B0B0C] flex items-center gap-1.5 whitespace-nowrap ml-auto ${
                 showFilters || statusFilter !== 'all'
                   ? 'bg-[#0B0B0C] text-[#FFD400]'
                   : 'bg-transparent text-[#0B0B0C]'
@@ -143,7 +143,7 @@ export function CatalogPage({ onSelectWork }: CatalogPageProps) {
                   key={st}
                   type="button"
                   onClick={() => setStatusFilter(st)}
-                  className={`px-2.5 py-1 font-pixel text-[11px] border border-[#0B0B0C] ${
+                  className={`px-2.5 py-1 font-pixel text-[12px] border border-[#0B0B0C] ${
                     statusFilter === st
                       ? 'bg-[#0B0B0C] text-[#FFD400]'
                       : 'bg-[#F4EFE3] text-[#0B0B0C]'
@@ -160,7 +160,7 @@ export function CatalogPage({ onSelectWork }: CatalogPageProps) {
 
       {/* 2. Grade de Obras com Container Unificado */}
       <div className="mn-container space-y-6">
-        <div className="flex items-center justify-between border-b-2 border-[#34343A] pb-2 text-xs font-pixel text-[#A9A59A]">
+        <div className="flex items-center justify-between border-b-2 border-[#34343A] pb-2 font-pixel text-[12px] text-[#A9A59A]">
           <span>EXIBINDO {filteredWorks.length} TÍTULOS</span>
           <span>ORDEM: RELEVÂNCIA</span>
         </div>

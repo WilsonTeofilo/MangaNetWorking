@@ -54,7 +54,7 @@ export function DonateModal() {
 
           {/* Seleção de Valores */}
           <div>
-            <label className="block text-xs font-pixel uppercase tracking-wider text-[#A9A59A] mb-2">
+            <label className="block font-pixel text-[12px] uppercase tracking-wider text-[#A9A59A] mb-2">
               ESCOLHA O VALOR DO APOIO:
             </label>
             <div className="grid grid-cols-4 gap-2">
@@ -80,7 +80,7 @@ export function DonateModal() {
 
           {/* Valor Personalizado */}
           <div>
-            <label className="block text-xs font-pixel uppercase tracking-wider text-[#A9A59A] mb-1.5">
+            <label className="block font-pixel text-[12px] uppercase tracking-wider text-[#A9A59A] mb-1.5">
               OU DIGITE OUTRO VALOR:
             </label>
             <input
@@ -96,7 +96,7 @@ export function DonateModal() {
 
           {/* Mensagem de Apoio */}
           <div>
-            <label className="block text-xs font-pixel uppercase tracking-wider text-[#A9A59A] mb-1.5">
+            <label className="block font-pixel text-[12px] uppercase tracking-wider text-[#A9A59A] mb-1.5">
               MENSAGEM DE INCENTIVO (OPCIONAL):
             </label>
             <textarea

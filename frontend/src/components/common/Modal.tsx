@@ -37,7 +37,7 @@ export function Modal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-[#0B0B0C]/85 backdrop-blur-[2px] transition-opacity"
+        className="fixed inset-0 bg-[#0B0B0C]/85 transition-opacity"
         onClick={onClose}
       />
 
@@ -50,7 +50,7 @@ export function Modal({
         {/* Barra de Título em Amarelo com Fechador [×] */}
         <header className="h-[32px] bg-[#FFD400] text-[#0B0B0C] border-b-2 border-[#0B0B0C] px-3 flex items-center justify-between select-none">
           <div className="flex items-center gap-2 truncate">
-            <span className="font-pixel text-xs tracking-wider uppercase font-bold truncate">
+            <span className="font-pixel text-[12px] tracking-wider uppercase font-bold truncate">
               {title}
             </span>
           </div>

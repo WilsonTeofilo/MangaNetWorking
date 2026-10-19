@@ -26,7 +26,7 @@ export function Win({
       } ${className}`}
     >
       <header className="h-[28px] bg-[#FFD400] text-[#0B0B0C] flex items-center justify-between px-2.5 border-b-2 border-[#0B0B0C] select-none">
-        <span className="font-pixel text-[11px] tracking-widest uppercase font-bold truncate">
+        <span className="font-pixel text-[12px] tracking-widest uppercase font-bold truncate">
           {title}
         </span>
         <button

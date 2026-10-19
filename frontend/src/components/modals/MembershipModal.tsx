@@ -47,7 +47,7 @@ export function MembershipModal() {
         <div className="space-y-5">
           {/* Preço e Destaque */}
           <div className="bg-[#0B0B0C] border-2 border-[#FFD400] p-4 text-center">
-            <span className="font-pixel text-[11px] uppercase tracking-widest text-[#FFD400] block mb-1">
+            <span className="font-pixel text-[12px] uppercase tracking-widest text-[#FFD400] block mb-1">
               PLANO OFICIAL DO CRIADOR
             </span>
             <div className="flex items-baseline justify-center gap-1">
@@ -55,13 +55,13 @@ export function MembershipModal() {
               <span className="font-display text-4xl font-bold text-[#F4EFE3] tabular-nums">
                 {price.toFixed(2)}
               </span>
-              <span className="font-pixel text-xs text-[#A9A59A]">/ MÊS</span>
+              <span className="font-pixel text-[12px] text-[#A9A59A]">/ MÊS</span>
             </div>
           </div>
 
           {/* Vantagens do Membro */}
           <div className="space-y-2">
-            <h5 className="font-pixel text-xs uppercase tracking-wider text-[#A9A59A]">
+            <h5 className="font-pixel text-[12px] uppercase tracking-wider text-[#A9A59A]">
               VANTAGENS INCLUSAS:
             </h5>
             <ul className="space-y-2 text-xs font-body text-[#F4EFE3]">

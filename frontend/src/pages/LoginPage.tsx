@@ -151,7 +151,7 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
           <div className="absolute inset-0 mn-halftone opacity-15 pointer-events-none" />
 
           <div className="relative z-10 space-y-4">
-            <span className="font-pixel text-xs text-[#0B0B0C] font-bold tracking-widest block">
+            <span className="font-pixel text-[12px] text-[#0B0B0C] font-bold tracking-widest block">
               PORTAL EDITORIAL INDEPENDENTE
             </span>
             <img src={logoWordmark} alt="MangaNetWorking" className="w-56 -rotate-1" />
@@ -167,12 +167,12 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
               alt="Mascote Nanquim"
               className="w-32 h-36 object-contain -rotate-3 hover:rotate-0 transition-transform duration-200"
             />
-            <span className="font-pixel text-[11px] text-[#0B0B0C] font-bold mt-2">
+            <span className="font-pixel text-[12px] text-[#0B0B0C] font-bold mt-2">
               NANQUIM · MASCOTE OFICIAL
             </span>
           </div>
 
-          <div className="relative z-10 border-t-2 border-[#0B0B0C] pt-3 font-pixel text-[10px] text-[#0B0B0C]">
+          <div className="relative z-10 border-t-2 border-[#0B0B0C] pt-3 font-pixel text-[12px] text-[#0B0B0C]">
             AUTORIA PROTEGIDA · ZERO PIRATARIA
           </div>
         </div>
@@ -199,7 +199,7 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
                 <button
                   type="button"
                   onClick={() => switchMode('login')}
-                  className={`py-2 font-pixel text-xs uppercase tracking-wider transition-all ${
+                  className={`py-2 font-pixel text-[12px] uppercase tracking-wider transition-all ${
                     mode === 'login'
                       ? 'bg-[#F4EFE3] text-[#0B0B0C]'
                       : 'bg-[#212125] text-[#A9A59A] hover:text-[#F4EFE3]'
@@ -210,7 +210,7 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
                 <button
                   type="button"
                   onClick={() => switchMode('register')}
-                  className={`py-2 font-pixel text-xs uppercase tracking-wider border-l-2 border-[#34343A] transition-all ${
+                  className={`py-2 font-pixel text-[12px] uppercase tracking-wider border-l-2 border-[#34343A] transition-all ${
                     mode === 'register'
                       ? 'bg-[#F4EFE3] text-[#0B0B0C]'
                       : 'bg-[#212125] text-[#A9A59A] hover:text-[#F4EFE3]'
@@ -223,7 +223,7 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
               {/* Botões Grandes de Seleção de Papel (apenas no cadastro) */}
               {mode === 'register' && (
                 <div className="space-y-2">
-                  <span className="font-pixel text-[10px] text-[#A9A59A] tracking-wider uppercase block">
+                  <span className="font-pixel text-[12px] text-[#A9A59A] tracking-wider uppercase block">
                     CRIAR COMO:
                   </span>
                   <div className="grid grid-cols-2 gap-3">
@@ -319,7 +319,7 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
             /* Passo 2: 2FA com OTP de 6 Caixas */
             <form onSubmit={handleTwoFactorSubmit} className="space-y-6">
               <div>
-                <span className="font-pixel text-[11px] text-[#FFD400] tracking-wider block font-bold">
+                <span className="font-pixel text-[12px] text-[#FFD400] tracking-wider block font-bold">
                   AUTENTICAÇÃO EM 2 ETAPAS (2FA)
                 </span>
                 <h2 className="font-display text-3xl text-[#F4EFE3] uppercase">

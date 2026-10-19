@@ -46,7 +46,7 @@ export function Cover({
         style={{ backgroundColor: palette.bg, color: palette.text }}
       >
         <div className="absolute inset-0 mn-halftone pointer-events-none opacity-20" />
-        <span className="font-pixel text-[10px] tracking-widest uppercase opacity-70 relative z-10">
+        <span className="font-pixel text-[12px] tracking-widest uppercase opacity-70 relative z-10">
           MANGA ORIGINAL
         </span>
         <div className="relative z-10 my-auto">
@@ -54,7 +54,7 @@ export function Cover({
             {title}
           </h4>
         </div>
-        <div className="pt-2 border-t border-current opacity-40 font-pixel text-[9px] relative z-10 flex justify-between">
+        <div className="pt-2 border-t border-current opacity-40 font-pixel text-[12px] relative z-10 flex justify-between">
           <span>VOL. 01</span>
           <span>MN</span>
         </div>

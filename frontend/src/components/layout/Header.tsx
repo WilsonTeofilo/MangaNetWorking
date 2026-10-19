@@ -39,7 +39,7 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin }: HeaderProps) 
               <span className="font-logo text-xl md:text-2xl text-[#FFD400] leading-none block tracking-wide">
                 MANGA<span className="text-[#F4EFE3]">NETWORKING</span>
               </span>
-              <span className="font-body text-[11px] text-[#A9A59A] block font-medium mt-0.5">
+              <span className="font-body text-[12px] text-[#A9A59A] block font-medium mt-0.5">
                 por MangaTeofilo Editorial
               </span>
             </div>
@@ -91,7 +91,7 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin }: HeaderProps) 
             <button
               type="button"
               onClick={toggleCreatorMode}
-              className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1.5 border-2 border-[#34343A] bg-[#151517] text-[#F4EFE3] hover:border-[#FFD400] font-pixel text-[11px] uppercase tracking-wider transition-all"
+              className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1.5 border-2 border-[#34343A] bg-[#151517] text-[#F4EFE3] hover:border-[#FFD400] font-pixel text-[12px] uppercase tracking-wider transition-all"
               title="Alternar entre perfil de criador e leitor"
             >
               <Sparkles size={12} className="text-[#FFD400]" />
@@ -101,7 +101,7 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin }: HeaderProps) 
             {/* VIP Status / Assinar VIP */}
             {user.isVip ? (
               <div
-                className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#FFD400] text-[#0B0B0C] border-2 border-[#0B0B0C] shadow-[2px_2px_0_#F4EFE3] font-pixel text-[10px] uppercase font-bold tracking-wider"
+                className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#FFD400] text-[#0B0B0C] border-2 border-[#0B0B0C] shadow-[2px_2px_0_#F4EFE3] font-pixel text-[12px] uppercase font-bold tracking-wider"
                 title="Assinante VIP MangaNetWorking — 100% Livre de Anúncios"
               >
                 <Crown size={12} className="fill-[#0B0B0C]" />
@@ -111,7 +111,7 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin }: HeaderProps) 
               <button
                 type="button"
                 onClick={openVip}
-                className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 border-2 border-[#FFD400] text-[#FFD400] hover:bg-[#FFD400] hover:text-[#0B0B0C] font-pixel text-[10px] uppercase tracking-wider transition-all"
+                className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 border-2 border-[#FFD400] text-[#FFD400] hover:bg-[#FFD400] hover:text-[#0B0B0C] font-pixel text-[12px] uppercase tracking-wider transition-all"
                 title="Assinar VIP MangaNetWorking — Remova todos os anúncios da leitura"
               >
                 <Crown size={12} />
@@ -126,8 +126,8 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin }: HeaderProps) 
                 onClick={() => setCurrentTab('moderation')}
                 className={`p-1.5 border-2 transition-all ${
                   currentTab === 'moderation'
-                    ? 'bg-[#E63946] text-[#FFFFFF] border-[#E63946]'
-                    : 'bg-[#151517] text-[#A9A59A] border-[#34343A] hover:text-[#E63946] hover:border-[#E63946]'
+                    ? 'bg-[#E8402F] text-[#F4EFE3] border-[#E8402F]'
+                    : 'bg-[#151517] text-[#A9A59A] border-[#34343A] hover:text-[#E8402F] hover:border-[#E8402F]'
                 }`}
                 title="Acessar Mesa de Moderação Editorial"
                 aria-label="Acessar mesa de moderação editorial"
@@ -192,7 +192,7 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin }: HeaderProps) 
           }`}
         >
           <Compass size={20} />
-          <span className="font-pixel text-[9px] tracking-wider mt-1">FEED</span>
+          <span className="font-pixel text-[12px] tracking-wider mt-1">FEED</span>
         </button>
 
         <button
@@ -203,7 +203,7 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin }: HeaderProps) 
           }`}
         >
           <BookOpen size={20} />
-          <span className="font-pixel text-[9px] tracking-wider mt-1">CATÁLOGO</span>
+          <span className="font-pixel text-[12px] tracking-wider mt-1">CATÁLOGO</span>
         </button>
 
         <button
@@ -214,7 +214,7 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin }: HeaderProps) 
           }`}
         >
           <Heart size={20} className={currentTab === 'library' ? 'fill-[#FFD400]' : ''} />
-          <span className="font-pixel text-[9px] tracking-wider mt-1">BIBLIO</span>
+          <span className="font-pixel text-[12px] tracking-wider mt-1">BIBLIO</span>
         </button>
 
         <button
@@ -227,7 +227,7 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin }: HeaderProps) 
           }`}
         >
           <UserIcon size={20} />
-          <span className="font-pixel text-[9px] tracking-wider mt-1">PERFIL</span>
+          <span className="font-pixel text-[12px] tracking-wider mt-1">PERFIL</span>
         </button>
       </nav>
     </>

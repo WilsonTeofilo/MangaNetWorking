@@ -105,7 +105,7 @@ export function WorkDetailPage({
     <div className="mn-container py-6 space-y-8 select-none">
       
       {/* 1. Breadcrumbs Oficiais */}
-      <nav className="flex items-center gap-2 font-pixel text-xs text-[#A9A59A] uppercase tracking-wider">
+      <nav className="flex items-center gap-2 font-pixel text-[12px] text-[#A9A59A] uppercase tracking-wider">
         <button
           type="button"
           onClick={onBackToCatalog}
@@ -154,7 +154,7 @@ export function WorkDetailPage({
           <div className="flex-1 space-y-4">
             <div>
               <div className="flex flex-wrap items-center gap-2 mb-2">
-                <span className="font-pixel text-xs text-[#FFD400] font-bold tracking-widest uppercase">
+                <span className="font-pixel text-[12px] text-[#FFD400] font-bold tracking-widest uppercase">
                   OBRA NACIONAL ORIGINAL
                 </span>
                 {work.status === 'completed' && <Sticker kind="complete" />}
@@ -175,7 +175,7 @@ export function WorkDetailPage({
               {work.genres.map((genre) => (
                 <span
                   key={genre}
-                  className="px-2.5 py-0.5 bg-[#0B0B0C] border border-[#34343A] text-[#F4EFE3] font-pixel text-[11px] uppercase tracking-wider"
+                  className="px-2.5 py-0.5 bg-[#0B0B0C] border border-[#34343A] text-[#F4EFE3] font-pixel text-[12px] uppercase tracking-wider"
                 >
                   {genre}
                 </span>
@@ -184,7 +184,7 @@ export function WorkDetailPage({
 
             {/* Sinopse Editorial */}
             <div className="pt-2 border-t border-[#34343A]">
-              <span className="font-pixel text-[10px] text-[#A9A59A] tracking-wider uppercase block mb-1">
+              <span className="font-pixel text-[12px] text-[#A9A59A] tracking-wider uppercase block mb-1">
                 SINOPSE
               </span>
               <p className="font-body text-sm text-[#F4EFE3] leading-relaxed max-w-2xl">
@@ -244,7 +244,7 @@ export function WorkDetailPage({
             <button
               type="button"
               onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-              className="flex items-center gap-1.5 font-pixel text-xs text-[#FFD400] hover:underline"
+              className="flex items-center gap-1.5 font-pixel text-[12px] text-[#FFD400] hover:underline"
             >
               <ArrowUpDown size={12} />
               <span>{sortOrder === 'asc' ? 'CRESCENTE' : 'DECRESCENTE'}</span>
@@ -280,7 +280,7 @@ export function WorkDetailPage({
                     {isLocked ? (
                       <Sticker kind="members" />
                     ) : (
-                      <span className="font-pixel text-[11px] text-[#A9A59A] group-hover:text-[#FFD400]">
+                      <span className="font-pixel text-[12px] text-[#A9A59A] group-hover:text-[#FFD400]">
                         LER →
                       </span>
                     )}
@@ -307,7 +307,7 @@ export function WorkDetailPage({
         <aside className="space-y-6">
           {creator && (
             <div className="border-2 border-[#34343A] bg-[#151517] p-5 space-y-4">
-              <span className="font-pixel text-[10px] text-[#FFD400] tracking-wider uppercase block font-bold">
+              <span className="font-pixel text-[12px] text-[#FFD400] tracking-wider uppercase block font-bold">
                 SOBRE O CRIADOR
               </span>
 
@@ -353,7 +353,7 @@ export function WorkDetailPage({
           )}
 
           <div className="border-2 border-[#34343A] bg-[#151517] p-5 space-y-2">
-            <span className="font-pixel text-[10px] text-[#A9A59A] tracking-wider uppercase block">
+            <span className="font-pixel text-[12px] text-[#A9A59A] tracking-wider uppercase block">
               CRONOGRAMA EDITORIAL
             </span>
             <div className="flex items-center gap-2 text-xs font-body text-[#F4EFE3]">

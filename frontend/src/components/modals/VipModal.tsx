@@ -46,7 +46,7 @@ export function VipModal() {
         <div className="space-y-5">
           {/* Preço e Destaque Oficial */}
           <div className="bg-[#0B0B0C] border-2 border-[#FFD400] p-4 text-center shadow-[4px_4px_0_#FFD400]">
-            <span className="font-pixel text-[11px] uppercase tracking-widest text-[#FFD400] block mb-1">
+            <span className="font-pixel text-[12px] uppercase tracking-widest text-[#FFD400] block mb-1">
               PREMIUM GLOBAL DA PLATAFORMA
             </span>
             <div className="flex items-baseline justify-center gap-1">
@@ -54,16 +54,16 @@ export function VipModal() {
               <span className="font-display text-4xl font-bold text-[#F4EFE3] tabular-nums">
                 23,00
               </span>
-              <span className="font-pixel text-xs text-[#A9A59A]">/ 30 DIAS</span>
+              <span className="font-pixel text-[12px] text-[#A9A59A]">/ 30 DIAS</span>
             </div>
-            <span className="font-body text-[11px] text-[#A9A59A] block mt-1">
+            <span className="font-body text-[12px] text-[#A9A59A] block mt-1">
               Cancele quando quiser · Pagamento via PIX ou Cartão
             </span>
           </div>
 
           {/* Vantagens Inclusas */}
           <div className="space-y-2">
-            <h5 className="font-pixel text-xs uppercase tracking-wider text-[#A9A59A]">
+            <h5 className="font-pixel text-[12px] uppercase tracking-wider text-[#A9A59A]">
               VANTAGENS EXCLUSIVAS VIP:
             </h5>
             <ul className="space-y-2 text-xs font-body text-[#F4EFE3]">
@@ -83,12 +83,12 @@ export function VipModal() {
           </div>
 
           {/* Alerta de Integridade Editorial (Respeito aos Criadores) */}
-          <div className="bg-[#151517] border-2 border-[#E63946] p-3 text-left space-y-1">
-            <div className="flex items-center gap-1.5 text-[#E63946] font-pixel text-[10px] uppercase font-bold">
+          <div className="bg-[#151517] border-2 border-[#E8402F] p-3 text-left space-y-1">
+            <div className="flex items-center gap-1.5 text-[#E8402F] font-pixel text-[12px] uppercase font-bold">
               <ShieldAlert size={14} />
               <span>REGRA DE OURO EDITORIAL</span>
             </div>
-            <p className="font-body text-[11px] text-[#A9A59A] leading-relaxed">
+            <p className="font-body text-[12px] text-[#A9A59A] leading-relaxed">
               O VIP da plataforma <strong>NÃO dá acesso antecipado</strong> aos capítulos exclusivos de criadores. Para ler capítulos antecipados de um autor específico, apoie diretamente o <strong>Clube de Membros</strong> dele (com 83% de repasse líquido para o artista).
             </p>
           </div>

@@ -44,7 +44,7 @@ export function LevelPatch({
       >
         <Lock size={16} className="mb-1 text-[#A9A59A]" />
         <span className="font-logo text-xs">LV.{level}</span>
-        <span className="font-pixel text-[9px] tracking-wider mt-0.5">BLOQUEADO</span>
+        <span className="font-pixel text-[12px] tracking-wider mt-0.5">BLOQUEADO</span>
       </div>
     );
   }
@@ -57,7 +57,7 @@ export function LevelPatch({
         {current.icon}
         <span className="font-logo text-sm leading-none">LV.{level}</span>
       </div>
-      <span className="font-pixel text-[9px] tracking-wider font-bold mt-1 uppercase">
+      <span className="font-pixel text-[12px] tracking-wider font-bold mt-1 uppercase">
         {current.name}
       </span>
     </div>

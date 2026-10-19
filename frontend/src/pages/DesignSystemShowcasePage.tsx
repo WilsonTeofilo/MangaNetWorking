@@ -20,14 +20,14 @@ export function DesignSystemShowcasePage() {
     <div className="mn-container py-10 space-y-12">
       <header className="border-b-2 border-[#34343A] pb-4 flex items-center justify-between">
         <div>
-          <span className="font-pixel text-xs text-[#FFD400] tracking-widest block">
+          <span className="font-pixel text-[12px] text-[#FFD400] tracking-widest block">
             AMBIENTE DE DESENVOLVIMENTO
           </span>
           <h1 className="font-display text-4xl text-[#F4EFE3] uppercase">
             DESIGN SYSTEM SHOWCASE
           </h1>
         </div>
-        <span className="font-pixel text-xs bg-[#FFD400] text-[#0B0B0C] px-2 py-1 font-bold">
+        <span className="font-pixel text-[12px] bg-[#FFD400] text-[#0B0B0C] px-2 py-1 font-bold">
           DEV ONLY
         </span>
       </header>
@@ -128,25 +128,25 @@ export function DesignSystemShowcasePage() {
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-2xl">
           <div>
-            <span className="font-pixel text-[10px] text-[#A9A59A] block mb-1">
+            <span className="font-pixel text-[12px] text-[#A9A59A] block mb-1">
               COM IMAGEM
             </span>
             <Cover src={sampleWork.coverUrl} title={sampleWork.title} />
           </div>
           <div>
-            <span className="font-pixel text-[10px] text-[#A9A59A] block mb-1">
+            <span className="font-pixel text-[12px] text-[#A9A59A] block mb-1">
               FALLBACK 1
             </span>
             <Cover title="Kurogane Curse" />
           </div>
           <div>
-            <span className="font-pixel text-[10px] text-[#A9A59A] block mb-1">
+            <span className="font-pixel text-[12px] text-[#A9A59A] block mb-1">
               FALLBACK 2
             </span>
             <Cover title="Neon Tokyo Shinjuku" />
           </div>
           <div>
-            <span className="font-pixel text-[10px] text-[#A9A59A] block mb-1">
+            <span className="font-pixel text-[12px] text-[#A9A59A] block mb-1">
               FALLBACK 3
             </span>
             <Cover title="A Chama Dourada" />

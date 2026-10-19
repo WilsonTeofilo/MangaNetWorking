@@ -129,14 +129,14 @@ export function ReaderPage({ work, chapter, onBack, onNavigateChapter }: ReaderP
             <h3 className="font-display text-base tracking-wide text-[#F4EFE3] uppercase leading-none truncate max-w-xs sm:max-w-md">
               {work.title}
             </h3>
-            <span className="font-pixel text-[11px] text-[#FFD400] tracking-wider block mt-0.5">
+            <span className="font-pixel text-[12px] text-[#FFD400] tracking-wider block mt-0.5">
               CAP. #{chapter.number} — {chapter.title}
             </span>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          <span className="font-pixel text-xs text-[#A9A59A] tabular-nums">
+          <span className="font-pixel text-[12px] text-[#A9A59A] tabular-nums">
             PÁG. {currentPage} / {totalPages}
           </span>
 
@@ -154,7 +154,7 @@ export function ReaderPage({ work, chapter, onBack, onNavigateChapter }: ReaderP
           <button
             type="button"
             onClick={() => openReport(work.id, work.title, chapter.id)}
-            className="p-1.5 border border-[#34343A] bg-[#151517] text-[#A9A59A] hover:text-[#E63946] hover:border-[#E63946] transition-colors"
+            className="p-1.5 border border-[#34343A] bg-[#151517] text-[#A9A59A] hover:text-[#E8402F] hover:border-[#E8402F] transition-colors"
             title="Denunciar pirataria, pornografia ou violação"
           >
             <Flag size={14} />
@@ -175,7 +175,7 @@ export function ReaderPage({ work, chapter, onBack, onNavigateChapter }: ReaderP
         <div className="bg-[#151517] border-b border-[#34343A] p-3 text-center text-xs animate-in fade-in">
           <div className="max-w-xl mx-auto flex items-center justify-between gap-4">
             <span className="font-body text-[#A9A59A]">
-              <strong className="text-[#FFD400] font-pixel text-[11px] mr-1.5 uppercase">
+              <strong className="text-[#FFD400] font-pixel text-[12px] mr-1.5 uppercase">
                 PUBLICIDADE:
               </strong>
               58% da receita deste anúncio é creditada diretamente a {work.authorName}.
@@ -183,7 +183,7 @@ export function ReaderPage({ work, chapter, onBack, onNavigateChapter }: ReaderP
             <button
               type="button"
               onClick={() => setShowAdNotice(false)}
-              className="px-2 py-0.5 border border-[#34343A] text-[#F4EFE3] hover:text-[#FFD400] font-pixel text-[10px]"
+              className="px-2 py-0.5 border border-[#34343A] text-[#F4EFE3] hover:text-[#FFD400] font-pixel text-[12px]"
             >
               FECHAR
             </button>
@@ -228,7 +228,7 @@ export function ReaderPage({ work, chapter, onBack, onNavigateChapter }: ReaderP
             <ChevronLeft size={14} className="mr-1" /> ANTERIOR
           </Button>
 
-          <span className="font-pixel text-xs text-[#A9A59A] tabular-nums">
+          <span className="font-pixel text-[12px] text-[#A9A59A] tabular-nums">
             {currentPage} DE {totalPages}
           </span>
 
@@ -264,7 +264,7 @@ export function ReaderPage({ work, chapter, onBack, onNavigateChapter }: ReaderP
             type="button"
             onClick={() => onNavigateChapter(chapter.number - 1)}
             disabled={chapter.number <= 1}
-            className="px-3 py-1 font-pixel text-xs uppercase border border-[#34343A] bg-[#151517] text-[#A9A59A] hover:text-[#F4EFE3] disabled:opacity-30 disabled:cursor-not-allowed"
+            className="px-3 py-1 font-pixel text-[12px] uppercase border border-[#34343A] bg-[#151517] text-[#A9A59A] hover:text-[#F4EFE3] disabled:opacity-30 disabled:cursor-not-allowed"
           >
             CAP. ANTERIOR
           </button>
@@ -273,7 +273,7 @@ export function ReaderPage({ work, chapter, onBack, onNavigateChapter }: ReaderP
             type="button"
             onClick={() => onNavigateChapter(chapter.number + 1)}
             disabled={chapter.number >= (work.totalChapters || 10)}
-            className="px-3 py-1 font-pixel text-xs uppercase border-2 border-[#0B0B0C] bg-[#FFD400] text-[#0B0B0C] font-bold hover:bg-[#E0B800] disabled:opacity-30 disabled:cursor-not-allowed"
+            className="px-3 py-1 font-pixel text-[12px] uppercase border-2 border-[#0B0B0C] bg-[#FFD400] text-[#0B0B0C] font-bold hover:bg-[#E0B800] disabled:opacity-30 disabled:cursor-not-allowed"
           >
             PRÓXIMO CAP.
           </button>

@@ -140,21 +140,15 @@ export function App() {
               )}
 
               {currentTab === 'reader-profile' && (
-                <div className="max-w-7xl mx-auto px-4 py-6">
-                  <ReaderProfilePage onSelectWork={handleSelectWork} />
-                </div>
+                <ReaderProfilePage onSelectWork={handleSelectWork} />
               )}
 
               {currentTab === 'creator-workspace' && (
-                <div className="max-w-7xl mx-auto px-4 py-6">
-                  <CreatorWorkspacePage />
-                </div>
+                <CreatorWorkspacePage />
               )}
 
               {currentTab === 'moderation' && (
-                <div className="max-w-7xl mx-auto px-4 py-6">
-                  <ModerationBackofficePage onBack={() => handleSwitchTab('feed')} />
-                </div>
+                <ModerationBackofficePage onBack={() => handleSwitchTab('feed')} />
               )}
             </main>
 

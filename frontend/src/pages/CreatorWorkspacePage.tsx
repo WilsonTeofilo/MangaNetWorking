@@ -245,7 +245,7 @@ export function CreatorWorkspacePage() {
             </div>
 
             <div>
-              <span className="font-pixel text-[11px] text-[#FFD400] tracking-widest block uppercase font-bold">
+              <span className="font-pixel text-[12px] text-[#FFD400] tracking-widest block uppercase font-bold">
                 PAINEL DO AUTOR · SEASON 01
               </span>
               <h1 className="font-display text-3xl sm:text-4xl text-[#F4EFE3] uppercase">
@@ -285,7 +285,7 @@ export function CreatorWorkspacePage() {
         <Win title="QUEST_SEMANAL.EXE">
           <div className="space-y-4">
             <div className="border-b border-[#34343A] pb-2">
-              <span className="font-pixel text-xs text-[#FFD400]">
+              <span className="font-pixel text-[12px] text-[#FFD400]">
                 MISSÕES ATIVAS (SEMANA 03)
               </span>
             </div>
@@ -308,17 +308,17 @@ export function CreatorWorkspacePage() {
                       {mission.completed ? (
                         <Check size={16} className="text-[#FFD400]" />
                       ) : (
-                        <span className="font-pixel text-[10px] text-[#A9A59A]">EM PROGRESSO</span>
+                        <span className="font-pixel text-[12px] text-[#A9A59A]">EM PROGRESSO</span>
                       )}
                     </div>
                     {mission.description && (
                       <p className="font-body text-xs text-[#A9A59A]">{mission.description}</p>
                     )}
-                    <span className="font-pixel text-[10px] text-[#FFD400] block mt-1">
+                    <span className="font-pixel text-[12px] text-[#FFD400] block mt-1">
                       PROGRESSO: {mission.currentProgress}/{mission.targetGoal}
                     </span>
                     {mission.boostRewardMultiplier ? (
-                      <span className="font-pixel text-[10px] text-[#FFD400] block">
+                      <span className="font-pixel text-[12px] text-[#FFD400] block">
                         RECOMPENSA: +{Math.round((mission.boostRewardMultiplier - 1) * 100)}% DESCOBERTA
                         NO FEED POR {mission.boostDurationHours ?? 48}H
                       </span>
@@ -341,7 +341,7 @@ export function CreatorWorkspacePage() {
                 <p className="font-body text-xs text-[#A9A59A]">
                   Publicar ao menos 1 capítulo novo nesta semana.
                 </p>
-                <span className="font-pixel text-[10px] text-[#FFD400] block mt-1">
+                <span className="font-pixel text-[12px] text-[#FFD400] block mt-1">
                   RECOMPENSA: +15% DESCOBERTA NO FEED POR 48H
                 </span>
               </div>
@@ -351,12 +351,12 @@ export function CreatorWorkspacePage() {
                   <span className="font-display text-sm text-[#F4EFE3] uppercase">
                     2. DIÁLOGO COM A COMUNIDADE
                   </span>
-                  <span className="font-pixel text-[10px] text-[#A9A59A]">EM PROGRESSO</span>
+                  <span className="font-pixel text-[12px] text-[#A9A59A]">EM PROGRESSO</span>
                 </div>
                 <p className="font-body text-xs text-[#A9A59A]">
                   Responder 5 comentários de leitores nas suas obras.
                 </p>
-                <span className="font-pixel text-[10px] text-[#A9A59A] block mt-1">
+                <span className="font-pixel text-[12px] text-[#A9A59A] block mt-1">
                   PROGRESSO: 3/5 COMENTÁRIOS
                 </span>
               </div>
@@ -366,7 +366,7 @@ export function CreatorWorkspacePage() {
                   <span className="font-display text-sm text-[#F4EFE3] uppercase">
                     3. RETENÇÃO DO LEITOR
                   </span>
-                  <span className="font-pixel text-[10px] text-[#A9A59A]">BLOQUEADO</span>
+                  <span className="font-pixel text-[12px] text-[#A9A59A]">BLOQUEADO</span>
                 </div>
                 <p className="font-body text-xs text-[#A9A59A]">
                   Alcançar 1.000 leituras completas em capítulos gratuitos.
@@ -381,7 +381,7 @@ export function CreatorWorkspacePage() {
         <Win title="GANHOS.EXE">
           <div className="space-y-4">
             <div className="border-b border-[#34343A] pb-2">
-              <span className="font-pixel text-xs text-[#FFD400]">
+              <span className="font-pixel text-[12px] text-[#FFD400]">
                 DIVISÃO FINANCEIRA REAL (SERVIDOR)
               </span>
             </div>
@@ -417,12 +417,12 @@ export function CreatorWorkspacePage() {
             </div>
 
             {workspace?.hasActiveBoost && (
-              <span className="font-pixel text-[10px] text-[#3DDC84] block">
+              <span className="font-pixel text-[12px] text-[#3DDC84] block">
                 BOOST ATIVO: {workspace.engagementBoostMul.toFixed(1)}x NO FEED DE DESCOBERTA
               </span>
             )}
 
-            <p className="font-body text-[11px] text-[#A9A59A] leading-relaxed pt-1">
+            <p className="font-body text-[12px] text-[#A9A59A] leading-relaxed pt-1">
               * Taxa padrão de 17% retida para infraestrutura e servidores. Ao alcançar o Nível 4 na Season, a taxa cai para 10% por 15 dias.
             </p>
           </div>
@@ -433,7 +433,7 @@ export function CreatorWorkspacePage() {
       {/* 4. Formulário de Publicação Real de Nova Obra e Páginas (Fase 7) */}
       <section className="border-2 border-[#FFD400] bg-[#151517] p-6 sm:p-8 space-y-6 shadow-[6px_6px_0_#FFD400]">
         <div>
-          <span className="font-pixel text-[11px] text-[#FFD400] uppercase tracking-widest font-bold block mb-1">
+          <span className="font-pixel text-[12px] text-[#FFD400] uppercase tracking-widest font-bold block mb-1">
             ESTÚDIO EDITORIAL DO AUTOR
           </span>
           <h2 className="font-display text-3xl text-[#F4EFE3] uppercase">
@@ -452,7 +452,7 @@ export function CreatorWorkspacePage() {
         )}
 
         {publishErrorMsg && (
-          <div className="p-4 bg-[#E63946] text-[#FFFFFF] border-2 border-[#0B0B0C] font-body text-xs flex items-center gap-2">
+          <div className="p-4 bg-[#E8402F] text-[#F4EFE3] border-2 border-[#0B0B0C] font-body text-xs flex items-center gap-2">
             <AlertCircle size={18} />
             <span>{publishErrorMsg}</span>
           </div>
@@ -505,13 +505,13 @@ export function CreatorWorkspacePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Capa 2:3 */}
             <div className="p-4 border-2 border-dashed border-[#34343A] bg-[#0B0B0C] space-y-3 text-center">
-              <span className="font-pixel text-xs text-[#FFD400] uppercase block">
+              <span className="font-pixel text-[12px] text-[#FFD400] uppercase block">
                 CAPA VERTICAL (PROPORÇÃO 2:3)
               </span>
               {coverUrl ? (
                 <div className="flex flex-col items-center gap-2">
                   <img src={coverUrl} alt="Preview da Capa" className="w-24 h-36 object-cover border-2 border-[#FFD400]" />
-                  <span className="font-pixel text-[10px] text-[#3DDC84]">CAPA PRONTA</span>
+                  <span className="font-pixel text-[12px] text-[#3DDC84]">CAPA PRONTA</span>
                 </div>
               ) : (
                 <div className="py-4 space-y-2">
@@ -519,7 +519,7 @@ export function CreatorWorkspacePage() {
                   <p className="font-body text-xs text-[#A9A59A]">JPEG, PNG ou WebP (Máx 15MB)</p>
                 </div>
               )}
-              <label className="inline-block px-4 py-2 bg-[#151517] border-2 border-[#34343A] hover:border-[#FFD400] text-[#F4EFE3] font-pixel text-xs uppercase cursor-pointer transition-colors">
+              <label className="inline-block px-4 py-2 bg-[#151517] border-2 border-[#34343A] hover:border-[#FFD400] text-[#F4EFE3] font-pixel text-[12px] uppercase cursor-pointer transition-colors">
                 <Upload size={14} className="inline mr-1.5" />
                 {isUploadingCover ? 'ENVIANDO...' : 'SELECIONAR CAPA'}
                 <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleCoverUpload} className="hidden" />
@@ -528,13 +528,13 @@ export function CreatorWorkspacePage() {
 
             {/* Banner 16:9 */}
             <div className="p-4 border-2 border-dashed border-[#34343A] bg-[#0B0B0C] space-y-3 text-center">
-              <span className="font-pixel text-xs text-[#FFD400] uppercase block">
+              <span className="font-pixel text-[12px] text-[#FFD400] uppercase block">
                 BANNER ILUSTRADO (16:9 - OPCIONAL)
               </span>
               {bannerUrl ? (
                 <div className="flex flex-col items-center gap-2">
                   <img src={bannerUrl} alt="Preview do Banner" className="w-48 h-24 object-cover border-2 border-[#FFD400]" />
-                  <span className="font-pixel text-[10px] text-[#3DDC84]">BANNER PRONTO</span>
+                  <span className="font-pixel text-[12px] text-[#3DDC84]">BANNER PRONTO</span>
                 </div>
               ) : (
                 <div className="py-4 space-y-2">
@@ -542,7 +542,7 @@ export function CreatorWorkspacePage() {
                   <p className="font-body text-xs text-[#A9A59A]">Arte horizontal para fundo da obra</p>
                 </div>
               )}
-              <label className="inline-block px-4 py-2 bg-[#151517] border-2 border-[#34343A] hover:border-[#FFD400] text-[#F4EFE3] font-pixel text-xs uppercase cursor-pointer transition-colors">
+              <label className="inline-block px-4 py-2 bg-[#151517] border-2 border-[#34343A] hover:border-[#FFD400] text-[#F4EFE3] font-pixel text-[12px] uppercase cursor-pointer transition-colors">
                 <Upload size={14} className="inline mr-1.5" />
                 {isUploadingBanner ? 'ENVIANDO...' : 'SELECIONAR BANNER'}
                 <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleBannerUpload} className="hidden" />
@@ -554,14 +554,14 @@ export function CreatorWorkspacePage() {
           <div className="p-4 border-2 border-[#34343A] bg-[#0B0B0C] space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
-                <span className="font-pixel text-xs text-[#FFD400] uppercase block">
+                <span className="font-pixel text-[12px] text-[#FFD400] uppercase block">
                   PÁGINAS DO CAPÍTULO 1 (UPLOAD EM LOTE)
                 </span>
                 <span className="font-body text-xs text-[#A9A59A]">
                   Selecione os arquivos de imagem ordenados das páginas do mangá.
                 </span>
               </div>
-              <label className="px-4 py-2 bg-[#FFD400] text-[#0B0B0C] border-2 border-[#0B0B0C] font-pixel text-xs uppercase cursor-pointer hover:bg-[#E0B800] transition-colors shrink-0">
+              <label className="px-4 py-2 bg-[#FFD400] text-[#0B0B0C] border-2 border-[#0B0B0C] font-pixel text-[12px] uppercase cursor-pointer hover:bg-[#E0B800] transition-colors shrink-0">
                 <FileText size={14} className="inline mr-1.5" />
                 {isUploadingPages ? 'ENVIANDO PÁGINAS...' : `UPAR PÁGINAS (${chapterPages.length})`}
                 <input type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={handlePagesUpload} className="hidden" />
@@ -572,7 +572,7 @@ export function CreatorWorkspacePage() {
               <div className="flex flex-wrap gap-2 pt-2 border-t border-[#34343A]">
                 {chapterPages.map((page, idx) => (
                   <div key={idx} className="relative p-1 bg-[#151517] border border-[#34343A] text-center">
-                    <span className="font-pixel text-[9px] text-[#FFD400] block mb-1">PÁG. {idx + 1}</span>
+                    <span className="font-pixel text-[12px] text-[#FFD400] block mb-1">PÁG. {idx + 1}</span>
                     <img src={page} alt={`Página ${idx + 1}`} className="w-12 h-16 object-cover" />
                   </div>
                 ))}
@@ -649,7 +649,7 @@ export function CreatorWorkspacePage() {
               DE MINHA AUTORIA ORIGINAL E NÃO VIOLAM DIREITOS DE TERCEIROS.
             </span>
           </label>
-          <span className="font-body text-[11px] text-[#A9A59A] block pl-8">
+          <span className="font-body text-[12px] text-[#A9A59A] block pl-8">
             Declaração com validade jurídica vinculada ao cadastro para fins do Art. 184 do CP.
           </span>
         </div>
@@ -665,7 +665,7 @@ export function CreatorWorkspacePage() {
           </Button>
 
           {isSaved && (
-            <span className="font-pixel text-xs text-[#3DDC84] flex items-center gap-1">
+            <span className="font-pixel text-[12px] text-[#3DDC84] flex items-center gap-1">
               <Check size={14} /> SALVO NO SERVIDOR
             </span>
           )}

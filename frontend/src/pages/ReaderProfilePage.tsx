@@ -73,11 +73,11 @@ export function ReaderProfilePage({ onSelectWork }: ReaderProfilePageProps) {
 
             <div className="space-y-0.5">
               <div className="flex items-center gap-2">
-                <span className="font-pixel text-[11px] tracking-widest text-[#FFD400] block uppercase font-bold">
+                <span className="font-pixel text-[12px] tracking-widest text-[#FFD400] block uppercase font-bold">
                   LEITOR OFICIAL
                 </span>
                 {user.isVip && (
-                  <span className="px-1.5 py-0.5 bg-[#FFD400] text-[#0B0B0C] font-pixel text-[9px] uppercase font-bold flex items-center gap-1">
+                  <span className="px-1.5 py-0.5 bg-[#FFD400] text-[#0B0B0C] font-pixel text-[12px] uppercase font-bold flex items-center gap-1">
                     <Crown size={10} className="fill-[#0B0B0C]" />
                     VIP
                   </span>
@@ -94,13 +94,13 @@ export function ReaderProfilePage({ onSelectWork }: ReaderProfilePageProps) {
 
           {/* Switch de Visibilidade Oficial (Conformidade LGPD) */}
           <div className="flex items-center gap-3 bg-[#0B0B0C] border-2 border-[#34343A] p-2">
-            <span className="font-pixel text-[10px] text-[#A9A59A] uppercase tracking-wider pl-1">
+            <span className="font-pixel text-[12px] text-[#A9A59A] uppercase tracking-wider pl-1">
               VISIBILIDADE:
             </span>
             <button
               type="button"
               onClick={() => setIsPublic(!isPublic)}
-              className={`px-3 py-1 font-pixel text-xs tracking-wider uppercase border-2 transition-all flex items-center gap-1.5 ${
+              className={`px-3 py-1 font-pixel text-[12px] tracking-wider uppercase border-2 transition-all flex items-center gap-1.5 ${
                 isPublic
                   ? 'bg-[#FFD400] text-[#0B0B0C] border-[#0B0B0C] shadow-[2px_2px_0_#0B0B0C]'
                   : 'bg-[#212125] text-[#F4EFE3] border-[#34343A]'
@@ -149,7 +149,7 @@ export function ReaderProfilePage({ onSelectWork }: ReaderProfilePageProps) {
                   ASSINATURA VIP DA PLATAFORMA
                 </h3>
                 {user.isVip && (
-                  <span className="px-2 py-0.5 bg-[#3DDC84] text-[#0B0B0C] font-pixel text-[10px] uppercase font-bold">
+                  <span className="px-2 py-0.5 bg-[#3DDC84] text-[#0B0B0C] font-pixel text-[12px] uppercase font-bold">
                     ATIVO
                   </span>
                 )}
@@ -164,7 +164,7 @@ export function ReaderProfilePage({ onSelectWork }: ReaderProfilePageProps) {
 
           <div>
             {user.isVip ? (
-              <div className="flex items-center gap-2 text-[#3DDC84] font-pixel text-xs uppercase">
+              <div className="flex items-center gap-2 text-[#3DDC84] font-pixel text-[12px] uppercase">
                 <CheckCircle2 size={16} />
                 <span>BENEFÍCIOS ATIVOS</span>
               </div>
@@ -193,7 +193,7 @@ export function ReaderProfilePage({ onSelectWork }: ReaderProfilePageProps) {
             <Heart size={20} className="fill-[#FFD400] text-[#FFD400]" />
             OBRAS NA BANCA DO LEITOR
           </h2>
-          <span className="font-pixel text-xs text-[#FFD400] tabular-nums">
+          <span className="font-pixel text-[12px] text-[#FFD400] tabular-nums">
             {likedWorks.length} TÍTULOS
           </span>
         </div>
