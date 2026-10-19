@@ -2,13 +2,20 @@ package com.manganetworking.service.user;
 
 import com.manganetworking.config.exception.AccessDeniedException;
 import com.manganetworking.config.exception.ResourceNotFoundException;
+import com.manganetworking.domain.relational.CreatorEntity;
 import com.manganetworking.domain.relational.UserEntity;
 import com.manganetworking.domain.relational.WorkEntity;
+import com.manganetworking.repository.jpa.CreatorRepository;
 import com.manganetworking.repository.jpa.UserRepository;
 import com.manganetworking.repository.jpa.WorkRepository;
 import com.manganetworking.repository.mongo.ReadingProgressMongoRepository;
 import com.manganetworking.service.reading.ReadingProgressService;
+import com.manganetworking.service.session.SessionService;
+import com.manganetworking.service.storage.FileStorageService;
 import com.manganetworking.service.user.dto.*;
+import com.manganetworking.util.StorageFileNames;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,21 +27,32 @@ import java.util.UUID;
 @Service
 public class UserProfileApplicationService {
 
+    private static final Logger log = LoggerFactory.getLogger(UserProfileApplicationService.class);
+
     private final UserRepository userRepository;
     private final WorkRepository workRepository;
     private final ReadingProgressMongoRepository progressRepository;
     private final ReadingProgressService readingProgressService;
+    private final CreatorRepository creatorRepository;
+    private final FileStorageService fileStorageService;
+    private final SessionService sessionService;
 
     public UserProfileApplicationService(
             UserRepository userRepository,
             WorkRepository workRepository,
             ReadingProgressMongoRepository progressRepository,
-            ReadingProgressService readingProgressService
+            ReadingProgressService readingProgressService,
+            CreatorRepository creatorRepository,
+            FileStorageService fileStorageService,
+            SessionService sessionService
     ) {
         this.userRepository = userRepository;
         this.workRepository = workRepository;
         this.progressRepository = progressRepository;
         this.readingProgressService = readingProgressService;
+        this.creatorRepository = creatorRepository;
+        this.fileStorageService = fileStorageService;
+        this.sessionService = sessionService;
     }
 
     @Transactional(readOnly = true)
@@ -171,14 +189,25 @@ public class UserProfileApplicationService {
 
     /**
      * Direito ao Esquecimento / Eliminação dos Dados Pessoais (Art. 18, VI da LGPD)
-     * Anonimiza dados pessoais enquanto preserva integridade fiscal do ledger de transações.
+     * <p>
+     * Anonimiza dados pessoais no PostgreSQL, remove as imagens pessoais do storage e revoga
+     * as sessões ativas, preservando apenas a integridade fiscal do ledger de transações
+     * (que guarda valores, não CPF/PIX). Sem a revogação, o cookie emitido antes da exclusão
+     * continuaria autenticando o titular por até 24h e manteria nome/e-mail em memória.
+     * </p>
      */
     @Transactional
     public void deleteUserAccountLgpd(UUID currentUserId) {
         UserEntity user = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado: " + currentUserId));
 
-        // 1. Anonimizar credenciais e dados cadastrais no PostgreSQL
+        // 1. Revogar sessões antes de qualquer alteração (invalida o cookie imediatamente)
+        sessionService.revokeSessionsForUser(currentUserId);
+
+        // 2. Remover a imagem de perfil do titular do storage (dado pessoal biométrico/facial)
+        deleteStoredFileQuietly(user.getAvatarUrl());
+
+        // 3. Anonimizar credenciais e dados cadastrais no PostgreSQL
         user.setName("Usuário Removido (LGPD)");
         user.setEmail("anon-" + user.getId() + "@deleted.manganetworking");
         user.setAvatarUrl(null);
@@ -189,7 +218,44 @@ public class UserProfileApplicationService {
         user.getLikedWorks().clear();
         userRepository.save(user);
 
-        // 2. Excluir telemetria e progresso de leitura no MongoDB
+        // 4. Anonimizar o perfil público de criador (CPF, PIX, handle, bio, redes e avatar).
+        //    CPF/PIX/handle são NOT NULL no schema; o placeholder preserva a integridade sem
+        //    identificar o titular. O handle anonimizado usa o UUID completo para não colidir
+        //    com o índice único de creators.handle.
+        creatorRepository.findByUserId(currentUserId).ifPresent(creator -> anonymizeCreator(creator));
+
+        // 5. Excluir telemetria e progresso de leitura no MongoDB
         progressRepository.deleteAllByUserId(currentUserId.toString());
+    }
+
+    private void anonymizeCreator(CreatorEntity creator) {
+        String anonymousSuffix = creator.getId() != null ? creator.getId().toString() : UUID.randomUUID().toString();
+
+        deleteStoredFileQuietly(creator.getAvatarUrl());
+        creator.setAvatarUrl(null);
+        creator.setBio(null);
+        creator.setInstagramUrl(null);
+        creator.setYoutubeUrl(null);
+        creator.setPortfolioUrl(null);
+        creator.setDocumentCpf("ANONIMIZADO-" + anonymousSuffix);
+        creator.setPixKey("ANONIMIZADO-" + anonymousSuffix);
+        creator.setHandle("anon-" + anonymousSuffix);
+        creatorRepository.save(creator);
+    }
+
+    /**
+     * Remove um arquivo do storage sem interromper a exclusão da conta quando o binário já não
+     * existe ou o storage está indisponível (a obrigação legal é apagar o dado, não falhar o fluxo).
+     */
+    private void deleteStoredFileQuietly(String storedUrl) {
+        String filename = StorageFileNames.fromPageToken(storedUrl);
+        if (filename == null) {
+            return;
+        }
+        try {
+            fileStorageService.deleteFile(filename);
+        } catch (RuntimeException exception) {
+            log.warn("[LGPD] Falha ao remover arquivo '{}' do storage: {}", filename, exception.getMessage());
+        }
     }
 }

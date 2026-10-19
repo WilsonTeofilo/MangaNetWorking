@@ -20,6 +20,7 @@ import java.util.UUID;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -105,5 +106,21 @@ class BackofficeAuthorizationTest {
                         .content("{\"reason\":\"Violação confirmada dos Termos de Uso\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
+    }
+
+    @Test
+    @DisplayName("Dev outbox não é público fora dos perfis locais → 403")
+    @WithMockUser(roles = "MODERATOR")
+    void devEndpointsAreBlockedOutsideLocalProfiles() throws Exception {
+        mockMvc.perform(get("/api/dev/outbox/latest"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("Resposta desativa o filtro XSS legado do navegador (X-XSS-Protection: 0)")
+    void shouldDisableLegacyXssProtectionHeader() throws Exception {
+        mockMvc.perform(get("/api/reports/pending"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().string("X-XSS-Protection", "0"));
     }
 }

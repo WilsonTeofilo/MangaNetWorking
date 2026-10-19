@@ -2,6 +2,7 @@ package com.manganetworking.service.session;
 
 import java.time.Instant;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Porta de armazenamento de sessões orientada a domínio (Clean Architecture).
@@ -48,6 +49,18 @@ public interface SessionStore {
      * @param sessionId identificador da sessão a ser removida
      */
     void delete(String sessionId);
+
+    /**
+     * Remove todas as sessões pertencentes a um usuário.
+     * <p>
+     * Usado na exclusão de conta (LGPD): a sessão não pode sobreviver à anonimização do
+     * titular, pois o {@link SessionService.UserSession} carrega nome e e-mail.
+     * </p>
+     *
+     * @param userId identificador do usuário cujas sessões serão revogadas
+     * @return quantidade de sessões removidas
+     */
+    int removeByUserId(UUID userId);
 
     /**
      * Remove todas as sessões expiradas até o momento especificado.

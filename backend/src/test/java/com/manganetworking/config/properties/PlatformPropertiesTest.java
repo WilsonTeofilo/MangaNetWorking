@@ -66,4 +66,44 @@ class PlatformPropertiesTest {
         assertEquals(new BigDecimal("0.83"), properties.getCreatorSharePercentage());
         assertEquals(0, properties.getFeePercentage().add(properties.getCreatorSharePercentage()).compareTo(BigDecimal.ONE));
     }
+
+    @Test
+    @DisplayName("Deve falhar no boot quando a soma taxa+repasse é inconsistente em produção")
+    void shouldFailFastInProductionWhenFinancialSplitIsInconsistent() {
+        PlatformProperties properties = new PlatformProperties();
+        MockEnvironment mockEnv = new MockEnvironment();
+        mockEnv.setActiveProfiles("prod");
+        properties.setEnvironment(mockEnv);
+        properties.getSecurity().setAesSecretKey("MinhaChaveSecretaDeTeste2026AES!");
+        properties.setFeePercentage(new BigDecimal("0.20"));
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class, properties::init);
+        assertTrue(ex.getMessage().contains("[SEGURANÇA FINANCEIRA]"));
+    }
+
+    @Test
+    @DisplayName("Deve falhar no boot quando o split de anúncios não soma 100% em produção")
+    void shouldFailFastInProductionWhenAdsSplitIsInconsistent() {
+        PlatformProperties properties = new PlatformProperties();
+        MockEnvironment mockEnv = new MockEnvironment();
+        mockEnv.setActiveProfiles("prod");
+        properties.setEnvironment(mockEnv);
+        properties.getSecurity().setAesSecretKey("MinhaChaveSecretaDeTeste2026AES!");
+        properties.getAds().setPlatformSharePercentage(new BigDecimal("0.50"));
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class, properties::init);
+        assertTrue(ex.getMessage().contains("[SEGURANÇA FINANCEIRA]"));
+    }
+
+    @Test
+    @DisplayName("Fora de produção, inconsistência financeira apenas registra warn")
+    void shouldOnlyWarnAboutFinancialInconsistencyOutsideProduction() {
+        PlatformProperties properties = new PlatformProperties();
+        MockEnvironment mockEnv = new MockEnvironment();
+        mockEnv.setActiveProfiles("dev");
+        properties.setEnvironment(mockEnv);
+        properties.setFeePercentage(new BigDecimal("0.20"));
+
+        assertDoesNotThrow(properties::init);
+    }
 }

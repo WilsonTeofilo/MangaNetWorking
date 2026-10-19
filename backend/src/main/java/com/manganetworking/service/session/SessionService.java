@@ -25,8 +25,8 @@ import java.util.UUID;
  *   <li>Clean Architecture: SessionService atua como módulo de alto nível,
  *       dependendo da abstração {@link SessionStore} (Ports & Adapters)</li>
  *   <li>Dependency Inversion Principle (SOLID): injeção por construtor</li>
- *   <li>OWASP Session Management Cheat Sheet: expiração absoluta (Absolute Timeout),
- *       idle timeout e destruição segura</li>
+ *   <li>OWASP Session Management Cheat Sheet: expiração absoluta (Absolute Timeout)
+ *       e destruição segura</li>
  *   <li>RFC 6265bis: diretrizes de cookies HttpOnly, SameSite=Lax, Path=/</li>
  *   <li>Spring Framework Reference: uso idiomático de {@code @Scheduled} com
  *       propriedades externalizadas</li>
@@ -43,6 +43,7 @@ public class SessionService {
 
     private final SecureRandom secureRandom = new SecureRandom();
     private final SessionStore sessionStore;
+    private final PlatformProperties properties;
 
     /**
      * Construtor com injeção de dependência por construtor (Clean Code).
@@ -50,8 +51,9 @@ public class SessionService {
      * Segue o princípio SOLID: alta coesão e baixo acoplamento.
      * </p>
      */
-    public SessionService(SessionStore sessionStore) {
+    public SessionService(SessionStore sessionStore, PlatformProperties properties) {
         this.sessionStore = sessionStore;
+        this.properties = properties;
     }
 
     public UserSession createSession(UserEntity user, CreatorEntity creator, HttpServletResponse response) {
@@ -74,15 +76,27 @@ public class SessionService {
 
         sessionStore.save(session);
 
-        // Define Cookie HttpOnly + SameSite=Lax seguro (impossível ler via JS/XSS)
-        Cookie cookie = new Cookie(SESSION_COOKIE_NAME, sessionId);
-        cookie.setHttpOnly(true);
-        cookie.setPath("/");
-        cookie.setMaxAge((int) SESSION_TTL.toSeconds());
-        // Em produção HTTPS: cookie.setSecure(true);
-        response.addCookie(cookie);
+        response.addCookie(buildSessionCookie(sessionId, (int) SESSION_TTL.toSeconds()));
 
         return session;
+    }
+
+    /**
+     * Monta o cookie de sessão com os atributos de segurança definidos na ADR-002.
+     * <p>
+     * {@code SameSite=Lax} é declarado explicitamente (a decisão de manter o CSRF
+     * desabilitado depende deste atributo, e não do default do navegador). {@code Secure}
+     * é controlado por {@code platform.security.cookie-secure} — obrigatório em HTTPS/produção.
+     * </p>
+     */
+    private Cookie buildSessionCookie(String value, int maxAgeSeconds) {
+        Cookie cookie = new Cookie(SESSION_COOKIE_NAME, value);
+        cookie.setHttpOnly(true);
+        cookie.setPath("/");
+        cookie.setMaxAge(maxAgeSeconds);
+        cookie.setSecure(properties.getSecurity().isCookieSecure());
+        cookie.setAttribute("SameSite", "Lax");
+        return cookie;
     }
 
     public Optional<UserSession> validateSession(String sessionId) {
@@ -105,12 +119,26 @@ public class SessionService {
             sessionStore.delete(sessionId);
         }
         if (response != null) {
-            Cookie cookie = new Cookie(SESSION_COOKIE_NAME, "");
-            cookie.setHttpOnly(true);
-            cookie.setPath("/");
-            cookie.setMaxAge(0);
-            response.addCookie(cookie);
+            response.addCookie(buildSessionCookie("", 0));
         }
+    }
+
+    /**
+     * Revoga todas as sessões de um usuário (exclusão de conta / direito ao esquecimento).
+     * <p>
+     * Sem isto, o cookie emitido antes da anonimização continuaria autenticando por até
+     * {@link #SESSION_TTL} e o {@link UserSession} manteria nome/e-mail do titular em memória.
+     * </p>
+     *
+     * @param userId identificador do usuário
+     * @return quantidade de sessões revogadas
+     */
+    public int revokeSessionsForUser(UUID userId) {
+        int removed = sessionStore.removeByUserId(userId);
+        if (removed > 0) {
+            log.info("[SESSION] Revogadas {} sessões do usuário {} (exclusão de conta/LGPD)", removed, userId);
+        }
+        return removed;
     }
 
     /**
@@ -124,7 +152,7 @@ public class SessionService {
      * externalizadas, evitando polling excessivo (default: 1 hora).
      * </p>
      */
-    @Scheduled(fixedDelayString = "${platform.security.session-cleanup-interval-ms:3600000}")
+    @Scheduled(fixedDelayString = "${platform.security.session-cleanup-interval-ms}")
     public void cleanupExpiredSessions() {
         Instant now = Instant.now();
         int removedCount = sessionStore.removeExpired(now);

@@ -70,6 +70,40 @@ class InMemorySessionStoreTest {
     }
 
     @Test
+    void shouldRemoveAllSessionsOfAUser() {
+        // Given: duas sessões do mesmo usuário (dispositivos diferentes) + uma de outro usuário
+        UUID targetUserId = activeSession.userId();
+        SessionService.UserSession secondDevice = new SessionService.UserSession(
+                "session_second_device",
+                targetUserId,
+                activeSession.email(),
+                activeSession.name(),
+                false,
+                false,
+                null,
+                null,
+                Instant.now().plusSeconds(3600)
+        );
+        sessionStore.save(activeSession);
+        sessionStore.save(secondDevice);
+        sessionStore.save(expiredSession);
+
+        // When
+        int removed = sessionStore.removeByUserId(targetUserId);
+
+        // Then
+        assertEquals(2, removed);
+        assertTrue(sessionStore.findById(activeSession.sessionId()).isEmpty());
+        assertTrue(sessionStore.findById(secondDevice.sessionId()).isEmpty());
+        assertTrue(sessionStore.findById(expiredSession.sessionId()).isPresent());
+    }
+
+    @Test
+    void shouldReturnZeroWhenUserHasNoSessions() {
+        assertEquals(0, sessionStore.removeByUserId(UUID.randomUUID()));
+    }
+
+    @Test
     void shouldDeleteSession() {
         // Given
         sessionStore.save(activeSession);

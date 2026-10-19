@@ -39,7 +39,7 @@ class SessionAuthenticationFilterTest {
     @Test
     void shouldGrantModeratorAuthorityOnlyWhenSessionHasModeratorRole() throws ServletException, IOException {
         // Setup mocks
-        SessionService sessionService = new SessionService(sessionStore);
+        SessionService sessionService = new SessionService(sessionStore, new PlatformProperties());
         SessionAuthenticationFilter filter = new SessionAuthenticationFilter(sessionService);
         
         UserEntity moderator = new UserEntity();

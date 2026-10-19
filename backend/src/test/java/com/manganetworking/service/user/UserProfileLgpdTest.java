@@ -1,12 +1,16 @@
 package com.manganetworking.service.user;
 
 import com.manganetworking.config.exception.AccessDeniedException;
+import com.manganetworking.domain.relational.CreatorEntity;
 import com.manganetworking.domain.relational.UserEntity;
 import com.manganetworking.domain.relational.WorkEntity;
+import com.manganetworking.repository.jpa.CreatorRepository;
 import com.manganetworking.repository.jpa.UserRepository;
 import com.manganetworking.repository.jpa.WorkRepository;
 import com.manganetworking.repository.mongo.ReadingProgressMongoRepository;
 import com.manganetworking.service.reading.ReadingProgressService;
+import com.manganetworking.service.session.SessionService;
+import com.manganetworking.service.storage.FileStorageService;
 import com.manganetworking.service.user.dto.UserDataExportDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -38,6 +42,15 @@ class UserProfileLgpdTest {
 
     @Mock
     private ReadingProgressService readingProgressService;
+
+    @Mock
+    private CreatorRepository creatorRepository;
+
+    @Mock
+    private FileStorageService fileStorageService;
+
+    @Mock
+    private SessionService sessionService;
 
     @InjectMocks
     private UserProfileApplicationService profileService;
@@ -96,6 +109,67 @@ class UserProfileLgpdTest {
         assertNull(user.getPasswordHash());
         assertFalse(user.isTwoFactorEnabled());
         assertFalse(user.isProfilePublic());
+
+        verify(userRepository).save(user);
+        verify(progressRepository).deleteAllByUserId(userId.toString());
+    }
+
+    @Test
+    @DisplayName("Deve revogar sessões e apagar avatar do titular na exclusão de conta (LGPD)")
+    void shouldRevokeSessionsAndDeleteReaderAvatarOnRightToBeForgotten() {
+        user.setAvatarUrl("/api/storage/avatar-user.png");
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        profileService.deleteUserAccountLgpd(userId);
+
+        verify(sessionService).revokeSessionsForUser(userId);
+        verify(fileStorageService).deleteFile("avatar-user.png");
+        assertNull(user.getAvatarUrl());
+        verify(userRepository).save(user);
+    }
+
+    @Test
+    @DisplayName("Deve anonimizar CPF, PIX, handle, bio, redes e avatar do criador (LGPD)")
+    void shouldAnonymizeCreatorProfileOnRightToBeForgotten() {
+        user.setAvatarUrl("/api/storage/avatar-user.png");
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        CreatorEntity creator = new CreatorEntity();
+        creator.setId(UUID.randomUUID());
+        creator.setHandle("wilson_creator");
+        creator.setBio("Biografia pessoal identificável");
+        creator.setAvatarUrl("/api/storage/avatar-creator.png");
+        creator.setInstagramUrl("https://instagram.com/wilson");
+        creator.setYoutubeUrl("https://youtube.com/@wilson");
+        creator.setPortfolioUrl("https://wilson.dev");
+        creator.setDocumentCpf("12345678900");
+        creator.setPixKey("wilson@teste.com");
+        when(creatorRepository.findByUserId(userId)).thenReturn(Optional.of(creator));
+
+        profileService.deleteUserAccountLgpd(userId);
+
+        verify(fileStorageService).deleteFile("avatar-creator.png");
+        assertNull(creator.getAvatarUrl());
+        assertNull(creator.getBio());
+        assertNull(creator.getInstagramUrl());
+        assertNull(creator.getYoutubeUrl());
+        assertNull(creator.getPortfolioUrl());
+        assertNotEquals("wilson_creator", creator.getHandle());
+        assertTrue(creator.getHandle().startsWith("anon-"));
+        assertTrue(creator.getDocumentCpf().startsWith("ANONIMIZADO-"));
+        assertTrue(creator.getPixKey().startsWith("ANONIMIZADO-"));
+        verify(creatorRepository).save(creator);
+    }
+
+    @Test
+    @DisplayName("Não deve falhar a exclusão da conta quando o storage está indisponível")
+    void shouldNotFailAccountDeletionWhenStorageFails() {
+        user.setAvatarUrl("/api/storage/avatar-user.png");
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        doThrow(new RuntimeException("storage offline"))
+                .when(fileStorageService).deleteFile("avatar-user.png");
+
+        assertDoesNotThrow(() -> profileService.deleteUserAccountLgpd(userId));
 
         verify(userRepository).save(user);
         verify(progressRepository).deleteAllByUserId(userId.toString());

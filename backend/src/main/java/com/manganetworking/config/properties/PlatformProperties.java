@@ -44,16 +44,37 @@ public class PlatformProperties {
         initSecurityAndCrypto();
     }
 
-    /** Detecta configuração financeira inconsistente (taxa + repasse ≠ 100%) no boot. */
+    /** Detecta configuração financeira inconsistente no boot (fail-fast em produção). */
     void validateFinancialConsistency() {
-        if (feePercentage == null || creatorSharePercentage == null) {
+        boolean feeConsistent = feePercentage != null
+                && creatorSharePercentage != null
+                && feePercentage.add(creatorSharePercentage).compareTo(BigDecimal.ONE) == 0;
+
+        boolean adsConsistent = ads == null
+                || (ads.getCreatorSharePercentage() != null
+                    && ads.getPlatformSharePercentage() != null
+                    && ads.getCreatorSharePercentage().add(ads.getPlatformSharePercentage())
+                            .compareTo(BigDecimal.ONE) == 0);
+
+        if (feeConsistent && adsConsistent) {
             return;
         }
-        if (feePercentage.add(creatorSharePercentage).compareTo(BigDecimal.ONE) != 0) {
-            log.warn("[CONFIG] platform.fee-percentage ({}) + platform.creator-share-percentage ({}) != 1.00. "
-                    + "O split usa apenas fee-percentage (líquido = bruto - taxa); ajuste os dois valores.",
-                    feePercentage, creatorSharePercentage);
+
+        String message = "platform.fee-percentage (" + feePercentage + ") + platform.creator-share-percentage ("
+                + creatorSharePercentage + ") e/ou platform.ads.creator-share-percentage ("
+                + (ads != null ? ads.getCreatorSharePercentage() : null) + ") + platform.ads.platform-share-percentage ("
+                + (ads != null ? ads.getPlatformSharePercentage() : null)
+                + ") não somam 1.00. O split usa apenas os percentuais configurados.";
+
+        if (isProduction()) {
+            throw new IllegalStateException("[SEGURANÇA FINANCEIRA] " + message);
         }
+        log.warn("[CONFIG] {}", message);
+    }
+
+    /** {@code true} quando o perfil {@code prod} está ativo. */
+    boolean isProduction() {
+        return environment != null && environment.matchesProfiles("prod");
     }
 
     /**
@@ -66,8 +87,7 @@ public class PlatformProperties {
             AesCryptoConverter.setCustomKey(key);
             log.info("[AES-CRYPTO] Chave AES-256 configurada com sucesso a partir de platform.security.aes-secret-key.");
         } else {
-            boolean isProd = environment != null && environment.matchesProfiles("prod");
-            if (isProd) {
+            if (isProduction()) {
                 throw new IllegalStateException("[SEGURANÇA CRÍTICA] Perfil 'prod' ativo mas AES_SECRET_KEY não foi configurada! "
                         + "Defina a variável de ambiente AES_SECRET_KEY com pelo menos 32 caracteres ASCII.");
             }
@@ -119,30 +139,13 @@ public class PlatformProperties {
         private String aesSecretKey;
         private int rateLimitPerMinute = 120;
         private int authRateLimitPerMinute = 15;
-        /**
-         * Intervalo em milissegundos para execução da rotina de limpeza ativa de sessões expiradas.
-         * <p>
-         * Referência OWASP Session Management Cheat Sheet: expiração forçada periódica
-         * para prevenir memory leaks e esgotamento de recursos (Unbounded Memory Allocation).
-         * </p>
-         * <p>
-         * Valor padrão: 3.600.000 ms (1 hora).
-         * </p>
-         */
-        private long sessionCleanupIntervalMs = 3_600_000L; // 1 hora
 
         /**
-         * Intervalo em milissegundos para execução da rotina de limpeza ativa de rate limiting.
-         * <p>
-         * Referência OWASP DoS Prevention Cheat Sheet: expiração forçada periódica
-         * para prevenir memory leaks e esgotamento de recursos (Unbounded Memory Allocation)
-         * sob ataques de spoofing com ampla gama de IPs.
-         * </p>
-         * <p>
-         * Valor padrão: 300.000 ms (5 minutos).
-         * </p>
+         * Define o atributo {@code Secure} do cookie de sessão. Deve ser {@code true} em
+         * produção (HTTPS); em desenvolvimento HTTP local permanece {@code false}.
+         * Configurável por {@code platform.security.cookie-secure} / {@code COOKIE_SECURE}.
          */
-        private long rateLimitCleanupIntervalMs = 300_000L;
+        private boolean cookieSecure = false;
 
         /**
          * Se {@code true}, o rate limit usa o primeiro IP de {@code X-Forwarded-For}.
@@ -163,11 +166,8 @@ public class PlatformProperties {
         public int getAuthRateLimitPerMinute() { return authRateLimitPerMinute; }
         public void setAuthRateLimitPerMinute(int authRateLimitPerMinute) { this.authRateLimitPerMinute = authRateLimitPerMinute; }
 
-        public long getSessionCleanupIntervalMs() { return sessionCleanupIntervalMs; }
-        public void setSessionCleanupIntervalMs(long sessionCleanupIntervalMs) { this.sessionCleanupIntervalMs = sessionCleanupIntervalMs; }
-
-        public long getRateLimitCleanupIntervalMs() { return rateLimitCleanupIntervalMs; }
-        public void setRateLimitCleanupIntervalMs(long rateLimitCleanupIntervalMs) { this.rateLimitCleanupIntervalMs = rateLimitCleanupIntervalMs; }
+        public boolean isCookieSecure() { return cookieSecure; }
+        public void setCookieSecure(boolean cookieSecure) { this.cookieSecure = cookieSecure; }
 
         public boolean isTrustForwardedHeaders() { return trustForwardedHeaders; }
         public void setTrustForwardedHeaders(boolean trustForwardedHeaders) { this.trustForwardedHeaders = trustForwardedHeaders; }

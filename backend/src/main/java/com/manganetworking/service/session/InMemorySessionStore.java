@@ -4,6 +4,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -41,6 +42,16 @@ public class InMemorySessionStore implements SessionStore {
     @Override
     public void delete(String sessionId) {
         sessions.remove(sessionId);
+    }
+
+    @Override
+    public int removeByUserId(UUID userId) {
+        if (userId == null) {
+            return 0;
+        }
+        final int initialSize = sessions.size();
+        sessions.entrySet().removeIf(entry -> userId.equals(entry.getValue().userId()));
+        return initialSize - sessions.size();
     }
 
     @Override

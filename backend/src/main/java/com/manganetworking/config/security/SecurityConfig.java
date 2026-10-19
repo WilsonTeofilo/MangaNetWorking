@@ -1,9 +1,12 @@
 package com.manganetworking.config.security;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -33,6 +36,14 @@ public class SecurityConfig {
     private final RateLimitingFilter rateLimitingFilter;
 
     /**
+     * Perfis em que os endpoints de desenvolvimento (outbox de teste) podem ser expostos.
+     * Fora deles a rota cai em {@code authenticated}, mesmo que o controller esteja no classpath.
+     */
+    private static final String[] DEV_PROFILES = {"dev", "test", "local"};
+
+    private final boolean devEndpointsEnabled;
+
+    /**
      * Origens autorizadas para CORS (lista separada por vírgula). Antes fixas no código; agora
      * parametrizáveis por {@code platform.cors.allowed-origins} / variável de ambiente.
      */
@@ -41,10 +52,12 @@ public class SecurityConfig {
 
     public SecurityConfig(
             SessionAuthenticationFilter sessionAuthenticationFilter,
-            RateLimitingFilter rateLimitingFilter
+            RateLimitingFilter rateLimitingFilter,
+            Environment environment
     ) {
         this.sessionAuthenticationFilter = sessionAuthenticationFilter;
         this.rateLimitingFilter = rateLimitingFilter;
+        this.devEndpointsEnabled = environment.matchesProfiles(DEV_PROFILES);
     }
 
     @Bean
@@ -69,13 +82,21 @@ public class SecurityConfig {
                 .headers(headers -> headers
                         .frameOptions(frame -> frame.deny())
                         .contentTypeOptions(content -> {})
-                        .xssProtection(xss -> xss.headerValue(XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
+                        // X-XSS-Protection: 0 — o filtro legado do navegador é vulnerável e foi
+                        // removido dos browsers modernos; a defesa é CSP + escaping no React.
+                        .xssProtection(xss -> xss.headerValue(XXssProtectionHeaderWriter.HeaderValue.DISABLED))
+                        // HSTS: o Spring só envia em requisições HTTPS, então é seguro manter ligado.
+                        .httpStrictTransportSecurity(hsts -> hsts
+                                .includeSubDomains(true)
+                                .maxAgeInSeconds(31_536_000L))
                         .referrerPolicy(referrer -> referrer.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
                 )
                 .authorizeHttpRequests(auth -> auth
-                        // Endpoints Públicos de Autenticação e Dev Outbox
+                        // Endpoints Públicos de Autenticação
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/dev/**").permitAll()
+                        // Dev outbox: apenas em perfis locais (defesa em profundidade além do @Profile do controller).
+                        .requestMatchers("/api/dev/**")
+                        .access((authentication, context) -> new AuthorizationDecision(devEndpointsEnabled))
                         // Conteúdo público e uploads separados por método/papel
                         .requestMatchers(HttpMethod.GET, "/api/storage/**", "/api/uploads/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/storage/upload", "/api/storage/upload/batch",
@@ -102,6 +123,27 @@ public class SecurityConfig {
                 .addFilterBefore(sessionAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    /**
+     * Impede o registro duplicado dos filtros: {@code @Component} em um {@code Filter} faz o
+     * Spring Boot registrá-lo também na cadeia do servlet container, fora da ordem do Spring
+     * Security (o filtro rodaria antes/depois sem os matchers de autorização). O
+     * {@link SecurityFilterChain} é a única porta de entrada.
+     */
+    @Bean
+    public FilterRegistrationBean<RateLimitingFilter> rateLimitingFilterRegistration(RateLimitingFilter filter) {
+        FilterRegistrationBean<RateLimitingFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    @Bean
+    public FilterRegistrationBean<SessionAuthenticationFilter> sessionAuthenticationFilterRegistration(
+            SessionAuthenticationFilter filter) {
+        FilterRegistrationBean<SessionAuthenticationFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
     }
 
     @Bean

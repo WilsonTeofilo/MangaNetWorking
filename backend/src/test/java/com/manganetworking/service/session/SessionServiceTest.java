@@ -32,7 +32,7 @@ class SessionServiceTest {
 
     @BeforeEach
     void setUp() {
-        sessionService = new SessionService(sessionStore);
+        sessionService = new SessionService(sessionStore, new PlatformProperties());
         
         testUser = new UserEntity();
         testUser.setId(UUID.randomUUID());
@@ -72,6 +72,41 @@ class SessionServiceTest {
         assertEquals("/", cookie.getPath());
         assertEquals(session.sessionId(), cookie.getValue());
         assertEquals((int) SessionService.SESSION_TTL.toSeconds(), cookie.getMaxAge());
+        // SameSite explícito: a decisão de manter CSRF desabilitado depende deste atributo.
+        assertEquals("Lax", cookie.getAttribute("SameSite"));
+        assertFalse(cookie.getSecure(), "Em HTTP local o atributo Secure fica desligado");
+    }
+
+    @Test
+    void shouldSetSecureAttributeWhenCookieSecureIsEnabled() {
+        // Given
+        PlatformProperties properties = new PlatformProperties();
+        properties.getSecurity().setCookieSecure(true);
+        SessionService secureSessionService = new SessionService(sessionStore, properties);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        // When
+        secureSessionService.createSession(testUser, testCreator, response);
+
+        // Then
+        var cookie = response.getCookie(SessionService.SESSION_COOKIE_NAME);
+        assertNotNull(cookie);
+        assertTrue(cookie.getSecure(), "Produção/HTTPS deve emitir o cookie com Secure");
+        assertEquals("Lax", cookie.getAttribute("SameSite"));
+    }
+
+    @Test
+    void shouldRevokeAllSessionsForUser() {
+        // Given
+        UUID userId = UUID.randomUUID();
+        when(sessionStore.removeByUserId(userId)).thenReturn(2);
+
+        // When
+        int removed = sessionService.revokeSessionsForUser(userId);
+
+        // Then
+        assertEquals(2, removed);
+        verify(sessionStore).removeByUserId(userId);
     }
 
     @Test

@@ -50,7 +50,7 @@ class AuthApplicationServiceTest {
         devOutboxRepository = new DevOutboxRepository();
         twoFactorAuthService = new TwoFactorAuthService(new DevOutboxNotificationSender(devOutboxRepository));
         
-        sessionService = new SessionService(sessionStore);
+        sessionService = new SessionService(sessionStore, new PlatformProperties());
         
         passwordEncoder = new BCryptPasswordEncoder(10);
 

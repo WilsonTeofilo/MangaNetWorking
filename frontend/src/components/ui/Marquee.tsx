@@ -18,7 +18,7 @@ export function Marquee({
 
   return (
     <div
-      className={`w-full overflow-hidden bg-[#FFD400] text-[#0B0B0C] border-y-2 border-[#0B0B0C] py-2 select-none ${className}`}
+      className={`w-full overflow-hidden bg-[var(--mn-yellow)] text-[var(--mn-ink)] border-y-2 border-[var(--mn-ink)] py-2 select-none ${className}`}
       aria-hidden="true"
     >
       <div className="flex whitespace-nowrap animate-marquee motion-reduce:animate-none">

@@ -72,7 +72,7 @@ public class InMemoryRateLimitStore implements RateLimitStore {
      * esgotamento de recursos (Unbounded Memory Allocation).
      * </p>
      */
-    @Scheduled(fixedDelayString = "${platform.security.rate-limit-cleanup-interval-ms:300000}")
+    @Scheduled(fixedDelayString = "${platform.security.rate-limit-cleanup-interval-ms}")
     public void scheduledEviction() {
         long currentMinute = System.currentTimeMillis() / 60_000;
         evictStale(currentMinute);
