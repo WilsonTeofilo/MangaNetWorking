@@ -186,6 +186,49 @@ public class PlatformProperties {
         public void setMaxFileSizeMb(long maxFileSizeMb) { this.maxFileSizeMb = maxFileSizeMb; }
     }
 
+    public static class Mail {
+        private boolean enabled = false;
+        private String fromAddress = "nao-responda@manganetworking.com";
+        private String fromName = "MangaNetWorking";
+
+        public boolean isEnabled() { return enabled; }
+        public void setEnabled(boolean enabled) { this.enabled = enabled; }
+
+        public String getFromAddress() { return fromAddress; }
+        public void setFromAddress(String fromAddress) { this.fromAddress = fromAddress; }
+
+        public String getFromName() { return fromName; }
+        public void setFromName(String fromName) { this.fromName = fromName; }
+    }
+
+    public static class MercadoPago {
+        private String accessToken;
+        private String webhookSecret;
+        private String notificationUrl;
+        private String backUrlBase = "http://localhost:5180";
+
+        public String getAccessToken() { return accessToken; }
+        public void setAccessToken(String accessToken) { this.accessToken = accessToken; }
+
+        public String getWebhookSecret() { return webhookSecret; }
+        public void setWebhookSecret(String webhookSecret) { this.webhookSecret = webhookSecret; }
+
+        public String getNotificationUrl() { return notificationUrl; }
+        public void setNotificationUrl(String notificationUrl) { this.notificationUrl = notificationUrl; }
+
+        public String getBackUrlBase() { return backUrlBase; }
+        public void setBackUrlBase(String backUrlBase) { this.backUrlBase = backUrlBase; }
+    }
+
+    private Mail mail = new Mail();
+    private MercadoPago mercadopago = new MercadoPago();
+
+    public Mail getMail() { return mail; }
+    public void setMail(Mail mail) { this.mail = mail; }
+
+    public MercadoPago getMercadopago() { return mercadopago; }
+    public void setMercadopago(MercadoPago mercadopago) { this.mercadopago = mercadopago; }
+
     public BigDecimal getFeePercentage() { return feePercentage; }
     public void setFeePercentage(BigDecimal feePercentage) { this.feePercentage = feePercentage; }
 
@@ -207,3 +250,4 @@ public class PlatformProperties {
     public Storage getStorage() { return storage; }
     public void setStorage(Storage storage) { this.storage = storage; }
 }
+

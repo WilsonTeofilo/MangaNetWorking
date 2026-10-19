@@ -1,6 +1,7 @@
 package com.manganetworking.service.reading;
 
 import com.manganetworking.config.properties.PlatformProperties;
+import com.manganetworking.domain.nosql.EngagementEventDocument;
 import com.manganetworking.domain.nosql.ReadingProgressDocument;
 import com.manganetworking.domain.relational.AdRevenueLedgerEntity;
 import com.manganetworking.domain.relational.CreatorEntity;
@@ -12,6 +13,7 @@ import com.manganetworking.repository.jpa.CreatorRepository;
 import com.manganetworking.repository.jpa.UserRepository;
 import com.manganetworking.repository.jpa.WorkRepository;
 import com.manganetworking.repository.mongo.ReadingProgressMongoRepository;
+import com.manganetworking.repository.mongo.EngagementEventMongoRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -40,6 +42,7 @@ public class ReadingProgressService {
     private final UserRepository userRepository;
     private final PlatformProperties properties;
     private final com.manganetworking.config.observability.ObservabilityMetricsService observabilityMetricsService;
+    private final EngagementEventMongoRepository engagementEventRepository;
 
     public ReadingProgressService(
             ReadingProgressMongoRepository progressMongoRepository,
@@ -49,7 +52,8 @@ public class ReadingProgressService {
             AdRevenueLedgerRepository adRevenueLedgerRepository,
             UserRepository userRepository,
             PlatformProperties properties,
-            com.manganetworking.config.observability.ObservabilityMetricsService observabilityMetricsService
+            com.manganetworking.config.observability.ObservabilityMetricsService observabilityMetricsService,
+            EngagementEventMongoRepository engagementEventRepository
     ) {
         this.progressMongoRepository = progressMongoRepository;
         this.workRepository = workRepository;
@@ -59,6 +63,7 @@ public class ReadingProgressService {
         this.userRepository = userRepository;
         this.properties = properties;
         this.observabilityMetricsService = observabilityMetricsService;
+        this.engagementEventRepository = engagementEventRepository;
     }
 
     /**
@@ -116,8 +121,27 @@ public class ReadingProgressService {
 
         doc.setCumulativePagesRead(cumulative);
         progressMongoRepository.save(doc);
+        recordReadEvent(userId, workId, chapterId, page);
 
         return new ReadingProgressResult(doc, shouldTriggerAd);
+    }
+
+    /**
+     * Alimenta a coleção {@code engagement_events} usada pelo analytics do criador e pela Season.
+     * Melhor esforço: uma falha aqui nunca pode impedir o leitor de continuar lendo.
+     */
+    private void recordReadEvent(String userId, String workId, String chapterId, int page) {
+        try {
+            EngagementEventDocument event = new EngagementEventDocument();
+            event.setEventType("READ");
+            event.setUserId(userId);
+            event.setWorkId(workId);
+            event.setChapterId(chapterId);
+            event.setReadPage(page);
+            engagementEventRepository.save(event);
+        } catch (RuntimeException e) {
+            log.warn("[ANALYTICS] Falha ao registrar evento de leitura da obra {}: {}", workId, e.getMessage());
+        }
     }
 
     private void processAdImpression(String workId) {

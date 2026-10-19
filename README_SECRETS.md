@@ -83,13 +83,61 @@ Use Secrets do Kubernetes ou Docker Swarm.
 **Servidor tradicional**:
 Defina as variáveis no sistema operacional ou no systemd service file.
 
-#### 3. Valores Mínimos para Produção
+#### 3. Credenciais do Mercado Pago (Assinatura VIP e Doações)
 
-| Variável | Valor Recomendado |
-|----------|-------------------|
-| `POSTGRES_PASSWORD` | Senha complexa > 16 caracteres |
-| `AES_SECRET_KEY` | String Base64 de 32+ bytes |
-| `SPRING_PROFILES_ACTIVE` | `prod` (remove endpoints de desenvolvimento) |
+Para receber pagamentos reais na sua conta Mercado Pago:
+
+1. Acesse o **[Mercado Pago Developers](https://www.mercadopago.com.br/developers)**.
+2. Faça login com a sua conta do Mercado Pago (onde o dinheiro deve cair).
+3. Vá em **"Suas integrações"** -> Selecione ou crie sua aplicação (ex: `MangaNetWorking`).
+4. No menu lateral, clique em **"Credenciais de Produção"**.
+5. Copie o **Access Token** de produção (começa com `APP_USR-...`).
+6. No menu lateral, clique em **"Webhooks"**:
+   - Defina a URL de notificação: `https://seu-dominio.com/api/monetization/mercadopago/webhook`
+   - Marque os eventos: **Pagamentos (payment)**.
+   - Copie a **Chave Secreta de Assinatura** (Webhook Secret).
+7. Configure as variáveis no seu `.env` ou servidor:
+   ```env
+   MERCADOPAGO_ACCESS_TOKEN=APP_USR-xxxx-xxxx-xxxx-xxxx
+   MERCADOPAGO_WEBHOOK_SECRET=sua_chave_secreta_webhook_aqui
+   MERCADOPAGO_NOTIFICATION_URL=https://seu-dominio.com/api/monetization/mercadopago/webhook
+   MERCADOPAGO_BACK_URL_BASE=https://seu-dominio.com
+   ```
+
+#### 4. Credenciais de E-mail (SMTP Real vs Mailpit Local)
+
+**Opção 1: Gmail Pessoal com Senha de App (Grátis para começar)**:
+1. Acesse sua Conta Google -> **Segurança**.
+2. Ative a **Verificação em 2 etapas** (se já não estiver ativa).
+3. Na busca de configurações da conta, digite **"Senhas de app"**.
+4. Crie uma senha chamada `MangaNetWorking`.
+5. O Google gerará uma senha de 16 letras (ex: `abcd efgh ijkl mnop`).
+6. Configure no `.env`:
+   ```env
+   PLATFORM_MAIL_ENABLED=true
+   MAIL_HOST=smtp.gmail.com
+   MAIL_PORT=587
+   MAIL_SMTP_AUTH=true
+   MAIL_SMTP_STARTTLS=true
+   MAIL_USERNAME=seu_email@gmail.com
+   MAIL_PASSWORD=suasenhave16letrassemespacos
+   MAIL_FROM=seu_email@gmail.com
+   MAIL_FROM_NAME=MangaNetWorking
+   ```
+
+**Opção 2: Provedor Transacional Profissional (Resend ou Brevo - 3000 emails/mês grátis)**:
+- Resend (`smtp.resend.com`, porta 587, user: `resend`, pass: chave de API).
+- Brevo (`smtp-relay.brevo.com`, porta 587, user: email de login, pass: chave SMTP).
+
+#### 5. Valores Mínimos para Produção
+
+| Variável | Descrição | Valor Recomendado |
+|----------|-----------|-------------------|
+| `POSTGRES_PASSWORD` | Senha do PostgreSQL | Senha complexa > 16 caracteres |
+| `AES_SECRET_KEY` | Criptografia de CPF/PIX | String Base64 de 32+ bytes |
+| `SPRING_PROFILES_ACTIVE` | Perfil Spring Boot | `prod` (desativa dev outbox e h2) |
+| `MERCADOPAGO_ACCESS_TOKEN` | Token de cobrança real | `APP_USR-...` |
+| `PLATFORM_MAIL_ENABLED` | Ativação do SMTP real | `true` |
 
 ## Rotação de Chaves
 

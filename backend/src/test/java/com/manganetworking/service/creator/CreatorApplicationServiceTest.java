@@ -4,6 +4,7 @@ import com.manganetworking.config.exception.AccessDeniedException;
 import com.manganetworking.config.exception.ResourceNotFoundException;
 import com.manganetworking.domain.nosql.CreatorMissionDocument;
 import com.manganetworking.domain.relational.CreatorEntity;
+import com.manganetworking.domain.relational.UserEntity;
 import com.manganetworking.repository.jpa.CreatorRepository;
 import com.manganetworking.repository.jpa.WorkRepository;
 import com.manganetworking.repository.mongo.CreatorMissionMongoRepository;
@@ -52,6 +53,13 @@ class CreatorApplicationServiceTest {
         creator.setId(creatorId);
         creator.setHandle("autor");
         creator.setMonetizationLevel(0);
+
+        UserEntity user = new UserEntity();
+        user.setId(UUID.randomUUID());
+        user.setEmail("autor@test.com");
+        user.setName("Autor Teste");
+        user.setBirthDate(java.time.LocalDate.now().minusYears(20));
+        creator.setUser(user);
     }
 
     private CreatorMissionDocument mission(String missionId, String ownerId, boolean completed, int progress, int goal) {
@@ -129,5 +137,37 @@ class CreatorApplicationServiceTest {
         assertTrue(updated.hasActiveBoost());
         assertTrue(updated.getEngagementBoostUntil().isAfter(LocalDateTime.now().plusHours(23)));
         assertEquals(2, updated.getMonetizationLevel());
+    }
+
+    @Test
+    @DisplayName("Deve rejeitar avanço para nível 2 se criador for menor de 18 anos (Art. 14 LGPD)")
+    void shouldRejectMonetizationLevel2IfUnderage() {
+        creator.getUser().setBirthDate(java.time.LocalDate.now().minusYears(16));
+        CreatorMissionDocument mission = mission("m2", creatorId.toString(), false, 3, 3);
+
+        when(creatorRepository.findById(creatorId)).thenReturn(Optional.of(creator));
+        when(missionRepository.findById("m2")).thenReturn(Optional.of(mission));
+
+        com.manganetworking.config.exception.AccessDeniedException ex = assertThrows(
+                com.manganetworking.config.exception.AccessDeniedException.class,
+                () -> creatorService.claimMissionReward(creatorId, "m2")
+        );
+
+        assertTrue(ex.getMessage().contains("maioridade legal (18+ anos)"));
+    }
+
+    @Test
+    @DisplayName("Deve rejeitar avanço para nível 2 se data de nascimento não estiver preenchida")
+    void shouldRejectMonetizationLevel2IfBirthDateNull() {
+        creator.getUser().setBirthDate(null);
+        CreatorMissionDocument mission = mission("m3", creatorId.toString(), false, 3, 3);
+
+        when(creatorRepository.findById(creatorId)).thenReturn(Optional.of(creator));
+        when(missionRepository.findById("m3")).thenReturn(Optional.of(mission));
+
+        assertThrows(
+                com.manganetworking.config.exception.AccessDeniedException.class,
+                () -> creatorService.claimMissionReward(creatorId, "m3")
+        );
     }
 }

@@ -186,15 +186,17 @@ public class CreatorApplicationService {
         creator.setEngagementBoostMul(rewardMul);
         creator.setEngagementBoostUntil(java.time.LocalDateTime.now().plusHours(durationHours));
 
-        // Se atingiu metas da temporada, avança nível de monetização (exige maioridade de 18 anos - Art. 14 da LGPD)
+        // Se atingiu metas da temporada, avança nível de monetização (exige maioridade comprovada de 18 anos - Art. 14 da LGPD)
         if (creator.getMonetizationLevel() < 2 && mission.getTargetGoal() >= 3) {
             UserEntity user = creator.getUser();
-            if (user != null && user.getBirthDate() != null) {
-                int age = java.time.Period.between(user.getBirthDate(), java.time.LocalDate.now()).getYears();
-                if (age < 18) {
-                    throw new com.manganetworking.config.exception.AccessDeniedException(
-                            "A monetização financeira exige maioridade legal (18+ anos). Idade atual: " + age + " anos.");
-                }
+            if (user == null || user.getBirthDate() == null) {
+                throw new com.manganetworking.config.exception.AccessDeniedException(
+                        "Para desbloquear a monetização (Nível 2), é obrigatório cadastrar a data de nascimento e comprovar maioridade legal (18+ anos).");
+            }
+            int age = java.time.Period.between(user.getBirthDate(), java.time.LocalDate.now()).getYears();
+            if (age < 18) {
+                throw new com.manganetworking.config.exception.AccessDeniedException(
+                        "A monetização financeira exige maioridade legal (18+ anos). Idade atual: " + age + " anos.");
             }
             creator.setMonetizationLevel(2);
         }

@@ -1,6 +1,7 @@
 package com.manganetworking.domain.nosql;
 
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -8,6 +9,7 @@ import java.time.Instant;
 import java.util.Map;
 
 @Document(collection = "engagement_events")
+@CompoundIndex(name = "idx_events_work_timestamp", def = "{'workId': 1, 'timestamp': -1}")
 public class EngagementEventDocument {
 
     @Id

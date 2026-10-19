@@ -172,6 +172,12 @@ public class AuthApplicationService {
         return sessionService.validateSession(sessionId);
     }
 
+    public void requestStepUpOtp(HttpServletRequest request) {
+        SessionService.UserSession session = getCurrentSession(request)
+                .orElseThrow(() -> new com.manganetworking.config.exception.AccessDeniedException("Sessão autenticada necessária para solicitar verificação de segurança"));
+        twoFactorAuthService.generateAndSendOtp(session.email(), session.email());
+    }
+
     private String extractSessionId(HttpServletRequest request) {
         if (request == null || request.getCookies() == null) return null;
         return Arrays.stream(request.getCookies())

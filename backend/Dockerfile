@@ -42,6 +42,6 @@ EXPOSE 8085
 
 # Healthcheck do container
 HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8085/api/feed || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8085/actuator/health/readiness || exit 1
 
 ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar /app/app.jar"]

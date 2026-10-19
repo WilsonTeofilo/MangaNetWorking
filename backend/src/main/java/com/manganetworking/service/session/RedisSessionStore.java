@@ -6,6 +6,9 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.data.redis.core.Cursor;
+import org.springframework.data.redis.core.RedisCallback;
+import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -135,7 +138,20 @@ public class RedisSessionStore implements SessionStore {
 
     @Override
     public long countActive() {
-        Set<String> keys = redisTemplate.keys(SESSION_KEY_PREFIX + "*");
-        return keys == null ? 0 : keys.size();
+        // SCAN em vez de KEYS: KEYS é O(N) e bloqueia o Redis inteiro em bases grandes.
+        Long total = redisTemplate.execute((RedisCallback<Long>) connection -> {
+            long count = 0;
+            try (Cursor<byte[]> cursor = connection.scan(
+                    ScanOptions.scanOptions().match(SESSION_KEY_PREFIX + "*").count(500).build())) {
+                while (cursor.hasNext()) {
+                    cursor.next();
+                    count++;
+                }
+            } catch (Exception e) {
+                log.warn("[REDIS-SESSION] Falha ao escanear sessões: {}", e.getMessage());
+            }
+            return count;
+        });
+        return total == null ? 0 : total;
     }
 }

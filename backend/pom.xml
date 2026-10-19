@@ -85,6 +85,12 @@
       <artifactId>spring-boot-starter-data-redis</artifactId>
     </dependency>
 
+    <!-- Envio de E-mails Transacionais & 2FA (SMTP / Mailpit / Provedor) -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-mail</artifactId>
+    </dependency>
+
     <!-- Testes -->
     <dependency>
       <groupId>org.springframework.boot</groupId>

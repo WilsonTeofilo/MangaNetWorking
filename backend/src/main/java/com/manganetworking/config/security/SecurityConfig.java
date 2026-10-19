@@ -94,9 +94,13 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Observabilidade e Healthcheck de Containers / Prometheus
                         .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
-                        .requestMatchers("/actuator/prometheus", "/actuator/metrics/**").permitAll()
+                        // Métricas expõem topologia, pool de conexões e latência: NÃO ficam públicas.
+                // Health segue público para os probes; métricas exigem papel de moderação.
+                .requestMatchers("/actuator/prometheus", "/actuator/metrics/**").hasRole("MODERATOR")
                         // Endpoints Públicos de Autenticação
                         .requestMatchers("/api/auth/**").permitAll()
+                        // Webhook assinado do Mercado Pago para confirmação de pagamentos
+                        .requestMatchers(HttpMethod.POST, "/api/monetization/mercadopago/webhook").permitAll()
                         // Dev outbox: apenas em perfis locais (defesa em profundidade além do @Profile do controller).
                         .requestMatchers("/api/dev/**")
                         .access((authentication, context) -> new AuthorizationDecision(devEndpointsEnabled))
@@ -111,6 +115,7 @@ public class SecurityConfig {
                         // Workspace do criador é dado privado (saldo, doações, chave PIX): exige sessão de criador.
                         // Deve vir ANTES do permitAll de /api/creators/** (primeiro match vence).
                         .requestMatchers(HttpMethod.GET, "/api/creators/workspace").hasRole("CREATOR")
+                        .requestMatchers(HttpMethod.GET, "/api/creators/analytics", "/api/creators/season").hasRole("CREATOR")
                         .requestMatchers(HttpMethod.PUT, "/api/creators/**").hasRole("CREATOR")
                         .requestMatchers(HttpMethod.POST, "/api/creators/**").hasRole("CREATOR")
                         .requestMatchers(HttpMethod.GET, "/api/creators/**").permitAll()

@@ -1,11 +1,13 @@
 package com.manganetworking.config.security;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.data.redis.core.Cursor;
+import org.springframework.data.redis.core.RedisCallback;
+import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
-import java.util.Set;
 
 /**
  * Implementação distribuída de alta performance do {@link RateLimitStore} utilizando Redis.
@@ -49,7 +51,20 @@ public class RedisRateLimitStore implements RateLimitStore {
 
     @Override
     public int countActiveBuckets() {
-        Set<String> keys = redisTemplate.keys(RATELIMIT_KEY_PREFIX + "*");
-        return keys == null ? 0 : keys.size();
+        // SCAN em vez de KEYS: evita bloquear o Redis com uma varredura O(N).
+        Long total = redisTemplate.execute((RedisCallback<Long>) connection -> {
+            long count = 0;
+            try (Cursor<byte[]> cursor = connection.scan(
+                    ScanOptions.scanOptions().match(RATELIMIT_KEY_PREFIX + "*").count(500).build())) {
+                while (cursor.hasNext()) {
+                    cursor.next();
+                    count++;
+                }
+            } catch (Exception ignored) {
+                // Contagem é telemetria; falha não deve derrubar o rate limit.
+            }
+            return count;
+        });
+        return total == null ? 0 : (int) (long) total;
     }
 }

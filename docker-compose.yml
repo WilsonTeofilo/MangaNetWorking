@@ -10,7 +10,7 @@ services:
       POSTGRES_DB: manganetworking
       POSTGRES_USER: postgres
       # Em produção, substitua por uma senha segura via variável de ambiente ou secrets.
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:manga_dev_local_secure_2026}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-manga_dev_local_secure_2026}
     ports:
       - "25432:5432"
     volumes:
@@ -38,6 +38,20 @@ services:
       timeout: 5s
       retries: 5
 
+  # Servidor SMTP de Desenvolvimento: Mailpit (sem gastar cotas de Gmail/provedor)
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: manganetworking-mailpit
+    restart: always
+    ports:
+      - "1025:1025" # Porta SMTP
+      - "8025:8025" # Interface Web do Inbox
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:8025/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   manganetworking_postgres_data:
     name: manganetworking_postgres_data
@@ -45,3 +59,4 @@ volumes:
   manganetworking_mongo_data:
     name: manganetworking_mongo_data
     driver: local
+

@@ -41,15 +41,32 @@ export const offlineStorage = {
     const cache = await caches.open(CACHE_NAME);
 
     // 3. Baixar cada página e armazenar no cache
+    if (manifest.pages.length === 0) {
+      throw new Error('Este capítulo não possui páginas disponíveis para download offline.');
+    }
+
+    let failedPages = 0;
     for (const pageUrl of manifest.pages) {
       try {
         const response = await fetch(pageUrl, { credentials: 'include' });
         if (response.ok) {
           await cache.put(pageUrl, response);
+        } else {
+          failedPages += 1;
         }
       } catch (err) {
+        failedPages += 1;
         console.warn(`[OFFLINE] Falha ao baixar página individual: ${pageUrl}`, err);
       }
+    }
+
+    // Não gravar metadados de um download incompleto: o usuário acharia que está offline
+    // e o leitor falharia no meio do capítulo.
+    if (failedPages > 0) {
+      throw new Error(
+        `Não foi possível baixar ${failedPages} de ${manifest.pages.length} páginas. ` +
+        'Verifique a conexão e tente novamente.'
+      );
     }
 
     // 4. Salvar metadados do capítulo baixado

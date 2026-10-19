@@ -5,15 +5,18 @@ const OFFLINE_MEDIA_CACHE = 'manganetworking-offline-v1';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
-  '/manifest.webmanifest',
-  '/vite.svg'
+  '/manifest.webmanifest'
 ];
 
 self.addEventListener('install', (event) => {
+  // addAll() rejeita a instalação inteira se um único asset faltar (ex.: favicon ausente),
+  // o que impede o Service Worker de ativar e mata o modo offline. Adiciona um a um.
   event.waitUntil(
-    caches.open(APP_SHELL_CACHE).then((cache) => {
-      return cache.addAll(STATIC_ASSETS);
-    })
+    caches.open(APP_SHELL_CACHE).then((cache) =>
+      Promise.all(
+        STATIC_ASSETS.map((asset) => cache.add(asset).catch(() => undefined))
+      )
+    )
   );
   self.skipWaiting();
 });
@@ -57,7 +60,8 @@ self.addEventListener('fetch', (event) => {
         if (networkResponse && networkResponse.status === 200) {
           const responseToCache = networkResponse.clone();
           caches.open(APP_SHELL_CACHE).then((cache) => {
-            cache.put(event.request, responseToCache);
+            // Respostas opacas/cross-origin podem rejeitar o put; não deixa rejeição solta.
+            cache.put(event.request, responseToCache).catch(() => undefined);
           });
         }
         return networkResponse;

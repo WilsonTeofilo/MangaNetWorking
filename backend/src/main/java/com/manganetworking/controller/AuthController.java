@@ -48,6 +48,15 @@ public class AuthController {
         ));
     }
 
+    @PostMapping("/2fa/request")
+    public ResponseEntity<Map<String, Object>> requestStepUpOtp(HttpServletRequest request) {
+        authService.requestStepUpOtp(request);
+        return ResponseEntity.ok(Map.of(
+                "status", "OTP_SENT",
+                "message", "Código de verificação de segurança enviado ao seu e-mail."
+        ));
+    }
+
     @GetMapping("/me")
     public ResponseEntity<Map<String, Object>> me(HttpServletRequest request) {
         return authService.getCurrentSession(request)
