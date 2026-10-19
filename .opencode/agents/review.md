@@ -1,7 +1,7 @@
 ---
 description: Audita as alterações e os testes sem editar o código.
 mode: subagent
-model: 9router/auditoria
+model: 9router/Backend
 temperature: 0.1
 steps: 8
 permission:

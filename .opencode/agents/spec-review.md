@@ -1,7 +1,7 @@
 ---
 description: Revisa especificações de tarefas antes de serem entregues ao worker.
 mode: subagent
-model: 9router/auditoria
+model: 9router/Backend
 temperature: 0.1
 steps: 5
 permission:
