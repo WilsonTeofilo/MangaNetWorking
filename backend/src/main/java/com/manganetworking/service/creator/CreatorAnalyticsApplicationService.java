@@ -18,8 +18,8 @@ import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -146,13 +146,24 @@ public class CreatorAnalyticsApplicationService {
         int pages = Math.min(maxPage, MAX_RETENTION_PAGES);
         long totalReaders = maxPageByReader.size();
 
+        // Histograma: conta quantos leitores pararam em cada página e soma da última para a primeira.
+        // O(dias + páginas) em vez de O(páginas × leitores).
+        int[] readersStoppingAtPage = new int[pages + 1];
+        for (int lastPage : maxPageByReader.values()) {
+            readersStoppingAtPage[Math.min(lastPage, pages)]++;
+        }
+
+        long[] readersReachingPage = new long[pages + 1];
+        long running = 0;
+        for (int page = pages; page >= 1; page--) {
+            running += readersStoppingAtPage[page];
+            readersReachingPage[page] = running;
+        }
+
         List<CreatorAnalyticsResponseDto.PageRetentionDto> retention = new ArrayList<>(pages);
         for (int page = 1; page <= pages; page++) {
-            final int currentPage = page;
-            long readers = maxPageByReader.values().stream()
-                    .filter(lastPage -> lastPage >= currentPage)
-                    .count();
-            double percent = totalReaders == 0 ? 0.0 : (readers * 100.0) / totalReaders;
+            long readers = readersReachingPage[page];
+            double percent = (readers * 100.0) / totalReaders;
             retention.add(new CreatorAnalyticsResponseDto.PageRetentionDto(
                     page,
                     readers,
@@ -163,15 +174,17 @@ public class CreatorAnalyticsApplicationService {
     }
 
     private FinancialTotals sumLedger(UUID creatorId, Instant windowStart) {
-        LocalDateTime start = LocalDateTime.ofInstant(windowStart, ZoneOffset.UTC);
+        // O ledger grava createdAt com @CreationTimestamp (relógio local do JVM).
+        // A borda precisa usar o mesmo fuso para não deslocar a janela em horas.
+        LocalDateTime start = LocalDateTime.ofInstant(windowStart, ZoneId.systemDefault());
         BigDecimal donations = BigDecimal.ZERO;
         BigDecimal memberships = BigDecimal.ZERO;
         BigDecimal withdrawals = BigDecimal.ZERO;
 
-        for (FinancialLedgerEntity entry : financialLedgerRepository.findAllByCreatorIdOrderByCreatedAtDesc(creatorId)) {
-            if (entry.getCreatedAt() == null || entry.getCreatedAt().isBefore(start)) {
-                continue;
-            }
+        List<FinancialLedgerEntity> entries = financialLedgerRepository
+                .findAllByCreatorIdAndCreatedAtGreaterThanEqualOrderByCreatedAtDesc(creatorId, start);
+
+        for (FinancialLedgerEntity entry : entries) {
             BigDecimal net = entry.getCreatorNetBrl() == null ? BigDecimal.ZERO : entry.getCreatorNetBrl();
             if (entry.getTransactionType() == null) {
                 continue;

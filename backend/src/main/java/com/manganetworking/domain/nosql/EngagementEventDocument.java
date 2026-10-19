@@ -34,7 +34,9 @@ public class EngagementEventDocument {
     private Integer durationSeconds;
     private Map<String, Object> metadata;
 
-    @Indexed
+    // TTL de 180 dias: o analytics usa no máximo 90 dias e a Season 60.
+    // Sem isso, um documento por página lida cresce sem limite no Mongo.
+    @Indexed(expireAfter = "180d")
     private Instant timestamp = Instant.now();
 
     public EngagementEventDocument() {}

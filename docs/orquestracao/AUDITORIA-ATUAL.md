@@ -69,13 +69,13 @@
 
 ---
 
-### C5 — `docker-compose.yml` inválido impede subir a stack
+### C5 — ✅ RESOLVIDO — `docker-compose.yml` inválido impedia subir a stack
 
-**Evidência:** `docker-compose.yml:13` usa `${POSTGRES_PASSWORD:manga_dev_local_secure_2026}`. O Compose responde `invalid interpolation format for services.postgres.environment.POSTGRES_PASSWORD`.
+**Evidência original:** `docker-compose.yml:13` usava `${POSTGRES_PASSWORD:manga_dev_local_secure_2026}`; o Compose respondia `invalid interpolation format`.
 
-**Impacto:** `docker compose up -d` falha; sem Postgres/Mongo não há testes de integração, Flyway real nem smoke E2E. O status "smoke 12/12" do `PLANO_DE_FASES.md` não é reproduzível no estado atual.
+**Correção aplicada:** `${POSTGRES_PASSWORD:-manga_dev_local_secure_2026}`. Evidência de verificação: `docker compose -f docker-compose.yml config --quiet` → exit 0; `docker compose up -d` subiu postgres, mongodb, mailpit e redis com healthcheck `healthy`.
 
-**Correção esperada:** `${POSTGRES_PASSWORD:-manga_dev_local_secure_2026}` (ou `.env` obrigatório). Depois, subir e confirmar `flyway_schema_history` com V1..V5.
+**Pendência real remanescente:** o volume `manganetworking_postgres_data` foi inicializado com outra senha em rodada anterior; o backend local só conecta se `SPRING_DATASOURCE_PASSWORD` corresponder à senha já gravada no volume (recriar o volume é destrutivo e exige autorização).
 
 **Fase:** F0 · **Arquivo:** `docker-compose.yml`.
 
@@ -196,16 +196,31 @@
 
 ---
 
-## 7. Não verificado nesta rodada
+## 7. Verificado nesta rodada (2026-10-19)
 
-- [ ] `mvn -o test` e a contagem real (189? 197?).
-- [ ] `npm run build`.
-- [ ] `docker compose up -d` (bloqueado por C5).
-- [ ] Flyway aplicado no Postgres real.
-- [ ] Cookie emitido pelo Tomcat e ordem real dos filtros.
-- [ ] Smoke E2E 12/12.
+- [x] `mvn -o test` → **Tests run: 207, Failures: 0, Errors: 0, Skipped: 0** / BUILD SUCCESS (inclui Testcontainers de Postgres/Mongo/Redis rodando de verdade).
+- [x] `npm run build` → tsc + vite build OK (386 kB JS / 62 kB CSS).
+- [x] `docker compose up -d` → postgres, mongodb, mailpit e redis `healthy` (C5 corrigido).
+- [x] Flyway V1..V5 aplicado em Postgres limpo (sem erro de validação do Hibernate).
+- [x] Smoke real em sandbox: `/api/feed` 200, `/actuator/health` 200 `{"status":"UP"}`, `/actuator/prometheus` **401**, `/api/creators/analytics` **401**, `/api/creators/season` **401**.
+- [ ] Smoke E2E 12/12 (script completo) — não reexecutado nesta rodada.
+- [ ] Cookie emitido pelo Tomcat e ordem real dos filtros — não observado empiricamente.
 
-**Regra:** enquanto esses itens não tiverem saída de terminal, não podem ser declarados concluídos em nenhum documento.
+## 7.1 Achados novos desta rodada
+
+| ID | Severidade | Achado | Estado |
+|---|---|---|---|
+| N1 | 🔴 Alto | `engagement_events` existia sem **nenhum escritor**; o analytics da Fase 13 sairia vazio. | Corrigido: `ReadingProgressService` grava evento `READ` (best-effort) + `EngagementEventMongoRepository`. |
+| N2 | 🟠 Médio | `spring.data.mongodb.auto-index-creation` ausente → `@Indexed`/`@CompoundIndex` nunca eram materializados. | Corrigido (`true`) + índice composto `workId+timestamp`. |
+| N3 | 🔴 Alto | `/actuator/prometheus` e `/actuator/metrics/**` em `permitAll`. | Corrigido para `hasRole("MODERATOR")`; verificado 401 sem sessão. |
+| N4 | 🟠 Médio | Redis introduzido na Fase 12 mas ausente do `docker-compose.yml` local → `/actuator/health` DOWN. | Corrigido: serviço `redis` + volume `manganetworking_redis_data`. |
+| N5 | 🟡 Baixo | `sw.js` usava `cache.addAll` com `/vite.svg` inexistente → instalação do Service Worker falhava (offline PWA não ativava). | Corrigido: assets individuais com fallback. |
+| N6 | 🟡 Baixo | `offlineStorage` marcava capítulo como baixado mesmo com páginas falhando. | Corrigido: download incompleto lança erro e não grava metadados. |
+| N7 | 🟡 Baixo | `VipModal` dizia "Leitura Offline (em breve) ... não disponível" com a feature já entregue. | Corrigido. |
+| N8 | 🟡 Baixo | `RedisSessionStore`/`RedisRateLimitStore` usavam `KEYS` (O(N), bloqueia o Redis). | Corrigido para `SCAN` com `Cursor`. |
+| N9 | 🟡 Baixo | `CreatorApplicationServiceTest` não compilava (`UserEntity` sem import). | Corrigido. |
+
+**Regra:** itens 7.1 marcados como corrigidos têm saída de terminal ou de suíte nesta rodada; o restante segue pendente.
 
 ---
 
@@ -213,4 +228,4 @@
 
 A fila está em `docs/orquestracao/ROADMAP-FASES.md`. Resumo:
 
-1. C5 (compose) → 2. C4 (SMTP) → 3. C1 (Google) → 4. C3 (step-up) → 5. C2 (idade) → 6. A2 (CPF) → 7. A1/M2/M3 (consentimento) → 8. A3 (OTP HMAC) → 9. M4–M6 (mocks) → 10. F7 (provas E2E).
+1. ~~C5 (compose)~~ ✅ → 2. C4 (SMTP) → 3. C1 (Google) → 4. C3 (step-up) → 5. C2 (idade) → 6. A2 (CPF) → 7. A1/M2/M3 (consentimento) → 8. A3 (OTP HMAC) → 9. M4–M6 (mocks) → 10. F7 (provas E2E).

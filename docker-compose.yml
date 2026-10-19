@@ -38,6 +38,21 @@ services:
       timeout: 5s
       retries: 5
 
+  # Cache Distribuído / Sessões: Redis 7 (necessário para PLATFORM_SESSION_STORE=redis e health UP)
+  redis:
+    image: redis:7-alpine
+    container_name: manganetworking-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - manganetworking_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
   # Servidor SMTP de Desenvolvimento: Mailpit (sem gastar cotas de Gmail/provedor)
   mailpit:
     image: axllent/mailpit:latest
@@ -58,5 +73,8 @@ volumes:
     driver: local
   manganetworking_mongo_data:
     name: manganetworking_mongo_data
+    driver: local
+  manganetworking_redis_data:
+    name: manganetworking_redis_data
     driver: local
 

@@ -69,7 +69,7 @@ public class SeasonRotationService {
         Instant toExclusive = previous.end().plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
 
         Map<String, UUID> workToCreator = new HashMap<>();
-        for (WorkEntity work : workRepository.findAll()) {
+        for (WorkEntity work : workRepository.findAllWithAuthor()) {
             if (work.getId() != null && work.getAuthor() != null) {
                 workToCreator.put(work.getId().toString(), work.getAuthor().getId());
             }
@@ -96,7 +96,12 @@ public class SeasonRotationService {
 
         List<Map.Entry<UUID, Set<String>>> ranking = new ArrayList<>(readersByCreator.entrySet());
         ranking.removeIf(entry -> entry.getValue().isEmpty());
-        ranking.sort((left, right) -> Integer.compare(right.getValue().size(), left.getValue().size()));
+        // Desempate por ID: sem isso, dois criadores com a mesma contagem poderiam
+        // trocar de posição entre execuções e gerar premiação instável.
+        ranking.sort((left, right) -> {
+            int byReaders = Integer.compare(right.getValue().size(), left.getValue().size());
+            return byReaders != 0 ? byReaders : left.getKey().compareTo(right.getKey());
+        });
 
         if (ranking.isEmpty()) {
             log.info("[SEASON] Season {} sem leituras registradas; nenhum boost concedido.", previous.number());

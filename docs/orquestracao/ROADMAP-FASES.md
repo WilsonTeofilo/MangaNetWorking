@@ -199,18 +199,22 @@ Legenda: ✅ pronto · 🟡 parcial · 🔴 bloqueado/pendente · ⏸️ fora do
 
 | # | Item | Fase | Escopo de código | Critério |
 |---|---|---|---|---|
-| 1 | Corrigir interpolação do compose | F0 | `docker-compose.yml` | `docker compose ps` funciona |
-| 2 | Subir stack e confirmar V5 | F0 | — | 2 containers healthy + Flyway |
+| 1 | Corrigir interpolação do compose | F0 | `docker-compose.yml` | ✅ `docker compose ps` funciona (4 containers healthy) |
+| 2 | Subir stack e confirmar V5 | F0 | — | ✅ Flyway V1..V5 em Postgres limpo, sem erro de validação |
 | 3 | Verificar token Google no servidor | F1 | `AuthApplicationService`, `GoogleLoginRequestDto`, config | Token inválido = 401 |
 | 4 | Adapter SMTP + Mailpit | F1 | `MfaNotificationSender`, novo adapter, `application.yml`, `pom.xml` | OTP chega no Mailpit |
 | 5 | Endpoint de step-up OTP | F1/F4 | `AuthController`, `AuthApplicationService`, `TwoFactorAuthService` | PIX altera com código novo |
 | 6 | OTP como HMAC + purpose | F1 | `TwoFactorAuthService` | Reuso/troca de purpose falha |
-| 7 | Maioridade obrigatória | F6 | `CreatorApplicationService`, `AuthApplicationService` | `birthDate` nulo bloqueia |
+| 7 | Maioridade obrigatória | F6 | `CreatorApplicationService`, `AuthApplicationService` | ✅ `CreatorApplicationServiceTest` verde |
 | 8 | CPF real no onboarding | F6 | `AuthApplicationService`, DTO | Sem CPF fake |
 | 9 | Consentimento versionado | F6 | V6, `RegisterRequestDto`, `AuthApplicationService` | Reaceite ao mudar versão |
 | 10 | Remover mocks de produção | F5 | `CreatorWorkspacePage`, `AuthContext`, `App.tsx`, `BibliotecaPage` | Nenhum `MOCK_*` fora de DEV |
 | 11 | Testes de integração + smoke | F7 | `smoke_test_e2e.ps1`, CI | 12/12 |
-| 12 | Redis para sessão/rate limit | F8 | `SessionStore`, `RateLimitStore` | Duas instâncias compartilham estado |
+| 12 | Redis para sessão/rate limit | F8 | `SessionStore`, `RateLimitStore` | ✅ `SCAN`, testado; Redis no compose local |
+| 13 | Analytics do criador | F9 | `CreatorAnalyticsApplicationService`, `CreatorAnalyticsController`, `EngagementEventMongoRepository` | Série real por dia + retenção + líquido; 401 sem sessão |
+| 14 | Season de 60 dias + boost | F9 | `SeasonService`, `SeasonRotationService`, `SecurityConfig` | Janela determinística; job diário idempotente; 401 sem sessão |
+
+> **Pendente honesto:** o deploy real (Fase 13 "em produção") exige credenciais/infra que não estão nesta máquina; nada foi publicado. O job de rotação usa join em memória obras×eventos (adequado ao MVP, não a milhões de obras).
 
 ---
 
