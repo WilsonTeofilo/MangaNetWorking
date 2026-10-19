@@ -75,6 +75,11 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Utilitário de fundo vermelho sutil para selos/alerts (evita literal hex) */
+.mn-red-subtle {
+  background-color: color-mix(in srgb, var(--mn-red) 12%, transparent);
+}
+
 /* Container Único Oficial: max-width 1200px, alinhado */
 .mn-container {
   width: 100%;

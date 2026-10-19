@@ -21,24 +21,24 @@ export function Sticker({
 
   switch (kind) {
     case 'new':
-      styleClasses = 'bg-[#E8402F] text-[#F4EFE3] border-2 border-[#0B0B0C]';
+      styleClasses = 'bg-[var(--mn-red)] text-[var(--mn-paper)] border-2 border-[var(--mn-ink)]';
       defaultLabel = 'NOVO';
       break;
     case 'members':
-      styleClasses = 'bg-[#0B0B0C] text-[#FFD400] border-2 border-[#FFD400]';
+      styleClasses = 'bg-[var(--mn-ink)] text-[var(--mn-yellow)] border-2 border-[var(--mn-yellow)]';
       defaultLabel = 'MEMBROS';
       showLock = true;
       break;
     case 'free':
-      styleClasses = 'bg-[#F4EFE3] text-[#0B0B0C] border-2 border-[#0B0B0C]';
+      styleClasses = 'bg-[var(--mn-paper)] text-[var(--mn-ink)] border-2 border-[var(--mn-ink)]';
       defaultLabel = 'GRÁTIS';
       break;
     case 'complete':
-      styleClasses = 'bg-[#FFD400] text-[#0B0B0C] border-2 border-[#0B0B0C]';
+      styleClasses = 'bg-[var(--mn-yellow)] text-[var(--mn-ink)] border-2 border-[var(--mn-ink)]';
       defaultLabel = 'COMPLETO';
       break;
     case 'hiatus':
-      styleClasses = 'bg-[#212125] text-[#F4EFE3] border-2 border-[#34343A]';
+      styleClasses = 'bg-[var(--mn-ink-3)] text-[var(--mn-paper)] border-2 border-[var(--mn-line)]';
       defaultLabel = 'HIATO';
       break;
   }
@@ -48,7 +48,7 @@ export function Sticker({
 
   return (
     <span
-      className={`inline-flex items-center gap-1 px-2 py-0.5 font-pixel text-[12px] font-bold tracking-wider uppercase select-none shadow-[2px_2px_0_#0B0B0C] ${styleClasses} ${rotClass} ${className}`}
+      className={`inline-flex items-center gap-1 px-2 py-0.5 font-pixel text-[12px] font-bold tracking-wider uppercase select-none shadow-[2px_2px_0_var(--mn-ink)] ${styleClasses} ${rotClass} ${className}`}
     >
       {showLock && <Lock size={10} className="stroke-[2.5]" />}
       <span>{label || defaultLabel}</span>

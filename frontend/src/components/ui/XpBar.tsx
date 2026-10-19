@@ -17,18 +17,18 @@ export function XpBar({
   return (
     <div className={`space-y-1.5 select-none ${className}`}>
       <div className="flex justify-between items-center font-pixel text-[12px] tracking-wider">
-        <span className="text-[#A9A59A]">PROGRESSO DA TEMPORADA</span>
-        <span className="text-[#FFD400] font-bold tabular-nums">
+        <span className="text-[var(--mn-mute)]">PROGRESSO DA TEMPORADA</span>
+        <span className="text-[var(--mn-yellow)] font-bold tabular-nums">
           XP {value}/{max}
         </span>
       </div>
 
-      <div className="flex gap-1 p-1 bg-[#0B0B0C] border-2 border-[#34343A]">
+      <div className="flex gap-1 p-1 bg-[var(--mn-ink)] border-2 border-[var(--mn-line)]">
         {Array.from({ length: totalBlocks }).map((_, i) => (
           <div
             key={i}
             className={`flex-1 h-3 transition-colors duration-75 ${
-              i < filledBlocks ? 'bg-[#FFD400]' : 'bg-[#212125]'
+              i < filledBlocks ? 'bg-[var(--mn-yellow)]' : 'bg-[var(--mn-ink-3)]'
             }`}
           />
         ))}

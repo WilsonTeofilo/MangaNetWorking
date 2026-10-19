@@ -4,7 +4,6 @@ import { Button } from '../components/ui/Button';
 import { Field } from '../components/ui/Field';
 import { Win } from '../components/ui/Win';
 import { LevelPatch } from '../components/ui/LevelPatch';
-import { XpBar } from '../components/ui/XpBar';
 import { Sticker } from '../components/ui/Sticker';
 import { MOCK_CREATORS } from '../data/mockData';
 import { storageApi } from '../api/storageApi';
@@ -214,45 +213,45 @@ export function CreatorWorkspacePage() {
     <div className="mn-container py-8 space-y-10 select-none pb-24">
       
       {/* 1. Aviso Mandatório Anti-Pirataria em Caixa de Carimbo */}
-      <div className="border-2 border-[#E8402F] bg-[#E8402F]/10 p-5 space-y-2">
+      <div className="border-2 border-[var(--mn-red)] mn-red-subtle p-5 space-y-2">
         <div className="flex items-center gap-2">
-          <ShieldAlert size={18} className="text-[#E8402F]" />
-          <h2 className="font-display text-lg text-[#E8402F] uppercase tracking-wide">
+          <ShieldAlert size={18} className="text-[var(--mn-red)]" />
+          <h2 className="font-display text-lg text-[var(--mn-red)] uppercase tracking-wide">
             AVISO MANDATÓRIO: AUTORIA ORIGINAL E TOLERÂNCIA ZERO À PIRATARIA
           </h2>
         </div>
-        <p className="font-body text-xs text-[#F4EFE3] leading-relaxed">
+        <p className="font-body text-xs text-[var(--mn-paper)] leading-relaxed">
           É <strong>estritamente proibido</strong> upar obras de terceiros, scans, mangás comerciais existentes (como Bleach, Naruto, One Piece) ou traduções não autorizadas. Infratores sofrerão <strong>remoção imediata da obra e suspensão/banimento permanente da conta</strong> nos termos do Art. 184 do Código Penal. Proibido conteúdo pornográfico explícito ou hentai.
         </p>
       </div>
 
       {workspaceError && (
-        <div className="border-2 border-[#34343A] bg-[#151517] p-3">
-          <span className="font-body text-xs text-[#A9A59A]">{workspaceError}</span>
+        <div className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-3">
+          <span className="font-body text-xs text-[var(--mn-mute)]">{workspaceError}</span>
         </div>
       )}
 
       {/* 2. Topo do Painel: Season 01, Patches e XP */}
-      <div className="border-2 border-[#34343A] bg-[#151517] shadow-[6px_6px_0_#F4EFE3] p-6 sm:p-8 space-y-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b-2 border-[#34343A] pb-6">
+      <div className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] shadow-[6px_6px_0_var(--mn-paper)] p-6 sm:p-8 space-y-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b-2 border-[var(--mn-line)] pb-6">
           <div className="flex items-center gap-4">
-            <div className="p-1 bg-[#F4EFE3] border-2 border-[#0B0B0C] shadow-[3px_3px_0_#FFD400]">
+            <div className="p-1 bg-[var(--mn-paper)] border-2 border-[var(--mn-ink)] shadow-[3px_3px_0_var(--mn-yellow)]">
               <img
                 src={avatarPreview}
                 alt={profileName}
-                className="w-16 h-16 object-cover border border-[#0B0B0C]"
+                className="w-16 h-16 object-cover border border-[var(--mn-ink)]"
               />
             </div>
 
             <div>
-              <span className="font-pixel text-[12px] text-[#FFD400] tracking-widest block uppercase font-bold">
-                PAINEL DO AUTOR · SEASON 01
+              <span className="font-pixel text-[12px] text-[var(--mn-yellow)] tracking-widest block uppercase font-bold">
+                PAINEL DO AUTOR
               </span>
-              <h1 className="font-display text-3xl sm:text-4xl text-[#F4EFE3] uppercase">
+              <h1 className="font-display text-3xl sm:text-4xl text-[var(--mn-paper)] uppercase">
                 {profileName}
               </h1>
-              <span className="font-body text-xs text-[#A9A59A]">
-                @{displayHandle} · Faltam 23 dias para o fim da temporada
+              <span className="font-body text-xs text-[var(--mn-mute)]">
+                @{displayHandle} 
               </span>
             </div>
           </div>
@@ -269,12 +268,7 @@ export function CreatorWorkspacePage() {
               {([1, 2, 3, 4] as const).map((level) => (
                 <LevelPatch key={level} level={level} isUnlocked={level <= monetizationLevel} />
               ))}
-            </div>
-
-            <div className="w-full md:w-80">
-              <XpBar value={340} max={500} />
-            </div>
-          </div>
+            </div></div>
         </div>
       </div>
 
@@ -284,9 +278,9 @@ export function CreatorWorkspacePage() {
         {/* Janela de Missões Semanais */}
         <Win title="QUEST_SEMANAL.EXE">
           <div className="space-y-4">
-            <div className="border-b border-[#34343A] pb-2">
-              <span className="font-pixel text-[12px] text-[#FFD400]">
-                MISSÕES ATIVAS (SEMANA 03)
+            <div className="border-b border-[var(--mn-line)] pb-2">
+              <span className="font-pixel text-[12px] text-[var(--mn-yellow)]">
+                MISSÕES ATIVAS
               </span>
             </div>
 
@@ -297,28 +291,28 @@ export function CreatorWorkspacePage() {
                     key={mission.id}
                     className={`p-3 border-2 space-y-1 ${
                       mission.completed
-                        ? 'border-[#0B0B0C] bg-[#0B0B0C]'
-                        : 'border-[#34343A] bg-[#151517]'
+                        ? 'border-[var(--mn-ink)] bg-[var(--mn-ink)]'
+                        : 'border-[var(--mn-line)] bg-[var(--mn-ink-2)]'
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-display text-sm text-[#F4EFE3] uppercase">
+                      <span className="font-display text-sm text-[var(--mn-paper)] uppercase">
                         {mission.title}
                       </span>
                       {mission.completed ? (
-                        <Check size={16} className="text-[#FFD400]" />
+                        <Check size={16} className="text-[var(--mn-yellow)]" />
                       ) : (
-                        <span className="font-pixel text-[12px] text-[#A9A59A]">EM PROGRESSO</span>
+                        <span className="font-pixel text-[12px] text-[var(--mn-mute)]">EM PROGRESSO</span>
                       )}
                     </div>
                     {mission.description && (
-                      <p className="font-body text-xs text-[#A9A59A]">{mission.description}</p>
+                      <p className="font-body text-xs text-[var(--mn-mute)]">{mission.description}</p>
                     )}
-                    <span className="font-pixel text-[12px] text-[#FFD400] block mt-1">
+                    <span className="font-pixel text-[12px] text-[var(--mn-yellow)] block mt-1">
                       PROGRESSO: {mission.currentProgress}/{mission.targetGoal}
                     </span>
                     {mission.boostRewardMultiplier ? (
-                      <span className="font-pixel text-[12px] text-[#FFD400] block">
+                      <span className="font-pixel text-[12px] text-[var(--mn-yellow)] block">
                         RECOMPENSA: +{Math.round((mission.boostRewardMultiplier - 1) * 100)}% DESCOBERTA
                         NO FEED POR {mission.boostDurationHours ?? 48}H
                       </span>
@@ -331,44 +325,44 @@ export function CreatorWorkspacePage() {
             {/* Fallback de demonstração quando o servidor não devolve missões (sem sessão de criador). */}
             {activeMissions.length === 0 && (
             <div className="space-y-3">
-              <div className="p-3 border-2 border-[#0B0B0C] bg-[#0B0B0C] space-y-1">
+              <div className="p-3 border-2 border-[var(--mn-ink)] bg-[var(--mn-ink)] space-y-1">
                 <div className="flex items-center justify-between">
-                  <span className="font-display text-sm text-[#F4EFE3] uppercase">
+                  <span className="font-display text-sm text-[var(--mn-paper)] uppercase">
                     1. CONSISTÊNCIA DE LANÇAMENTO
                   </span>
-                  <Check size={16} className="text-[#FFD400]" />
+                  <Check size={16} className="text-[var(--mn-yellow)]" />
                 </div>
-                <p className="font-body text-xs text-[#A9A59A]">
+                <p className="font-body text-xs text-[var(--mn-mute)]">
                   Publicar ao menos 1 capítulo novo nesta semana.
                 </p>
-                <span className="font-pixel text-[12px] text-[#FFD400] block mt-1">
+                <span className="font-pixel text-[12px] text-[var(--mn-yellow)] block mt-1">
                   RECOMPENSA: +15% DESCOBERTA NO FEED POR 48H
                 </span>
               </div>
 
-              <div className="p-3 border-2 border-[#34343A] bg-[#151517] space-y-1">
+              <div className="p-3 border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] space-y-1">
                 <div className="flex items-center justify-between">
-                  <span className="font-display text-sm text-[#F4EFE3] uppercase">
+                  <span className="font-display text-sm text-[var(--mn-paper)] uppercase">
                     2. DIÁLOGO COM A COMUNIDADE
                   </span>
-                  <span className="font-pixel text-[12px] text-[#A9A59A]">EM PROGRESSO</span>
+                  <span className="font-pixel text-[12px] text-[var(--mn-mute)]">EM PROGRESSO</span>
                 </div>
-                <p className="font-body text-xs text-[#A9A59A]">
+                <p className="font-body text-xs text-[var(--mn-mute)]">
                   Responder 5 comentários de leitores nas suas obras.
                 </p>
-                <span className="font-pixel text-[12px] text-[#A9A59A] block mt-1">
+                <span className="font-pixel text-[12px] text-[var(--mn-mute)] block mt-1">
                   PROGRESSO: 3/5 COMENTÁRIOS
                 </span>
               </div>
 
-              <div className="p-3 border-2 border-[#34343A] bg-[#151517] space-y-1">
+              <div className="p-3 border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] space-y-1">
                 <div className="flex items-center justify-between">
-                  <span className="font-display text-sm text-[#F4EFE3] uppercase">
+                  <span className="font-display text-sm text-[var(--mn-paper)] uppercase">
                     3. RETENÇÃO DO LEITOR
                   </span>
-                  <span className="font-pixel text-[12px] text-[#A9A59A]">BLOQUEADO</span>
+                  <span className="font-pixel text-[12px] text-[var(--mn-mute)]">BLOQUEADO</span>
                 </div>
-                <p className="font-body text-xs text-[#A9A59A]">
+                <p className="font-body text-xs text-[var(--mn-mute)]">
                   Alcançar 1.000 leituras completas em capítulos gratuitos.
                 </p>
               </div>
@@ -380,35 +374,35 @@ export function CreatorWorkspacePage() {
         {/* Janela de Ganhos Financeiros Transparentes */}
         <Win title="GANHOS.EXE">
           <div className="space-y-4">
-            <div className="border-b border-[#34343A] pb-2">
-              <span className="font-pixel text-[12px] text-[#FFD400]">
+            <div className="border-b border-[var(--mn-line)] pb-2">
+              <span className="font-pixel text-[12px] text-[var(--mn-yellow)]">
                 DIVISÃO FINANCEIRA REAL (SERVIDOR)
               </span>
             </div>
 
             <div className="space-y-3">
-              <div className="flex justify-between items-center p-3 bg-[#0B0B0C] border border-[#34343A]">
-                <span className="font-body text-xs text-[#A9A59A]">DOAÇÕES DIRETAS PIX RECEBIDAS</span>
-                <span className="font-display text-lg text-[#FFD400] tabular-nums">
+              <div className="flex justify-between items-center p-3 bg-[var(--mn-ink)] border border-[var(--mn-line)]">
+                <span className="font-body text-xs text-[var(--mn-mute)]">DOAÇÕES DIRETAS PIX RECEBIDAS</span>
+                <span className="font-display text-lg text-[var(--mn-yellow)] tabular-nums">
                   {formatBrl(totalDonationsBrl)}
                 </span>
               </div>
 
-              <div className="flex justify-between items-center p-3 bg-[#0B0B0C] border border-[#34343A]">
-                <span className="font-body text-xs text-[#A9A59A]">MEMBROS ATIVOS NO CLUBE</span>
-                <span className="font-display text-lg text-[#FFD400] tabular-nums">
+              <div className="flex justify-between items-center p-3 bg-[var(--mn-ink)] border border-[var(--mn-line)]">
+                <span className="font-body text-xs text-[var(--mn-mute)]">MEMBROS ATIVOS NO CLUBE</span>
+                <span className="font-display text-lg text-[var(--mn-yellow)] tabular-nums">
                   {monthlyMembersCount ?? '—'}
                 </span>
               </div>
 
-              <div className="flex justify-between items-center p-3 bg-[#0B0B0C] border border-[#34343A]">
-                <span className="font-body text-xs text-[#A9A59A]">PREÇO DA ASSINATURA MENSAL</span>
-                <span className="font-display text-lg text-[#FFD400] tabular-nums">
+              <div className="flex justify-between items-center p-3 bg-[var(--mn-ink)] border border-[var(--mn-line)]">
+                <span className="font-body text-xs text-[var(--mn-mute)]">PREÇO DA ASSINATURA MENSAL</span>
+                <span className="font-display text-lg text-[var(--mn-yellow)] tabular-nums">
                   {formatBrl(membershipPrice)}
                 </span>
               </div>
 
-              <div className="p-3 border-2 border-[#FFD400] bg-[#FFD400] text-[#0B0B0C] flex justify-between items-center">
+              <div className="p-3 border-2 border-[var(--mn-yellow)] bg-[var(--mn-yellow)] text-[var(--mn-ink)] flex justify-between items-center">
                 <span className="font-display text-sm uppercase">SALDO DISPONÍVEL PARA SAQUE</span>
                 <span className="font-display text-2xl tabular-nums">
                   {formatBrl(walletBalanceBrl)}
@@ -417,12 +411,12 @@ export function CreatorWorkspacePage() {
             </div>
 
             {workspace?.hasActiveBoost && (
-              <span className="font-pixel text-[12px] text-[#3DDC84] block">
+              <span className="font-pixel text-[12px] text-[var(--mn-ok)] block">
                 BOOST ATIVO: {workspace.engagementBoostMul.toFixed(1)}x NO FEED DE DESCOBERTA
               </span>
             )}
 
-            <p className="font-body text-[12px] text-[#A9A59A] leading-relaxed pt-1">
+            <p className="font-body text-[12px] text-[var(--mn-mute)] leading-relaxed pt-1">
               * Taxa padrão de 17% retida para infraestrutura e servidores. Ao alcançar o Nível 4 na Season, a taxa cai para 10% por 15 dias.
             </p>
           </div>
@@ -431,28 +425,28 @@ export function CreatorWorkspacePage() {
       </div>
 
       {/* 4. Formulário de Publicação Real de Nova Obra e Páginas (Fase 7) */}
-      <section className="border-2 border-[#FFD400] bg-[#151517] p-6 sm:p-8 space-y-6 shadow-[6px_6px_0_#FFD400]">
+      <section className="border-2 border-[var(--mn-yellow)] bg-[var(--mn-ink-2)] p-6 sm:p-8 space-y-6 shadow-[6px_6px_0_var(--mn-yellow)]">
         <div>
-          <span className="font-pixel text-[12px] text-[#FFD400] uppercase tracking-widest font-bold block mb-1">
+          <span className="font-pixel text-[12px] text-[var(--mn-yellow)] uppercase tracking-widest font-bold block mb-1">
             ESTÚDIO EDITORIAL DO AUTOR
           </span>
-          <h2 className="font-display text-3xl text-[#F4EFE3] uppercase">
+          <h2 className="font-display text-3xl text-[var(--mn-paper)] uppercase">
             PUBLICAR NOVA OBRA ORIGINAL
           </h2>
-          <p className="font-body text-xs text-[#A9A59A] mt-0.5">
+          <p className="font-body text-xs text-[var(--mn-mute)] mt-0.5">
             Cadastre seu mangá no catálogo e alimente o feed de recomendações instantaneamente.
           </p>
         </div>
 
         {publishSuccessMsg && (
-          <div className="p-4 bg-[#3DDC84] text-[#0B0B0C] border-2 border-[#0B0B0C] font-display text-sm uppercase flex items-center gap-2">
+          <div className="p-4 bg-[var(--mn-ok)] text-[var(--mn-ink)] border-2 border-[var(--mn-ink)] font-display text-sm uppercase flex items-center gap-2">
             <CheckCircle2 size={18} />
             <span>{publishSuccessMsg}</span>
           </div>
         )}
 
         {publishErrorMsg && (
-          <div className="p-4 bg-[#E8402F] text-[#F4EFE3] border-2 border-[#0B0B0C] font-body text-xs flex items-center gap-2">
+          <div className="p-4 bg-[var(--mn-red)] text-[var(--mn-paper)] border-2 border-[var(--mn-ink)] font-body text-xs flex items-center gap-2">
             <AlertCircle size={18} />
             <span>{publishErrorMsg}</span>
           </div>
@@ -468,13 +462,13 @@ export function CreatorWorkspacePage() {
             />
 
             <div>
-              <label className="font-body text-sm font-semibold text-[#F4EFE3] block mb-1.5">
+              <label className="font-body text-sm font-semibold text-[var(--mn-paper)] block mb-1.5">
                 GÊNERO PRINCIPAL
               </label>
               <select
                 value={newWorkGenres[0] || 'ACAO'}
                 onChange={(e) => setNewWorkGenres([e.target.value])}
-                className="w-full p-2.5 bg-[#0B0B0C] text-[#F4EFE3] border-2 border-[#34343A] font-body text-xs focus:border-[#FFD400] outline-none"
+                className="w-full p-2.5 bg-[var(--mn-ink)] text-[var(--mn-paper)] border-2 border-[var(--mn-line)] font-body text-xs focus:border-[var(--mn-yellow)] outline-none"
               >
                 <option value="ACAO">Ação (Shonen/Seinen)</option>
                 <option value="AVENTURA">Aventura</option>
@@ -489,7 +483,7 @@ export function CreatorWorkspacePage() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="font-body text-sm font-semibold text-[#F4EFE3] block">
+            <label className="font-body text-sm font-semibold text-[var(--mn-paper)] block">
               SINOPSE EDITORIAL
             </label>
             <textarea
@@ -497,29 +491,29 @@ export function CreatorWorkspacePage() {
               value={newWorkSynopsis}
               onChange={(e) => setNewWorkSynopsis(e.target.value)}
               rows={3}
-              className="w-full p-3 bg-[#0B0B0C] text-[#F4EFE3] font-body text-sm border-2 border-[#34343A] focus:border-[#FFD400] outline-none resize-none"
+              className="w-full p-3 bg-[var(--mn-ink)] text-[var(--mn-paper)] font-body text-sm border-2 border-[var(--mn-line)] focus:border-[var(--mn-yellow)] outline-none resize-none"
             />
           </div>
 
           {/* Uploads de Capa e Banner */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Capa 2:3 */}
-            <div className="p-4 border-2 border-dashed border-[#34343A] bg-[#0B0B0C] space-y-3 text-center">
-              <span className="font-pixel text-[12px] text-[#FFD400] uppercase block">
+            <div className="p-4 border-2 border-dashed border-[var(--mn-line)] bg-[var(--mn-ink)] space-y-3 text-center">
+              <span className="font-pixel text-[12px] text-[var(--mn-yellow)] uppercase block">
                 CAPA VERTICAL (PROPORÇÃO 2:3)
               </span>
               {coverUrl ? (
                 <div className="flex flex-col items-center gap-2">
-                  <img src={coverUrl} alt="Preview da Capa" className="w-24 h-36 object-cover border-2 border-[#FFD400]" />
-                  <span className="font-pixel text-[12px] text-[#3DDC84]">CAPA PRONTA</span>
+                  <img src={coverUrl} alt="Preview da Capa" className="w-24 h-36 object-cover border-2 border-[var(--mn-yellow)]" />
+                  <span className="font-pixel text-[12px] text-[var(--mn-ok)]">CAPA PRONTA</span>
                 </div>
               ) : (
                 <div className="py-4 space-y-2">
-                  <Image size={28} className="mx-auto text-[#A9A59A]" />
-                  <p className="font-body text-xs text-[#A9A59A]">JPEG, PNG ou WebP (Máx 15MB)</p>
+                  <Image size={28} className="mx-auto text-[var(--mn-mute)]" />
+                  <p className="font-body text-xs text-[var(--mn-mute)]">JPEG, PNG ou WebP (Máx 15MB)</p>
                 </div>
               )}
-              <label className="inline-block px-4 py-2 bg-[#151517] border-2 border-[#34343A] hover:border-[#FFD400] text-[#F4EFE3] font-pixel text-[12px] uppercase cursor-pointer transition-colors">
+              <label className="inline-block px-4 py-2 bg-[var(--mn-ink-2)] border-2 border-[var(--mn-line)] hover:border-[var(--mn-yellow)] text-[var(--mn-paper)] font-pixel text-[12px] uppercase cursor-pointer transition-colors">
                 <Upload size={14} className="inline mr-1.5" />
                 {isUploadingCover ? 'ENVIANDO...' : 'SELECIONAR CAPA'}
                 <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleCoverUpload} className="hidden" />
@@ -527,22 +521,22 @@ export function CreatorWorkspacePage() {
             </div>
 
             {/* Banner 16:9 */}
-            <div className="p-4 border-2 border-dashed border-[#34343A] bg-[#0B0B0C] space-y-3 text-center">
-              <span className="font-pixel text-[12px] text-[#FFD400] uppercase block">
+            <div className="p-4 border-2 border-dashed border-[var(--mn-line)] bg-[var(--mn-ink)] space-y-3 text-center">
+              <span className="font-pixel text-[12px] text-[var(--mn-yellow)] uppercase block">
                 BANNER ILUSTRADO (16:9 - OPCIONAL)
               </span>
               {bannerUrl ? (
                 <div className="flex flex-col items-center gap-2">
-                  <img src={bannerUrl} alt="Preview do Banner" className="w-48 h-24 object-cover border-2 border-[#FFD400]" />
-                  <span className="font-pixel text-[12px] text-[#3DDC84]">BANNER PRONTO</span>
+                  <img src={bannerUrl} alt="Preview do Banner" className="w-48 h-24 object-cover border-2 border-[var(--mn-yellow)]" />
+                  <span className="font-pixel text-[12px] text-[var(--mn-ok)]">BANNER PRONTO</span>
                 </div>
               ) : (
                 <div className="py-4 space-y-2">
-                  <Image size={28} className="mx-auto text-[#A9A59A]" />
-                  <p className="font-body text-xs text-[#A9A59A]">Arte horizontal para fundo da obra</p>
+                  <Image size={28} className="mx-auto text-[var(--mn-mute)]" />
+                  <p className="font-body text-xs text-[var(--mn-mute)]">Arte horizontal para fundo da obra</p>
                 </div>
               )}
-              <label className="inline-block px-4 py-2 bg-[#151517] border-2 border-[#34343A] hover:border-[#FFD400] text-[#F4EFE3] font-pixel text-[12px] uppercase cursor-pointer transition-colors">
+              <label className="inline-block px-4 py-2 bg-[var(--mn-ink-2)] border-2 border-[var(--mn-line)] hover:border-[var(--mn-yellow)] text-[var(--mn-paper)] font-pixel text-[12px] uppercase cursor-pointer transition-colors">
                 <Upload size={14} className="inline mr-1.5" />
                 {isUploadingBanner ? 'ENVIANDO...' : 'SELECIONAR BANNER'}
                 <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleBannerUpload} className="hidden" />
@@ -551,17 +545,17 @@ export function CreatorWorkspacePage() {
           </div>
 
           {/* Upload de Páginas do Capítulo 1 */}
-          <div className="p-4 border-2 border-[#34343A] bg-[#0B0B0C] space-y-3">
+          <div className="p-4 border-2 border-[var(--mn-line)] bg-[var(--mn-ink)] space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
-                <span className="font-pixel text-[12px] text-[#FFD400] uppercase block">
+                <span className="font-pixel text-[12px] text-[var(--mn-yellow)] uppercase block">
                   PÁGINAS DO CAPÍTULO 1 (UPLOAD EM LOTE)
                 </span>
-                <span className="font-body text-xs text-[#A9A59A]">
+                <span className="font-body text-xs text-[var(--mn-mute)]">
                   Selecione os arquivos de imagem ordenados das páginas do mangá.
                 </span>
               </div>
-              <label className="px-4 py-2 bg-[#FFD400] text-[#0B0B0C] border-2 border-[#0B0B0C] font-pixel text-[12px] uppercase cursor-pointer hover:bg-[#E0B800] transition-colors shrink-0">
+              <label className="px-4 py-2 bg-[var(--mn-yellow)] text-[var(--mn-ink)] border-2 border-[var(--mn-ink)] font-pixel text-[12px] uppercase cursor-pointer hover:bg-[var(--mn-yellow-press)] transition-colors shrink-0">
                 <FileText size={14} className="inline mr-1.5" />
                 {isUploadingPages ? 'ENVIANDO PÁGINAS...' : `UPAR PÁGINAS (${chapterPages.length})`}
                 <input type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={handlePagesUpload} className="hidden" />
@@ -569,10 +563,10 @@ export function CreatorWorkspacePage() {
             </div>
 
             {chapterPages.length > 0 && (
-              <div className="flex flex-wrap gap-2 pt-2 border-t border-[#34343A]">
+              <div className="flex flex-wrap gap-2 pt-2 border-t border-[var(--mn-line)]">
                 {chapterPages.map((page, idx) => (
-                  <div key={idx} className="relative p-1 bg-[#151517] border border-[#34343A] text-center">
-                    <span className="font-pixel text-[12px] text-[#FFD400] block mb-1">PÁG. {idx + 1}</span>
+                  <div key={idx} className="relative p-1 bg-[var(--mn-ink-2)] border border-[var(--mn-line)] text-center">
+                    <span className="font-pixel text-[12px] text-[var(--mn-yellow)] block mb-1">PÁG. {idx + 1}</span>
                     <img src={page} alt={`Página ${idx + 1}`} className="w-12 h-16 object-cover" />
                   </div>
                 ))}
@@ -596,12 +590,12 @@ export function CreatorWorkspacePage() {
       </section>
 
       {/* 5. Formulário de Perfil do Autor com Declaração de Autoria */}
-      <form onSubmit={handleSave} className="border-2 border-[#34343A] bg-[#151517] p-6 sm:p-8 space-y-6">
+      <form onSubmit={handleSave} className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-6 sm:p-8 space-y-6">
         <div>
-          <h2 className="font-display text-2xl text-[#F4EFE3] uppercase">
+          <h2 className="font-display text-2xl text-[var(--mn-paper)] uppercase">
             CONFIGURAÇÕES DO CRIADOR
           </h2>
-          <p className="font-body text-xs text-[#A9A59A] mt-0.5">
+          <p className="font-body text-xs text-[var(--mn-mute)] mt-0.5">
             Atualize seus dados públicos e valor da assinatura de membros.
           </p>
         </div>
@@ -624,32 +618,32 @@ export function CreatorWorkspacePage() {
         </div>
 
         <div className="space-y-1.5">
-          <label className="font-body text-sm font-semibold text-[#F4EFE3] block">
+          <label className="font-body text-sm font-semibold text-[var(--mn-paper)] block">
             BIOGRAFIA EDITORIAL
           </label>
           <textarea
             value={bio}
             onChange={(e) => setBio(e.target.value)}
             rows={3}
-            className="w-full p-3 bg-[#151517] text-[#F4EFE3] font-body text-sm border-2 border-[#34343A] focus:border-[#F4EFE3] focus:shadow-[3px_3px_0_#FFD400] outline-none"
+            className="w-full p-3 bg-[var(--mn-ink-2)] text-[var(--mn-paper)] font-body text-sm border-2 border-[var(--mn-line)] focus:border-[var(--mn-paper)] focus:shadow-[3px_3px_0_var(--mn-yellow)] outline-none"
           />
         </div>
 
         {/* Declaração de Autoria Original Obrigatória (Seção 8.9) */}
-        <div className="p-4 border-2 border-[#FFD400] bg-[#0B0B0C] space-y-2">
+        <div className="p-4 border-2 border-[var(--mn-yellow)] bg-[var(--mn-ink)] space-y-2">
           <label className="flex items-start gap-3 cursor-pointer select-none">
             <input
               type="checkbox"
               checked={declaredOriginal}
               onChange={(e) => setDeclaredOriginal(e.target.checked)}
-              className="mt-1 w-5 h-5 accent-[#FFD400] cursor-pointer"
+              className="mt-1 w-5 h-5 accent-[var(--mn-yellow)] cursor-pointer"
             />
-            <span className="font-display text-sm text-[#F4EFE3] uppercase leading-snug">
+            <span className="font-display text-sm text-[var(--mn-paper)] uppercase leading-snug">
               DECLARO QUE TODAS AS OBRAS E CAPÍTULOS PUBLICADOS NESTA CONTA SÃO
               DE MINHA AUTORIA ORIGINAL E NÃO VIOLAM DIREITOS DE TERCEIROS.
             </span>
           </label>
-          <span className="font-body text-[12px] text-[#A9A59A] block pl-8">
+          <span className="font-body text-[12px] text-[var(--mn-mute)] block pl-8">
             Declaração com validade jurídica vinculada ao cadastro para fins do Art. 184 do CP.
           </span>
         </div>
@@ -665,12 +659,12 @@ export function CreatorWorkspacePage() {
           </Button>
 
           {isSaved && (
-            <span className="font-pixel text-[12px] text-[#3DDC84] flex items-center gap-1">
+            <span className="font-pixel text-[12px] text-[var(--mn-ok)] flex items-center gap-1">
               <Check size={14} /> SALVO NO SERVIDOR
             </span>
           )}
 
-          {saveError && <span className="font-body text-xs text-[#E8402F]">{saveError}</span>}
+          {saveError && <span className="font-body text-xs text-[var(--mn-red)]">{saveError}</span>}
         </div>
       </form>
 
