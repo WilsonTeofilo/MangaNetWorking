@@ -72,6 +72,10 @@ export function AdOverlay({
     };
   }, [open]);
 
+  // Estado derivado: tempo esgotado (necessário antes dos efeitos de bloqueo).
+  const done = remaining <= 0;
+  const progress = ((seconds - remaining) / seconds) * 100;
+
   // "Breque forte": impedir fechamento por ESC / clique fora até o tempo acabar.
   useEffect(() => {
     if (!open || done) {
@@ -92,9 +96,6 @@ export function AdOverlay({
   if (!open) {
     return null;
   }
-
-  const done = remaining <= 0;
-  const progress = ((seconds - remaining) / seconds) * 100;
 
   return (
     <div
@@ -118,7 +119,7 @@ export function AdOverlay({
               type="button"
               onClick={onComplete}
               aria-label="Fechar anúncio e continuar a leitura"
-              className="absolute top-1 right-1 w-6 h-6 flex items-center justify-center font-display text-lg text-[var(--mn-ink)] border border-[var(--mn-ink)] bg-[var(--mn-paper)] hover:bg-[var(--mn-red)] hover:text-[var(--mn-paper)] transition-colors cursor-pointer"
+              className="absolute top-1 right-1 w-7 h-7 flex items-center justify-center font-display text-lg text-[var(--mn-ink)] border-2 border-[var(--mn-ink)] bg-[var(--mn-paper)] hover:scale-110 hover:bg-[var(--mn-red)] hover:text-[var(--mn-paper)] transition-all duration-300 ease-out cursor-pointer"
             >
               ×
             </button>

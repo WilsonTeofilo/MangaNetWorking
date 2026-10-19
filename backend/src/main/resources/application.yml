@@ -5,6 +5,16 @@ spring:
   application:
     name: manganetworking-backend
 
+  # Carrega o .env da raiz do repositório quando o backend roda fora do Docker
+  # (IDE ou `mvn spring-boot:run` a partir de backend/). O prefixo `optional:`
+  # mantém o boot funcionando em produção, onde as variáveis vêm do container e
+  # não existe arquivo .env. O hint [.properties] ensina o Spring a ler o arquivo
+  # sem extensão no formato chave=valor.
+  config:
+    import:
+      - optional:file:./.env[.properties]
+      - optional:file:../.env[.properties]
+
   # Banco de Dados Relacional (PostgreSQL)
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:25432/manganetworking}

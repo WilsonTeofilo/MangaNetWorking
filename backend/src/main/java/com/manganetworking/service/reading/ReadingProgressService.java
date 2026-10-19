@@ -1,9 +1,11 @@
 package com.manganetworking.service.reading;
 
+import com.manganetworking.config.exception.ResourceNotFoundException;
 import com.manganetworking.config.properties.PlatformProperties;
 import com.manganetworking.domain.nosql.EngagementEventDocument;
 import com.manganetworking.domain.nosql.ReadingProgressDocument;
 import com.manganetworking.domain.relational.AdRevenueLedgerEntity;
+import com.manganetworking.domain.relational.ChapterEntity;
 import com.manganetworking.domain.relational.CreatorEntity;
 import com.manganetworking.domain.relational.UserEntity;
 import com.manganetworking.domain.relational.WorkEntity;
@@ -77,6 +79,8 @@ public class ReadingProgressService {
             int page,
             int totalPages
     ) {
+        ChapterEntity chapter = validateReadingPage(workId, chapterId, page, totalPages);
+
         ReadingProgressDocument doc = progressMongoRepository.findByUserIdAndWorkId(userId, workId)
                 .orElseGet(() -> {
                     ReadingProgressDocument newDoc = new ReadingProgressDocument();
@@ -86,6 +90,10 @@ public class ReadingProgressService {
                 });
 
         doc.setChapterId(chapterId);
+        doc.setChapterNumber(chapter.getChapterNumber());
+        doc.setChapterTitle(chapter.getTitle());
+        doc.setWorkTitle(chapter.getWork().getTitle());
+        doc.setWorkCoverUrl(chapter.getWork().getCoverUrl());
         doc.setPage(page);
         doc.setTotalPages(totalPages);
         doc.setUpdatedAt(Instant.now());
@@ -124,6 +132,39 @@ public class ReadingProgressService {
         recordReadEvent(userId, workId, chapterId, page);
 
         return new ReadingProgressResult(doc, shouldTriggerAd);
+    }
+
+    private ChapterEntity validateReadingPage(String workId, String chapterId, int page, int totalPages) {
+        UUID workUuid;
+        UUID chapterUuid;
+        try {
+            workUuid = UUID.fromString(workId);
+            chapterUuid = UUID.fromString(chapterId);
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException("Identificador de obra ou capítulo inválido.", exception);
+        }
+
+        if (page < 1 || totalPages < 1 || page > totalPages) {
+            throw new IllegalArgumentException("A página deve estar entre 1 e o total de páginas.");
+        }
+
+        ChapterEntity chapter = chapterRepository.findById(chapterUuid)
+                .orElseThrow(() -> new ResourceNotFoundException("Capítulo não encontrado."));
+        if (chapter.getWork() == null || !chapter.getWork().getId().equals(workUuid)) {
+            throw new ResourceNotFoundException("Capítulo não encontrado.");
+        }
+        if (totalPages != countChapterPages(chapter.getPagesJson())) {
+            throw new IllegalArgumentException("O total de páginas não corresponde ao capítulo.");
+        }
+        return chapter;
+    }
+
+    private int countChapterPages(String pagesJson) {
+        try {
+            return new com.fasterxml.jackson.databind.ObjectMapper().readTree(pagesJson).size();
+        } catch (com.fasterxml.jackson.core.JsonProcessingException | NullPointerException exception) {
+            throw new IllegalStateException("Páginas do capítulo armazenadas em formato inválido.", exception);
+        }
     }
 
     /**
