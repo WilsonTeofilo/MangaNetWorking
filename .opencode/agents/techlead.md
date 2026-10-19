@@ -1,7 +1,7 @@
 ---
 description: Tech Lead do MangaNetWorking; investiga, planeja e especifica tarefas sem alterar codigo.
 mode: all
-model: 9router/TechLead
+model: 9router/QATESTES
 temperature: 0.1
 steps: 12
 permission:
