@@ -50,14 +50,14 @@ export function WorkCard({
             onClick={handleFavoriteClick}
             aria-pressed={isFavorite}
             aria-label={isFavorite ? `Remover ${work.title} dos favoritos` : `Favoritar ${work.title}`}
-            className="absolute top-2 right-2 w-11 h-11 flex items-center justify-center bg-[#0B0B0C] border-2 border-[#F4EFE3] shadow-[2px_2px_0_#F4EFE3] hover:scale-105 transition-all z-20"
+            className="absolute top-2 right-2 w-11 h-11 flex items-center justify-center bg-[var(--mn-ink)] border-2 border-[var(--mn-paper)] shadow-[2px_2px_0_var(--mn-paper)] hover:scale-105 transition-all z-20"
           >
             <Heart
               size={18}
               className={
                 isFavorite
-                  ? 'fill-[#FFD400] text-[#FFD400]'
-                  : 'text-[#F4EFE3]'
+                  ? 'fill-[var(--mn-yellow)] text-[var(--mn-yellow)]'
+                  : 'text-[var(--mn-paper)]'
               }
             />
           </button>
@@ -75,11 +75,11 @@ export function WorkCard({
 
       {/* Título e Metadados do Card */}
       <div className="pt-2.5 flex flex-col">
-        <h4 className="font-display text-lg sm:text-[20px] text-[#F4EFE3] leading-[1.05] uppercase line-clamp-2 group-hover:text-[#FFD400] transition-colors">
+        <h4 className="font-display text-lg sm:text-[20px] text-[var(--mn-paper)] leading-[1.05] uppercase line-clamp-2 group-hover:text-[var(--mn-yellow)] transition-colors">
           {work.title}
         </h4>
-        <p className="font-body text-xs sm:text-[13px] text-[#A9A59A] mt-1 truncate">
-          por <span className="text-[#F4EFE3] font-medium">{work.authorName}</span> · <span className="tabular-nums">{work.totalChapters || 1} caps</span>
+        <p className="font-body text-xs sm:text-[13px] text-[var(--mn-mute)] mt-1 truncate">
+          por <span className="text-[var(--mn-paper)] font-medium">{work.authorName}</span> · <span className="tabular-nums">{work.totalChapters || 1} caps</span>
         </p>
       </div>
     </article>

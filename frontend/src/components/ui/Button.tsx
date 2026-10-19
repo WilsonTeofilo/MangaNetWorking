@@ -21,19 +21,19 @@ export function Button({
   switch (variant) {
     case 'primary':
       variantStyles =
-        'bg-[#FFD400] text-[#0B0B0C] border-[#0B0B0C] shadow-[4px_4px_0_#0B0B0C] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_#0B0B0C] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none';
+        'bg-[var(--mn-yellow)] text-[var(--mn-ink)] border-[var(--mn-ink)] shadow-[4px_4px_0_var(--mn-ink)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_var(--mn-ink)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none';
       break;
     case 'secondary':
       variantStyles =
-        'bg-transparent text-[#F4EFE3] border-[#F4EFE3] shadow-[4px_4px_0_#F4EFE3] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_#F4EFE3] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none hover:bg-[rgba(244,239,227,0.08)]';
+        'bg-transparent text-[var(--mn-paper)] border-[var(--mn-paper)] shadow-[4px_4px_0_var(--mn-paper)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_var(--mn-paper)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none hover:bg-[rgba(244,239,227,0.08)]';
       break;
     case 'danger':
       variantStyles =
-        'bg-[#E8402F] text-[#F4EFE3] border-[#0B0B0C] shadow-[4px_4px_0_#0B0B0C] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_#0B0B0C] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none';
+        'bg-[var(--mn-red)] text-[var(--mn-paper)] border-[var(--mn-ink)] shadow-[4px_4px_0_var(--mn-ink)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_var(--mn-ink)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none';
       break;
     case 'ghost':
       variantStyles =
-        'bg-transparent text-[#F4EFE3] border-transparent hover:underline hover:text-[#FFD400] shadow-none min-h-[36px] px-3 py-1';
+        'bg-transparent text-[var(--mn-paper)] border-transparent hover:underline hover:text-[var(--mn-yellow)] shadow-none min-h-[36px] px-3 py-1';
       break;
   }
 

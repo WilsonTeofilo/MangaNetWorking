@@ -26,10 +26,10 @@ export function Cover({
       hash = str.charCodeAt(i) + ((hash << 5) - hash);
     }
     const colors = [
-      { bg: '#FFD400', text: '#0B0B0C', pattern: '#0B0B0C' },
-      { bg: '#F4EFE3', text: '#0B0B0C', pattern: '#0B0B0C' },
-      { bg: '#E8402F', text: '#F4EFE3', pattern: '#F4EFE3' },
-      { bg: '#151517', text: '#FFD400', pattern: '#34343A' },
+      { bg: 'var(--mn-yellow)', text: 'var(--mn-ink)', pattern: 'var(--mn-ink)' },
+      { bg: 'var(--mn-paper)', text: 'var(--mn-ink)', pattern: 'var(--mn-ink)' },
+      { bg: 'var(--mn-red)', text: 'var(--mn-paper)', pattern: 'var(--mn-paper)' },
+      { bg: 'var(--mn-ink-2)', text: 'var(--mn-yellow)', pattern: 'var(--mn-line)' },
     ];
     return colors[Math.abs(hash) % colors.length];
   };
@@ -64,7 +64,7 @@ export function Cover({
 
   return (
     <div
-      className={`w-full ${aspectClass} border-2 border-[var(--edge)] ${shadowClass} bg-[#151517] overflow-hidden relative ${className}`}
+      className={`w-full ${aspectClass} border-2 border-[var(--edge)] ${shadowClass} bg-[var(--mn-ink-2)] overflow-hidden relative ${className}`}
     >
       <img
         src={src}

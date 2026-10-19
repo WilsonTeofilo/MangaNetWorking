@@ -23,7 +23,7 @@ export function Field({
     <div className="flex flex-col gap-1.5 w-full">
       <label
         htmlFor={inputId}
-        className="font-body text-sm font-semibold text-[#F4EFE3] flex items-center justify-between"
+        className="font-body text-sm font-semibold text-[var(--mn-paper)] flex items-center justify-between"
       >
         <span>{label}</span>
       </label>
@@ -31,10 +31,10 @@ export function Field({
       <div className="relative flex items-center">
         <input
           id={inputId}
-          className={`w-full min-h-[44px] px-3.5 py-2 bg-[#151517] text-[#F4EFE3] font-body text-sm border-2 ${
+          className={`w-full min-h-[44px] px-3.5 py-2 bg-[var(--mn-ink-2)] text-[var(--mn-paper)] font-body text-sm border-2 ${
             error
-              ? 'border-[#E8402F] focus:border-[#E8402F]'
-              : 'border-[#34343A] focus:border-[#F4EFE3] focus:shadow-[3px_3px_0_#FFD400]'
+              ? 'border-[var(--mn-red)] focus:border-[var(--mn-red)]'
+              : 'border-[var(--mn-line)] focus:border-[var(--mn-paper)] focus:shadow-[3px_3px_0_var(--mn-yellow)]'
           } transition-all outline-none disabled:opacity-50 ${className}`}
           {...props}
         />
@@ -44,12 +44,12 @@ export function Field({
       </div>
 
       {error ? (
-        <span className="font-body text-xs text-[#E8402F] flex items-center gap-1 mt-0.5">
+        <span className="font-body text-xs text-[var(--mn-red)] flex items-center gap-1 mt-0.5">
           <AlertCircle size={13} />
           {error}
         </span>
       ) : helperText ? (
-        <span className="font-body text-xs text-[#A9A59A] mt-0.5">
+        <span className="font-body text-xs text-[var(--mn-mute)] mt-0.5">
           {helperText}
         </span>
       ) : null}
