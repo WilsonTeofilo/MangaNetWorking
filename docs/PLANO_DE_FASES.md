@@ -6,7 +6,7 @@
 >
 > **Estado real do repositório:** ver `docs/orquestracao/ROADMAP-FASES.md` e `docs/orquestracao/AUDITORIA-ATUAL.md`.
 >
-> ⚠️ **Os números de teste, build e smoke deste documento não são prova de estado.** A contagem de testes, o `npm run build` e o smoke E2E só valem com saída de terminal real; nesta data o `docker-compose.yml` está inválido e a stack não sobe (achado C5 da auditoria).
+> ⚠️ **Os números de teste, build e smoke deste documento não são prova de estado.** A contagem de testes, o `npm run build` e o smoke E2E só valem com saída de terminal real. O `docker-compose.yml` de desenvolvimento foi corrigido (achado C5) e valida em `docker compose config`.
 >
 > **Migrações Flyway:** V1 a V5 no repositório; V5 ainda **não confirmada** em `flyway_schema_history` real.
 >
@@ -137,7 +137,7 @@ O **MangaNetWorking** é uma plataforma editorial **100% digital** voltada para 
 
 ---
 
-## 5. Próximas Fases de Engenharia e Roadmap de Produto
+## 5. Roadmap de Fases 10 a 17 — Engenharia, Nuvem e Lançamento
 
 ### FASE 10: Dockerização de Produção, Deploy & CI/CD `[CONCLUÍDO]`
 **Objetivo:** Empacotar o ecossistema completo em containers prontos para produção com builds multi-stage e pipeline automatizada no GitHub Actions.
@@ -164,10 +164,6 @@ O **MangaNetWorking** é uma plataforma editorial **100% digital** voltada para 
   - Botão de download e indicador visual no card de capítulo (`WorkDetailPage.tsx`): `[OFFLINE ✓]`.
   - Leitor web (`ReaderPage.tsx`) com fallback automático para CacheStorage quando offline ou quando a requisição de rede falhar.
 
----
-
-## 6. Próximas Fases de Engenharia e Roadmap de Produto
-
 ### FASE 12: Observabilidade, Métricas & Transição para Redis `[CONCLUÍDO]`
 **Objetivo:** Preparar a aplicação para escala horizontal sem estado em múltiplos servidores.
 
@@ -180,17 +176,61 @@ O **MangaNetWorking** é uma plataforma editorial **100% digital** voltada para 
   - Anotações `@ConditionalOnProperty` garantindo alternância transparente entre `inmemory` (dev/testes) e `redis` (produção).
   - Orquestração no `docker-compose.prod.yml` com container `redis:7-alpine` e healthcheck nativo.
 
-### FASE 13: Analytics do Criador & Gamificação Avançada
-**Objetivo:** Entregar dados editoriais ricos para os quadrinistas e impulsionar o engajamento com Seasons.
+### FASE 13: Validação de Serviços & 2FA Real (SMTP Gmail) `[EM ANDAMENTO]`
+**Objetivo:** Validar o ciclo completo de envio real de códigos de autenticação via SMTP e homologar pagamentos Sandbox antes do provisionamento na nuvem.
 
-- [ ] **13.1. Painel de Analytics no Workspace:**
-  - Gráficos de leitura por dia, retenção por página e distribuição líquida de doações/membros.
-- [ ] **13.2. Motor de Seasons de 60 Dias:**
-  - Job automático de virada de temporada e concessão de bônus algorítmico (1.5x a 2.2x) para os criadores mais ativos.
+- [x] **13.1. Template de Configuração de E-mail e Mercado Pago no `.env`:**
+  - Adicionadas variáveis de controle `PLATFORM_MAIL_ENABLED`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MERCADOPAGO_ACCESS_TOKEN` e `MERCADOPAGO_WEBHOOK_SECRET`.
+- [ ] **13.2. Teste de Cadastro Real com 2FA via Gmail:**
+  - Inserção de senha de app do Google e envio real de OTP para e-mail do usuário.
+  - Validação de expiração (5 min), uso único e proteção anti-força bruta (5 tentativas).
+- [ ] **13.3. Teste do Checkout Pro (Mercado Pago Sandbox):**
+  - Geração de preferência para plano VIP com token `TEST-...` e validação do retorno `init_point`.
+
+### FASE 14: Infraestrutura em Nuvem (Oracle Cloud Always Free)
+**Objetivo:** Hospedar a stack completa de produção (Postgres, Mongo, Redis, Backend Spring Boot) com custo R$ 0.
+
+- [ ] **14.1. Provisionamento de VM Ampere A1 (ARM64 / Ubuntu 22.04):**
+  - Criação da instância Always Free com IP público fixo.
+  - Hardening de firewall: apenas portas 22 (SSH) e 80 (HTTP) abertas externamente; portas de bancos e Redis isoladas.
+- [ ] **14.2. Instalação e Deploy via `docker-compose.prod.yml`:**
+  - Instalação de Docker e Docker Compose na VM.
+  - Criação de `.env` de produção seguro com `AES_SECRET_KEY` definitiva de 256 bits e credenciais.
+  - Execução de `docker compose -f docker-compose.prod.yml up -d --build`.
+  - Confirmação de execução limpa das migrações Flyway V1 a V5 no PostgreSQL de produção.
+
+### FASE 15: Conexão Segura & Proxy Serverless (Cloudflare Pages Functions)
+**Objetivo:** Interligar o frontend em `manganetworking.pages.dev` à API na Oracle Cloud sem custos de domínio nem problemas de CORS/cookies.
+
+- [ ] **15.1. Implementação de Pages Function (`functions/api/[[path]].ts`):**
+  - Proxy reverso transparente de `/api/*` para o IP público da VM Oracle.
+  - Preservação estrita de headers de autorização, cookies `HttpOnly` com `SameSite=Strict`, e payload de uploads multipart.
+- [ ] **15.2. Teste End-to-End Front <-> Back:**
+  - Acesso ao site oficial no Cloudflare Pages.
+  - Cadastro de leitor, recebimento de código 2FA e login com sessão persistente.
+
+### FASE 16: Ativação Financeira do Mercado Pago & Virada de Produção
+**Objetivo:** Habilitar pagamentos reais de assinaturas VIP e doações com webhook criptografado.
+
+- [ ] **16.1. Cadastro e Validação de Webhook:**
+  - Registro da URL `https://manganetworking.pages.dev/api/monetization/mercadopago/webhook` no painel do desenvolvedor MP.
+  - Simulação de notificação e validação da assinatura HMAC-SHA256 (`x-signature`).
+  - Ativação atômica do status VIP (`is_vip = true`, +30 dias).
+- [ ] **16.2. Virada de Chaves de Produção (`APP_USR-...`):**
+  - Substituição das credenciais de sandbox pelas credenciais reais de produção no `.env` da VM.
+  - Abertura oficial da plataforma ao público.
+
+### FASE 17: Analytics do Criador & Gamificação Avançada
+**Objetivo:** Entregar métricas editoriais para quadrinistas e impulsionar engajamento com Seasons de 60 dias.
+
+- [ ] **17.1. Painel de Analytics no Workspace do Criador:**
+  - Gráficos de retenção por página e distribuição de receita (83/17 e 58/42).
+- [ ] **17.2. Motor de Seasons de 60 Dias:**
+  - Virada automática de temporada e concessão de bônus algorítmico no feed (1.5x a 2.2x).
 
 ---
 
-## 7. Histórico Consolidado de Passes de Engenharia (Passes 10 ao 19)
+## 6. Histórico Consolidado de Passes de Engenharia (Passes 10 ao 20)
 
 | Passe | Data | Escopo Principal | Evidência / Resultado |
 |---|---|---|---|
@@ -212,7 +252,7 @@ O **MangaNetWorking** é uma plataforma editorial **100% digital** voltada para 
 
 | Componente | Tecnologia | Porta / Path | Status de Verificação |
 |---|---|---|---|
-| **API Backend** | Spring Boot 3.4.2 / Java 21 | `8085` | 197 testes verdes (189 unit + 8 Testcontainers); zero falhas; zero erros |
+| **API Backend** | Spring Boot 3.4.2 / Java 21 | `8085` | 207 testes documentados no Passe 20; revalidar com `mvn -o test` |
 | **Banco Relacional** | PostgreSQL 16 (Docker) | `25432` | Migrações V1 a V5 aplicadas; testado ao vivo no smoke test |
 | **Banco NoSQL** | MongoDB 7 (Docker) | `27017` | Eventos de feed e telemetria validados ao vivo |
 | **Storage de Imagens** | Filesystem Local Sanitizado | `./data/uploads/` | Magic bytes e guard por `chapter_files` validados |
