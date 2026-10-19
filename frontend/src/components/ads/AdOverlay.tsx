@@ -72,6 +72,23 @@ export function AdOverlay({
     };
   }, [open]);
 
+  // "Breque forte": impedir fechamento por ESC / clique fora até o tempo acabar.
+  useEffect(() => {
+    if (!open || done) {
+      return;
+    }
+    const block = (e: KeyboardEvent | MouseEvent) => {
+      if (e.type === 'keydown' && (e as KeyboardEvent).key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    document.addEventListener('keydown', block, true);
+    return () => {
+      document.removeEventListener('keydown', block, true);
+    };
+  }, [open, done]);
+
   if (!open) {
     return null;
   }
@@ -93,7 +110,7 @@ export function AdOverlay({
           <span className="font-pixel text-[12px] uppercase tracking-wider font-bold">
             PUBLICIDADE · {SLOT_LABEL[slot]}
           </span>
-          <span className="font-pixel text-[12px] tabular-nums font-bold">{remaining}s</span>
+          <span className="font-pixel text-[14px] tabular-nums font-bold">{remaining}s</span>
 
           {/* X de fechar: aparece SOMENTE após a contagem regressiva acabar */}
           {done && (
