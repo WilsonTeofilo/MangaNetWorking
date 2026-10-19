@@ -79,21 +79,32 @@ jobs:
       - name: Checkout Código-Fonte
         uses: actions/checkout@v4
 
-      - name: Configurar Docker Buildx
-        uses: actions/setup-buildx-action@v3
+      # Valida a sintaxe do compose de produção antes de construir.
+      # As variáveis obrigatórias (sufixo ":?") são preenchidas com placeholders
+      # só para a checagem — nenhum deploy acontece aqui.
+      - name: Validar Sintaxe do docker-compose.prod.yml
+        env:
+          POSTGRES_PASSWORD: ci-placeholder-nao-usado
+          AES_SECRET_KEY: ci-placeholder-chave-256-bits-0000000000000000
+        run: docker compose -f docker-compose.prod.yml config --quiet
 
-      - name: Validar Build do Backend Dockerfile
-        uses: docker/build-push-action@v5
-        with:
-          context: ./backend
-          file: ./backend/Dockerfile
-          push: false
-          tags: manganetworking/backend:test
+      # Build direto com o daemon do runner: sem setup-buildx-action (driver
+      # docker-container) nem build-push-action, que eram os pontos de falha.
+      - name: Build Multi-Stage do Backend (Dockerfile)
+        run: |
+          docker build \
+            --file ./backend/Dockerfile \
+            --tag manganetworking/backend:ci \
+            ./backend
 
-      - name: Validar Build do Frontend Dockerfile
-        uses: docker/build-push-action@v5
-        with:
-          context: ./frontend
-          file: ./frontend/Dockerfile
-          push: false
-          tags: manganetworking/frontend:test
+      - name: Build Multi-Stage do Frontend (Dockerfile)
+        run: |
+          docker build \
+            --file ./frontend/Dockerfile \
+            --tag manganetworking/frontend:ci \
+            ./frontend
+
+      - name: Remover Imagens de CI
+        if: always()
+        run: |
+          docker image rm --force manganetworking/backend:ci manganetworking/frontend:ci || true
