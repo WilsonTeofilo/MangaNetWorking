@@ -32,12 +32,15 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
   const [twoFactorCode, setTwoFactorCode] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [birthDate, setBirthDate] = useState('');
 
   // E-mail que identifica o desafio 2FA no servidor e modo demonstração (sem backend).
   const [challengeEmail, setChallengeEmail] = useState('');
   const [isDemoMode, setIsDemoMode] = useState(false);
   // Código 2FA para conveniência em desenvolvimento (Dev Outbox). Vazio em produção.
   const [devOtpHint, setDevOtpHint] = useState('');
+
 
   const completeLogin = async () => {
     // Hidrata a sessão real (pode não haver sessão em modo demonstração).
@@ -58,9 +61,15 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
     e.preventDefault();
     setErrorMessage('');
 
-    if (mode === 'register' && !name.trim()) {
-      setErrorMessage('Informe seu nome para criar a conta.');
-      return;
+    if (mode === 'register') {
+      if (!name.trim()) {
+        setErrorMessage('Informe seu nome para criar a conta.');
+        return;
+      }
+      if (!termsAccepted) {
+        setErrorMessage('É obrigatório aceitar os Termos de Uso e a Política de Privacidade (LGPD).');
+        return;
+      }
     }
     if (!email || !password) {
       setErrorMessage('Preencha seu e-mail e senha.');
@@ -78,8 +87,11 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
               password,
               isCreator: roleIntent === 'creator',
               handle: roleIntent === 'creator' ? handle.trim() || undefined : undefined,
+              termsAccepted: true,
+              birthDate: birthDate ? birthDate : undefined,
             })
           : await authApi.login({ email, password });
+
 
       const targetEmail = challenge.email || email;
       setChallengeEmail(targetEmail);
@@ -294,6 +306,32 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
                   required
                   childrenRight={<Lock size={16} className="text-[#A9A59A]" />}
                 />
+
+                {mode === 'register' && (
+                  <>
+                    <Field
+                      label="DATA DE NASCIMENTO"
+                      type="date"
+                      value={birthDate}
+                      onChange={(e) => setBirthDate(e.target.value)}
+                      helperText="Necessário para controle de maioridade e proteção legal (LGPD)"
+                    />
+
+                    <div className="flex items-start gap-2 pt-2">
+                      <input
+                        type="checkbox"
+                        id="termsAccepted"
+                        checked={termsAccepted}
+                        onChange={(e) => setTermsAccepted(e.target.checked)}
+                        className="mt-1 h-4 w-4 rounded border-[#34343A] bg-[#212125] text-[#FFD400] focus:ring-0 cursor-pointer"
+                      />
+                      <label htmlFor="termsAccepted" className="font-body text-xs text-[#A9A59A] leading-relaxed cursor-pointer select-none">
+                        Li e concordo com os <span className="text-[#F4EFE3] underline">Termos de Uso</span> e a{' '}
+                        <span className="text-[#F4EFE3] underline">Política de Privacidade</span> (LGPD - Lei 13.709/2018).
+                      </label>
+                    </div>
+                  </>
+                )}
               </div>
 
               {errorMessage && (
@@ -301,6 +339,7 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
                   {errorMessage}
                 </div>
               )}
+
 
               <Button
                 type="submit"

@@ -72,13 +72,14 @@ export function CreatorWorkspacePage() {
     };
   }, []);
 
-  // Valores exibidos: dados do servidor quando a sessão de criador existe; demo apenas como fallback.
+  // Valores exibidos: dados do servidor quando a sessão de criador existe; zero se não autenticado (anti-fake data).
   const displayHandle = workspace?.handle ?? creator.handle;
-  const monetizationLevel = workspace?.monetizationLevel ?? 2;
-  const walletBalanceBrl = workspace ? Number(workspace.walletBalanceBrl) : 1935.4;
-  const totalDonationsBrl = workspace ? Number(workspace.totalDonationsBrl) : 480;
-  const monthlyMembersCount = workspace ? workspace.monthlyMembersCount : null;
+  const monetizationLevel = workspace?.monetizationLevel ?? 0;
+  const walletBalanceBrl = workspace ? Number(workspace.walletBalanceBrl) : 0;
+  const totalDonationsBrl = workspace ? Number(workspace.totalDonationsBrl) : 0;
+  const monthlyMembersCount = workspace ? workspace.monthlyMembersCount : 0;
   const activeMissions = workspace?.missions ?? [];
+
 
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

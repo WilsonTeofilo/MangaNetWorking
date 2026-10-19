@@ -50,6 +50,11 @@ public class AuthApplicationService {
             throw new IllegalArgumentException("E-mail já cadastrado na plataforma");
         }
 
+        // Validação de Consentimento Legal Obrigatório (Art. 7º, I e Art. 8º da LGPD)
+        if (dto.termsAccepted() == null || !dto.termsAccepted()) {
+            throw new IllegalArgumentException("É obrigatório aceitar os Termos de Uso e a Política de Privacidade.");
+        }
+
         UserEntity user = new UserEntity();
         user.setEmail(normalizedEmail);
         user.setName(dto.name().trim());
@@ -57,7 +62,11 @@ public class AuthApplicationService {
         user.setProfilePublic(dto.isProfilePublic() != null ? dto.isProfilePublic() : true);
         user.setPasswordHash(passwordEncoder.encode(dto.password()));
         user.setTwoFactorEnabled(true);
+        user.setTermsAcceptedAt(java.time.LocalDateTime.now());
+        user.setPrivacyPolicyVersion("v1.0");
+        user.setBirthDate(dto.birthDate());
         userRepository.save(user);
+
 
         if (dto.isCreator()) {
             CreatorEntity creator = new CreatorEntity();

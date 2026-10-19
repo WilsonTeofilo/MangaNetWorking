@@ -8,6 +8,7 @@ import { workApi } from '../api/workApi';
 import { ApiError } from '../api/client';
 import { parsePagesJson } from '../utils/apiMappers';
 import { Button } from '../components/ui/Button';
+import { offlineStorage } from '../services/offlineStorage';
 
 interface ReaderPageProps {
   work: Work;
@@ -23,20 +24,28 @@ export function ReaderPage({ work, chapter, onBack, onNavigateChapter }: ReaderP
   const [currentPage, setCurrentPage] = useState(1);
   const [cumulativePages, setCumulativePages] = useState(0);
   const [showAdNotice, setShowAdNotice] = useState(false);
-  // Páginas reais do capítulo (API) com fallback para as páginas do mock.
+  // Páginas reais do capítulo (API ou cache offline PWA) com fallback para as páginas do mock.
   const [pages, setPages] = useState<string[]>(chapter.pages ?? []);
   const [earlyAccessLocked, setEarlyAccessLocked] = useState(false);
 
   const isLiked = user.favorites.includes(work.id);
   const totalPages = pages.length || chapter.pages?.length || 24;
 
-  // Carrega as páginas reais do capítulo; se indisponível, mantém o fallback (mock).
+  // Carrega as páginas reais do capítulo (online ou offline PWA)
   useEffect(() => {
     let active = true;
-    setPages(chapter.pages ?? []);
     setEarlyAccessLocked(false);
     setCurrentPage(1);
 
+    // 1. Verifica se o capítulo já está baixado no storage offline
+    const offlineMeta = offlineStorage.getOfflineChapters().find((c) => c.chapterId === chapter.id);
+    if (offlineMeta && offlineMeta.pages.length > 0) {
+      setPages(offlineMeta.pages);
+    } else {
+      setPages(chapter.pages ?? []);
+    }
+
+    // 2. Se online, tenta sincronizar a versão mais recente da API
     workApi
       .readChapter(work.slug, chapter.number)
       .then((resp) => {
@@ -51,8 +60,10 @@ export function ReaderPage({ work, chapter, onBack, onNavigateChapter }: ReaderP
         // 403 = capítulo em acesso antecipado sem assinatura (bloqueio autoritativo do servidor).
         if (err instanceof ApiError && err.status === 403) {
           setEarlyAccessLocked(true);
+        } else if (offlineMeta && offlineMeta.pages.length > 0) {
+          // Sem conexão: garante leitura offline perfeita a partir do cache local
+          setPages(offlineMeta.pages);
         }
-        // Demais erros: mantém fallback (chapter.pages) para não quebrar a leitura da demo.
       });
 
     return () => {

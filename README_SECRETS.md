@@ -4,10 +4,25 @@ Este documento descreve como configurar os segredos do MangaNetWorking para dife
 
 ## Visão Geral
 
-O sistema tem dois tipos de segredos críticos:
+O sistema tem três tipos de segredos críticos:
 
 1. **Chave AES-256**: Usada para criptografar dados sensíveis (CPF e chaves PIX de criadores) em repouso no banco.
 2. **Credenciais do Banco de Dados**: Usuário e senha do PostgreSQL.
+3. **Credenciais de E-mail (SMTP)**: Usuário, senha e remetente usados no envio do código 2FA.
+
+### E-mail (SMTP) e marca do remetente
+
+O `From:` do e-mail usa o nome **MangaNetWorking** e um endereço do domínio próprio. Não é possível enviar como `@manganetworking.com` sem possuir o domínio e configurar SPF/DKIM/DMARC — o Gmail gratuito só permite o endereço da própria conta (ou um alias verificado). O plano completo está em `docs/orquestracao/EMAIL-E-2FA.md`.
+
+Variáveis obrigatórias em produção (a aplicação deve **falhar o boot** se ausentes):
+
+- `MAIL_HOST` — host SMTP do provedor (ex.: `smtp.resend.com`).
+- `MAIL_PORT` — porta (587 com STARTTLS ou 465 com SSL).
+- `MAIL_USERNAME` / `MAIL_PASSWORD` — credenciais do provedor.
+- `MAIL_FROM` — endereço do domínio próprio (ex.: `nao-responda@manganetworking.com`).
+- `MAIL_FROM_NAME` — nome de exibição (padrão `MangaNetWorking`).
+
+Em desenvolvimento, **não** use Gmail: suba o Mailpit (`docker compose up -d mailpit`) e acesse a caixa em `http://localhost:8025`.
 
 ## Configuração por Ambiente
 

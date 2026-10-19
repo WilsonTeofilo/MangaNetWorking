@@ -22,7 +22,10 @@ export interface RegisterRequest {
   handle?: string;
   cpf?: string;
   isProfilePublic?: boolean;
+  termsAccepted: boolean;
+  birthDate?: string;
 }
+
 
 export interface LoginRequest {
   email: string;

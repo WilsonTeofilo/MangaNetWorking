@@ -4,8 +4,8 @@ Trabalhe em `D:\Projetos\MangaNetWorking`.
 
 ## Antes de editar
 
-1. Leia `AGENTS.md`, `docs/reviews/README.md` e `docs/reviews/PROJECT_CONTEXT.md`.
-2. Leia os reviews pertinentes (`BUSINESS_RULES.md`, `SECURITY_REQUIREMENTS.md`, `IMPLEMENTATION_STATUS.md`) e os ADRs/roadmap relacionados à tarefa.
+1. Leia `AGENTS.md` e `docs/orquestracao/PROTOCOLO_ORQUESTRACAO.md`.
+2. Leia `docs/orquestracao/ROADMAP-FASES.md`, `docs/orquestracao/AUDITORIA-ATUAL.md` e os ADRs relacionados à tarefa.
 3. Para frontend, siga `docs/skills/frontend-design/SKILL.md` e `docs/IDENTIDADE_VISUAL.md`.
 4. Inspecione `git status`, diffs rastreados e não rastreados, configuração e testes. Preserve alterações locais; não faça reset/checkout destrutivo, commit, push ou deploy sem autorização.
 

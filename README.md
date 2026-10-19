@@ -4,14 +4,17 @@ Plataforma editorial digital para publicar, ler e descobrir mangás e quadrinhos
 
 ## Como navegar na documentação
 
-- `AGENTS.md`: instruções de trabalho e preservação de alterações locais.
-- `docs/reviews/`: contexto persistente — produto, regras de negócio, segurança e estado/handoff.
+- `AGENTS.md`: regras do fluxo único de trabalho.
+- `docs/orquestracao/ROADMAP-FASES.md`: fase atual, estado real e fila única de tarefas.
+- `docs/orquestracao/AUDITORIA-ATUAL.md`: problemas abertos e severidade.
+- `docs/orquestracao/EMAIL-E-2FA.md`: plano de e-mail, OTP e Google OAuth.
+- `docs/orquestracao/PROTOCOLO_ORQUESTRACAO.md`: regras operacionais.
 - `docs/skills/`: procedimentos reutilizáveis por tipo de tarefa. Para UI, use `docs/skills/frontend-design/SKILL.md`.
 - `docs/IDENTIDADE_VISUAL.md`: especificação visual detalhada (referência da skill de frontend).
-- `docs/PLANO_DE_FASES.md`: roadmap e critérios de aceite.
+- `docs/PLANO_DE_FASES.md`: visão de produto e regras de negócio.
 - `docs/decisions/`: decisões arquiteturais aprovadas.
 
-**Reviews explicam o que/por quê/estado; skills explicam como executar uma tarefa.** O README é uma porta de entrada, não a prova de que um requisito já está implementado.
+**O roadmap explica o estado; as skills explicam como executar.** O README é uma porta de entrada, não a prova de que um requisito já está implementado.
 
 > ⚠️ **ESCOPO ESTATUTÁRIO FUNDAMENTAL:**
 > - **NÃO EXISTE LOJA FÍSICA NEM VITRINE DE PRODUTOS:** A plataforma é **100% digital e editorial**. Não há venda de produtos físicos, print-on-demand (POD), estoque, frete, correios ou despacho de mercadorias.

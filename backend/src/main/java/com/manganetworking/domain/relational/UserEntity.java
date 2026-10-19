@@ -50,6 +50,15 @@ public class UserEntity {
 
     private LocalDateTime vipExpiresAt;
 
+    // Consentimento e Conformidade LGPD (Art. 7º, I e Art. 8º)
+    private LocalDateTime termsAcceptedAt;
+
+    @Column(length = 20)
+    private String privacyPolicyVersion;
+
+    // Data de nascimento para controle de maioridade (Art. 14 da LGPD)
+    private java.time.LocalDate birthDate;
+
     // Obras curtidas pelo usuário (Biblioteca de favoritos)
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
@@ -110,6 +119,15 @@ public class UserEntity {
     public boolean isVipActive() {
         return isVip && vipExpiresAt != null && vipExpiresAt.isAfter(LocalDateTime.now());
     }
+
+    public LocalDateTime getTermsAcceptedAt() { return termsAcceptedAt; }
+    public void setTermsAcceptedAt(LocalDateTime termsAcceptedAt) { this.termsAcceptedAt = termsAcceptedAt; }
+
+    public String getPrivacyPolicyVersion() { return privacyPolicyVersion; }
+    public void setPrivacyPolicyVersion(String privacyPolicyVersion) { this.privacyPolicyVersion = privacyPolicyVersion; }
+
+    public java.time.LocalDate getBirthDate() { return birthDate; }
+    public void setBirthDate(java.time.LocalDate birthDate) { this.birthDate = birthDate; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

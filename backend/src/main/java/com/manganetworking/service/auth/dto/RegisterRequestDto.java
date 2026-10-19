@@ -24,5 +24,16 @@ public record RegisterRequestDto(
 
         String cpf,
 
-        Boolean isProfilePublic
-) {}
+        Boolean isProfilePublic,
+
+        // Consentimento LGPD (Art. 7º, I e Art. 8º)
+        Boolean termsAccepted,
+
+        // Data de nascimento para proteção e controle de maioridade (Art. 14)
+        java.time.LocalDate birthDate
+) {
+    /** Construtor de conveniência para retrocompatibilidade com testes legados */
+    public RegisterRequestDto(String name, String email, String password, boolean isCreator, String handle, String cpf, Boolean isProfilePublic) {
+        this(name, email, password, isCreator, handle, cpf, isProfilePublic, true, java.time.LocalDate.of(2000, 1, 1));
+    }
+}

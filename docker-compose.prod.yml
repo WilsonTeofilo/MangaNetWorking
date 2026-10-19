@@ -1,0 +1,114 @@
+name: manganetworking-prod
+
+services:
+  # ----------------------------------------------------
+  # BANCO DE DADOS RELACIONAL: PostgreSQL 16
+  # ----------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: manganetworking-postgres-prod
+    restart: always
+    environment:
+      POSTGRES_DB: manganetworking
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no ambiente}
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    networks:
+      - internal_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d manganetworking"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ----------------------------------------------------
+  # BANCO DE DADOS DOCUMENTAL: MongoDB 7
+  # ----------------------------------------------------
+  mongodb:
+    image: mongo:7.0
+    container_name: manganetworking-mongo-prod
+    restart: always
+    environment:
+      MONGO_INITDB_DATABASE: manganetworking_events
+    volumes:
+      - mongo_prod_data:/data/db
+    networks:
+      - internal_network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ----------------------------------------------------
+  # BACKEND API: Spring Boot 3.4 (Java 21)
+  # ----------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: manganetworking-backend-prod
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/manganetworking
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no ambiente}
+      SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/manganetworking_events
+      AES_SECRET_KEY: ${AES_SECRET_KEY:?Defina AES_SECRET_KEY com chave de 256 bits}
+      COOKIE_SECURE: "true"
+      STORAGE_UPLOAD_DIR: /data/uploads
+    volumes:
+      - storage_prod_uploads:/data/uploads
+    networks:
+      - internal_network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8085/api/feed || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # ----------------------------------------------------
+  # FRONTEND WEB: React 19 + Nginx Alpine
+  # ----------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: manganetworking-frontend-prod
+    restart: always
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${PORT:-80}:80"
+    networks:
+      - internal_network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost/ || exit 1"]
+      interval: 20s
+      timeout: 3s
+      retries: 3
+
+# ----------------------------------------------------
+# VOLUMES E REDE
+# ----------------------------------------------------
+volumes:
+  postgres_prod_data:
+    name: manganetworking_postgres_prod_data
+  mongo_prod_data:
+    name: manganetworking_mongo_prod_data
+  storage_prod_uploads:
+    name: manganetworking_storage_prod_uploads
+
+networks:
+  internal_network:
+    name: manganetworking_prod_network
+    driver: bridge

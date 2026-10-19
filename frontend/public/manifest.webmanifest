@@ -1,0 +1,18 @@
+{
+  "name": "MangaNetWorking — A Banca Digital do Mangá Independente",
+  "short_name": "MangaNet",
+  "description": "Plataforma editorial digital para publicação e leitura de mangás e quadrinhos originais independentes.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0B0B0C",
+  "theme_color": "#FFD400",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

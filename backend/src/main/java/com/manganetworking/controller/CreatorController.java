@@ -41,6 +41,16 @@ public class CreatorController {
         return ResponseEntity.ok(Map.of("message", "Perfil de autor atualizado com sucesso"));
     }
 
+    @PutMapping("/pix-key")
+    public ResponseEntity<Map<String, String>> updatePixKey(
+            @Valid @RequestBody UpdatePixKeyRequestDto dto
+    ) {
+        UUID creatorId = com.manganetworking.config.security.SecurityContextUtils.requireCurrentCreatorId();
+        creatorService.updatePixKey(creatorId, dto);
+        return ResponseEntity.ok(Map.of("message", "Chave PIX atualizada com sucesso"));
+    }
+
+
     @PutMapping("/membership-price")
     public ResponseEntity<Map<String, Object>> updateMembershipPrice(
             @Valid @RequestBody UpdateMembershipPriceRequestDto dto

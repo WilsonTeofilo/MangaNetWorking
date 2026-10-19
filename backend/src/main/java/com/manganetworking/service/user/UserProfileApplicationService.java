@@ -241,13 +241,32 @@ public class UserProfileApplicationService {
         creator.setPixKey("ANONIMIZADO-" + anonymousSuffix);
         creator.setHandle("anon-" + anonymousSuffix);
         creatorRepository.save(creator);
+
+        // Despublicação de Obras no Direito ao Esquecimento (Art. 18, VI da LGPD):
+        // Interrompe a distribuição pública das obras criadas pelo autor excluído
+        List<WorkEntity> authorWorks = workRepository.findAllByAuthorId(creator.getId());
+        for (WorkEntity work : authorWorks) {
+            work.setStatus("archived_lgpd");
+            workRepository.save(work);
+            log.info("[LGPD] Obra '{}' ({}) arquivada após exclusão de conta do autor.", work.getTitle(), work.getId());
+        }
     }
+
 
     /**
      * Remove um arquivo do storage sem interromper a exclusão da conta quando o binário já não
      * existe ou o storage está indisponível (a obrigação legal é apagar o dado, não falhar o fluxo).
+     * <p>
+     * Só apaga caminhos servidos pela própria plataforma: {@code avatarUrl} aceita qualquer URL
+     * externa no cadastro, e extrair o último segmento de uma URL de terceiros poderia apagar um
+     * arquivo local homônimo pertencente a outra obra/usuário.
+     * </p>
      */
     private void deleteStoredFileQuietly(String storedUrl) {
+        if (storedUrl == null
+                || !(storedUrl.startsWith("/api/storage/") || storedUrl.startsWith("/api/uploads/"))) {
+            return;
+        }
         String filename = StorageFileNames.fromPageToken(storedUrl);
         if (filename == null) {
             return;

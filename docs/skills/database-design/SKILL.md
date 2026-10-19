@@ -17,9 +17,9 @@ Use esta skill para criar/alterar modelo, migração, índice, relação ou regr
 ## Contexto mínimo
 
 1. `docs/decisions/ADR-001` (Postgres × Mongo × storage) e `ADR-003` (ledger idempotente).
-2. `docs/skills/backend-spring/architecture.md` — pacotes `domain/` e `repository/`.
+2. `docs/skills/backend-spring/SKILL.md` — camadas, pacotes `domain/` e `repository/`.
 3. As migrações em `backend/src/main/resources/db/migration/` e as entidades que elas refletem.
-4. `docs/reviews/SECURITY_REQUIREMENTS.md` — para dados sensíveis e retenção.
+4. `docs/orquestracao/AUDITORIA-ATUAL.md` e `docs/orquestracao/EMAIL-E-2FA.md` — dados sensíveis, retenção e consentimento.
 
 ## Fronteira dos bancos (não misture)
 

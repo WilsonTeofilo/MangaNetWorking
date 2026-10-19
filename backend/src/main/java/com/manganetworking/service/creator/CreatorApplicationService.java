@@ -3,7 +3,9 @@ package com.manganetworking.service.creator;
 import com.manganetworking.config.exception.ResourceNotFoundException;
 import com.manganetworking.domain.nosql.CreatorMissionDocument;
 import com.manganetworking.domain.relational.CreatorEntity;
+import com.manganetworking.domain.relational.UserEntity;
 import com.manganetworking.domain.relational.WorkEntity;
+
 import com.manganetworking.repository.jpa.CreatorRepository;
 import com.manganetworking.repository.jpa.WorkRepository;
 import com.manganetworking.repository.mongo.CreatorMissionMongoRepository;
@@ -23,18 +25,22 @@ public class CreatorApplicationService {
     private final WorkRepository workRepository;
     private final CreatorMissionMongoRepository missionRepository;
     private final MonetizationService monetizationService;
+    private final com.manganetworking.service.mfa.TwoFactorAuthService twoFactorAuthService;
 
     public CreatorApplicationService(
             CreatorRepository creatorRepository,
             WorkRepository workRepository,
             CreatorMissionMongoRepository missionRepository,
-            MonetizationService monetizationService
+            MonetizationService monetizationService,
+            com.manganetworking.service.mfa.TwoFactorAuthService twoFactorAuthService
     ) {
         this.creatorRepository = creatorRepository;
         this.workRepository = workRepository;
         this.missionRepository = missionRepository;
         this.monetizationService = monetizationService;
+        this.twoFactorAuthService = twoFactorAuthService;
     }
+
 
     @Transactional(readOnly = true)
     public CreatorPublicProfileResponseDto getPublicCreatorProfile(String handle) {
@@ -121,6 +127,31 @@ public class CreatorApplicationService {
     }
 
     /**
+     * Atualização de Chave PIX de Recebimento com Step-Up 2FA Obrigatório (AppSec / OWASP)
+     */
+    @Transactional
+    public void updatePixKey(UUID creatorId, UpdatePixKeyRequestDto dto) {
+        CreatorEntity creator = creatorRepository.findById(creatorId)
+                .orElseThrow(() -> new ResourceNotFoundException("Criador não encontrado"));
+
+        UserEntity user = creator.getUser();
+        if (user == null) {
+            throw new ResourceNotFoundException("Usuário vinculado ao criador não encontrado");
+        }
+
+        // Validação obrigatória de Step-Up Authentication com o código OTP de 2FA
+        boolean codeValid = twoFactorAuthService.verifyOtp(user.getEmail(), dto.twoFactorCode().trim());
+        if (!codeValid) {
+            throw new SecurityException("Código 2FA inválido ou expirado. Operação de segurança abortada.");
+        }
+
+        creator.setPixKey(dto.pixKey().trim());
+        creator.setPixKeyType(dto.pixKeyType());
+        creatorRepository.save(creator);
+    }
+
+
+    /**
      * Resgata a recompensa da missão da Season cumprida pelo autor, aplicando o Boost no Algoritmo do Feed
      */
     @Transactional
@@ -155,8 +186,16 @@ public class CreatorApplicationService {
         creator.setEngagementBoostMul(rewardMul);
         creator.setEngagementBoostUntil(java.time.LocalDateTime.now().plusHours(durationHours));
 
-        // Se atingiu metas da temporada, avança nível de monetização
+        // Se atingiu metas da temporada, avança nível de monetização (exige maioridade de 18 anos - Art. 14 da LGPD)
         if (creator.getMonetizationLevel() < 2 && mission.getTargetGoal() >= 3) {
+            UserEntity user = creator.getUser();
+            if (user != null && user.getBirthDate() != null) {
+                int age = java.time.Period.between(user.getBirthDate(), java.time.LocalDate.now()).getYears();
+                if (age < 18) {
+                    throw new com.manganetworking.config.exception.AccessDeniedException(
+                            "A monetização financeira exige maioridade legal (18+ anos). Idade atual: " + age + " anos.");
+                }
+            }
             creator.setMonetizationLevel(2);
         }
 

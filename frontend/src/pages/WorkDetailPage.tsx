@@ -4,7 +4,10 @@ import {
   Heart, 
   Flag,
   Calendar,
-  Sparkles
+  Sparkles,
+  Download,
+  CheckCircle2,
+  Loader2
 } from 'lucide-react';
 import { Work, Chapter, Creator } from '../types';
 import { MOCK_CHAPTERS, MOCK_CREATORS } from '../data/mockData';
@@ -16,6 +19,7 @@ import { isChapterEarlyAccess } from '../utils/discoveryAlgorithm';
 import { Cover } from '../components/ui/Cover';
 import { Button } from '../components/ui/Button';
 import { Sticker } from '../components/ui/Sticker';
+import { offlineStorage } from '../services/offlineStorage';
 
 interface WorkDetailPageProps {
   work: Work;
@@ -29,9 +33,43 @@ export function WorkDetailPage({
   onOpenChapter,
 }: WorkDetailPageProps) {
   const { user, toggleFavorite, isMemberOf } = useAuth();
-  const { openEarlyAccess, openDonate, openMembership, openReport } = useModals();
+  const { openEarlyAccess, openDonate, openMembership, openReport, openVip } = useModals();
 
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [downloadingChapterId, setDownloadingChapterId] = useState<string | null>(null);
+  const [offlineChapterIds, setOfflineChapterIds] = useState<Set<string>>(() =>
+    new Set(offlineStorage.getOfflineChapters().map((c) => c.chapterId))
+  );
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setOfflineChapterIds(new Set(offlineStorage.getOfflineChapters().map((c) => c.chapterId)));
+    };
+    window.addEventListener('offline-storage-updated', handleUpdate);
+    return () => window.removeEventListener('offline-storage-updated', handleUpdate);
+  }, []);
+
+  const handleDownloadOffline = async (e: React.MouseEvent, chapter: Chapter) => {
+    e.stopPropagation();
+    if (!user?.isVip) {
+      openVip();
+      return;
+    }
+    if (offlineChapterIds.has(chapter.id)) {
+      if (window.confirm(`Deseja remover o capítulo #${chapter.number} do armazenamento offline?`)) {
+        await offlineStorage.removeOfflineChapter(chapter.id);
+      }
+      return;
+    }
+    try {
+      setDownloadingChapterId(chapter.id);
+      await offlineStorage.downloadChapterOffline(chapter.id, work.id);
+    } catch (err: any) {
+      alert(err?.message || 'Falha ao baixar capítulo para leitura offline.');
+    } finally {
+      setDownloadingChapterId(null);
+    }
+  };
 
   // Dados reais da obra vindos da API (fallback para mock quando indisponível).
   const [realChapters, setRealChapters] = useState<Chapter[] | null>(null);
@@ -277,6 +315,38 @@ export function WorkDetailPage({
                   </div>
 
                   <div className="flex items-center gap-3">
+                    {/* Botão de Download / Indicador Offline VIP */}
+                    <button
+                      type="button"
+                      onClick={(e) => handleDownloadOffline(e, chap)}
+                      title={
+                        offlineChapterIds.has(chap.id)
+                          ? 'Capítulo salvo para leitura offline (Clique para remover)'
+                          : user?.isVip
+                          ? 'Baixar capítulo para leitura offline'
+                          : 'Recurso exclusivo para assinantes VIP MangaNetWorking'
+                      }
+                      className={`p-1.5 border transition-all flex items-center gap-1.5 text-[11px] font-pixel uppercase ${
+                        offlineChapterIds.has(chap.id)
+                          ? 'border-[#3DDC84] bg-[#3DDC84]/10 text-[#3DDC84]'
+                          : 'border-[#34343A] text-[#A9A59A] hover:border-[#FFD400] hover:text-[#FFD400]'
+                      }`}
+                    >
+                      {downloadingChapterId === chap.id ? (
+                        <Loader2 size={13} className="animate-spin text-[#FFD400]" />
+                      ) : offlineChapterIds.has(chap.id) ? (
+                        <>
+                          <CheckCircle2 size={13} />
+                          <span className="hidden sm:inline">OFFLINE</span>
+                        </>
+                      ) : (
+                        <>
+                          <Download size={13} />
+                          <span className="hidden sm:inline">BAIXAR</span>
+                        </>
+                      )}
+                    </button>
+
                     {isLocked ? (
                       <Sticker kind="members" />
                     ) : (

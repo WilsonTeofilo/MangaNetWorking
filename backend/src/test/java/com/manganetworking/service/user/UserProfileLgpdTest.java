@@ -162,6 +162,18 @@ class UserProfileLgpdTest {
     }
 
     @Test
+    @DisplayName("Não deve apagar arquivo local homônimo quando o avatar é uma URL externa")
+    void shouldNotDeleteFilesForExternalAvatarUrls() {
+        user.setAvatarUrl("https://cdn.example.com/avatar-user.png");
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        profileService.deleteUserAccountLgpd(userId);
+
+        verify(fileStorageService, never()).deleteFile(anyString());
+        assertNull(user.getAvatarUrl());
+    }
+
+    @Test
     @DisplayName("Não deve falhar a exclusão da conta quando o storage está indisponível")
     void shouldNotFailAccountDeletionWhenStorageFails() {
         user.setAvatarUrl("/api/storage/avatar-user.png");

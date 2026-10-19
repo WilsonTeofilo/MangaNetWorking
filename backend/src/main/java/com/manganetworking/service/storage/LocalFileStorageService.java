@@ -156,15 +156,24 @@ public class LocalFileStorageService implements FileStorageService {
                         "Assinatura do arquivo não corresponde a uma imagem PNG válida.");
             }
         }
-        // WebP: RIFF ... WEBP
+        // WebP: RIFF (bytes 0..3) + WEBP (bytes 8..11)
         else if (contentType.equalsIgnoreCase("image/webp")) {
-            if ((bytes[0] & 0xFF) != 'R' || (bytes[1] & 0xFF) != 'I' ||
-                (bytes[2] & 0xFF) != 'F' || (bytes[3] & 0xFF) != 'F') {
+            if (bytes.length < 12) {
                 throw new FilePolicyException(HttpStatus.UNSUPPORTED_MEDIA_TYPE,
-                        "Assinatura do arquivo não corresponde a uma imagem WebP válida.");
+                        "Arquivo WebP incompleto ou corrompido.");
+            }
+            boolean isRiff = (bytes[0] & 0xFF) == 'R' && (bytes[1] & 0xFF) == 'I'
+                    && (bytes[2] & 0xFF) == 'F' && (bytes[3] & 0xFF) == 'F';
+            boolean isWebp = (bytes[8] & 0xFF) == 'W' && (bytes[9] & 0xFF) == 'E'
+                    && (bytes[10] & 0xFF) == 'B' && (bytes[11] & 0xFF) == 'P';
+
+            if (!isRiff || !isWebp) {
+                throw new FilePolicyException(HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+                        "Assinatura do arquivo não corresponde a uma imagem WebP válida (RIFF/WEBP).");
             }
         }
     }
+
 
     private String resolveExtension(String contentType) {
         return switch (contentType.toLowerCase()) {
