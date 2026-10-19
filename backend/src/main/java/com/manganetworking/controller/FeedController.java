@@ -1,7 +1,7 @@
 package com.manganetworking.controller;
 
-import com.manganetworking.domain.nosql.WorkFeedDocument;
 import com.manganetworking.service.feed.FeedApplicationService;
+import com.manganetworking.service.feed.dto.FeedWorkResponseDto;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -37,7 +37,7 @@ public class FeedController {
      * Responde em milissegundos direto do MongoDB com as obras já ordenadas pelo algoritmo.
      */
     @GetMapping
-    public ResponseEntity<List<WorkFeedDocument>> getFeed(
+    public ResponseEntity<List<FeedWorkResponseDto>> getFeed(
             @RequestParam(defaultValue = "recommended") String sort,
             @RequestParam(required = false) String genre,
             @RequestParam(defaultValue = "0") int page,
@@ -50,7 +50,7 @@ public class FeedController {
      * Obras em Alta (Trending)
      */
     @GetMapping("/trending")
-    public ResponseEntity<List<WorkFeedDocument>> getTrending(@RequestParam(defaultValue = "10") int limit) {
+    public ResponseEntity<List<FeedWorkResponseDto>> getTrending(@RequestParam(defaultValue = "10") int limit) {
         return ResponseEntity.ok(feedService.getTrending(limit));
     }
 
@@ -58,7 +58,7 @@ public class FeedController {
      * Novos Capítulos / Lançamentos Recentes
      */
     @GetMapping("/fresh")
-    public ResponseEntity<List<WorkFeedDocument>> getFreshReleases(@RequestParam(defaultValue = "10") int limit) {
+    public ResponseEntity<List<FeedWorkResponseDto>> getFreshReleases(@RequestParam(defaultValue = "10") int limit) {
         return ResponseEntity.ok(feedService.getFreshReleases(limit));
     }
 }

@@ -2,7 +2,6 @@ package com.manganetworking.service.user;
 
 import com.manganetworking.config.exception.AccessDeniedException;
 import com.manganetworking.config.exception.ResourceNotFoundException;
-import com.manganetworking.domain.nosql.ReadingProgressDocument;
 import com.manganetworking.domain.relational.UserEntity;
 import com.manganetworking.domain.relational.WorkEntity;
 import com.manganetworking.repository.jpa.UserRepository;
@@ -116,8 +115,10 @@ public class UserProfileApplicationService {
         return new ToggleLikeResponseDto(!alreadyLiked, work.getTotalLikes());
     }
 
-    public List<ReadingProgressDocument> getReadingHistory(String currentUserId) {
-        return progressRepository.findAllByUserIdOrderByUpdatedAtDesc(currentUserId);
+    public List<ReadingProgressResponseDto> getReadingHistory(String currentUserId) {
+        return progressRepository.findAllByUserIdOrderByUpdatedAtDesc(currentUserId).stream()
+                .map(ReadingProgressResponseDto::from)
+                .toList();
     }
 
     public TrackPageResponseDto trackPage(String currentUserId, TrackPageRequestDto dto) {
@@ -150,7 +151,10 @@ public class UserProfileApplicationService {
                 ))
                 .toList();
 
-        List<ReadingProgressDocument> readingHistory = progressRepository.findAllByUserIdOrderByUpdatedAtDesc(currentUserId.toString());
+        List<ReadingProgressResponseDto> readingHistory = progressRepository
+                .findAllByUserIdOrderByUpdatedAtDesc(currentUserId.toString()).stream()
+                .map(ReadingProgressResponseDto::from)
+                .toList();
 
         return new UserDataExportDto(
                 user.getId(),

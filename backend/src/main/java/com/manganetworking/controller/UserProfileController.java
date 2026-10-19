@@ -1,7 +1,6 @@
 package com.manganetworking.controller;
 
 import com.manganetworking.config.security.SecurityContextUtils;
-import com.manganetworking.domain.nosql.ReadingProgressDocument;
 import com.manganetworking.service.user.UserProfileApplicationService;
 import com.manganetworking.service.user.dto.*;
 import jakarta.validation.Valid;
@@ -41,7 +40,7 @@ public class UserProfileController {
     }
 
     @GetMapping("/reading-progress")
-    public ResponseEntity<List<ReadingProgressDocument>> getReadingHistory() {
+    public ResponseEntity<List<ReadingProgressResponseDto>> getReadingHistory() {
         // Identidade apenas pela sessão (a rota exige autenticação): sem fallback de header.
         return ResponseEntity.ok(profileService.getReadingHistory(SecurityContextUtils.requireCurrentUserId().toString()));
     }

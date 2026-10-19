@@ -8,8 +8,9 @@ spring:
   # Banco de Dados Relacional (PostgreSQL)
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:25432/manganetworking}
+    # Em produção, defina SPRING_DATASOURCE_USERNAME e SPRING_DATASOURCE_PASSWORD via variáveis de ambiente.
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
-    password: ${SPRING_DATASOURCE_PASSWORD:postgrespassword}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
     driver-class-name: org.postgresql.Driver
 
   # Flyway Migrations (Schema versionado em db/migration/)
@@ -57,9 +58,13 @@ platform:
     platform-share-percentage: 0.42 # 42% para a plataforma
   security:
     two-factor-mandatory: true # 2FA obrigatório até mesmo para login com Google
-    aes-secret-key: ${AES_SECRET_KEY:MangaNetWorking2026AESKeySecret!} # Chave de 256 bits para dados de criadores
+    # Chave AES-256 para criptografia de dados sensíveis (CPF/PIX de criadores).
+    # Em produção, defina AES_SECRET_KEY (variável de ambiente) com pelo menos 32 caracteres.
+    # Se não definida, será usada uma chave de desenvolvimento local.
+    aes-secret-key: ${AES_SECRET_KEY:}
     rate-limit-per-minute: 120 # Throttling global por IP
     auth-rate-limit-per-minute: 15 # Throttling estrito para login/cadastro/2fa
+    session-cleanup-interval-ms: 3600000 # Limpeza ativa de sessões expiradas a cada 1 hora (prevenção de memory leaks OWASP)
     trust-forwarded-headers: false # Só habilitar atrás de um proxy reverso confiável (evita burlar o rate limit via X-Forwarded-For)
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5180,http://localhost:5173,http://localhost:3000,http://127.0.0.1:5180,http://127.0.0.1:5173,http://127.0.0.1:3000} # Origens autorizadas (CORS), separadas por vírgula

@@ -6,56 +6,60 @@ import com.manganetworking.config.exception.AccessDeniedException;
 import com.manganetworking.config.exception.ResourceNotFoundException;
 import com.manganetworking.config.security.SecurityContextUtils;
 import com.manganetworking.domain.relational.ChapterEntity;
+import com.manganetworking.domain.relational.ChapterFileEntity;
 import com.manganetworking.domain.relational.CreatorEntity;
 import com.manganetworking.domain.relational.WorkEntity;
+import com.manganetworking.repository.jpa.ChapterFileRepository;
 import com.manganetworking.repository.jpa.ChapterRepository;
 import com.manganetworking.repository.jpa.CreatorRepository;
 import com.manganetworking.repository.jpa.MembershipSubscriptionRepository;
 import com.manganetworking.repository.jpa.WorkRepository;
-import com.manganetworking.service.recommendation.RecommendationAlgorithmService;
+import com.manganetworking.service.feed.event.WorkFeedSyncEvent;
 import com.manganetworking.service.session.SessionService;
 import com.manganetworking.service.work.dto.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.manganetworking.util.StorageFileNames;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
 public class WorkApplicationService {
-
-    private static final Logger log = LoggerFactory.getLogger(WorkApplicationService.class);
 
     /** Status de obra suspensa cautelarmente pela moderação. */
     private static final String STATUS_SUSPENDED = "suspended";
 
     private final WorkRepository workRepository;
     private final ChapterRepository chapterRepository;
+    private final ChapterFileRepository chapterFileRepository;
     private final MembershipSubscriptionRepository membershipRepository;
     private final CreatorRepository creatorRepository;
     private final ObjectMapper objectMapper;
-    private final RecommendationAlgorithmService algorithmService;
+    private final ApplicationEventPublisher eventPublisher;
 
     public WorkApplicationService(
             WorkRepository workRepository,
             ChapterRepository chapterRepository,
+            ChapterFileRepository chapterFileRepository,
             MembershipSubscriptionRepository membershipRepository,
             CreatorRepository creatorRepository,
             ObjectMapper objectMapper,
-            RecommendationAlgorithmService algorithmService
+            ApplicationEventPublisher eventPublisher
     ) {
         this.workRepository = workRepository;
         this.chapterRepository = chapterRepository;
+        this.chapterFileRepository = chapterFileRepository;
         this.membershipRepository = membershipRepository;
         this.creatorRepository = creatorRepository;
         this.objectMapper = objectMapper;
-        this.algorithmService = algorithmService;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional(readOnly = true)
@@ -200,7 +204,7 @@ public class WorkApplicationService {
         work.setStatus("ongoing");
 
         WorkEntity saved = workRepository.save(work);
-        syncWorkToFeedQuietly(saved.getId(), "cadastro");
+        publishFeedSync(saved.getId(), "cadastro");
         return saved;
     }
 
@@ -238,14 +242,46 @@ public class WorkApplicationService {
         chapter.setPublicReleaseAt(dto.publicReleaseAt());
 
         ChapterEntity saved = chapterRepository.save(chapter);
+        registerChapterFiles(saved.getId(), dto.pages());
 
         // Atualiza contadores na obra
         work.setTotalChapters(work.getTotalChapters() + 1);
         WorkEntity updatedWork = workRepository.save(work);
 
-        syncWorkToFeedQuietly(updatedWork.getId(), "publicação de capítulo");
+        publishFeedSync(updatedWork.getId(), "publicação de capítulo");
 
         return saved;
+    }
+
+    /**
+     * Registra a relação arquivo -> capítulo consultada pelo {@code ChapterFileAccessGuard}.
+     *
+     * <p>O contrato do leitor guarda a URL da página ({@code /api/storage/<arquivo>}) em
+     * {@code pages_json}; o guard recebe apenas o nome do arquivo. Normalizar aqui (e não no guard)
+     * mantém uma única representação indexada e permite que a checagem seja por igualdade.</p>
+     *
+     * <p>Nomes repetidos na mesma lista são registrados uma única vez: o índice de
+     * {@code chapter_files.filename} é único em toda a tabela (é o que garante a busca sem
+     * ambiguidade do guard), então uma página duplicada violaria a restrição. O leitor continua
+     * recebendo a lista original em {@code pages_json}; só a relação de acesso é deduplicada.</p>
+     */
+    private void registerChapterFiles(UUID chapterId, List<String> pages) {
+        if (chapterId == null || pages == null || pages.isEmpty()) {
+            return;
+        }
+
+        List<ChapterFileEntity> files = new ArrayList<>(pages.size());
+        Set<String> registered = new HashSet<>(pages.size());
+        for (int i = 0; i < pages.size(); i++) {
+            String filename = StorageFileNames.fromPageToken(pages.get(i));
+            if (filename != null && registered.add(filename)) {
+                files.add(new ChapterFileEntity(chapterId, filename, i));
+            }
+        }
+
+        if (!files.isEmpty()) {
+            chapterFileRepository.saveAll(files);
+        }
     }
 
     /**
@@ -270,34 +306,12 @@ public class WorkApplicationService {
     }
 
     /**
-     * Sincroniza a obra no feed (MongoDB) sem abortar a transação relacional caso o Mongo esteja indisponível.
-     *
-     * <p>O MongoDB não participa da transação JPA. Se a sincronização fosse executada dentro dela e o
-     * Mongo falhasse, o transceptor JPA marcaria a transação relacional como rollback-only e o commit
-     * resultaria em {@code UnexpectedRollbackException} — derrubando o cadastro da obra/capítulo. Por
-     * isso a sincronização é adiada para depois do commit (ou executada imediatamente se não houver
-     * transação ativa, como nos testes unitários).</p>
+     * Publica o pedido de sincronização do feed. O MongoDB não participa da transação JPA: se a escrita
+     * fosse feita dentro dela e o Mongo falhasse, o transceptor JPA marcaria a transação relacional como
+     * rollback-only e o commit resultaria em {@code UnexpectedRollbackException}, derrubando o cadastro.
+     * O tratamento é feito por {@code FeedSynchronizationListener} em {@code AFTER_COMMIT}.
      */
-    private void syncWorkToFeedQuietly(UUID workId, String context) {
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    runFeedSync(workId, context);
-                }
-            });
-        } else {
-            runFeedSync(workId, context);
-        }
-    }
-
-    private void runFeedSync(UUID workId, String context) {
-        try {
-            workRepository.findById(workId).ifPresent(algorithmService::syncWorkToFeed);
-        } catch (Exception e) {
-            // afterCommit ainda roda com a transação "ativa" (sessão JPA aberta) — o log com causa
-            // evita perder a stacktrace de falhas de LAZY/serialização num caminho silencioso.
-            log.warn("[FEED] Falha ao sincronizar obra {} após {}: {}", workId, context, e.getMessage(), e);
-        }
+    private void publishFeedSync(UUID workId, String context) {
+        eventPublisher.publishEvent(new WorkFeedSyncEvent(workId, context));
     }
 }

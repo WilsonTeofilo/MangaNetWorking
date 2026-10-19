@@ -1,94 +1,250 @@
 package com.manganetworking.service.session;
 
+import com.manganetworking.config.properties.PlatformProperties;
 import com.manganetworking.domain.relational.CreatorEntity;
 import com.manganetworking.domain.relational.UserEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockHttpServletResponse;
 
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.lenient;
 
+@ExtendWith(MockitoExtension.class)
 class SessionServiceTest {
 
+    @Mock
+    private SessionStore sessionStore;
+    
     private SessionService sessionService;
+    private UserEntity testUser;
+    private CreatorEntity testCreator;
 
     @BeforeEach
     void setUp() {
-        sessionService = new SessionService();
+        sessionService = new SessionService(sessionStore);
+        
+        testUser = new UserEntity();
+        testUser.setId(UUID.randomUUID());
+        testUser.setEmail("user@test.com");
+        testUser.setName("Test User");
+        testUser.setCreator(true);
+        testUser.setModerator(false);
+        
+        testCreator = new CreatorEntity();
+        testCreator.setId(UUID.randomUUID());
+        testCreator.setHandle("test_creator");
     }
 
     @Test
     void shouldCreateSessionAndSetHttpOnlyCookie() {
-        UserEntity user = new UserEntity();
-        user.setId(UUID.randomUUID());
-        user.setEmail("leitor@teste.com");
-        user.setName("Leitor Teste");
-        user.setCreator(false);
-
+        // When
         MockHttpServletResponse response = new MockHttpServletResponse();
-        SessionService.UserSession session = sessionService.createSession(user, null, response);
-
+        SessionService.UserSession session = sessionService.createSession(testUser, testCreator, response);
+        
+        // Then
         assertNotNull(session);
         assertNotNull(session.sessionId());
-        assertEquals("leitor@teste.com", session.email());
-
-        // Valida o Cookie HttpOnly
+        assertEquals("user@test.com", session.email());
+        assertEquals(testUser.getId(), session.userId());
+        assertEquals(testCreator.getId(), session.creatorId());
+        assertEquals("test_creator", session.creatorHandle());
+        assertTrue(session.isCreator());
+        assertFalse(session.isModerator());
+        
+        // Verify store interaction
+        verify(sessionStore).save(session);
+        
+        // Validate HttpOnly cookie
         var cookie = response.getCookie(SessionService.SESSION_COOKIE_NAME);
         assertNotNull(cookie);
         assertTrue(cookie.isHttpOnly());
         assertEquals("/", cookie.getPath());
         assertEquals(session.sessionId(), cookie.getValue());
+        assertEquals((int) SessionService.SESSION_TTL.toSeconds(), cookie.getMaxAge());
     }
 
     @Test
     void shouldIncludeModeratorRoleInCreatedSession() {
-        UserEntity user = new UserEntity();
-        user.setId(UUID.randomUUID());
-        user.setEmail("moderador@teste.com");
-        user.setName("Moderador Teste");
-        user.setModerator(true);
-
+        // Given
+        testUser.setModerator(true);
+        
+        // When
         SessionService.UserSession session = sessionService.createSession(
-                user, null, new MockHttpServletResponse()
+                testUser, null, new MockHttpServletResponse()
         );
-
+        
+        // Then
         assertTrue(session.isModerator());
+        verify(sessionStore).save(session);
     }
 
     @Test
-    void shouldValidateAndRevokeSession() {
-        UserEntity user = new UserEntity();
-        user.setId(UUID.randomUUID());
-        user.setEmail("criador@teste.com");
-        user.setName("Autor Teste");
-        user.setCreator(true);
+    void shouldValidateValidSession() {
+        // Given
+        String sessionId = "valid_session_id";
+        SessionService.UserSession validSession = new SessionService.UserSession(
+                sessionId,
+                testUser.getId(),
+                testUser.getEmail(),
+                testUser.getName(),
+                true,
+                false,
+                testCreator.getId(),
+                testCreator.getHandle(),
+                Instant.now().plusSeconds(3600) // 1 hora no futuro
+        );
+        
+        when(sessionStore.findById(sessionId)).thenReturn(Optional.of(validSession));
+        
+        // When
+        Optional<SessionService.UserSession> result = sessionService.validateSession(sessionId);
+        
+        // Then
+        assertTrue(result.isPresent());
+        assertEquals(validSession, result.get());
+        verify(sessionStore).findById(sessionId);
+        verify(sessionStore, never()).delete(any());
+    }
 
-        CreatorEntity creator = new CreatorEntity();
-        creator.setId(UUID.randomUUID());
-        creator.setHandle("autor_teste");
+    @Test
+    void shouldReturnEmptyForNullOrBlankSessionId() {
+        // When
+        Optional<SessionService.UserSession> nullResult = sessionService.validateSession(null);
+        Optional<SessionService.UserSession> blankResult = sessionService.validateSession("");
+        Optional<SessionService.UserSession> whitespaceResult = sessionService.validateSession("   ");
+        
+        // Then
+        assertTrue(nullResult.isEmpty());
+        assertTrue(blankResult.isEmpty());
+        assertTrue(whitespaceResult.isEmpty());
+        verify(sessionStore, never()).findById(any());
+    }
 
+    @Test
+    void shouldReturnEmptyForNonExistentSession() {
+        // Given
+        String nonExistentId = "non_existent";
+        when(sessionStore.findById(nonExistentId)).thenReturn(Optional.empty());
+        
+        // When
+        Optional<SessionService.UserSession> result = sessionService.validateSession(nonExistentId);
+        
+        // Then
+        assertTrue(result.isEmpty());
+        verify(sessionStore).findById(nonExistentId);
+    }
+
+    @Test
+    void shouldRemoveAndReturnEmptyForExpiredSession() {
+        // Given
+        String expiredSessionId = "expired_session";
+        SessionService.UserSession expiredSession = new SessionService.UserSession(
+                expiredSessionId,
+                testUser.getId(),
+                testUser.getEmail(),
+                testUser.getName(),
+                true,
+                false,
+                null,
+                null,
+                Instant.now().minusSeconds(3600) // 1 hora no passado
+        );
+        
+        when(sessionStore.findById(expiredSessionId)).thenReturn(Optional.of(expiredSession));
+        
+        // When
+        Optional<SessionService.UserSession> result = sessionService.validateSession(expiredSessionId);
+        
+        // Then
+        assertTrue(result.isEmpty());
+        verify(sessionStore).findById(expiredSessionId);
+        verify(sessionStore).delete(expiredSessionId);
+    }
+
+    @Test
+    void shouldRevokeSessionAndClearCookie() {
+        // Given
+        String sessionId = "session_to_revoke";
         MockHttpServletResponse response = new MockHttpServletResponse();
-        SessionService.UserSession session = sessionService.createSession(user, creator, response);
+        
+        // When
+        sessionService.revokeSession(sessionId, response);
+        
+        // Then
+        verify(sessionStore).delete(sessionId);
+        
+        // Validate expired cookie
+        var expiredCookie = response.getCookie(SessionService.SESSION_COOKIE_NAME);
+        assertNotNull(expiredCookie);
+        assertTrue(expiredCookie.isHttpOnly());
+        assertEquals("/", expiredCookie.getPath());
+        assertEquals("", expiredCookie.getValue());
+        assertEquals(0, expiredCookie.getMaxAge());
+    }
 
-        // Validação com sucesso
-        Optional<SessionService.UserSession> validSession = sessionService.validateSession(session.sessionId());
-        assertTrue(validSession.isPresent());
-        assertEquals("autor_teste", validSession.get().creatorHandle());
+    @Test
+    void shouldHandleNullResponseInRevokeSession() {
+        // Given
+        String sessionId = "session_to_revoke";
+        
+        // When (should not throw exception)
+        sessionService.revokeSession(sessionId, null);
+        
+        // Then
+        verify(sessionStore).delete(sessionId);
+    }
 
-        // Revogação da sessão
-        MockHttpServletResponse logoutResponse = new MockHttpServletResponse();
-        sessionService.revokeSession(session.sessionId(), logoutResponse);
-
-        // Após logout, sessão não deve mais ser válida
-        Optional<SessionService.UserSession> afterLogout = sessionService.validateSession(session.sessionId());
-        assertTrue(afterLogout.isEmpty());
-
-        // Cookie expirado com MaxAge 0
-        var expiredCookie = logoutResponse.getCookie(SessionService.SESSION_COOKIE_NAME);
+    @Test
+    void shouldHandleNullSessionIdInRevokeSession() {
+        // Given
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        
+        // When (should not throw exception)
+        sessionService.revokeSession(null, response);
+        
+        // Then
+        verify(sessionStore, never()).delete(any());
+        
+        // Cookie should still be cleared
+        var expiredCookie = response.getCookie(SessionService.SESSION_COOKIE_NAME);
         assertNotNull(expiredCookie);
         assertEquals(0, expiredCookie.getMaxAge());
+    }
+
+    @Test
+    void shouldDelegateCleanupToSessionStore() {
+        // Given
+        when(sessionStore.removeExpired(any(Instant.class))).thenReturn(3);
+        
+        // When
+        sessionService.cleanupExpiredSessions();
+        
+        // Then
+        verify(sessionStore).removeExpired(any(Instant.class));
+    }
+
+    @Test
+    void shouldGetActiveSessionsCount() {
+        // Given
+        long expectedCount = 42L;
+        when(sessionStore.countActive()).thenReturn(expectedCount);
+        
+        // When
+        long actualCount = sessionService.getActiveSessionsCount();
+        
+        // Then
+        assertEquals(expectedCount, actualCount);
+        verify(sessionStore).countActive();
     }
 }

@@ -5,25 +5,27 @@ import com.manganetworking.config.exception.AccessDeniedException;
 import com.manganetworking.config.exception.ResourceNotFoundException;
 import com.manganetworking.domain.enums.Genre;
 import com.manganetworking.domain.relational.ChapterEntity;
+import com.manganetworking.domain.relational.ChapterFileEntity;
 import com.manganetworking.domain.relational.CreatorEntity;
 import com.manganetworking.domain.relational.WorkEntity;
+import com.manganetworking.repository.jpa.ChapterFileRepository;
 import com.manganetworking.repository.jpa.ChapterRepository;
 import com.manganetworking.repository.jpa.CreatorRepository;
 import com.manganetworking.repository.jpa.MembershipSubscriptionRepository;
 import com.manganetworking.repository.jpa.WorkRepository;
-import com.manganetworking.service.recommendation.RecommendationAlgorithmService;
+import com.manganetworking.service.feed.event.WorkFeedSyncEvent;
 import com.manganetworking.service.work.dto.CreateChapterRequestDto;
 import com.manganetworking.service.work.dto.CreateWorkRequestDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -44,13 +46,16 @@ class WorkApplicationServiceTest {
     private ChapterRepository chapterRepository;
 
     @Mock
+    private ChapterFileRepository chapterFileRepository;
+
+    @Mock
     private MembershipSubscriptionRepository membershipRepository;
 
     @Mock
     private CreatorRepository creatorRepository;
 
     @Mock
-    private RecommendationAlgorithmService algorithmService;
+    private ApplicationEventPublisher eventPublisher;
 
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
@@ -105,8 +110,8 @@ class WorkApplicationServiceTest {
     }
 
     @Test
-    @DisplayName("Sincroniza o feed após criar a obra e tolera falha do MongoDB sem derrubar o cadastro")
-    void shouldSyncFeedAfterCreateAndTolerateFeedFailure() {
+    @DisplayName("Publica evento de sincronização do feed ao criar a obra (tratado fora da transação, em AFTER_COMMIT)")
+    void shouldPublishFeedSyncEventAfterCreate() {
         when(creatorRepository.findById(creatorId)).thenReturn(Optional.of(author));
         when(workRepository.findBySlug(any())).thenReturn(Optional.empty());
         when(workRepository.save(any(WorkEntity.class))).thenAnswer(invocation -> {
@@ -114,12 +119,9 @@ class WorkApplicationServiceTest {
             saved.setId(workId);
             return saved;
         });
-        when(workRepository.findById(workId)).thenReturn(Optional.of(work));
-        // Simula o MongoDB indisponível: a sincronização do feed deve falhar em silêncio.
-        when(algorithmService.syncWorkToFeed(work)).thenThrow(new RuntimeException("MongoDB indisponível"));
 
         CreateWorkRequestDto dto = new CreateWorkRequestDto(
-                "Nova Obra Original",
+                "Obra com sync por evento",
                 "Original",
                 "Sinopse rica de mangá.",
                 "https://storage.local/capa.jpg",
@@ -131,47 +133,83 @@ class WorkApplicationServiceTest {
         WorkEntity created = workService.createWork(creatorId, dto);
 
         assertNotNull(created);
-        verify(algorithmService).syncWorkToFeed(work);
+        // O serviço não escreve no Mongo: publica o pedido; quem sincroniza é o FeedSynchronizationListener.
+        verify(eventPublisher).publishEvent(new WorkFeedSyncEvent(workId, "cadastro"));
     }
 
     @Test
-    @DisplayName("Sincroniza o feed somente após o commit (não dentro da transação corrente)")
-    void shouldDeferFeedSyncToAfterCommit() {
-        when(creatorRepository.findById(creatorId)).thenReturn(Optional.of(author));
-        when(workRepository.findBySlug(any())).thenReturn(Optional.empty());
-        when(workRepository.save(any(WorkEntity.class))).thenAnswer(invocation -> {
-            WorkEntity saved = invocation.getArgument(0);
-            saved.setId(workId);
+    @DisplayName("Publica evento de sincronização do feed ao publicar capítulo")
+    void shouldPublishFeedSyncEventOnChapterPublish() {
+        when(workRepository.findById(workId)).thenReturn(Optional.of(work));
+        when(chapterRepository.findByWorkIdAndChapterNumber(workId, 1)).thenReturn(Optional.empty());
+        when(chapterRepository.save(any(ChapterEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(workRepository.save(any(WorkEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        CreateChapterRequestDto dto = new CreateChapterRequestDto(
+                1, "Capítulo 1", null, List.of("p1.png"), LocalDateTime.now().plusDays(2));
+
+        workService.createChapter(creatorId, workId, dto);
+
+        verify(eventPublisher).publishEvent(new WorkFeedSyncEvent(workId, "publicação de capítulo"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    @DisplayName("Publicar capítulo registra a relação arquivo→capítulo com o nome do arquivo normalizado")
+    void shouldRegisterChapterFilesOnChapterPublish() {
+        UUID chapterId = UUID.randomUUID();
+        when(workRepository.findById(workId)).thenReturn(Optional.of(work));
+        when(chapterRepository.findByWorkIdAndChapterNumber(workId, 1)).thenReturn(Optional.empty());
+        when(chapterRepository.save(any(ChapterEntity.class))).thenAnswer(invocation -> {
+            ChapterEntity saved = invocation.getArgument(0);
+            saved.setId(chapterId);
             return saved;
         });
+        when(workRepository.save(any(WorkEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        CreateChapterRequestDto dto = new CreateChapterRequestDto(
+                1, "Capítulo 1", null,
+                List.of("/api/storage/aaa.png", "/api/uploads/bbb.png", "ccc.png"),
+                LocalDateTime.now().plusDays(2));
+
+        workService.createChapter(creatorId, workId, dto);
+
+        ArgumentCaptor<List<ChapterFileEntity>> captor = ArgumentCaptor.forClass(List.class);
+        verify(chapterFileRepository).saveAll(captor.capture());
+        List<ChapterFileEntity> files = captor.getValue();
+        assertEquals(List.of("aaa.png", "bbb.png", "ccc.png"),
+                files.stream().map(ChapterFileEntity::getFilename).toList(),
+                "A URL da página deve ser reduzida ao nome do arquivo que o guard recebe");
+        assertEquals(List.of(0, 1, 2), files.stream().map(ChapterFileEntity::getPosition).toList());
+        assertTrue(files.stream().allMatch(file -> chapterId.equals(file.getChapterId())));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    @DisplayName("Página repetida no mesmo capítulo é registrada uma única vez (filename é único em toda a tabela)")
+    void shouldDeduplicateRepeatedChapterPages() {
+        UUID chapterId = UUID.randomUUID();
         when(workRepository.findById(workId)).thenReturn(Optional.of(work));
+        when(chapterRepository.findByWorkIdAndChapterNumber(workId, 1)).thenReturn(Optional.empty());
+        when(chapterRepository.save(any(ChapterEntity.class))).thenAnswer(invocation -> {
+            ChapterEntity saved = invocation.getArgument(0);
+            saved.setId(chapterId);
+            return saved;
+        });
+        when(workRepository.save(any(WorkEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        CreateWorkRequestDto dto = new CreateWorkRequestDto(
-                "Obra com sync diferido",
-                "Original",
-                "Sinopse rica de mangá.",
-                "https://storage.local/capa.jpg",
-                null,
-                List.of(Genre.ACAO),
-                true
-        );
+        // A mesma página enviada em duas formas (URL e nome puro) canonicaliza para um único arquivo.
+        CreateChapterRequestDto dto = new CreateChapterRequestDto(
+                1, "Capítulo 1", null,
+                List.of("/api/storage/dup.png", "dup.png"),
+                LocalDateTime.now().plusDays(2));
 
-        TransactionSynchronizationManager.initSynchronization();
-        try {
-            workService.createWork(creatorId, dto);
+        workService.createChapter(creatorId, workId, dto);
 
-            // Ainda dentro da transação: o feed não pode ter sido sincronizado.
-            verify(algorithmService, never()).syncWorkToFeed(any());
-
-            // Simula o commit disparando as sincronizações registradas.
-            for (TransactionSynchronization sync : TransactionSynchronizationManager.getSynchronizations()) {
-                sync.afterCommit();
-            }
-
-            verify(algorithmService).syncWorkToFeed(work);
-        } finally {
-            TransactionSynchronizationManager.clearSynchronization();
-        }
+        ArgumentCaptor<List<ChapterFileEntity>> captor = ArgumentCaptor.forClass(List.class);
+        verify(chapterFileRepository).saveAll(captor.capture());
+        assertEquals(List.of("dup.png"),
+                captor.getValue().stream().map(ChapterFileEntity::getFilename).toList());
     }
 
     @Test

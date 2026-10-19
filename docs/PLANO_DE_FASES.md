@@ -182,22 +182,22 @@
 
 ---
 
-## FASE 7: Upload Real de Arquivos e Backoffice de Moderação (EM ANDAMENTO)
+## FASE 7: Upload Real de Arquivos e Backoffice de Moderação (CONCLUÍDA)
 **Objetivo:** Permitir cadastro de obras reais com upload de imagens (capas, banners e páginas) no frontend e fornecer painel editorial de moderação cautelar.
 
-- [~] **7.1. Upload Real de Obras no Workspace do Criador:**
+- [x] **7.1. Upload Real de Obras no Workspace do Criador:**
   - Formulário com upload de arquivos de imagem locais: Capa vertical 2:3, Banner horizontal 16:9.
-  - Upload via `multipart/form-data` → `FileStorageController` com `StoredFileResponseDto`, rejeição de vazio e limites (300 arquivos/lote; 15MB/arquivo; 200MB/requisição). `FileStorageControllerTest` cobre entrega/404/403; **falta** teste do fluxo de upload ponta a ponta (multipart → arquivo persistido).
+  - Upload via `multipart/form-data` → `FileStorageController` com `StoredFileResponseDto`, rejeição de vazio e limites (300 arquivos/lote; 15MB/arquivo; 200MB/requisição). `FileStorageControllerTest` cobre entrega/404/403 e `FileStorageUploadTest` cobre o fluxo ponta a ponta (multipart real → disco → entrega, lote e guard 403); o smoke E2E confirmou 3 uploads reais.
 - [x] **7.2. Upload em Lote de Páginas do Capítulo:**
   - Seletor de arquivos múltiplos; arquivos associados aos capítulos via `createChapter`.
   - `ReaderPage` passa a consumir `workApi.readChapter(slug, n)` (rota real `GET /api/works/{slug}/chapters/{n}`) e renderiza `pagesJson`; HTTP 403 exibe o aviso de acesso antecipado. `WorkDetailPage` e `App` passam a resolver capítulos/obra pela API.
   - **Fallback:** quando a obra não existe no banco (dados de demonstração), cai nos `MOCK_*` para não quebrar a navegação.
-- [~] **7.3. Painel Administrativo de Moderação Cautelar (Backoffice Editorial):**
+- [x] **7.3. Painel Administrativo de Moderação Cautelar (Backoffice Editorial):**
   - `ModerationBackofficePage.tsx` gated por `user.isModerator`; `isModerator` exposto em `/auth/2fa/verify` e `/auth/me`.
   - Botão autoritativo "Suspender Obra Imediatamente" (`POST /api/reports/moderate/suspend/{workId}`).
   - **Cobertura (passe 3):** `BackofficeAuthorizationTest` valida a matriz no servidor — anônimo → **401**, leitor → **403**, moderador → **200** — em `GET /api/reports/pending` e `POST /api/reports/moderate/suspend/{workId}`, via infra de slice `@WebMvcTest` + `spring-security-test` (sem exigir DB).
 
-**Critério de Conclusão da Fase 7:** Quadrinista faz upload de imagens reais, capítulo é lido no leitor com as páginas enviadas e denúncia aciona suspensão visível no catálogo. **Atingido no código e na cobertura de teste:** leitor consome as páginas reais da API (com fallback mock), o backoffice/upload existem, a sessão real (cadastro/login 2FA → `/auth/me` → `isModerator`) dirige a UI, o upload multipart é testado ponta a ponta (`FileStorageUploadTest`) e a autorização do backoffice tem cobertura (`BackofficeAuthorizationTest`). Falta apenas o smoke E2E com stack real (bloqueado sem daemon Docker).
+**Critério de Conclusão da Fase 7:** Quadrinista faz upload de imagens reais, capítulo é lido no leitor com as páginas enviadas e denúncia aciona suspensão visível no catálogo. **Atingido no código, na cobertura de teste e no smoke real:** leitor consome as páginas reais da API (com fallback mock), o backoffice/upload existem, a sessão real (cadastro/login 2FA → `/auth/me` → `isModerator`) dirige a UI, o upload multipart é testado ponta a ponta (`FileStorageUploadTest`) e a autorização do backoffice tem cobertura (`BackofficeAuthorizationTest`). **Smoke E2E com stack real executado:** 23/23 via API (Postgres+Mongo+backend `dev`) e validado na UI (feed/detalhe/leitor).
 
 ---
 
@@ -217,12 +217,18 @@
 ## FASE 9: Homologação Final, Smoke Test E2E e Merge para a Main
 **Objetivo:** Executar validação de ponta a ponta com Docker Compose ativo e realizar a mesclagem oficial da branch `develop` para a `main`.
 
-- [ ] **9.1. Teste de Fumaça de Ponta a Ponta (E2E Smoke Test):**
+- [x] **9.1. Teste de Fumaça de Ponta a Ponta (E2E Smoke Test):**
   - ✅ **Backend/API:** PostgreSQL (25432) + MongoDB (27017) + Backend (8085) ativos (profile `dev`); jornada completa via HTTP **23/23** — cadastro 2FA → upload multipart real → obra/capítulos → leitura + guard de early access/cache → `reading-progress` → doação/VIP → extrato → denúncia → feed Mongo (`afterCommit`). Evidências em `docs/reviews/IMPLEMENTATION_STATUS.md` (passe 6).
   - ✅ **Frontend (5180):** feed/detalhe/leitor consumindo a API real (feed do Mongo, gêneros/early-access/membro), guard + `Cache-Control` corretos e imagem decodificada. Via proxy same-origin (cookie `SameSite=Lax`).
-  - ⏳ **Pendente:** apenas o merge/Pull Request (9.2) — depende de autorização explícita.
-- [ ] **9.2. Pull Request e Merge Oficial Develop ➔ Main:**
-  - Mesclagem limpa para `main` com tag `v1.0.0-release`.
+  - ✅ **Concluído:** merge oficial via **PR #2** (mesclado na `main`) e tag de release publicada (ver 9.2).
+- [x] **9.2. Pull Request e Merge Oficial Develop ➔ Main:**
+  - ✅ **PR #2** (`develop` ➔ `main`) mesclado; `main` @ `e7aefec`, com árvore idêntica a `develop` (`git diff` vazio).
+  - ✅ Tag **`v1.0.0-release`** publicada em `origin` (aponta para `e7aefec`).
+
+- [x] **10. Higiene de Segredos e Configurações (Passe 14):**
+  - Remoção de chaves e senhas default dos arquivos rastreados (`application.yml` sem defaults para `aes.secret-key` e `spring.datasource.password`).
+  - Criação de `.env.example` e `README_SECRETS.md` documentando as variáveis obrigatórias.
+  - Fail-fast seguro: sem `AES_SECRET_KEY` em produção o serviço recusa inicializar; ambiente de desenvolvimento/teste utiliza fallback exclusivo não produtivo.
 
 ---
 
@@ -230,12 +236,17 @@
 
 | Camada | Tecnologia | Porta Local | Estado |
 |---|---|---|---|
-| **Backend API** | Spring Boot 3.4.2 / Java 26.0.1 | `8085` | 111 testes passando (0 falhas); OSIV desligado; **smoke E2E 23/23** (Postgres+Mongo) |
-| **Banco Relacional** | PostgreSQL 16 (Docker) | `25432` | Flyway V1 + V2 + V3 aplicadas |
+| **Backend API** | Spring Boot 3.4.2 / Java 26.0.1 | `8085` | 144 testes passando (0 falhas; inclui 8 de integração Testcontainers); OSIV desligado; **smoke E2E 23/23** (Postgres+Mongo) |
+| **Banco Relacional** | PostgreSQL 16 (Docker) | `25432` | Flyway V1 + V2 + V3 + V4 (`chapter_files`) aplicadas |
 | **Banco NoSQL / Feed** | MongoDB 7 (Docker) | `27017` | Coleções `reading_progress` e `feed_works` ativas |
-| **Storage de Imagens** | Local Filesystem Sanitizado | `./data/uploads/` | Magic bytes allow-list; **páginas de capítulo protegidas por `ChapterFileAccessGuard`** (capa/avatar públicos) |
+| **Storage de Imagens** | Local Filesystem Sanitizado | `./data/uploads/` | Magic bytes allow-list; **páginas de capítulo protegidas por `ChapterFileAccessGuard`**, que resolve arquivo→capítulo por índice único (`chapter_files.filename`) em vez de `LIKE` (capa/avatar públicos) |
 | **Frontend Web** | React 19 / TypeScript / Vite | `5180` | Build aprovado; **leitor consome a API real** (`readChapter`) com fallback mock; descoberta/catálogo usam o feed real com fallback mock |
-| **Git Repositório** | GitHub (`WilsonTeofilo/MangaNetWorking.git`) | Remoto | `develop` @ `9a33fad`; **alterações locais não commitadas** |
+| **Git Repositório** | GitHub (`WilsonTeofilo/MangaNetWorking.git`) | Remoto | `develop` @ `58ffd71` (passes 10-14 publicados); `main` @ `e7aefec` (PR #2) com tag **`v1.0.0-release`**; `main` 8 commits atrás de `develop` |
+
+- [x] **10. Higiene de Segredos e Configurações (Passe 14):**
+  - Remoção de chaves e senhas default dos arquivos rastreados (`application.yml` sem defaults para `aes.secret-key` e `spring.datasource.password`).
+  - Criação de `.env.example` e `README_SECRETS.md` documentando as variáveis obrigatórias.
+  - Fail-fast seguro: sem `AES_SECRET_KEY` em produção o serviço recusa inicializar; ambiente de desenvolvimento/teste utiliza fallback exclusivo não produtivo.
 
 ---
 
@@ -256,21 +267,23 @@
 
 **P2b — Contratos frontend ↔ backend (RESOLVIDO neste passe):** ✅ `authApi` (login/2FA/register) alinhado aos DTOs; `AuthContext` hidrata `/auth/me` + logout; `LoginPage` usa o fluxo 2FA real com fallback de demonstração; `Header` com ação de sair. ✅ Identidade de doação/assinatura resolvida pela sessão (`requireCurrentUserId`, novo + testado), sem `donorUserId`/`subscriberUserId` no corpo. ✅ Endpoint fantasma de anúncio removido (`recordAdImpression`); `getCreatorLedger` aponta para `/monetization/ledger/{id}`. ✅ `AuthorSummaryDto` (`authorId/authorName/authorHandle/authorAvatarUrl`) e gêneros (enum → rótulo) corrigidos no frontend. ✅ (passe 3) Tela de **cadastro real** no `LoginPage` (ENTRAR/CRIAR CONTA → `authApi.register` → 2FA) e `CreatorWorkspacePage` ligado a `GET /api/creators/workspace` via novo `creatorApi` (saldo, doações, nível, membros, boost e missões do servidor; demo apenas como fallback). ✅ Identidade de perfil só pela sessão (`UserProfileController` sem `X-Current-User-Id`) e **401 para anônimo** / 403 para papel insuficiente.
 
-**P3 — Fases 8/9:** ⚠️ Offline real é app nativo (fora do escopo deste repositório; backend de manifesto pronto). **Fase 9.1 parcialmente executada:** stack Docker (Postgres+Mongo) subida e a jornada E2E via API passou **23/23**; falta o smoke com o frontend e o merge (9.2).
+**P3 — Fases 8/9:** ⚠️ Offline real é app nativo (fora do escopo deste repositório; backend de manifesto pronto). ✅ **Fase 9 concluída:** E2E **23/23** (API) + validação na UI; merge oficial via **PR #2** e tag **`v1.0.0-release`** publicados. (Fase 8.2 nativa permanece fora do repositório.)
 
-**P4/P5 — Hardening do backend (2026-10-16, não commitado):** ✅ Vazamento do extrato financeiro corrigido (`LedgerEntryResponseDto` + ownership por sessão + `@JsonIgnore` em CPF/PIX). ✅ Transação JPA×Mongo via `afterCommit`. ✅ `GlobalExceptionHandler` semântico (4xx/5xx) e `FilePolicyException`. ✅ Cache de página de capítulo `private, no-store`. ✅ Obra suspensa não exposta. ✅ CORS/rate-limit parametrizados. ✅ **OSIV desligado** (`open-in-view: false`) e job agendado de feed transacional. ✅ `mvn test` → 107 testes verdes.
+**P4/P5 — Hardening do backend (2026-10-16, commitado em `46edd46`):** ✅ Vazamento do extrato financeiro corrigido (`LedgerEntryResponseDto` + ownership por sessão + `@JsonIgnore` em CPF/PIX). ✅ Transação JPA×Mongo via `afterCommit`. ✅ `GlobalExceptionHandler` semântico (4xx/5xx) e `FilePolicyException`. ✅ Cache de página de capítulo `private, no-store`. ✅ Obra suspensa não exposta. ✅ CORS/rate-limit parametrizados. ✅ **OSIV desligado** (`open-in-view: false`) e job agendado de feed transacional. ✅ `mvn test` → 107 testes verdes.
 
-**P6 — Achados da revisão independente incorporados (2026-10-16, não commitado):** ✅ **A1** contrato de `totalPages` (`ReaderPage`/`authApi` + 2 testes de contrato) — o tracking de leitura voltava 400 e o crédito de anúncio nunca disparava. ✅ **A2** Dev Outbox fail-closed (`@Profile({"dev","test","local"})` em vez de `!prod`; sem profile → **404** verificado em runtime; exige `SPRING_PROFILES_ACTIVE=dev` no run local — ver runbook abaixo). ✅ **B1** e-mail fora do log (LGPD). ✅ **B2** guarda de path unificada em `exists`/`deleteFile`. ✅ **B3** upload em lote fatiado no cliente (contagem + bytes). ✅ **M1** logs de `afterCommit` com causa. ✅ **M2** testes que protegem `@Transactional` do job e o adiamento para `afterCommit`. ✅ `mvn test` → **111 testes verdes**; `tsc --noEmit` + `npm run build` limpos; smoke **23/23** (API) + validação na UI (feed/detalhe/leitor).
+**P6 — Achados da revisão independente incorporados (2026-10-16, commitado em `46edd46`):** ✅ **A1** contrato de `totalPages` (`ReaderPage`/`authApi` + 2 testes de contrato) — o tracking de leitura voltava 400 e o crédito de anúncio nunca disparava. ✅ **A2** Dev Outbox fail-closed (`@Profile({"dev","test","local"})` em vez de `!prod`; sem profile → **404** verificado em runtime; exige `SPRING_PROFILES_ACTIVE=dev` no run local — ver runbook abaixo). ✅ **B1** e-mail fora do log (LGPD). ✅ **B2** guarda de path unificada em `exists`/`deleteFile`. ✅ **B3** upload em lote fatiado no cliente (contagem + bytes). ✅ **M1** logs de `afterCommit` com causa. ✅ **M2** testes que protegem `@Transactional` do job e o adiamento para `afterCommit`. ✅ `mvn test` → **111 testes verdes**; `tsc --noEmit` + `npm run build` limpos; smoke **23/23** (API) + validação na UI (feed/detalhe/leitor).
 
 **Runbook local (dev):**
 - `SPRING_PROFILES_ACTIVE=dev` habilita `GET /api/dev/outbox/latest` (leitura do OTP 2FA sem log). Sem profile/`prod` o endpoint **não existe** (o 2FA continua válido; apenas o atalho local fica indisponível).
 - `isModerator` é resolvido **no login**: promover alguém (`UPDATE users SET is_moderator = TRUE WHERE ...`) exige o usuário **relogar** (nada no servidor confia em UI/header).
 - Nunca editar migração Flyway já aplicada (mudar o arquivo quebra o checksum e derruba o boot); para ajustar comentário, crie uma nova migração.
 
-**Revisar futuramente (candidatos):**
-- `ChapterFileAccessGuard`: trocar o `LIKE %filename%` por relação dedicada `file → capítulo` (índice) ou cache — higiene de desempenho; mudança de schema deve ser validada com Postgres real.
-- Endpoints de leitura que devolvem modelos **NoSQL** (`ReadingProgressDocument`, `WorkFeedDocument`) podem ganhar DTOs de apresentação por consistência de camadas (sem lazy loading envolvido).
-- `RateLimitingFilter`/`SessionService` mantêm estado **em memória** (não distribuído) — revisar se a topologia passar a ter múltiplas instâncias.
-- Sync de feed em `afterCommit` (`WorkApplicationService`/`ModerationApplicationService`): hoje depende de a sessão JPA ainda estar aberta na fase `afterCommit` (validado no smoke). Candidato a `@TransactionalEventListener(phase = AFTER_COMMIT)` ou `REQUIRES_NEW` para não depender desse detalhe do Spring.
-- Teste de contexto real (Testcontainers) para OSIV/`afterCommit`/job agendado — hoje coberto por smoke E2E + testes unitários.
-- Frontend: substituir placeholders de XP/Season em `CreatorWorkspacePage` e alinhar `#E63946`/`text-white` à paleta `--color-red: #E8402F`.
+**Concluído recentemente (passes 8-14):** ✅ **Testcontainers** — integração real (PostgreSQL 16 + MongoDB 7 efêmeros): OSIV desligado, sync de feed em `afterCommit` (obra/capítulo com early access), reindexação sem `LazyInitializationException`, remoção do feed na suspensão por moderação e **não-ressurreição da obra suspensa na reindexação**; `api.version` parametrizável (`mvn -Ddocker.api.version=... test`); sem daemon Docker os testes de integração são ignorados (`disabledWithoutDocker = true` → `Skipped`). ✅ **P1 — Coerência funcional do feed (passe 10):** `syncWorkToFeed` **remove** obra suspensa do feed (antes o recálculo agendado a reinseria) e o feed público filtra `status != suspended` **na consulta do Mongo**, preservando o tamanho da página. ✅ **Robustez JPA×Mongo (passe 11):** o sync/remoção do feed saiu do `TransactionSynchronizationManager` manual para `@TransactionalEventListener(phase = AFTER_COMMIT)` (`FeedSynchronizationListener`); a sincronização abre a própria transação (`RecommendationAlgorithmService.syncWorkById`) e deixa de depender de a sessão JPA da requisição estar aberta na fase `afterCommit`. ✅ **Consistência de camadas (passe 12):** os read-models NoSQL deixaram de vazar como modelo — `FeedWorkResponseDto` (`GET /api/feed*`) e `ReadingProgressResponseDto` (histórico de leitura + exportação LGPD) espelham os nomes de campo do documento, logo o **contrato JSON do frontend não muda** (travado por testes que comparam a árvore JSON do DTO e do documento). ✅ **Performance do guard (passe 13):** `ChapterFileAccessGuard` deixou de usar `LIKE %arquivo%` em `chapters.pages_json` (varredura completa + falso positivo de substring) e passou a consultar a relação dedicada **`chapter_files`** por igualdade no índice único `filename` (migração **V4**, com backfill dos capítulos existentes). ✅ **Higiene/segredos (passe 14):** chave AES de fallback e senha default do Postgres removidas dos arquivos versionados; `application.yml` agora usa placeholders vazios para `aes.secret-key` e `spring.datasource.password`; criação de `.env.example` e `README_SECRETS.md` documentando as variáveis obrigatórias; fail-fast seguro: sem `AES_SECRET_KEY` em produção o serviço recusa inicializar.
+
+**Próximos passos priorizados (pós-passe 14).** Cada item é independente e verificável; nenhum bloqueia o release atual.
+
+1. **Escala (P3):** `RateLimitingFilter`/`SessionService` são **em memória** — store distribuído se houver múltiplas instâncias.
+2. **Docker antigo (P3):** com API < 1.44 (Docker ≤ 24) a integração é ignorada em silêncio; rodar `mvn -Ddocker.api.version=<versão> test`.
+3. **Frontend (P3):** substituir placeholders de XP/Season em `CreatorWorkspacePage` e alinhar `#E63946`/`text-white` à paleta `--color-red: #E8402F`.
+4. **Fase 8.2 (bloqueada):** leitura offline nativa (Android/iOS) — app fora deste repositório; o backend de manifesto é o limite.
+5. **Processo:** abrir PR `develop` ➔ `main` para alinhar a `main` (hoje 8 commits à frente — `017d2e0`, `80eec1c`, `37d2d75`, `15cc982`, `a12e52e`, `f948996`, `a1c6ea2`, `58ffd71`).

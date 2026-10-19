@@ -1,5 +1,6 @@
 package com.manganetworking.service.auth;
 
+import com.manganetworking.config.properties.PlatformProperties;
 import com.manganetworking.domain.relational.UserEntity;
 import com.manganetworking.repository.jpa.CreatorRepository;
 import com.manganetworking.repository.jpa.UserRepository;
@@ -8,6 +9,7 @@ import com.manganetworking.service.auth.dto.*;
 import com.manganetworking.service.mfa.DevOutboxNotificationSender;
 import com.manganetworking.service.mfa.DevOutboxRepository;
 import com.manganetworking.service.session.SessionService;
+import com.manganetworking.service.session.SessionStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -34,6 +36,9 @@ class AuthApplicationServiceTest {
     @Mock
     private CreatorRepository creatorRepository;
 
+    @Mock
+    private SessionStore sessionStore;
+
     private DevOutboxRepository devOutboxRepository;
     private TwoFactorAuthService twoFactorAuthService;
     private SessionService sessionService;
@@ -44,7 +49,9 @@ class AuthApplicationServiceTest {
     void setUp() {
         devOutboxRepository = new DevOutboxRepository();
         twoFactorAuthService = new TwoFactorAuthService(new DevOutboxNotificationSender(devOutboxRepository));
-        sessionService = new SessionService();
+        
+        sessionService = new SessionService(sessionStore);
+        
         passwordEncoder = new BCryptPasswordEncoder(10);
 
         authService = new AuthApplicationService(
