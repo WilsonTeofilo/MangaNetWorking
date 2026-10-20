@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -129,6 +130,18 @@ class AuthControllerTest {
                         .content("{\"token\":\"opaque-token\",\"newPassword\":\"A long safe phrase 2026!\"}"))
                 .andExpect(status().isNoContent());
         verify(passwordResetApplicationService).confirm(any());
+    }
+
+    @Test
+    void passwordResetConfirmMapsInvalidTokenToUnauthorized() throws Exception {
+        doThrow(new SecurityException("Link inválido ou expirado. Solicite uma nova recuperação de senha."))
+                .when(passwordResetApplicationService).confirm(any());
+
+        mockMvc.perform(post("/api/auth/password-reset/confirm")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"opaque-token\",\"newPassword\":\"A long safe phrase 2026!\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Link inválido ou expirado. Solicite uma nova recuperação de senha."));
     }
 
     @Test

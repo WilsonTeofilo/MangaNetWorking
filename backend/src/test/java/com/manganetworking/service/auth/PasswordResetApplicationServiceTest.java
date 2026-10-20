@@ -18,6 +18,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.time.Clock;
@@ -61,22 +63,26 @@ class PasswordResetApplicationServiceTest {
                 limiter, sender, sessions, twoFactor, "http://app.example.invalid", Duration.ofMinutes(30), clock));
         assertThrows(IllegalStateException.class, () -> new PasswordResetApplicationService(users, tokens, encoder,
                 limiter, sender, sessions, twoFactor, "https://app.example.invalid", Duration.ofMinutes(4), clock));
+        assertThrows(IllegalStateException.class, () -> new PasswordResetApplicationService(users, tokens, encoder,
+                limiter, sender, sessions, twoFactor, "https://app.example.invalid/app", Duration.ofMinutes(30), clock));
+        assertThrows(IllegalStateException.class, () -> new PasswordResetApplicationService(users, tokens, encoder,
+                limiter, sender, sessions, twoFactor, "https://app.example.invalid/?next=1", Duration.ofMinutes(30), clock));
     }
 
     @Test
     void requestIsGenericAndPersistsOnlyHash() throws Exception {
-        when(limiter.tryAcquire(anyString(), anyString())).thenReturn(true);
+        when(limiter.tryAcquire(anyString(), anyString(), anyString())).thenReturn(true);
         UserEntity user = new UserEntity();
         user.setId(UUID.randomUUID());
         user.setEmail("reader@example.com");
         when(users.findByEmail("reader@example.com")).thenReturn(Optional.of(user));
-        when(tokens.existsById(user.getId())).thenReturn(false);
         ArgumentCaptor<PasswordResetTokenEntity> persisted = ArgumentCaptor.forClass(PasswordResetTokenEntity.class);
 
         Map<String, String> response = service.request(new PasswordResetRequestDto(" Reader@Example.com "), new MockHttpServletRequest());
 
         assertEquals("REQUEST_ACCEPTED", response.get("status"));
         assertFalse(response.toString().contains("token"));
+        verify(tokens).deleteForUser(user.getId());
         verify(tokens).saveAndFlush(persisted.capture());
         assertEquals(64, persisted.getValue().getTokenHash().length());
         assertEquals(LocalDateTime.of(2026, 10, 19, 12, 30), persisted.getValue().getExpiresAt());
@@ -92,7 +98,7 @@ class PasswordResetApplicationServiceTest {
 
     @Test
     void unknownAccountGetsSameResponseWithoutEmail() {
-        when(limiter.tryAcquire(anyString(), anyString())).thenReturn(true);
+        when(limiter.tryAcquire(anyString(), anyString(), anyString())).thenReturn(true);
         when(users.findByEmail("missing@example.com")).thenReturn(Optional.empty());
         Map<String, String> response = service.request(new PasswordResetRequestDto("missing@example.com"), new MockHttpServletRequest());
         assertEquals("Se o e-mail estiver cadastrado, enviaremos instruções para recuperar a senha.", response.get("message"));
@@ -101,28 +107,59 @@ class PasswordResetApplicationServiceTest {
 
     @Test
     void throttledRequestIsStillGenericAndDoesNotLookUpAccount() {
-        when(limiter.tryAcquire(anyString(), anyString())).thenReturn(false);
+        when(limiter.tryAcquire(anyString(), anyString(), anyString())).thenReturn(false);
         Map<String, String> response = service.request(new PasswordResetRequestDto("reader@example.com"), new MockHttpServletRequest());
         assertEquals("REQUEST_ACCEPTED", response.get("status"));
         verifyNoInteractions(users, sender);
     }
 
     @Test
-    void mailFailureDoesNotRevealAccountOrLeaveUsableToken() {
-        when(limiter.tryAcquire(anyString(), anyString())).thenReturn(true);
+    void mailFailureIsGenericAndKeepsTheRequestAccepted() {
+        when(limiter.tryAcquire(anyString(), anyString(), anyString())).thenReturn(true);
         UserEntity user = new UserEntity();
         user.setId(UUID.randomUUID());
         user.setEmail("reader@example.com");
         when(users.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
-        when(tokens.existsById(user.getId())).thenReturn(false);
         doThrow(new IllegalStateException("smtp unavailable"))
                 .when(sender).sendPasswordResetLink(eq(user.getEmail()), anyString(), anyLong());
 
         Map<String, String> response = service.request(new PasswordResetRequestDto(user.getEmail()), new MockHttpServletRequest());
 
         assertEquals("REQUEST_ACCEPTED", response.get("status"));
+        // The rotation delete happens before persisting the new token; a mail failure must not
+        // expose SMTP details or roll back the already committed request.
         verify(tokens).deleteForUser(user.getId());
+        verify(tokens).saveAndFlush(any(PasswordResetTokenEntity.class));
         assertFalse(response.toString().contains("smtp"));
+    }
+
+    @Test
+    void emailIsSentOnlyAfterCommit() {
+        when(limiter.tryAcquire(anyString(), anyString(), anyString())).thenReturn(true);
+        UserEntity user = new UserEntity();
+        user.setId(UUID.randomUUID());
+        user.setEmail("reader@example.com");
+        when(users.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            service.request(new PasswordResetRequestDto(user.getEmail()), new MockHttpServletRequest());
+            verify(sender, never()).sendPasswordResetLink(anyString(), anyString(), anyLong());
+
+            TransactionSynchronizationManager.getSynchronizations()
+                    .forEach(TransactionSynchronization::afterCommit);
+            verify(sender).sendPasswordResetLink(eq(user.getEmail()), anyString(), eq(30L));
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
+    @Test
+    void oversizedTokenIsRejectedBeforeRepositoryLookup() {
+        String oversized = "x".repeat(129);
+        assertThrows(SecurityException.class,
+                () -> service.confirm(new PasswordResetConfirmDto(oversized, "New secure phrase 2026!")));
+        verify(tokens, never()).findByTokenHashForUpdate(anyString());
     }
 
     @Test
