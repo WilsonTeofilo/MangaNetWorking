@@ -58,6 +58,13 @@ function chunkUploads(files: File[]): File[][] {
 }
 
 export const storageApi = {
+  /** Normaliza avatares no servidor e devolve somente o JPEG final persistido. */
+  uploadAvatar(file: File): Promise<UploadResult> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return postMultipart<UploadResult>('/storage/avatar', formData, 'Erro no upload do avatar');
+  },
+
   /**
    * Upload de arquivo de imagem individual (Capa 2:3, Banner 16:9 ou Avatar)
    */

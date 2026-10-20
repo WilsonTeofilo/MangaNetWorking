@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import { ArrowLeft, Mail, Lock } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ArrowLeft, Mail } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Field } from '../components/ui/Field';
+import { assessPassword, PasswordInput } from '../components/ui/PasswordInput';
 import { OtpInput } from '../components/ui/OtpInput';
 import { Win } from '../components/ui/Win';
 import { ApiError } from '../api/client';
@@ -29,17 +30,28 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
   const [handle, setHandle] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [twoFactorCode, setTwoFactorCode] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [privacyPolicyVersion, setPrivacyPolicyVersion] = useState('');
   const [birthDate, setBirthDate] = useState('');
+  const [passwordRecoveryStep, setPasswordRecoveryStep] = useState<'none' | 'request' | 'sent'>('none');
+
+  const limitPasswordLength = (value: string) => Array.from(value).slice(0, 64).join('');
 
   // E-mail que identifica o desafio 2FA no servidor e modo demonstração (sem backend).
   const [challengeEmail, setChallengeEmail] = useState('');
   const [isDemoMode, setIsDemoMode] = useState(false);
   // Código 2FA para conveniência em desenvolvimento (Dev Outbox). Vazio em produção.
   const [devOtpHint, setDevOtpHint] = useState('');
+
+  useEffect(() => {
+    void authApi.getPolicyVersion().then(({ version }) => setPrivacyPolicyVersion(version)).catch(() => {
+      setErrorMessage('Não foi possível carregar a versão atual da política. Tente novamente mais tarde.');
+    });
+  }, []);
 
 
   const completeLogin = async () => {
@@ -66,13 +78,33 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
         setErrorMessage('Informe seu nome para criar a conta.');
         return;
       }
+      if (Array.from(password).length < 8 || Array.from(password).length > 64) {
+        setErrorMessage('A senha deve ter entre 8 e 64 caracteres.');
+        return;
+      }
+      if (assessPassword(password).level === 'weak') {
+        setErrorMessage('Senha fraca. Use uma senha média ou forte conforme os requisitos exibidos.');
+        return;
+      }
+      if (password !== confirmPassword) {
+        setErrorMessage('A confirmação da senha não corresponde.');
+        return;
+      }
       if (!termsAccepted) {
         setErrorMessage('É obrigatório aceitar os Termos de Uso e a Política de Privacidade (LGPD).');
         return;
       }
+      if (!privacyPolicyVersion) {
+        setErrorMessage('A versão atual da Política de Privacidade ainda não foi carregada.');
+        return;
+      }
     }
-    if (!email || !password) {
+    if (!email || password.length === 0) {
       setErrorMessage('Preencha seu e-mail e senha.');
+      return;
+    }
+    if (Array.from(password).length > 64) {
+      setErrorMessage('A senha deve ter no máximo 64 caracteres.');
       return;
     }
 
@@ -88,6 +120,7 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
               isCreator: roleIntent === 'creator',
               handle: roleIntent === 'creator' ? handle.trim() || undefined : undefined,
               termsAccepted: true,
+              privacyPolicyVersion,
               birthDate: birthDate ? birthDate : undefined,
             })
           : await authApi.login({ email, password });
@@ -104,11 +137,14 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
         const data = err.data as { message?: string } | undefined;
         setErrorMessage(data?.message || 'Não foi possível continuar. Verifique os dados informados.');
       } else {
-        // Backend indisponível: segue no modo demonstração local.
-        setIsDemoMode(true);
-        setChallengeEmail(email);
-        setDevOtpHint(randomOtp());
-        setStep('two-factor');
+        if (import.meta.env.DEV) {
+          setIsDemoMode(true);
+          setChallengeEmail(email);
+          setDevOtpHint(randomOtp());
+          setStep('two-factor');
+        } else {
+          setErrorMessage('Não foi possível conectar ao serviço de autenticação. Tente novamente.');
+        }
       }
     } finally {
       setIsLoading(false);
@@ -134,9 +170,24 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
         const data = err.data as { message?: string } | undefined;
         setErrorMessage(data?.message || 'Código inválido ou expirado. Tente novamente.');
       } else {
-        // Backend caiu no meio do fluxo: conclui em modo demonstração.
-        await completeLogin();
+        if (import.meta.env.DEV) await completeLogin();
+        else setErrorMessage('Não foi possível confirmar sua sessão. Entre novamente.');
       }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePasswordResetRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage('');
+    setIsLoading(true);
+    try {
+      await authApi.requestPasswordReset(email);
+      setPasswordRecoveryStep('sent');
+    } catch (err) {
+      const data = err instanceof ApiError ? err.data as { message?: string } | undefined : undefined;
+      setErrorMessage(data?.message || 'Não foi possível solicitar a recuperação agora. Tente novamente mais tarde.');
     } finally {
       setIsLoading(false);
     }
@@ -192,7 +243,24 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
         {/* Coluna Direita: Formulário Ink (#151517) */}
         <div className="bg-[#151517] text-[#F4EFE3] p-8 sm:p-12 flex flex-col justify-center space-y-6">
           
-          {step === 'credentials' ? (
+          {passwordRecoveryStep === 'request' ? (
+            <form onSubmit={handlePasswordResetRequest} className="space-y-6">
+              <div>
+                <h2 className="font-display text-3xl text-[#F4EFE3] uppercase">RECUPERAR SENHA</h2>
+              <p className="font-body text-xs text-[#A9A59A] mt-1">Se o e-mail estiver cadastrado, enviaremos um link de recuperação.</p>
+              </div>
+              <Field label="E-MAIL" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+              {errorMessage && <p role="alert" className="font-body text-xs text-[#E8402F]">{errorMessage}</p>}
+              <Button type="submit" variant="primary" disabled={isLoading} className="w-full !min-h-[48px]">{isLoading ? 'ENVIANDO…' : 'ENVIAR LINK'}</Button>
+              <button type="button" onClick={() => { setPasswordRecoveryStep('none'); setErrorMessage(''); }} className="w-full font-pixel text-[10px] text-[#A9A59A]">VOLTAR AO LOGIN</button>
+            </form>
+          ) : passwordRecoveryStep === 'sent' ? (
+            <section className="space-y-6" aria-live="polite">
+              <h2 className="font-display text-3xl text-[#F4EFE3] uppercase">CONFIRA SEU E-MAIL</h2>
+              <p className="font-body text-sm text-[#A9A59A]">Se o endereço estiver cadastrado, você receberá um link de validade limitada para redefinir sua senha.</p>
+              <button type="button" onClick={() => { setPasswordRecoveryStep('none'); setErrorMessage(''); }} className="w-full font-pixel text-[10px] text-[#A9A59A]">VOLTAR AO LOGIN</button>
+            </section>
+          ) : step === 'credentials' ? (
             /* Passo 1: Credenciais e Escolha de Papel */
             <form onSubmit={handleCredentialsSubmit} className="space-y-6">
               <div>
@@ -297,15 +365,29 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
                   childrenRight={<Mail size={16} className="text-[#A9A59A]" />}
                 />
 
-                <Field
+                <PasswordInput
                   label="SENHA"
-                  type="password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => setPassword(limitPasswordLength(e.target.value))}
                   placeholder="••••••••"
+                  autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+                  showStrength={mode === 'register'}
                   required
-                  childrenRight={<Lock size={16} className="text-[#A9A59A]" />}
                 />
+
+                {mode === 'register' && (
+                  <>
+                    <p id="password-policy" className="font-body text-xs text-[#A9A59A]">Use de 8 a 64 caracteres. Espaços, símbolos, acentos e emojis são aceitos.</p>
+                    <PasswordInput
+                      label="CONFIRMAR SENHA"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(limitPasswordLength(e.target.value))}
+                      autoComplete="new-password"
+                      aria-describedby="password-policy"
+                      required
+                    />
+                  </>
+                )}
 
                 {mode === 'register' && (
                   <>
@@ -327,7 +409,7 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
                       />
                       <label htmlFor="termsAccepted" className="font-body text-xs text-[#A9A59A] leading-relaxed cursor-pointer select-none">
                         Li e concordo com os <span className="text-[#F4EFE3] underline">Termos de Uso</span> e a{' '}
-                        <span className="text-[#F4EFE3] underline">Política de Privacidade</span> (LGPD - Lei 13.709/2018).
+                        <span className="text-[#F4EFE3] underline">Política de Privacidade</span> (versão {privacyPolicyVersion || 'carregando'}; LGPD - Lei 13.709/2018).
                       </label>
                     </div>
                   </>
@@ -353,6 +435,11 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
                     ? 'CRIAR CONTA E ATIVAR 2FA'
                     : 'CONTINUAR COM 2FA'}
               </Button>
+              {mode === 'login' && (
+                <button type="button" onClick={() => { setPasswordRecoveryStep('request'); setErrorMessage(''); }} className="w-full font-pixel text-[10px] text-[#A9A59A] hover:text-[#FFD400]">
+                  ESQUECI MINHA SENHA
+                </button>
+              )}
             </form>
           ) : (
             /* Passo 2: 2FA com OTP de 6 Caixas */

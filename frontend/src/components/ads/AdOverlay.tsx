@@ -18,8 +18,7 @@ const SLOT_LABEL: Record<AdSlot, string> = {
   end: 'FIM DO CAPÍTULO',
 };
 
-// Criativo fictício de demonstração. Não há receita real aqui: quando o provedor de
-// anúncios entrar, o crédito (58%/42%) é gravado no servidor durante o tracking de leitura.
+// Criativo fictício de demonstração, sem impressão financeira nem receita real.
 const FAKE_SPONSOR = {
   name: 'BANCA DO ZÉ',
   headline: 'MANGÁS USADOS, 2 PELO PREÇO DE 1',
@@ -137,8 +136,7 @@ export function AdOverlay({
           </h3>
           <p className="relative font-body text-sm text-[var(--mn-mute)] mt-2">{FAKE_SPONSOR.body}</p>
           <p className="relative font-body text-[12px] text-[var(--mn-mute)] mt-4 border-t border-[var(--mn-line)] pt-3">
-            58% da receita deste anúncio é creditada a{' '}
-            <strong className="text-[var(--mn-paper)]">{creatorName}</strong> · {workTitle}
+            Intervalo demonstrativo de leitura · {creatorName} · {workTitle}
           </p>
         </div>
 

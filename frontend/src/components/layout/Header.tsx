@@ -1,11 +1,11 @@
-import { Heart, BookOpen, Compass, User as UserIcon, Crown, ShieldAlert, LogOut } from 'lucide-react';
+import { Heart, BookOpen, Compass, Info, User as UserIcon, Crown, ShieldAlert, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useModals } from '../../context/ModalContext';
 import logoSymbol from '../../assets/brand/logo-symbol.svg';
 
 interface HeaderProps {
-  currentTab: 'feed' | 'works' | 'library' | 'creator-workspace' | 'reader-profile' | 'login' | 'moderation';
-  setCurrentTab: (tab: 'feed' | 'works' | 'library' | 'creator-workspace' | 'reader-profile' | 'login' | 'moderation') => void;
+  currentTab: 'feed' | 'works' | 'library' | 'creator-workspace' | 'reader-profile' | 'login' | 'moderation' | 'about';
+  setCurrentTab: (tab: 'feed' | 'works' | 'library' | 'creator-workspace' | 'reader-profile' | 'login' | 'moderation' | 'about') => void;
   onOpenLogin?: () => void;
 }
 
@@ -24,31 +24,28 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin }: HeaderProps) 
       <header className="sticky top-0 z-50 w-full min-h-[70px] md:min-h-[82px] flex items-center bg-[#0B0B0C] border-b-2 border-[#34343A] select-none">
         {/* Container próprio da barra: mais largo que o mn-container (1200px) e com
             respiro crescente, no padrão do header do MangaTeofilo. */}
-        <div className="w-full max-w-[1440px] 2xl:max-w-[1680px] mx-auto px-4 sm:px-5 2xl:px-10 flex items-center justify-between gap-6">
+        <div className="w-full max-w-[1440px] 2xl:max-w-[1680px] mx-auto px-3 sm:px-5 2xl:px-10 flex items-center justify-between gap-4 sm:gap-6 lg:gap-4">
           
           {/* Brand Oficial com Logo em Adesivo */}
           <div
-            className="flex items-center gap-3 cursor-pointer group shrink-0"
+            className="flex items-center gap-2 sm:gap-3 cursor-pointer group shrink-0"
             onClick={() => setCurrentTab('feed')}
             title="MangaNetWorking — A Banca Digital do Mangá Independente"
           >
             <img
               src={logoSymbol}
               alt="MangaNetWorking"
-              className="w-10 h-10 md:w-11 md:h-11 -rotate-2 group-hover:rotate-0 transition-transform duration-100"
+              className="w-8 h-8 sm:w-10 sm:h-10 md:w-11 md:h-11 -rotate-2 group-hover:rotate-0 transition-transform duration-100"
             />
             <div>
-              <span className="font-logo text-xl md:text-2xl text-[#FFD400] leading-none block tracking-wide">
+              <span className="hidden min-[360px]:block font-logo text-base sm:text-xl md:text-2xl text-[#FFD400] leading-none tracking-wide">
                 MANGA<span className="text-[#F4EFE3]">NETWORKING</span>
-              </span>
-              <span className="font-body text-[12px] text-[#A9A59A] block font-medium mt-0.5">
-                por MangaTeofilo Editorial
               </span>
             </div>
           </div>
 
           {/* Navegação Central Oficial (Desktop: Anton 16px, Bloco Amarelo no Ativo) */}
-          <nav className="hidden md:flex items-center gap-2 lg:gap-4 2xl:gap-6">
+          <nav className="hidden lg:flex items-center gap-2 2xl:gap-6">
             <button
               type="button"
               onClick={() => setCurrentTab('feed')}
@@ -75,7 +72,20 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin }: HeaderProps) 
 
             <button
               type="button"
+              onClick={() => setCurrentTab('about')}
+              className={`px-3 py-1.5 font-display text-sm lg:text-base tracking-wider uppercase transition-all ${
+                currentTab === 'about'
+                  ? 'bg-[#E8402F] text-[#F4EFE3] border-2 border-[#0B0B0C] shadow-[3px_3px_0_#F4EFE3]'
+                  : 'text-[#A9A59A] hover:text-[#FFD400] border-2 border-transparent'
+              }`}
+            >
+              SOBRE
+            </button>
+
+            <button
+              type="button"
               onClick={() => setCurrentTab('library')}
+              aria-label={`Biblioteca (${user.favorites.length} obras)`}
               className={`px-3 py-1.5 font-display text-sm lg:text-base tracking-wider uppercase flex items-center gap-1.5 transition-all ${
                 currentTab === 'library'
                   ? 'bg-[#FFD400] text-[#0B0B0C] border-2 border-[#0B0B0C] shadow-[3px_3px_0_#0B0B0C]'
@@ -83,7 +93,8 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin }: HeaderProps) 
               }`}
             >
               <Heart size={14} className={currentTab === 'library' ? 'fill-[#0B0B0C]' : ''} />
-              BIBLIOTECA ({user.favorites.length})
+              <span className="hidden xl:inline">BIBLIOTECA</span>
+              ({user.favorites.length})
             </button>
           </nav>
 
@@ -171,9 +182,10 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin }: HeaderProps) 
               <button
                 type="button"
                 onClick={onOpenLogin || (() => setCurrentTab('login'))}
-                className="px-4 py-2 font-display text-base tracking-wider uppercase bg-[#FFD400] text-[#0B0B0C] border-2 border-[#0B0B0C] shadow-[4px_4px_0_#0B0B0C] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_#0B0B0C] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all cursor-pointer"
+                className="px-3 sm:px-4 py-2 font-display text-sm sm:text-base tracking-wider uppercase bg-[#FFD400] text-[#0B0B0C] border-2 border-[#0B0B0C] shadow-[4px_4px_0_#0B0B0C] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_#0B0B0C] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all cursor-pointer"
               >
-                ENTRAR / CADASTRO
+                <span className="sm:hidden">ENTRAR</span>
+                <span className="hidden sm:inline">ENTRAR / CADASTRO</span>
               </button>
             )}
           </div>
@@ -183,7 +195,7 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin }: HeaderProps) 
       {/* Barra Inferior Fixa para Mobile (Alvos >= 44px e Silkscreen 11px) */}
       <nav
         aria-label="Navegação rápida mobile"
-        className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0B0B0C] border-t-2 border-[#34343A] flex justify-around items-center h-16 select-none"
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0B0B0C] border-t-2 border-[#34343A] flex justify-around items-center h-16 select-none"
       >
         <button
           type="button"
@@ -216,6 +228,17 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin }: HeaderProps) 
         >
           <Heart size={20} className={currentTab === 'library' ? 'fill-[#FFD400]' : ''} />
           <span className="font-pixel text-[12px] tracking-wider mt-1">BIBLIO</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setCurrentTab('about')}
+          className={`flex flex-col items-center justify-center w-14 h-14 ${
+            currentTab === 'about' ? 'text-[#FFD400]' : 'text-[#A9A59A]'
+          }`}
+        >
+          <Info size={20} />
+          <span className="font-pixel text-[12px] tracking-wider mt-1">SOBRE</span>
         </button>
 
         <button

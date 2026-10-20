@@ -2,15 +2,15 @@ import logoSymbol from '../../assets/brand/logo-symbol.svg';
 
 export function Footer() {
   return (
-    <footer className="w-full bg-[#0B0B0C] border-t-2 border-[#FFD400] text-[#F4EFE3] pt-12 pb-24 md:pb-12 mt-16 select-none">
+    <footer className="w-full bg-[#0B0B0C] border-t-2 border-[#FFD400] text-[#F4EFE3] pt-12 pb-24 lg:pb-12 mt-16 select-none">
       <div className="mn-container space-y-10">
         
         {/* Grade de 4 Colunas */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.5fr)_repeat(3,minmax(0,1fr))] gap-8 xl:gap-10">
           {/* Coluna 1: Marca & Manifesto */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <img src={logoSymbol} alt="MN" className="w-8 h-8 -rotate-2" />
+          <div className="space-y-3 min-w-0 sm:col-span-2 lg:col-span-1">
+            <div className="flex items-center gap-2 min-w-0">
+              <img src={logoSymbol} alt="MN" className="w-8 h-8 -rotate-2 shrink-0" />
               <span className="font-logo text-xl text-[#FFD400]">
                 MANGA<span className="text-[#F4EFE3]">NETWORKING</span>
               </span>
@@ -22,7 +22,7 @@ export function Footer() {
           </div>
 
           {/* Coluna 2: Plataforma */}
-          <div className="space-y-2">
+          <div className="space-y-2 min-w-0">
             <h4 className="font-display text-base text-[#FFD400] uppercase tracking-wider">
               PLATAFORMA
             </h4>
@@ -35,7 +35,7 @@ export function Footer() {
           </div>
 
           {/* Coluna 3: Criadores */}
-          <div className="space-y-2">
+          <div className="space-y-2 min-w-0">
             <h4 className="font-display text-base text-[#FFD400] uppercase tracking-wider">
               CRIADORES
             </h4>
@@ -48,11 +48,11 @@ export function Footer() {
           </div>
 
           {/* Coluna 4: Legal & LGPD */}
-          <div className="space-y-2">
+          <div className="space-y-2 min-w-0">
             <h4 className="font-display text-base text-[#FFD400] uppercase tracking-wider">
               LEGAL &amp; PRIVACIDADE
             </h4>
-            <ul className="font-body text-xs text-[#A9A59A] space-y-1.5">
+            <ul className="font-body text-xs text-[#A9A59A] space-y-1.5 break-words">
               <li><span>Termos de Uso</span></li>
               <li><span>Política de Privacidade (LGPD)</span></li>
               <li><span>DPO: privacidade@manganetworking.com.br</span></li>

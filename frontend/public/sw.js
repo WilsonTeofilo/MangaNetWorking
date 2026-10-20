@@ -1,5 +1,5 @@
 // MangaNetWorking Service Worker — Suporte a Leitura Offline PWA
-const APP_SHELL_CACHE = 'manganetworking-shell-v1';
+const APP_SHELL_CACHE = 'manganetworking-shell-v6';
 const OFFLINE_MEDIA_CACHE = 'manganetworking-offline-v1';
 
 const STATIC_ASSETS = [

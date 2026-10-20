@@ -95,6 +95,7 @@ export function mapFeedToWork(doc: FeedWorkDto): Work {
     synopsis: doc.synopsis ?? '',
     genres: normalizeGenres(doc.genres),
     status: normalizeStatus(doc.status),
+    format: doc.format ?? 'MANGA',
     totalChapters: doc.totalChapters ?? 0,
     totalViews: doc.totalViews ?? 0,
     totalLikes: doc.totalLikes ?? 0,
@@ -122,6 +123,7 @@ export function mapChapterSummary(dto: ChapterSummaryDto, workId: string): Chapt
     views: dto.views ?? 0,
     likes: dto.likes ?? 0,
     commentsCount: 0,
+    format: dto.format ?? 'IMAGE_PAGES',
   };
 }
 
@@ -143,6 +145,7 @@ export function mapWorkDetailsToWork(dto: WorkDetailsDto): Work {
     synopsis: dto.synopsis ?? '',
     genres: normalizeGenres(dto.genres),
     status: normalizeStatus(dto.status),
+    format: dto.format ?? 'MANGA',
     totalChapters: dto.totalChapters ?? chapters.length,
     totalViews: dto.totalViews ?? 0,
     totalLikes: dto.totalLikes ?? 0,

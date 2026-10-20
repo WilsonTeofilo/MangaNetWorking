@@ -22,6 +22,8 @@ export interface Chapter {
   views: number;
   likes: number;
   commentsCount: number;
+  format?: 'IMAGE_PAGES' | 'PROSE';
+  content?: string;
 }
 
 export interface CreatorMission {
@@ -69,6 +71,7 @@ export interface Work {
   synopsis: string;
   genres: Genre[];
   status: 'ongoing' | 'completed' | 'hiatus';
+  format?: 'MANGA' | 'LIGHT_NOVEL';
   totalChapters: number;
   totalViews: number;
   totalLikes: number;
@@ -117,6 +120,8 @@ export interface UserProfile {
   creatorId?: string;
   isVip?: boolean;
   vipExpiresAt?: string;
+  privacyConsentRequired?: boolean;
+  privacyPolicyVersion?: string;
   activeMemberships: Record<string, MembershipSubscription>; // creatorId -> subscription
   favorites: string[]; // workIds
 }

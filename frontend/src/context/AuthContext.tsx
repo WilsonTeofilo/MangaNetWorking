@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { UserProfile, MembershipSubscription } from '../types';
-import { CURRENT_USER } from '../data/mockData';
+import { UserProfile } from '../types';
 import { authApi, SessionUserDto } from '../api/authApi';
 import { monetizationApi } from '../api/monetizationApi';
 
@@ -8,19 +7,27 @@ interface AuthContextType {
   user: UserProfile;
   isAuthenticated: boolean;
   isMemberOf: (creatorId: string) => boolean;
-  subscribeToCreator: (creatorId: string, priceBrl: number) => Promise<void>;
-  subscribeVip: () => Promise<void>;
+  subscribeToCreator: (creatorId: string, idempotencyKey: string) => Promise<{ checkoutUrl: string; amountBrl: number }>;
+  createVipCheckout: () => Promise<{ checkoutUrl: string; priceBrl: number }>;
   toggleCreatorMode: () => void;
   toggleFavorite: (workId: string) => void;
   /** Recarrega a sessão a partir de `/auth/me` (mantém o estado atual se não houver sessão). */
   refreshSession: () => Promise<void>;
+  /** Atualiza a apresentação local depois que o servidor confirmou a gravação do avatar. */
+  updateAvatarUrl: (avatarUrl: string) => void;
   /** Encerra a sessão no servidor e volta ao estado de visitante. */
   logout: () => Promise<void>;
+  acceptCurrentPrivacyPolicy: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-/** Mescla os dados autoritativos da sessão no perfil, preservando estado local (favoritos, avatar). */
+const GUEST_USER: UserProfile = {
+  uid: 'guest', name: 'Visitante', email: '', avatarUrl: '', isCreator: false,
+  isModerator: false, isVip: false, activeMemberships: {}, favorites: [],
+};
+
+/** Mescla os dados autoritativos da sessão no perfil, preservando apenas preferências de interface. */
 function applySession(prev: UserProfile, session: SessionUserDto): UserProfile {
   return {
     ...prev,
@@ -30,11 +37,13 @@ function applySession(prev: UserProfile, session: SessionUserDto): UserProfile {
     isCreator: session.isCreator,
     creatorId: session.creatorId || undefined,
     isModerator: Boolean(session.isModerator),
+    privacyConsentRequired: Boolean(session.privacyConsentRequired),
+    privacyPolicyVersion: session.privacyPolicyVersion,
   };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<UserProfile>(CURRENT_USER);
+  const [user, setUser] = useState<UserProfile>(GUEST_USER);
 
   const isAuthenticated = Boolean(user.uid && user.uid !== 'guest');
 
@@ -45,10 +54,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const refreshSession = async () => {
-    const session = await authApi.me();
-    // Sem sessão (401) ou backend indisponível: preserva o estado atual (modo demonstração).
-    if (!session) return;
-    setUser((prev) => applySession(prev, session));
+    try {
+      const session = await authApi.me();
+      if (!session) {
+        setUser(GUEST_USER);
+        return;
+      }
+      setUser((prev) => ({ ...applySession(prev, session), isVip: session.isVip, vipExpiresAt: session.vipExpiresAt ?? undefined }));
+    } catch {
+      setUser(GUEST_USER);
+    }
   };
 
   // Hidrata a sessão real na primeira renderização (o papel de moderador/criador vem do servidor).
@@ -59,62 +74,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     await authApi.logout();
-    setUser((prev) => ({
-      ...prev,
-      uid: 'guest',
-      name: 'Visitante',
-      email: '',
-      avatarUrl: '',
-      isCreator: false,
-      creatorId: undefined,
-      isModerator: false,
-      isVip: false,
-      activeMemberships: {},
-    }));
+    setUser(GUEST_USER);
   };
 
-  const subscribeToCreator = async (creatorId: string, priceBrl: number) => {
-    try {
-      // Identidade do assinante é resolvida pela sessão no servidor.
-      await monetizationApi.subscribeMembership({ creatorId });
-    } catch {
-      // Fallback gracioso se backend não responder em dev
-    }
-
-    const newSub: MembershipSubscription = {
-      creatorId,
-      priceBrl,
-      startedAt: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString(),
-      status: 'active'
-    };
-
-    setUser(prev => ({
-      ...prev,
-      activeMemberships: {
-        ...prev.activeMemberships,
-        [creatorId]: newSub
-      }
-    }));
+  const acceptCurrentPrivacyPolicy = async () => {
+    const policy = await authApi.getPolicyVersion();
+    await authApi.acceptPrivacyPolicy(policy.version);
+    await refreshSession();
   };
 
-  const subscribeVip = async () => {
-    try {
-      // Assinante VIP é resolvido pela sessão no servidor.
-      await monetizationApi.subscribeVip({});
-    } catch {
-      // Fallback gracioso se backend não responder em dev
-    }
-
-    const expiresAt = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString();
-    setUser(prev => ({
-      ...prev,
-      isVip: true,
-      vipExpiresAt: expiresAt,
-    }));
+  const updateAvatarUrl = (avatarUrl: string) => {
+    setUser((prev) => ({ ...prev, avatarUrl }));
   };
+
+  const subscribeToCreator = async (creatorId: string, idempotencyKey: string) => {
+    return monetizationApi.createMembershipCheckout({ creatorId, idempotencyKey });
+  };
+
+  const createVipCheckout = async () => monetizationApi.createVipCheckout();
 
   const toggleCreatorMode = () => {
+    if (!import.meta.env.DEV) return;
     setUser(prev => ({
       ...prev,
       isCreator: !prev.isCreator,
@@ -141,11 +121,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated,
         isMemberOf,
         subscribeToCreator,
-        subscribeVip,
+        createVipCheckout,
         toggleCreatorMode,
         toggleFavorite,
         refreshSession,
+        updateAvatarUrl,
         logout,
+        acceptCurrentPrivacyPolicy,
       }}
     >
       {children}

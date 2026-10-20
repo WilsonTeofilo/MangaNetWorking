@@ -34,6 +34,8 @@ export function ReaderPage({ work, chapter, onBack, onNavigateChapter }: ReaderP
   const [chapterFinished, setChapterFinished] = useState(false);
   // Páginas reais do capítulo (API ou cache offline PWA) com fallback para as páginas do mock.
   const [pages, setPages] = useState<string[]>(chapter.pages ?? []);
+  const [chapterFormat, setChapterFormat] = useState<'IMAGE_PAGES' | 'PROSE'>(chapter.format ?? 'IMAGE_PAGES');
+  const [proseContent, setProseContent] = useState<string | null>(chapter.format === 'PROSE' ? chapter.content ?? null : null);
   const [earlyAccessLocked, setEarlyAccessLocked] = useState(false);
 
   // Modo de leitura: paginado (PC, página a página) ou vertical (webtoon, rolagem livre/celular).
@@ -88,6 +90,8 @@ export function ReaderPage({ work, chapter, onBack, onNavigateChapter }: ReaderP
   useEffect(() => {
     let active = true;
     setEarlyAccessLocked(false);
+    setChapterFormat(chapter.format ?? 'IMAGE_PAGES');
+    setProseContent(chapter.format === 'PROSE' ? chapter.content ?? null : null);
     setCurrentPage(1);
     setChapterFinished(false);
     setCumulativePages(0);
@@ -109,6 +113,14 @@ export function ReaderPage({ work, chapter, onBack, onNavigateChapter }: ReaderP
       .readChapter(work.slug, chapter.number)
       .then((resp) => {
         if (!active) return;
+        if (resp.format === 'PROSE') {
+          setChapterFormat('PROSE');
+          setProseContent(resp.content ?? '');
+          setPages([]);
+          return;
+        }
+        setChapterFormat('IMAGE_PAGES');
+        setProseContent(null);
         const realPages = parsePagesJson(resp.pagesJson);
         if (realPages.length > 0) {
           setPages(realPages);
@@ -128,7 +140,7 @@ export function ReaderPage({ work, chapter, onBack, onNavigateChapter }: ReaderP
     return () => {
       active = false;
     };
-  }, [work.slug, chapter.number, chapter.pages]);
+  }, [work.slug, chapter.number, chapter.pages, chapter.format, chapter.content]);
 
   // Ao trocar de capítulo, volta ao topo — essencial no modo de rolagem contínua.
   useEffect(() => {
@@ -346,7 +358,7 @@ export function ReaderPage({ work, chapter, onBack, onNavigateChapter }: ReaderP
           </div>
 
           <span className="hidden sm:inline font-pixel text-[12px] text-[#A9A59A] tabular-nums">
-            PÁG. {currentPage} / {totalPages}
+            {chapterFormat === 'PROSE' ? 'LEITURA EM PROSA' : `PÁG. ${currentPage} / ${totalPages}`}
           </span>
 
           <Button
@@ -394,11 +406,15 @@ export function ReaderPage({ work, chapter, onBack, onNavigateChapter }: ReaderP
               VOLTAR À OBRA
             </Button>
           </div>
+        ) : chapterFormat === 'PROSE' ? (
+          <article lang="pt-BR" aria-label={`Texto do capítulo ${chapter.number}`} className="w-full max-w-[720px] px-5 py-8 sm:px-10 sm:py-12 text-left font-body text-lg leading-[1.9] text-[var(--mn-paper)] whitespace-pre-wrap select-text">
+            {proseContent ?? 'Carregando capítulo…'}
+          </article>
         ) : readingMode === 'vertical' ? (
           /* Rolagem contínua: todas as páginas empilhadas, sem cliques */
           <>
             <div className="w-full space-y-1">
-              {(pages.length > 0 ? pages : [work.coverUrl]).map((pageUrl, idx) => (
+              {pages.map((pageUrl, idx) => (
                 <div
                   key={idx}
                   data-page={idx + 1}
@@ -416,6 +432,7 @@ export function ReaderPage({ work, chapter, onBack, onNavigateChapter }: ReaderP
                 </div>
               ))}
             </div>
+            {pages.length === 0 && <p role="status" className="p-8 text-[var(--mn-mute)]">Este capítulo ainda não tem páginas disponíveis.</p>}
 
             {/* Sentinela de fim: dispara o anúncio de encerramento ao entrar na tela */}
             <div ref={sentinelRef} aria-hidden="true" className="w-full h-12" />
@@ -439,7 +456,7 @@ export function ReaderPage({ work, chapter, onBack, onNavigateChapter }: ReaderP
           <>
             <div className="relative w-full overflow-hidden bg-[#000000] flex justify-center">
               <img
-                src={pages[currentPage - 1] || pages[0] || work.coverUrl}
+                src={pages[currentPage - 1] || pages[0] || ''}
                 alt={`Página ${currentPage} de ${work.title}`}
                 className="w-full h-auto object-contain select-none max-h-[85vh]"
               />

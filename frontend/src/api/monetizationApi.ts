@@ -18,22 +18,25 @@ export interface DonateRequest {
  */
 export interface MembershipSubscribeRequest {
   creatorId: string;
-  paymentExternalId?: string;
+  idempotencyKey: string;
 }
+
+export interface SupportCheckoutResponse { checkoutUrl: string; amountBrl: number; }
 
 /**
  * Assinatura VIP da plataforma (~R$ 23,00 / 30 dias). O usuário vem da sessão.
  */
-export interface VipSubscribeRequest {
-  paymentExternalId?: string;
+export interface VipCheckoutResponse {
+  checkoutUrl: string;
+  priceBrl: number;
 }
 
 export const monetizationApi = {
   /**
    * Envia doação avulsa para o criador (83% criador / 17% plataforma).
    */
-  donate(payload: DonateRequest) {
-    return request('/monetization/donate', {
+  createDonationCheckout(payload: DonateRequest & { idempotencyKey: string }) {
+    return request<SupportCheckoutResponse>('/monetization/donations/checkout', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
@@ -43,21 +46,17 @@ export const monetizationApi = {
    * Assina o Clube de Membros de um criador específico (83% criador / 17% plataforma).
    * Desbloqueia capítulos em Early Access daquele criador.
    */
-  subscribeMembership(payload: MembershipSubscribeRequest) {
-    return request('/monetization/membership/subscribe', {
+  createMembershipCheckout(payload: MembershipSubscribeRequest) {
+    return request<SupportCheckoutResponse>('/monetization/membership/checkout', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
   },
 
-  /**
-   * Assina o VIP da Plataforma (~R$ 23,00 / 30 dias).
-   * 100% sem anúncios e selo VIP cosmético. Não dá acesso a capítulos de membros.
-   */
-  subscribeVip(payload: VipSubscribeRequest = {}) {
-    return request('/monetization/vip/subscribe', {
+  /** Cria checkout no backend; valor, identidade e referência são definidos no servidor. */
+  createVipCheckout() {
+    return request<VipCheckoutResponse>('/monetization/mercadopago/vip/checkout', {
       method: 'POST',
-      body: JSON.stringify(payload),
     });
   },
 

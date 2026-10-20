@@ -85,12 +85,10 @@ export function WorkDetailPage({
       .then((dto) => {
         if (!active) return;
         setApiAuthor(dto.author ?? null);
-        if (Array.isArray(dto.chapters) && dto.chapters.length > 0) {
-          setRealChapters(dto.chapters.map((c) => mapChapterSummary(c, dto.id)));
-        }
+        setRealChapters((dto.chapters ?? []).map((c) => mapChapterSummary(c, dto.id)));
       })
       .catch(() => {
-        // Mantém capítulos/autor mock se a API falhar (obra não persistida no banco).
+        setRealChapters(import.meta.env.DEV ? null : []);
       });
 
     return () => {
@@ -99,34 +97,38 @@ export function WorkDetailPage({
   }, [work.slug]);
 
   const isFavorited = user.favorites.includes(work.id);
-  const mockCreator = MOCK_CREATORS[work.authorId] || Object.values(MOCK_CREATORS)[0];
-  // Prefere o autor real da API (evita atribuir doações a um criador mock).
-  const creator: Creator = apiAuthor
+  const mockCreator = import.meta.env.DEV
+    ? MOCK_CREATORS[work.authorId] || Object.values(MOCK_CREATORS)[0]
+    : undefined;
+  const creator: Creator | undefined = apiAuthor
     ? {
-        ...mockCreator,
         id: apiAuthor.authorId,
         name: apiAuthor.authorName,
         handle: apiAuthor.authorHandle.replace(/^@/, ''),
-        avatarUrl: apiAuthor.authorAvatarUrl || mockCreator.avatarUrl,
-        membershipPriceBrl: apiAuthor.membershipPriceBrl ?? mockCreator.membershipPriceBrl,
+        avatarUrl: apiAuthor.authorAvatarUrl ?? '',
+        bio: '', pixKey: '', pixKeyType: 'aleatoria', documentCpf: '',
+        membershipPriceBrl: Number(apiAuthor.membershipPriceBrl),
+        monthlyMembersCount: 0, totalDonationsBrl: 0, walletBalanceBrl: 0,
+        pendingPayoutsBrl: 0, worksCount: 0, verified: false,
+        engagementBoostMul: 1, missions: [],
       }
     : mockCreator;
 
   // Capítulos desta obra: reais (API) quando houver, senão mock.
   const chapters = useMemo(() => {
     const source =
-      realChapters && realChapters.length > 0
+      realChapters !== null
         ? realChapters
-        : (() => {
+        : import.meta.env.DEV ? (() => {
             const list = MOCK_CHAPTERS.filter((c) => c.workId === work.id);
             return list.length > 0 ? list : MOCK_CHAPTERS.slice(0, 3);
-          })();
+          })() : [];
     const sorted = [...source];
     sorted.sort((a, b) => (sortOrder === 'asc' ? a.number - b.number : b.number - a.number));
     return sorted;
   }, [work.id, sortOrder, realChapters]);
 
-  const firstChapter = chapters[0] || MOCK_CHAPTERS[0];
+  const firstChapter = chapters[0];
 
   const handleChapterClick = (chapter: Chapter) => {
     const isLocked = isChapterEarlyAccess(chapter) && !isMemberOf(work.authorId);
@@ -309,14 +311,14 @@ export function WorkDetailPage({
                         {chap.title}
                       </h4>
                       <p className="font-body text-xs text-[#A9A59A] tabular-nums">
-                        Publicado em {chap.createdAt || 'abr. 2026'} · {chap.pages?.length || 24} págs
+                        {chap.format === 'PROSE' ? 'Light novel · prosa' : 'Mangá · páginas ilustradas'}
                       </p>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-3">
                     {/* Botão de Download / Indicador Offline VIP */}
-                    <button
+                    {chap.format !== 'PROSE' && <button
                       type="button"
                       onClick={(e) => handleDownloadOffline(e, chap)}
                       title={
@@ -345,7 +347,7 @@ export function WorkDetailPage({
                           <span className="hidden sm:inline">BAIXAR</span>
                         </>
                       )}
-                    </button>
+                    </button>}
 
                     {isLocked ? (
                       <Sticker kind="members" />
@@ -402,14 +404,14 @@ export function WorkDetailPage({
               </p>
 
               <div className="pt-2 border-t border-[#34343A] flex flex-col gap-2.5">
-                <button
+                {creator.membershipPriceBrl > 0 && <button
                   type="button"
                   onClick={() => openMembership(creator)}
                   className="w-full py-2.5 bg-[#FFD400] text-[#0B0B0C] border-2 border-[#0B0B0C] font-display text-sm sm:text-base tracking-wider uppercase shadow-[3px_3px_0_#0B0B0C] hover:bg-[#E0B800] transition-colors flex items-center justify-center gap-1.5"
                 >
                   <Sparkles size={16} />
                   <span>VIRAR MEMBRO (R$ {creator.membershipPriceBrl.toFixed(2)}/mês)</span>
-                </button>
+                </button>}
 
                 <Button
                   variant="secondary"

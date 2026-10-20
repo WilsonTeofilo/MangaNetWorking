@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Sparkles, Check, CheckCircle2, ShieldAlert, Smartphone } from 'lucide-react';
+import { ApiError } from '../../api/client';
+import { Sparkles, Check, ShieldAlert, Smartphone } from 'lucide-react';
 import { Modal } from '../common/Modal';
 import { Button } from '../ui/Button';
 import { useModals } from '../../context/ModalContext';
@@ -7,20 +8,24 @@ import { useAuth } from '../../context/AuthContext';
 
 export function VipModal() {
   const { vipData, closeVip } = useModals();
-  const { user, subscribeVip } = useAuth();
-  const [isSuccess, setIsSuccess] = useState(false);
+  const { user, createVipCheckout } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const [priceBrl, setPriceBrl] = useState<number | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSubscribe = async () => {
     setIsLoading(true);
+    setErrorMessage(null);
     try {
-      await subscribeVip();
-      setIsSuccess(true);
-      setTimeout(() => {
-        setIsSuccess(false);
-        closeVip();
-      }, 2500);
-    } finally {
+      const checkoutResponse = await createVipCheckout();
+      setPriceBrl(checkoutResponse.priceBrl);
+      const checkout = new URL(checkoutResponse.checkoutUrl);
+      if (checkout.protocol !== 'https:' || !/(^|\.)mercadopago\.com(\.br)?$/i.test(checkout.hostname)) {
+        throw new Error('O servidor retornou um endereço de checkout inválido.');
+      }
+      window.location.assign(checkout.href);
+    } catch (error) {
+      setErrorMessage(error instanceof ApiError ? error.message : 'Não foi possível iniciar o checkout. Tente novamente.');
       setIsLoading(false);
     }
   };
@@ -32,18 +37,7 @@ export function VipModal() {
       title="ASSINATURA_VIP.EXE"
       subtitle="Experiência MangaNetWorking Pura & Sem Anúncios"
     >
-      {isSuccess ? (
-        <div className="text-center py-6 space-y-3">
-          <CheckCircle2 className="w-14 h-14 text-[#3DDC84] mx-auto animate-bounce" />
-          <h4 className="font-display text-2xl uppercase text-[#FFD400]">
-            VOCÊ AGORA É VIP DA PLATAFORMA!
-          </h4>
-          <p className="font-body text-xs text-[#A9A59A]">
-            Todos os anúncios foram removidos da sua leitura. Seu selo VIP já está ativo no seu perfil.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-5">
+      <div className="space-y-5">
           {/* Preço e Destaque Oficial */}
           <div className="bg-[#0B0B0C] border-2 border-[#FFD400] p-4 text-center shadow-[4px_4px_0_#FFD400]">
             <span className="font-pixel text-[12px] uppercase tracking-widest text-[#FFD400] block mb-1">
@@ -52,7 +46,7 @@ export function VipModal() {
             <div className="flex items-baseline justify-center gap-1">
               <span className="font-body text-sm font-bold text-[#A9A59A]">R$</span>
               <span className="font-display text-4xl font-bold text-[#F4EFE3] tabular-nums">
-                23,00
+                {priceBrl === null ? '—' : new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(priceBrl)}
               </span>
               <span className="font-pixel text-[12px] text-[#A9A59A]">/ 30 DIAS</span>
             </div>
@@ -102,11 +96,11 @@ export function VipModal() {
               className="w-full !py-3 !text-base flex items-center justify-center gap-2"
             >
               <Sparkles size={16} />
-              <span>{user.isVip ? 'VOCÊ JÁ É ASSINANTE VIP' : 'ATIVAR VIP AGORA — R$ 23,00'}</span>
+              <span>{isLoading ? 'CONECTANDO AO MERCADO PAGO…' : user.isVip ? 'VOCÊ JÁ É ASSINANTE VIP' : `ASSINAR VIA CHECKOUT PRO${priceBrl === null ? '' : ` — ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(priceBrl)}`}`}</span>
             </Button>
+            {errorMessage && <p role="alert" className="mt-3 text-sm text-[var(--mn-red)]">{errorMessage}</p>}
           </div>
-        </div>
-      )}
+      </div>
     </Modal>
   );
 }

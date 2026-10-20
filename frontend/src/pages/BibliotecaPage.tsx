@@ -23,8 +23,8 @@ export function BibliotecaPage({
   const favoriteCards = useMemo(() => {
     return user.favorites
       .map((workId) => {
-        const obra = MOCK_WORKS.find((w) => w.id === workId) || null;
-        const workChapters = MOCK_CHAPTERS.filter((c) => c.workId === workId).sort(
+        const obra = import.meta.env.DEV ? MOCK_WORKS.find((w) => w.id === workId) || null : null;
+        const workChapters = (import.meta.env.DEV ? MOCK_CHAPTERS : []).filter((c) => c.workId === workId).sort(
           (a, b) => b.number - a.number
         );
         const ultimoCap = workChapters[0] || null;

@@ -25,6 +25,7 @@ export interface CreatorMissionDto {
 export interface CreatorWorkspaceDto {
   id: string;
   name: string;
+  avatarUrl?: string | null;
   handle: string;
   monetizationLevel: number;
   monetizationUnlocked: boolean;
