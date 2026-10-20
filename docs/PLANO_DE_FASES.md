@@ -90,14 +90,14 @@ Este é o plano vigente do produto. Os critérios concluídos refletem implement
 
 ### 4.0 O que já dá para fazer localmente (verificado em 20/10/2026)
 
-Fluxo exercitado de ponta a ponta na stack local (backend 8085, frontend 5180, Postgres, Mongo, Redis, Mailpit):
+Fluxo exercitado de ponta a ponta na stack local (backend 8085, frontend 5180, Postgres, Mongo, Redis, Mailpit e SMTP real do `.env`):
 
 | Ação | Situação | Como foi verificado |
 |---|---|---|
-| Criar conta de **leitor** (cadastro + 2FA por e-mail + sessão) | ✅ funciona | `POST /api/auth/register` → OTP no Mailpit → `2fa/verify` → cookie HttpOnly; `/api/auth/me` devolve a sessão |
+| Criar conta de **leitor** (cadastro + 2FA por e-mail + sessão) | ✅ funciona | `POST /api/auth/register` → OTP **entregue no e-mail real** (SMTP do `.env`) → `2fa/verify` → cookie HttpOnly; `/api/auth/me` devolve a sessão |
 | Criar conta de **criador** (handle próprio) | ✅ funciona | mesmo fluxo com `isCreator=true`; `creatorId`/`creatorHandle` no `/me` |
 | Entrar, sair e revogar sessão | ✅ funciona | logout devolve `401` imediato na sessão revogada |
-| Recuperar senha por e-mail | ✅ funciona (Mailpit) | pedido → link → nova senha → 2FA → `/me`; TTL, uso único e concorrência cobertos |
+| Recuperar senha por e-mail | ✅ funciona | pedido → link → nova senha → 2FA → `/me`; TTL, uso único e concorrência cobertos; link entregue no e-mail real |
 | **Upar imagem** (capa, página, avatar) | ✅ funciona | `POST /api/storage/upload` com validação de magic bytes e limite de tamanho/dimensões |
 | **Criar obra** (com autoria original declarada) | ✅ funciona | `POST /api/works` → `id` + `slug`; feed e catálogo listam a obra |
 | **Publicar capítulo** com páginas vinculadas | ✅ funciona | `POST /api/works/{id}/chapters` → capítulo 1 com páginas; leitura pública liberada |
@@ -110,21 +110,27 @@ Fluxo exercitado de ponta a ponta na stack local (backend 8085, frontend 5180, P
 | Comentários na obra | ❌ não existe | o modelo tem `comments_count`, mas não há API de comentário |
 | Doação, membresia e VIP | ❌ bloqueado | checkout Mercado Pago exige credenciais Sandbox/webhook público; a rota legada devolve `410` (nenhum crédito fictício) |
 | Login social (Google) | ❌ bloqueado | exige ID token real e domínio/DNS (#44) |
-| E-mail para destinatário real | ❌ bloqueado | só Mailpit local; falta domínio autenticado e provedor (#46) |
+| E-mail para destinatário real | ⚠️ parcial | **entrega real comprovada em desenvolvimento** (SMTP do `.env`: OTP e link de recuperação com `outcome=sent` no e-mail do titular). Para produção falta **domínio autenticado com SPF/DKIM/DMARC** e provedor institucional (#46) — conta pessoal não serve como remetente de produção |
 
 > Observação operacional: o cadastro tem limite de 3 OTPs por IP a cada 10 minutos e cooldown de 60 s.
-> Em testes seguidos, o `429` é do limitador de emissão de OTP, não um defeito.
+> Em testes seguidos, o `429` é o limitador de emissão de OTP, não um defeito.
 >
-> Evidência desta rodada: CI remoto verde no commit `a9136d6` (run `39485302906`) com os quatro
-> jobs — backend (322 testes), frontend, validação do Compose de produção e smoke 12/12.
+> E-mail sempre no mesmo endereço: o servidor canonicaliza (trim + minúsculas) o e-mail em cadastro, login,
+> 2FA, recuperação e webhook de bounce; endereço com espaço nas pontas ou em maiúsculas é aceito e gravado
+> canônico, e endereço inválido volta **400** com mensagem clara.
+>
+> Evidência desta rodada: CI remoto verde no commit `345c7a7` (run `39500739630`) com os quatro
+> jobs — backend (**335 testes**), frontend, validação do Compose de produção e smoke 12/12.
 
 ### 4.1 O que ainda não dá (ordem de bloqueio)
 
 1. **Produto incompleto:** edição/exclusão de obra e capítulo, comentários, dashboard do DONO e o
    motor completo de analytics/Seasons (F17).
 2. **Paginação real:** checkout do Mercado Pago (Sandbox, webhook público e chaves de produção).
-3. **Identidade e e-mail reais:** ID token Google, domínio com SPF/DKIM/DMARC, provedor de e-mail e
-   monitoramento de bounce hooked no provedor (o mecanismo já existe no servidor).
+3. **Identidade e e-mail de produção:** ID token Google e **domínio com SPF/DKIM/DMARC + provedor
+   institucional** — a entrega real já funciona em desenvolvimento (SMTP do `.env`, comprovada), mas conta
+   pessoal não serve como remetente de produção; o monitoramento de bounce já existe no servidor e
+   depende de o provedor enviar o webhook.
 4. **Governança:** texto oficial da Política de Privacidade, nomeação e publicação do encarregado,
    prazos de retenção aprovados, destino off-site real e KMS da chave de backup.
 5. **Infra de produção:** conta Oracle, shape Ampere A1, chave SSH, DNS/TLS e o deploy em si —
@@ -153,7 +159,7 @@ Fluxo exercitado de ponta a ponta na stack local (backend 8085, frontend 5180, P
   Antes o `@Email` do framework recusava `" pessoa@dominio.com "` antes de qualquer tratamento.
 - [x] **SMTP real no ambiente local (20/10/2026):** o Compose local passa a repassar `MAIL_*` do `.env` (o padrão
   continuava sendo Mailpit quando as variáveis não existem). Prova: e-mail de recuperação e **código 2FA** enviados
-  com `outcome=sent` para o endereço real do titular, Mailpit com `0` mensagens no mesmo intervalo. Suíte: **333/0/0**.
+  com `outcome=sent` para o endereço real do titular, Mailpit com `0` mensagens no mesmo intervalo. Suíte: **335/0/0**.
 - [x] **Cadastro que ficou pela metade retoma (20/10/2026):** conta existente e ainda **não confirmada** volta a
   receber o código de 2FA pelo SMTP configurado (antes a rota respondia sem enviar nada e a pessoa ficava travada).
   Conta já confirmada não recebe e-mail no cadastro — esse caso é login.
@@ -196,7 +202,7 @@ Fluxo exercitado de ponta a ponta na stack local (backend 8085, frontend 5180, P
 ### F7 — QA, E2E e CI · ✅ concluída
 **Objetivo:** comprovar fluxos em stack real e automatizar validação em pull request.
 
-- [x] Suíte backend em 20/10/2026: 322 testes, 0 falhas/erros, com Docker disponível (concorrência e rotação em Testcontainers); build frontend verde e smoke E2E 12/12 local; workflow de CI configurado para pull requests.
+- [x] Suíte backend em 20/10/2026: **335 testes, 0 falhas/erros**, com Docker disponível (concorrência e rotação em Testcontainers); build frontend verde e smoke E2E 12/12 local; workflow de CI configurado para pull requests. Último run verde na `main`: `39500739630` (commit `345c7a7`) com os quatro jobs.
 - [x] Job `docker-validation` recebeu `MAIL_*` fictícios; Compose de produção validado sem `.env` localmente (`docker compose config --quiet` = 0). O run `39448285071` do PR #5 ficou verde em backend, frontend, Docker e smoke 12/12; a falha anterior de V13 foi corrigida e a senha do smoke foi alinhada à política atual (#43).
 
 ### F8 — Prontidão de produção · 🟡 parcial
@@ -391,9 +397,12 @@ Fluxo exercitado de ponta a ponta na stack local (backend 8085, frontend 5180, P
 | **Passe 22** | 19/10/2026 | **UX e política de força de senha:** olho acessível para revelar/ocultar senha e confirmação; painel inline exibe força fraca/média/forte e critérios; cadastro/reset bloqueiam senhas fracas também no backend. Login preserva credenciais antigas. | Frontend build verde (1648 módulos) e `PasswordPolicyTest` 4/4 verde. A regressão de serviço foi adicionada, mas `AuthApplicationServiceTest` não concluiu por travamento no self-attach do Mockito no Windows; validar em CI antes de encerrar o aceite. |
 | **Passe 23** | 20/10/2026 | **Recuperação de conta e consolidação seletiva:** token aleatório de uso único com hash no banco, TTL configurável e origem HTTPS validada; Dev Outbox local respeita expiração; atualização dos bloqueios reais das fases 13/14. Migrations V6–V13, backend de identidade, interface e documentos foram separados em commits locais, sem push. | `mvn -o test`: **284 testes, 0 falhas, 0 erros, 12 ignorados**; `npm.cmd run build`: **1649 módulos**; Compose local/prod validado (prod com placeholders). V12/V13 reais, DNS, Sandbox e OCI continuam pendentes. |
 
+| **Passe 24** | 20/10/2026 | **Papel de proprietário, governança de dados e prontidão de produção:**<br>- V14 (`users.is_owner`) com `ROLE_OWNER` derivado no servidor; `/api/owner/**` exige o papel; `/auth/me` expõe `isOwner`.<br>- V15 (`privacy_governance_actions`, append-only) e V16 (`email_delivery_events`).<br>- Publicação controlada da Política de Privacidade (`GET /api/legal/privacy-policy` + `ops/legal/publish-privacy-policy.ps1`).<br>- Saneamento controlado de CPF legado (16 registros) e exclusão LGPD limpando privilégios residuais.<br>- Backup cifrado (AES-256-CBC + HMAC) com cópia off-site e retenção; Prometheus + Alertmanager com alerta real; exercício de runbook automatizado; `ops/deploy` para a Oracle.<br>- PR #5 mergeado na `main` (merge commit `35479b7`) e `develop`→`main` (PR #7, `f6350a4`). | **322 testes** verdes; CI remoto verde (run `39490345472`); stack local 6/6 saudável; sem credencial de produção, sem deploy e sem aprovação legal inventada. |
+| **Passe 25** | 20/10/2026 | **E-mail real e canonicalização no servidor:**<br>- `util.EmailNormalizer` (trim + minúsculas + validação RFC 5321) aplicado em cadastro, login, Google OAuth, 2FA, recuperação, OTP, Dev Outbox e webhook de bounce; o `@Email` do framework saiu dos DTOs porque recusava endereço com espaço nas pontas.<br>- Compose local passou a repassar `MAIL_*` do `.env` (antes fixava Mailpit e ignorava o `.env`: todo OTP ia para o Mailpit).<br>- Cadastro com conta pendente (e-mail nunca confirmado) reenvia o OTP; conta já confirmada não recebe e-mail no cadastro (é login). | **335 testes**, 0 falhas/0 erros; entrega real comprovada com `outcome=sent` (OTP de 2FA e link de recuperação no e-mail do titular) e Mailpit com 0 mensagens no mesmo intervalo; Dev Outbox **404** no stack real (atalho de dev desligado); CI remoto verde (run `39500739630`). |
+
 ### Próximos passos (estado atual)
 
-A ordem vigente é mantida em `docs/orquestracao/ROADMAP-FASES.md`. V12/V13, recuperação no Mailpit, concorrência, rotação e backup/restore local já foram executados; restam o passe autenticado/teclado completo (#40), boot `prod` entre réplicas (#41), retenção/cifra/off-site do backup (#42) e um run remoto verde em PR (#43). Bloqueios externos para fases 13/14: domínio/provedor e DNS autenticado; credenciais Sandbox e webhook HTTPS público; acesso Oracle, região/shape disponível e chave SSH aprovada. Nenhuma compra real ou infraestrutura externa foi criada. A suíte backend passou 322/0/0 com Docker; o restore local foi verificado em bancos isolados.
+A ordem vigente é mantida em `docs/orquestracao/ROADMAP-FASES.md`. Concluído com evidência: o passe autenticado/teclado (#40), o run remoto verde (#43), a retenção/cifra/off-site do backup no ambiente local (#42 — falta o destino externo e a aprovação), a governança de dados do proprietário e a entrega de e-mail em caixa real (OTP e recuperação) em desenvolvimento. Restam, marcados como dependências externas sem simulação: boot `prod` entre réplicas (#41), domínio autenticado com SPF/DKIM/DMARC e provedor institucional de e-mail, credenciais Sandbox do Mercado Pago com webhook HTTPS público, ID token Google, texto oficial da Política de Privacidade e nomeação do encarregado, prazos de retenção aprovados, destino off-site e KMS, e acesso Oracle (região/shape/chave SSH). Nenhuma compra real, mudança de DNS ou infraestrutura externa foi criada. A suíte backend passou **335/0/0** com Docker; o restore foi verificado em bancos isolados; o CI remoto está verde na `main` (run `39500739630`).
 
 ---
 
@@ -401,8 +410,9 @@ A ordem vigente é mantida em `docs/orquestracao/ROADMAP-FASES.md`. V12/V13, rec
 
 | Componente | Tecnologia | Porta / Path | Status de Verificação |
 |---|---|---|---|
-| **API Backend** | Spring Boot 3.4.2 / Java 21 | `8085` | 322 testes em 20/10/2026, 0 falhas/erros/ignorados com Docker; Sandbox pendente |
+| **API Backend** | Spring Boot 3.4.2 / Java 21 | `8085` | **335 testes** em 20/10/2026, 0 falhas/erros/ignorados com Docker; Sandbox pendente |
 | **Banco Relacional** | PostgreSQL 16 (Docker) | `25432` | V1–V16 aplicadas em stack local real; V13 com `token_hash VARCHAR(64)`, V14 com `is_owner` e `validate` verde |
 | **Banco NoSQL** | MongoDB 7 (Docker) | `27017` | Eventos de feed e telemetria validados ao vivo |
 | **Storage de Imagens** | Filesystem Local Sanitizado | `./data/uploads/` | Magic bytes e guard por `chapter_files` validados |
 | **Frontend Web** | React 19 / TypeScript / Vite | `5180` | Build limpo em 20/10/2026 (1649 módulos) |
+| **E-mail (SMTP)** | `SmtpMfaNotificationSender` | — | Entrega real de OTP e de link de recuperação comprovada em 20/10/2026 (`outcome=sent`); produção exige domínio autenticado com SPF/DKIM/DMARC |
