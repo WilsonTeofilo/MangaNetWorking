@@ -30,6 +30,7 @@ public class WorkFeedDocument {
 
     private List<String> genres;
     private String status;
+    private String format = "MANGA";
 
     private Long totalViews = 0L;
     private Long totalLikes = 0L;
@@ -98,6 +99,9 @@ public class WorkFeedDocument {
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
+    public String getFormat() { return format; }
+    public void setFormat(String format) { this.format = format; }
 
     public Long getTotalViews() { return totalViews; }
     public void setTotalViews(Long totalViews) { this.totalViews = totalViews; }

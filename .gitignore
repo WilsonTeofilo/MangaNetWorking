@@ -20,6 +20,8 @@ backend/target/
 .env
 .env.*
 *.env
+# Exceção: template versionável (nunca contém segredos reais)
+!.env.example
 *.pem
 *.key
 *.cert

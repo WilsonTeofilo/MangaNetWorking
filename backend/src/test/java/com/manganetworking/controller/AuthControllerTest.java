@@ -15,6 +15,8 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -34,7 +36,13 @@ class AuthControllerTest {
     private AuthApplicationService authApplicationService;
 
     @MockBean
+    private com.manganetworking.service.auth.PasswordResetApplicationService passwordResetApplicationService;
+
+    @MockBean
     private com.manganetworking.service.session.SessionService sessionService;
+
+    @MockBean
+    private com.manganetworking.repository.jpa.UserRepository userRepository;
 
     @Test
     void shouldRegisterSuccessfullyAndReturn2FaRequired() throws Exception {
@@ -45,10 +53,13 @@ class AuthControllerTest {
                 false,
                 null,
                 null,
-                true
+                true,
+                true,
+                "2026-10-v1",
+                java.time.LocalDate.of(1990, 1, 1)
         );
 
-        when(authApplicationService.register(any())).thenReturn(Map.of(
+        when(authApplicationService.register(any(), any())).thenReturn(Map.of(
                 "status", "2FA_REQUIRED",
                 "message", "Cadastro criado. Digite o código de 6 dígitos enviado para seu e-mail.",
                 "email", "leitor@valido.com"
@@ -77,6 +88,47 @@ class AuthControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalidPayload))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldRejectUnknownSecurityFieldsDuringRegistration() throws Exception {
+        String payload = """
+                {
+                    "name": "Leitor",
+                    "email": "leitor@valido.com",
+                    "password": "senhaForte99!",
+                    "twoFactorEnabled": false,
+                    "role": "MODERATOR"
+                }
+                """;
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isBadRequest());
+
+        verify(authApplicationService, never()).register(any(), any());
+    }
+
+    @Test
+    void passwordResetRequestReturnsGenericAcceptedResponse() throws Exception {
+        when(passwordResetApplicationService.request(any(), any())).thenReturn(Map.of(
+                "status", "REQUEST_ACCEPTED", "message", "Se o e-mail estiver cadastrado, enviaremos instruções para recuperar a senha."));
+        mockMvc.perform(post("/api/auth/password-reset/request")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"reader@example.com\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("REQUEST_ACCEPTED"))
+                .andExpect(jsonPath("$.token").doesNotExist());
+    }
+
+    @Test
+    void passwordResetConfirmAcceptsOnlyLinkTokenAndPassword() throws Exception {
+        mockMvc.perform(post("/api/auth/password-reset/confirm")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"opaque-token\",\"newPassword\":\"A long safe phrase 2026!\"}"))
+                .andExpect(status().isNoContent());
+        verify(passwordResetApplicationService).confirm(any());
     }
 
     @Test

@@ -1,1 +1,10 @@
-/* /index.html 200
+# Cloudflare Pages — Roteamento SPA
+#
+# NÃO declare "/* /index.html 200" aqui.
+# O validador da Cloudflare rejeita essa regra com "Infinite loop detected" e a ignora no
+# deploy: a Pages faz strip de ".html"/"/index" antes de reavaliar as regras, então a regra
+# parece um laço infinito (falso positivo conhecido — cloudflare/workers-sdk#11824).
+#
+# E ela é desnecessária: sem um "404.html" na raiz do build, a Pages já assume SPA e serve
+# o index.html para qualquer rota que não corresponda a um asset estático.
+# Ref: https://developers.cloudflare.com/pages/configuration/serving-pages/#single-page-application-spa-rendering

@@ -6,6 +6,7 @@ import com.manganetworking.config.exception.AccessDeniedException;
 import com.manganetworking.config.exception.ResourceNotFoundException;
 import com.manganetworking.config.security.SecurityContextUtils;
 import com.manganetworking.domain.relational.ChapterEntity;
+import com.manganetworking.domain.enums.ChapterFormat;
 import com.manganetworking.domain.relational.ChapterFileEntity;
 import com.manganetworking.domain.relational.CreatorEntity;
 import com.manganetworking.domain.relational.WorkEntity;
@@ -33,8 +34,11 @@ import java.util.UUID;
 @Service
 public class WorkApplicationService {
 
+    private static final int MAX_CHAPTER_PAGES = 300;
+
     /** Status de obra suspensa cautelarmente pela moderação. */
     private static final String STATUS_SUSPENDED = "suspended";
+    private static final String STATUS_ARCHIVED_LGPD = "archived_lgpd";
 
     private final WorkRepository workRepository;
     private final ChapterRepository chapterRepository;
@@ -72,7 +76,10 @@ public class WorkApplicationService {
         List<ChapterEntity> chapters = chapterRepository.findAllByWorkIdOrderByChapterNumberDesc(work.getId());
         CreatorEntity author = work.getAuthor();
 
+        LocalDateTime now = LocalDateTime.now();
         List<ChapterSummaryDto> chaptersDto = chapters.stream()
+                .filter(chapter -> chapter.getPublicReleaseAt() != null
+                        && !chapter.getPublicReleaseAt().isAfter(now))
                 .map(cap -> new ChapterSummaryDto(
                         cap.getId(),
                         cap.getChapterNumber(),
@@ -81,7 +88,8 @@ public class WorkApplicationService {
                         cap.getPublicReleaseAt(),
                         cap.isEarlyAccessForMembers(),
                         cap.getViews(),
-                        cap.getLikes()
+                        cap.getLikes(),
+                        cap.getFormat()
                 ))
                 .toList();
 
@@ -106,6 +114,7 @@ public class WorkApplicationService {
                 work.getCoverUrl(),
                 work.getBannerUrl(),
                 work.getStatus(),
+                work.getFormat(),
                 work.getGenres(),
                 work.getTotalChapters(),
                 work.getTotalViews(),
@@ -159,7 +168,9 @@ public class WorkApplicationService {
                 chapter.getPagesJson(),
                 chapter.getLikes(),
                 author != null ? "@" + author.getHandle() : "",
-                author != null ? author.getId() : null
+                author != null ? author.getId() : null,
+                chapter.getFormat(),
+                chapter.getContentText()
         );
     }
 
@@ -201,6 +212,7 @@ public class WorkApplicationService {
         work.setCoverUrl(dto.coverUrl().trim());
         work.setBannerUrl(dto.bannerUrl() != null ? dto.bannerUrl().trim() : null);
         work.setGenres(dto.genres());
+        work.setFormat(dto.format());
         work.setStatus("ongoing");
 
         WorkEntity saved = workRepository.save(work);
@@ -213,6 +225,22 @@ public class WorkApplicationService {
      */
     @Transactional
     public ChapterEntity createChapter(UUID creatorId, UUID workId, CreateChapterRequestDto dto) {
+        ChapterFormat format = dto.format();
+        List<String> pages = dto.pages() == null ? List.of() : dto.pages();
+        String content = dto.content() == null ? null : com.manganetworking.util.SanitizationUtils.stripAllHtml(dto.content()).trim();
+        if (format == ChapterFormat.IMAGE_PAGES && (pages.isEmpty() || content != null && !content.isBlank())) {
+            throw new IllegalArgumentException("Capítulos de mangá precisam conter páginas e não aceitam texto de prosa.");
+        }
+        if (format == ChapterFormat.PROSE && (content == null || content.isBlank() || !pages.isEmpty())) {
+            throw new IllegalArgumentException("Capítulos em prosa precisam de texto e não aceitam páginas de imagem.");
+        }
+        if (format == ChapterFormat.PROSE && content.length() > 2_000_000) {
+            throw new IllegalArgumentException("O texto do capítulo excede o limite de 2 MB.");
+        }
+        if (format == ChapterFormat.IMAGE_PAGES && pages.size() > MAX_CHAPTER_PAGES) {
+            throw new IllegalArgumentException("O capítulo excede o limite de " + MAX_CHAPTER_PAGES + " páginas.");
+        }
+
         WorkEntity work = workRepository.findById(workId)
                 .orElseThrow(() -> new ResourceNotFoundException("Obra não encontrada: " + workId));
 
@@ -220,15 +248,24 @@ public class WorkApplicationService {
             throw new AccessDeniedException("Apenas o autor proprietário pode publicar capítulos nesta obra.");
         }
 
+        boolean formatMatchesWork = work.getFormat() == com.manganetworking.domain.enums.WorkFormat.MANGA
+                ? format == ChapterFormat.IMAGE_PAGES
+                : format == ChapterFormat.PROSE;
+        if (!formatMatchesWork) {
+            throw new IllegalArgumentException("O formato do capítulo deve corresponder ao formato da obra.");
+        }
+
         if (chapterRepository.findByWorkIdAndChapterNumber(workId, dto.chapterNumber()).isPresent()) {
             throw new IllegalArgumentException("Capítulo #" + dto.chapterNumber() + " já está cadastrado nesta obra.");
         }
 
-        String pagesJson;
-        try {
-            pagesJson = objectMapper.writeValueAsString(dto.pages());
-        } catch (JsonProcessingException e) {
-            throw new IllegalArgumentException("Erro ao serializar páginas do capítulo: " + e.getMessage());
+        String pagesJson = null;
+        if (format == ChapterFormat.IMAGE_PAGES) {
+            try {
+                pagesJson = objectMapper.writeValueAsString(pages);
+            } catch (JsonProcessingException e) {
+                throw new IllegalArgumentException("Erro ao serializar páginas do capítulo: " + e.getMessage());
+            }
         }
 
         String safeTitle = com.manganetworking.util.SanitizationUtils.stripAllHtml(dto.title().trim());
@@ -239,10 +276,12 @@ public class WorkApplicationService {
         chapter.setTitle(safeTitle);
         chapter.setCoverUrl(dto.coverUrl() != null ? dto.coverUrl().trim() : null);
         chapter.setPagesJson(pagesJson);
+        chapter.setFormat(format);
+        chapter.setContentText(format == ChapterFormat.PROSE ? content : null);
         chapter.setPublicReleaseAt(dto.publicReleaseAt());
 
         ChapterEntity saved = chapterRepository.save(chapter);
-        registerChapterFiles(saved.getId(), dto.pages());
+        if (format == ChapterFormat.IMAGE_PAGES) registerChapterFiles(saved.getId(), pages);
 
         // Atualiza contadores na obra
         work.setTotalChapters(work.getTotalChapters() + 1);
@@ -290,6 +329,9 @@ public class WorkApplicationService {
      * páginas) mesmo depois da suspensão, embora o feed e as imagens já estivessem bloqueados.
      */
     private void assertWorkVisible(WorkEntity work) {
+        if (work != null && STATUS_ARCHIVED_LGPD.equalsIgnoreCase(work.getStatus())) {
+            throw new ResourceNotFoundException("Obra não encontrada.");
+        }
         if (work == null || work.getStatus() == null || !STATUS_SUSPENDED.equalsIgnoreCase(work.getStatus())) {
             return;
         }

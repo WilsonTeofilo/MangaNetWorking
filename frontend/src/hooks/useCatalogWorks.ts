@@ -5,23 +5,22 @@ import { workApi } from '../api/workApi';
 import { mapFeedToWork } from '../utils/apiMappers';
 
 /**
- * Carrega o catálogo a partir do feed real (`GET /api/feed`) com fallback para os mocks.
- * Garante que a demo nunca fique vazia caso a API esteja indisponível ou sem obras.
+ * Carrega o catálogo do feed; fixtures só são usadas em desenvolvimento.
  */
 export function useCatalogWorks(): Work[] {
-  const [works, setWorks] = useState<Work[]>(MOCK_WORKS);
+  const [works, setWorks] = useState<Work[]>(import.meta.env.DEV ? MOCK_WORKS : []);
 
   useEffect(() => {
     let active = true;
     workApi
       .getFeed('recommended', undefined, 50)
       .then((list) => {
-        if (active && Array.isArray(list) && list.length > 0) {
-          setWorks(list.map(mapFeedToWork));
-        }
+        if (!active) return;
+        const mapped = Array.isArray(list) ? list.map(mapFeedToWork) : [];
+        setWorks(mapped.length ? mapped : (import.meta.env.DEV ? MOCK_WORKS : []));
       })
       .catch(() => {
-        // Mantém os mocks se o feed falhar.
+        if (active && !import.meta.env.DEV) setWorks([]);
       });
     return () => {
       active = false;

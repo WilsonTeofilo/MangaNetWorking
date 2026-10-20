@@ -167,6 +167,7 @@ public class RecommendationAlgorithmService {
         doc.setCoverUrl(work.getCoverUrl());
         doc.setBannerUrl(work.getBannerUrl());
         doc.setStatus(work.getStatus());
+        doc.setFormat(work.getFormat() != null ? work.getFormat().name() : "MANGA");
         doc.setGenres(work.getGenres().stream().map(Enum::name).toList());
         doc.setTotalChapters(work.getTotalChapters());
         doc.setTotalViews(work.getTotalViews());

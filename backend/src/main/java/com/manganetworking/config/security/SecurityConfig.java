@@ -12,7 +12,6 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -62,7 +61,7 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(12);
+        return new UnicodeAwarePasswordEncoder(12);
     }
 
     @Bean
@@ -120,6 +119,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/creators/**").hasRole("CREATOR")
                         .requestMatchers(HttpMethod.GET, "/api/creators/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/profile/public/**").permitAll()
+                        // O serviço ainda aplica a privacidade do perfil; identidade ausente significa visitante.
+                        .requestMatchers(HttpMethod.GET, "/api/users/*/profile").permitAll()
                         // Envio de denúncia é público; fila e ações são exclusivas de moderadores
                         .requestMatchers(HttpMethod.POST, "/api/reports").permitAll()
                         .requestMatchers("/api/reports/**").hasRole("MODERATOR")

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Globe, Lock, Heart, Shield, Download, Trash2, Crown, Sparkles, CheckCircle2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Globe, Lock, Heart, Shield, Download, Trash2, Crown, Sparkles, CheckCircle2, Upload } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useModals } from '../context/ModalContext';
 import { userApi } from '../api/authApi';
@@ -7,18 +7,76 @@ import { MOCK_WORKS } from '../data/mockData';
 import { Work } from '../types';
 import { WorkCard } from '../components/ui/WorkCard';
 import { Button } from '../components/ui/Button';
+import { storageApi } from '../api/storageApi';
 
 interface ReaderProfilePageProps {
   onSelectWork: (work: Work) => void;
 }
 
 export function ReaderProfilePage({ onSelectWork }: ReaderProfilePageProps) {
-  const { user } = useAuth();
+  const { user, isAuthenticated, updateAvatarUrl } = useAuth();
   const { openVip } = useModals();
-  const [isPublic, setIsPublic] = useState(true);
+  const [isPublic, setIsPublic] = useState<boolean | null>(null);
+  const [isSavingVisibility, setIsSavingVisibility] = useState(false);
+  const [visibilityError, setVisibilityError] = useState<string | null>(null);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !isAuthenticated || isUploadingAvatar) return;
+    setIsUploadingAvatar(true);
+    setAvatarError(null);
+    try {
+      const stored = await storageApi.uploadAvatar(file);
+      await userApi.updateProfile({ avatarUrl: stored.url });
+      updateAvatarUrl(stored.url);
+    } catch {
+      setAvatarError('Não foi possível atualizar o avatar. Use JPEG ou PNG e tente novamente.');
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
+  useEffect(() => {
+    let active = true;
+    if (!isAuthenticated || !user.uid) {
+      setIsPublic(null);
+      return () => { active = false; };
+    }
+
+    userApi.getProfile(user.uid)
+      .then((profile) => {
+        if (active) {
+          setIsPublic(profile.isProfilePublic);
+          if (profile.avatarUrl) updateAvatarUrl(profile.avatarUrl);
+        }
+      })
+      .catch(() => {
+        if (active) setVisibilityError('Não foi possível carregar a visibilidade salva do perfil.');
+      });
+
+    return () => { active = false; };
+  }, [isAuthenticated, user.uid]);
+
+  const toggleProfileVisibility = async () => {
+    if (isPublic === null || isSavingVisibility) return;
+    const nextValue = !isPublic;
+    setIsSavingVisibility(true);
+    setVisibilityError(null);
+    try {
+      await userApi.updateProfile({ isProfilePublic: nextValue });
+      setIsPublic(nextValue);
+    } catch {
+      setVisibilityError('Não foi possível salvar a visibilidade. Tente novamente.');
+    } finally {
+      setIsSavingVisibility(false);
+    }
+  };
 
   // Obras favoritadas pelo leitor
-  const likedWorks = MOCK_WORKS.filter((w: Work) => user.favorites.includes(w.id));
+  const likedWorks = (import.meta.env.DEV ? MOCK_WORKS : []).filter((w: Work) => user.favorites.includes(w.id));
 
   const handleExportData = async () => {
     try {
@@ -31,13 +89,7 @@ export function ReaderProfilePage({ onSelectWork }: ReaderProfilePageProps) {
       downloadAnchor.click();
       downloadAnchor.remove();
     } catch {
-      const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(user, null, 2));
-      const downloadAnchor = document.createElement('a');
-      downloadAnchor.setAttribute('href', dataStr);
-      downloadAnchor.setAttribute('download', `manganetworking-dados-${user.name.toLowerCase().replace(/\s+/g, '-')}.json`);
-      document.body.appendChild(downloadAnchor);
-      downloadAnchor.click();
-      downloadAnchor.remove();
+      alert('Não foi possível exportar seus dados agora. Tente novamente mais tarde.');
     }
   };
 
@@ -50,7 +102,7 @@ export function ReaderProfilePage({ onSelectWork }: ReaderProfilePageProps) {
       alert('Sua conta foi excluída e anonimizada com sucesso, conforme o Art. 18 da LGPD.');
       window.location.reload();
     } catch {
-      alert('Solicitação de exclusão processada localmente. Seus dados foram limpos.');
+      alert('Não foi possível confirmar a exclusão da conta. Nenhum dado foi removido; tente novamente ou entre em contato com o suporte.');
     }
   };
 
@@ -71,6 +123,15 @@ export function ReaderProfilePage({ onSelectWork }: ReaderProfilePageProps) {
               />
             </div>
 
+            <div className="space-y-2">
+              <label className={`inline-flex cursor-pointer items-center gap-2 border border-[#34343A] px-3 py-2 font-pixel text-[10px] text-[#F4EFE3] ${!isAuthenticated || isUploadingAvatar ? 'opacity-50' : ''}`}>
+                <Upload size={12} />
+                {isUploadingAvatar ? 'ENVIANDO…' : 'TROCAR AVATAR'}
+                <input type="file" accept="image/jpeg,image/png" disabled={!isAuthenticated || isUploadingAvatar} onChange={handleAvatarUpload} className="sr-only" />
+              </label>
+              {avatarError && <p role="alert" className="font-body text-xs text-red-400">{avatarError}</p>}
+            </div>
+
             <div className="space-y-0.5">
               <div className="flex items-center gap-2">
                 <span className="font-pixel text-[12px] tracking-widest text-[#FFD400] block uppercase font-bold">
@@ -86,9 +147,6 @@ export function ReaderProfilePage({ onSelectWork }: ReaderProfilePageProps) {
               <h1 className="font-display text-3xl sm:text-4xl text-[#F4EFE3] uppercase">
                 {user.name}
               </h1>
-              <p className="font-body text-xs text-[#A9A59A] font-medium">
-                @wils · Membro desde abr. de 2026
-              </p>
             </div>
           </div>
 
@@ -99,18 +157,27 @@ export function ReaderProfilePage({ onSelectWork }: ReaderProfilePageProps) {
             </span>
             <button
               type="button"
-              onClick={() => setIsPublic(!isPublic)}
+              onClick={() => void toggleProfileVisibility()}
+              disabled={isPublic === null || isSavingVisibility}
+              aria-pressed={isPublic === true}
+              aria-label={isPublic === null
+                ? (visibilityError ? 'Visibilidade do perfil indisponível' : 'Carregando visibilidade do perfil')
+                : `Perfil ${isPublic ? 'público' : 'privado'}`}
               className={`px-3 py-1 font-pixel text-[12px] tracking-wider uppercase border-2 transition-all flex items-center gap-1.5 ${
-                isPublic
+                isPublic === true
                   ? 'bg-[#FFD400] text-[#0B0B0C] border-[#0B0B0C] shadow-[2px_2px_0_#0B0B0C]'
                   : 'bg-[#212125] text-[#F4EFE3] border-[#34343A]'
               }`}
             >
-              {isPublic ? <Globe size={12} /> : <Lock size={12} />}
-              <span>{isPublic ? 'PÚBLICO' : 'PRIVADO'}</span>
+              {isPublic === true ? <Globe size={12} /> : <Lock size={12} />}
+              <span>{isPublic === null
+                ? (visibilityError ? 'INDISPONÍVEL' : 'CARREGANDO…')
+                : isPublic ? 'PÚBLICO' : 'PRIVADO'}</span>
             </button>
           </div>
         </div>
+
+        {visibilityError && <p role="alert" className="font-body text-xs text-red-400">{visibilityError}</p>}
 
         {/* 2. Destaque Monumental: 1 Número de Destaque Oficial */}
         <div className="flex flex-col sm:flex-row sm:items-baseline gap-4 pt-2">
@@ -123,9 +190,6 @@ export function ReaderProfilePage({ onSelectWork }: ReaderProfilePageProps) {
             </span>
           </div>
 
-          <div className="sm:ml-auto font-body text-xs text-[#A9A59A] tabular-nums">
-            0 criadores apoiados · Nível 1 na Season 01
-          </div>
         </div>
 
         {/* Texto de Apoio de Privacidade LGPD */}
@@ -156,8 +220,10 @@ export function ReaderProfilePage({ onSelectWork }: ReaderProfilePageProps) {
               </div>
               <p className="font-body text-xs text-[#A9A59A]">
                 {user.isVip
-                  ? `Válido até ${new Date(user.vipExpiresAt || Date.now() + 30 * 86400000).toLocaleDateString('pt-BR')} · 100% Livre de Anúncios`
-                  : 'R$ 23,00 / 30 dias · Leitura contínua sem nenhum anúncio'}
+                  ? user.vipExpiresAt
+                    ? `Válido até ${new Date(user.vipExpiresAt).toLocaleDateString('pt-BR')} · sem anúncios`
+                    : 'Assinatura ativa · sem anúncios'
+                  : 'Valor e condições apresentados no checkout seguro.'}
               </p>
             </div>
           </div>

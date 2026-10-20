@@ -16,10 +16,9 @@ Use esta skill para revisar mudanças (locais ou de um subagente) antes de consi
 
 ## Contexto mínimo
 
-1. `docs/reviews/SECURITY_REQUIREMENTS.md` e `BUSINESS_RULES.md`.
-2. `docs/reviews/IMPLEMENTATION_STATUS.md` — estado/handoff, não garantia.
-3. `docs/skills/backend-spring/security-checklist.md` e `docs/skills/frontend-design/quality-checklist.md` conforme a área do diff.
-4. O diff completo, incluindo **arquivos não rastreados**.
+1. `docs/PLANO_DE_FASES.md` — regras de produto — e `docs/orquestracao/ROADMAP-FASES.md` / `AUDITORIA-ATUAL.md` — estado e riscos.
+2. `docs/skills/backend-spring/SKILL.md` e/ou `docs/skills/frontend-design/SKILL.md`, conforme a área do diff.
+3. O diff completo, incluindo **arquivos não rastreados**.
 
 ## Procedimento
 

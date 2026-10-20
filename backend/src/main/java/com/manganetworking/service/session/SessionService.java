@@ -1,5 +1,6 @@
 package com.manganetworking.service.session;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.manganetworking.config.properties.PlatformProperties;
 import com.manganetworking.domain.relational.CreatorEntity;
 import com.manganetworking.domain.relational.UserEntity;
@@ -188,6 +189,7 @@ public class SessionService {
             String creatorHandle,
             Instant expiresAt
     ) {
+        @JsonIgnore
         public boolean isExpired() {
             return expiresAt != null && expiresAt.isBefore(Instant.now());
         }

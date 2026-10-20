@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.manganetworking.config.exception.AccessDeniedException;
 import com.manganetworking.config.exception.ResourceNotFoundException;
 import com.manganetworking.domain.enums.Genre;
+import com.manganetworking.domain.enums.ChapterFormat;
+import com.manganetworking.domain.enums.WorkFormat;
 import com.manganetworking.domain.relational.ChapterEntity;
 import com.manganetworking.domain.relational.ChapterFileEntity;
 import com.manganetworking.domain.relational.CreatorEntity;
@@ -16,6 +18,7 @@ import com.manganetworking.repository.jpa.WorkRepository;
 import com.manganetworking.service.feed.event.WorkFeedSyncEvent;
 import com.manganetworking.service.work.dto.CreateChapterRequestDto;
 import com.manganetworking.service.work.dto.CreateWorkRequestDto;
+import com.manganetworking.service.work.dto.WorkDetailsResponseDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -154,6 +157,18 @@ class WorkApplicationServiceTest {
     }
 
     @Test
+    @DisplayName("Rejeita capítulo acima do limite de páginas antes de consultar a obra")
+    void rejectsChapterWithTooManyPages() {
+        CreateChapterRequestDto dto = new CreateChapterRequestDto(
+                1, "Capítulo extenso", null,
+                java.util.Collections.nCopies(301, "pagina.jpg"),
+                LocalDateTime.now().plusDays(1));
+
+        assertThrows(IllegalArgumentException.class, () -> workService.createChapter(creatorId, workId, dto));
+        verifyNoInteractions(workRepository, chapterRepository, chapterFileRepository);
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     @DisplayName("Publicar capítulo registra a relação arquivo→capítulo com o nome do arquivo normalizado")
     void shouldRegisterChapterFilesOnChapterPublish() {
@@ -213,6 +228,36 @@ class WorkApplicationServiceTest {
     }
 
     @Test
+    @DisplayName("Publica capítulo em prosa sem alterar o contrato de páginas do mangá")
+    void shouldPublishProseChapterForLightNovel() {
+        work.setFormat(WorkFormat.LIGHT_NOVEL);
+        when(workRepository.findById(workId)).thenReturn(Optional.of(work));
+        when(chapterRepository.findByWorkIdAndChapterNumber(workId, 1)).thenReturn(Optional.empty());
+        when(chapterRepository.save(any(ChapterEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(workRepository.save(any(WorkEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ChapterEntity created = workService.createChapter(creatorId, workId, new CreateChapterRequestDto(
+                1, "Capítulo 1", null, List.of(), LocalDateTime.now().minusMinutes(1),
+                ChapterFormat.PROSE, "<script>alert(1)</script>Texto seguro"));
+
+        assertEquals(ChapterFormat.PROSE, created.getFormat());
+        assertNull(created.getPagesJson());
+        assertEquals("Texto seguro", created.getContentText());
+        verifyNoInteractions(chapterFileRepository);
+    }
+
+    @Test
+    @DisplayName("Não permite misturar capítulo em prosa com obra de mangá")
+    void rejectsProseChapterOnMangaWork() {
+        when(workRepository.findById(workId)).thenReturn(Optional.of(work));
+
+        assertThrows(IllegalArgumentException.class, () -> workService.createChapter(creatorId, workId,
+                new CreateChapterRequestDto(1, "Capítulo 1", null, List.of(), LocalDateTime.now(),
+                        ChapterFormat.PROSE, "Texto")));
+        verify(chapterRepository, never()).save(any());
+    }
+
+    @Test
     @DisplayName("Obra suspensa cautelarmente não é exposta no detalhe para visitante → 403")
     void shouldHideSuspendedWorkFromPublicDetail() {
         work.setStatus("suspended");
@@ -220,6 +265,42 @@ class WorkApplicationServiceTest {
 
         assertThrows(AccessDeniedException.class, () ->
                 workService.getWorkBySlug("cronicas-de-cyberpunk"));
+    }
+
+    @Test
+    @DisplayName("Detalhe público lista apenas capítulos já liberados")
+    void shouldListOnlyReleasedChapters() {
+        ChapterEntity released = chapter(1, LocalDateTime.now().minusMinutes(1));
+        ChapterEntity scheduled = chapter(2, LocalDateTime.now().plusDays(1));
+        when(workRepository.findBySlug("cronicas-de-cyberpunk")).thenReturn(Optional.of(work));
+        when(chapterRepository.findAllByWorkIdOrderByChapterNumberDesc(workId))
+                .thenReturn(List.of(scheduled, released));
+
+        WorkDetailsResponseDto response = workService.getWorkBySlug("cronicas-de-cyberpunk");
+
+        assertEquals(List.of(1), response.chapters().stream().map(chapter -> chapter.chapterNumber()).toList());
+    }
+
+    @Test
+    @DisplayName("Obras arquivadas por exclusão LGPD não podem mais ser consultadas")
+    void shouldHideLgpdArchivedWork() {
+        work.setStatus("archived_lgpd");
+        when(workRepository.findBySlug("cronicas-de-cyberpunk")).thenReturn(Optional.of(work));
+
+        assertThrows(ResourceNotFoundException.class, () ->
+                workService.getWorkBySlug("cronicas-de-cyberpunk"));
+        verifyNoInteractions(chapterRepository);
+    }
+
+    private ChapterEntity chapter(int number, LocalDateTime releaseAt) {
+        ChapterEntity chapter = new ChapterEntity();
+        chapter.setId(UUID.randomUUID());
+        chapter.setWork(work);
+        chapter.setChapterNumber(number);
+        chapter.setTitle("Capítulo " + number);
+        chapter.setPagesJson("[]");
+        chapter.setPublicReleaseAt(releaseAt);
+        return chapter;
     }
 
     @Test

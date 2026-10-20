@@ -8,13 +8,16 @@ export interface CreateWorkPayload {
   bannerUrl?: string;
   genres: string[];
   originalAuthorDeclaration: boolean;
+  format?: 'MANGA' | 'LIGHT_NOVEL';
 }
 
 export interface CreateChapterPayload {
   chapterNumber: number;
   title: string;
-  pages: string[];
+  pages?: string[];
   publicReleaseAt: string;
+  format?: 'IMAGE_PAGES' | 'PROSE';
+  content?: string;
 }
 
 /** Projeção do item de feed (MongoDB) retornada por `GET /api/feed`. */
@@ -32,6 +35,7 @@ export interface FeedWorkDto {
   authorAvatarUrl?: string | null;
   genres: string[];
   status?: string | null;
+  format?: 'MANGA' | 'LIGHT_NOVEL';
   totalViews?: number | null;
   totalLikes?: number | null;
   totalComments?: number | null;
@@ -56,6 +60,7 @@ export interface ChapterSummaryDto {
   isEarlyAccess: boolean;
   views: number;
   likes: number;
+  format?: 'IMAGE_PAGES' | 'PROSE';
 }
 
 export interface AuthorSummaryDto {
@@ -77,6 +82,7 @@ export interface WorkDetailsDto {
   coverUrl?: string | null;
   bannerUrl?: string | null;
   status?: string | null;
+  format?: 'MANGA' | 'LIGHT_NOVEL';
   genres: string[];
   totalChapters: number;
   totalViews: number;
@@ -92,7 +98,9 @@ export interface ChapterReadDto {
   workTitle: string;
   chapterNumber: number;
   chapterTitle: string;
-  pagesJson: string;
+  pagesJson: string | null;
+  format: 'IMAGE_PAGES' | 'PROSE';
+  content?: string | null;
   likes: number;
   authorHandle: string;
   authorId?: string | null;

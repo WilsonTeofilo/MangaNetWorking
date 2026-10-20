@@ -12,6 +12,10 @@ export interface SessionUserDto {
   creatorId?: string;
   creatorHandle?: string;
   isModerator?: boolean;
+  isVip: boolean;
+  vipExpiresAt?: string | null;
+  privacyConsentRequired?: boolean;
+  privacyPolicyVersion?: string;
 }
 
 export interface RegisterRequest {
@@ -23,6 +27,7 @@ export interface RegisterRequest {
   cpf?: string;
   isProfilePublic?: boolean;
   termsAccepted: boolean;
+  privacyPolicyVersion: string;
   birthDate?: string;
 }
 
@@ -51,6 +56,28 @@ export interface AuthenticatedResponse {
 }
 
 export const authApi = {
+  getPolicyVersion() {
+    return request<{ version: string }>('/auth/policy', { method: 'GET' });
+  },
+
+  acceptPrivacyPolicy(version: string) {
+    return request('/users/me/consent', { method: 'POST', body: JSON.stringify({ version }) });
+  },
+
+  requestPasswordReset(email: string) {
+    return request<{ status: string; message: string }>('/auth/password-reset/request', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
+
+  confirmPasswordReset(payload: { token: string; newPassword: string }) {
+    return request<void>('/auth/password-reset/confirm', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
   register(payload: RegisterRequest) {
     return request<TwoFactorChallengeResponse>('/auth/register', {
       method: 'POST',
@@ -77,7 +104,7 @@ export const authApi = {
   },
 
   /**
-   * Sessão autenticada corrente. Retorna `null` para visitante (HTTP 401) ou backend indisponível.
+   * Sessão autenticada corrente. `null` representa exclusivamente ausência de sessão (HTTP 401).
    */
   async me(): Promise<SessionUserDto | null> {
     try {
@@ -86,7 +113,7 @@ export const authApi = {
       if (err instanceof ApiError && err.status === 401) {
         return null;
       }
-      return null;
+      throw err;
     }
   },
 
@@ -114,6 +141,24 @@ export const authApi = {
 };
 
 export const userApi = {
+  /** Perfil do leitor; visibilidade e avatar vêm do servidor, nunca de estado local presumido. */
+  getProfile(userId: string) {
+    return request<{
+      id: string;
+      name: string;
+      avatarUrl?: string | null;
+      isProfilePublic: boolean;
+    }>(`/users/${encodeURIComponent(userId)}/profile`, { method: 'GET' });
+  },
+
+  /** Atualiza apenas os campos permitidos do perfil da sessão corrente. */
+  updateProfile(payload: { avatarUrl?: string; isProfilePublic?: boolean }) {
+    return request('/users/profile', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  },
+
   /**
    * Exportação dos dados do titular em JSON (Art. 18 LGPD).
    */

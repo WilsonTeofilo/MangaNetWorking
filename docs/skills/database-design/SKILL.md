@@ -49,4 +49,4 @@ Use esta skill para criar/alterar modelo, migração, índice, relação ou regr
 - Migração aplica em banco com dados existentes; nenhum registro perde dado por default ruim.
 - Entidades/repositórios refletem o esquema; invariantes garantidas por constraint/unicidade e não só por código.
 - Consultas quentes têm índice adequado; nenhum binário no banco.
-- Testes e build verdes; `IMPLEMENTATION_STATUS.md` atualizado só com resultado observado.
+- Testes e build verdes; `docs/orquestracao/ROADMAP-FASES.md` e `AUDITORIA-ATUAL.md` atualizados só com resultados observados.

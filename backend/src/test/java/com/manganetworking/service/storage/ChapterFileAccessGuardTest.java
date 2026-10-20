@@ -193,6 +193,19 @@ class ChapterFileAccessGuardTest {
     }
 
     @Test
+    @DisplayName("Página de obra arquivada por exclusão LGPD é negada mesmo por URL antiga")
+    void blocksLgpdArchivedWork() {
+        work.setStatus("archived_lgpd");
+        chapterFilePointsTo("page.jpg", chapterReleasingAt(LocalDateTime.now().minusDays(2)));
+
+        ChapterFileAccessGuard.AccessDecision decision = guard.evaluate("page.jpg");
+
+        assertFalse(decision.allowed());
+        assertTrue(decision.privateContent());
+        verifyNoInteractions(membershipRepository);
+    }
+
+    @Test
     @DisplayName("Página de obra suspensa é liberada para a moderação")
     void allowsSuspendedWorkForModerator() {
         work.setStatus("suspended");

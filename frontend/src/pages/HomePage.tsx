@@ -44,12 +44,12 @@ export function HomePage({
     .slice(0, 5);
 
   const handleReadNow = (work: Work) => {
-    const chapters = work.chapters || MOCK_CHAPTERS.filter((c) => c.workId === work.id);
-    const firstChapter = chapters[0] || MOCK_CHAPTERS[0];
+    const chapters = work.chapters ?? (import.meta.env.DEV ? MOCK_CHAPTERS.filter((c) => c.workId === work.id) : []);
+    const firstChapter = chapters[0] ?? (import.meta.env.DEV ? MOCK_CHAPTERS[0] : undefined);
     if (firstChapter) {
       const isLocked = isChapterEarlyAccess(firstChapter) && !isMemberOf(work.authorId);
       if (isLocked) {
-        const creator = MOCK_CREATORS[work.authorId];
+        const creator = import.meta.env.DEV ? MOCK_CREATORS[work.authorId] : undefined;
         if (creator) {
           openEarlyAccess(firstChapter, creator, work);
           return;
@@ -62,9 +62,14 @@ export function HomePage({
   };
 
   // Simulação de último lido para a seção "Continuar Lendo"
-  const lastReadWork = catalogWorks[0];
-  const lastReadChapter =
-    MOCK_CHAPTERS.find((c) => c.workId === lastReadWork.id) || MOCK_CHAPTERS[0];
+  const lastReadWork = import.meta.env.DEV ? catalogWorks[0] : undefined;
+  const lastReadChapter = lastReadWork
+    ? MOCK_CHAPTERS.find((c) => c.workId === lastReadWork.id) || MOCK_CHAPTERS[0]
+    : undefined;
+
+  if (catalogWorks.length === 0) {
+    return <div role="status" className="mn-container py-16 text-center text-[var(--mn-mute)]">Ainda não há obras publicadas no catálogo.</div>;
+  }
 
   return (
     <div className="w-full space-y-12 select-none pb-12">
@@ -201,10 +206,10 @@ export function HomePage({
         </section>
 
         {/* 4. CONTINUAR LENDO (Uma única Janela Retrô <Win>) */}
-        <section className="space-y-4 max-w-xl">
+        {lastReadWork && lastReadChapter && <section className="space-y-4 max-w-xl">
           <Win title="CONTINUAR_LENDO.EXE">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-[72px] shrink-0 border border-[#34343A]">
+              <div className="w-[68px] h-[102px] shrink-0 border border-[#34343A]">
                 <Cover
                   src={lastReadWork.coverUrl}
                   title={lastReadWork.title}
@@ -243,7 +248,7 @@ export function HomePage({
               </div>
             </div>
           </Win>
-        </section>
+        </section>}
 
         {/* 5. NOVOS CAPÍTULOS (Grade Oficial com WorkCard 2:3) */}
         <section className="space-y-4">
@@ -281,7 +286,7 @@ export function HomePage({
         </section>
 
         {/* 6. SEASONS (Bloco Amarelo para Criadores com os 4 Patches) */}
-        <section className="relative w-full bg-[#FFD400] text-[#0B0B0C] border-2 border-[#0B0B0C] shadow-[6px_6px_0_#F4EFE3] p-6 sm:p-8 space-y-6">
+        {import.meta.env.DEV && <section className="relative w-full bg-[#FFD400] text-[#0B0B0C] border-2 border-[#0B0B0C] shadow-[6px_6px_0_#F4EFE3] p-6 sm:p-8 space-y-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b-2 border-[#0B0B0C] pb-4">
             <div>
               <span className="font-pixel text-[12px] tracking-wider text-[#0B0B0C] font-bold block">
@@ -311,7 +316,7 @@ export function HomePage({
             <LevelPatch level={3} isUnlocked={false} />
             <LevelPatch level={4} isUnlocked={false} />
           </div>
-        </section>
+        </section>}
 
       </div>
     </div>

@@ -78,6 +78,22 @@ class RedisSessionStoreTest {
     }
 
     @Test
+    @DisplayName("Lê sessões Redis antigas com o campo derivado expired sem invalidá-las")
+    void shouldReadLegacySessionJsonWithDerivedExpiredField() {
+        String json = """
+                {"sessionId":"sess-legacy","userId":"%s","email":"user@test.com","name":"Tester",
+                 "isCreator":false,"isModerator":false,"creatorId":null,"creatorHandle":null,
+                 "expiresAt":"2099-01-01T00:00:00Z","expired":false}
+                """.formatted(UUID.randomUUID());
+        when(valueOperations.get("mn:session:sess-legacy")).thenReturn(json);
+
+        Optional<SessionService.UserSession> result = sessionStore.findById("sess-legacy");
+
+        assertThat(result).isPresent();
+        assertThat(result.orElseThrow().sessionId()).isEqualTo("sess-legacy");
+    }
+
+    @Test
     @DisplayName("Deve revogar todas as sessões do usuário no Redis via índice reverso (LGPD Art. 18)")
     void shouldRemoveAllUserSessionsByUserId() {
         when(redisTemplate.opsForSet()).thenReturn(setOperations);

@@ -5,11 +5,13 @@ import com.manganetworking.service.user.UserProfileApplicationService;
 import com.manganetworking.service.user.dto.*;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.CacheControl;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import jakarta.servlet.http.HttpServletRequest;
 
 @RestController
 @RequestMapping("/api/users")
@@ -23,7 +25,12 @@ public class UserProfileController {
 
     @GetMapping("/{userId}/profile")
     public ResponseEntity<ReaderProfileResponseDto> getReaderProfile(@PathVariable UUID userId) {
-        return ResponseEntity.ok(profileService.getReaderProfile(userId, SecurityContextUtils.requireCurrentUserId()));
+        UUID currentUserId = SecurityContextUtils.getCurrentSession()
+                .map(session -> session.userId())
+                .orElse(null);
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(profileService.getReaderProfile(userId, currentUserId));
     }
 
     @PutMapping("/profile")
@@ -51,13 +58,22 @@ public class UserProfileController {
     }
 
     @GetMapping("/me/export")
-    public ResponseEntity<UserDataExportDto> exportMyData() {
-        return ResponseEntity.ok(profileService.exportUserData(SecurityContextUtils.requireCurrentUserId()));
+    public ResponseEntity<UserDataExportDto> exportMyData(HttpServletRequest request) {
+        return ResponseEntity.ok(profileService.exportUserData(
+                SecurityContextUtils.requireCurrentUserId(), request.getRemoteAddr()));
+    }
+
+    @PostMapping("/me/consent")
+    public ResponseEntity<Map<String, String>> acceptCurrentPrivacyPolicy(
+            @Valid @RequestBody PrivacyConsentRequestDto dto, HttpServletRequest request) {
+        profileService.acceptCurrentPrivacyPolicy(SecurityContextUtils.requireCurrentUserId(), dto.version(),
+                request.getRemoteAddr(), request.getHeader("User-Agent"));
+        return ResponseEntity.ok(Map.of("status", "CONSENT_RECORDED", "version", dto.version()));
     }
 
     @DeleteMapping("/me")
-    public ResponseEntity<Map<String, String>> deleteAccount() {
-        profileService.deleteUserAccountLgpd(SecurityContextUtils.requireCurrentUserId());
+    public ResponseEntity<Map<String, String>> deleteAccount(HttpServletRequest request) {
+        profileService.deleteUserAccountLgpd(SecurityContextUtils.requireCurrentUserId(), request.getRemoteAddr());
         return ResponseEntity.ok(Map.of(
                 "message", "Conta anonimizada e dados pessoais removidos com sucesso em conformidade com a LGPD."
         ));

@@ -15,8 +15,8 @@ Trabalhe em `D:\Projetos\MangaNetWorking`.
 - Entenda a causa antes de corrigir. Para mudança de comportamento, crie teste de regressão e valide RED/GREEN.
 - Autorização, acesso a conteúdo, moderação, valores financeiros e dados pessoais são server-side.
 - Complete o fluxo relevante até persistência, leitura/consumo, autorização e tratamento de falhas; não marque itens como concluídos por estarem descritos no roadmap.
-- Revise todo o diff e execute testes/build relevantes. Atualize `docs/reviews/IMPLEMENTATION_STATUS.md` e `docs/PLANO_DE_FASES.md` só com resultados efetivamente verificados.
+- Revise todo o diff e execute testes/build relevantes. Atualize `docs/orquestracao/ROADMAP-FASES.md` e `AUDITORIA-ATUAL.md` só com resultados efetivamente verificados; preserve `HISTORICO_TAREFAS.md` como trilha de progresso.
 
 ## Retomada
 
-Consulte `docs/reviews/IMPLEMENTATION_STATUS.md` como ponto de partida, não como garantia do estado atual. Revalide o código e preserve todo trabalho não commitado.
+Consulte `docs/orquestracao/ROADMAP-FASES.md` e `AUDITORIA-ATUAL.md` como ponto de partida, não como garantia do estado atual. Revalide o código e preserve todo trabalho não commitado.

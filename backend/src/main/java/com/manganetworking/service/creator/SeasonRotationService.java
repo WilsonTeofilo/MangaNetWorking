@@ -80,7 +80,7 @@ public class SeasonRotationService {
         }
 
         List<EngagementEventDocument> events = engagementEventRepository
-                .findByWorkIdInAndEventTypeAndTimestampAfter(workToCreator.keySet(), READ_EVENT, from);
+                .findByWorkIdInAndEventTypeAndTimestampBetween(workToCreator.keySet(), READ_EVENT, from, toExclusive);
 
         Map<UUID, Set<String>> readersByCreator = new HashMap<>();
         for (EngagementEventDocument event : events) {

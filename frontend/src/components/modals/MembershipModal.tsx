@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sparkles, Check, CheckCircle2 } from 'lucide-react';
+import { Sparkles, Check } from 'lucide-react';
 import { Modal } from '../common/Modal';
 import { Button } from '../ui/Button';
 import { useModals } from '../../context/ModalContext';
@@ -8,22 +8,24 @@ import { useAuth } from '../../context/AuthContext';
 export function MembershipModal() {
   const { membershipData, closeMembership } = useModals();
   const { subscribeToCreator } = useAuth();
-  const [isSuccess, setIsSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [idempotencyKey] = useState(() => crypto.randomUUID());
 
   const creator = membershipData.creator;
   if (!creator) return null;
 
-  const price = creator.membershipPriceBrl || 23.0;
-  const platformFee = Math.round(price * 0.17 * 100) / 100;
-  const creatorNet = Math.round((price - platformFee) * 100) / 100;
+  const price = creator.membershipPriceBrl;
 
-  const handleSubscribe = () => {
-    subscribeToCreator(creator.id, price);
-    setIsSuccess(true);
-    setTimeout(() => {
-      setIsSuccess(false);
-      closeMembership();
-    }, 2500);
+  const handleSubscribe = async () => {
+    setErrorMessage(null);
+    setIsLoading(true);
+    try {
+      const checkout = await subscribeToCreator(creator.id, idempotencyKey);
+      window.location.assign(checkout.checkoutUrl);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Não foi possível iniciar a assinatura.');
+    } finally { setIsLoading(false); }
   };
 
   return (
@@ -33,18 +35,7 @@ export function MembershipModal() {
       title="CLUBE_MEMBROS.EXE"
       subtitle={`Acesso Antecipado a todos os capítulos de ${creator.name}`}
     >
-      {isSuccess ? (
-        <div className="text-center py-6 space-y-3">
-          <CheckCircle2 className="w-14 h-14 text-[#3DDC84] mx-auto animate-bounce" />
-          <h4 className="font-display text-2xl uppercase text-[#FFD400]">
-            VOCÊ AGORA É MEMBRO OFICIAL!
-          </h4>
-          <p className="font-body text-xs text-[#A9A59A]">
-            Acesso antecipado desbloqueado imediatamente para todos os lançamentos de {creator.handle}.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-5">
+      <div className="space-y-5">
           {/* Preço e Destaque */}
           <div className="bg-[#0B0B0C] border-2 border-[#FFD400] p-4 text-center">
             <span className="font-pixel text-[12px] uppercase tracking-widest text-[#FFD400] block mb-1">
@@ -75,28 +66,25 @@ export function MembershipModal() {
               </li>
               <li className="flex items-start gap-2">
                 <Check size={14} className="text-[#3DDC84] mt-0.5 shrink-0" />
-                <span><strong>83% Direto ao Autor:</strong> Seu apoio financia a continuidade da história.</span>
+                <span>Seu apoio ajuda o criador a continuar publicando.</span>
               </li>
             </ul>
           </div>
 
-          {/* Transparência Financeira */}
-          <div className="bg-[#0B0B0C] border-2 border-[#34343A] p-2.5 text-xs text-[#A9A59A] flex justify-between tabular-nums">
-            <span>Repasse líquido ao autor (83%):</span>
-            <strong className="text-[#3DDC84]">R$ {creatorNet.toFixed(2)} / mês</strong>
-          </div>
+          <p className="font-body text-xs text-[var(--mn-mute)]">A assinatura de um mês só será ativada após a confirmação do pagamento.</p>
 
           <Button
             type="button"
             variant="primary"
-            onClick={handleSubscribe}
+            onClick={() => void handleSubscribe()}
+            disabled={isLoading || !Number.isFinite(price) || price <= 0}
             className="w-full !min-h-[46px] !text-base flex items-center justify-center gap-2"
           >
             <Sparkles size={16} />
-            <span>CONFIRMAR ASSINATURA</span>
+            <span>{isLoading ? 'CONECTANDO AO CHECKOUT…' : 'CONTINUAR PARA PAGAMENTO'}</span>
           </Button>
-        </div>
-      )}
+          {errorMessage && <p role="alert" className="text-sm text-[var(--mn-red)]">{errorMessage}</p>}
+      </div>
     </Modal>
   );
 }

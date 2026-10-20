@@ -8,6 +8,7 @@ Write-Host "==========================================================" -Foregro
 $timestamp = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
 $testEmail = "smoke_creator_$timestamp@test.com"
 $testPassword = "Password123!"
+$policy = Invoke-RestMethod -Uri "$baseUrl/api/auth/policy" -Method Get
 
 $webSession = New-Object Microsoft.PowerShell.Commands.WebRequestSession
 
@@ -20,12 +21,17 @@ try {
         name = "No Consent"
         isCreator = $false
         termsAccepted = $false
+        privacyPolicyVersion = $policy.version
         birthDate = "2000-01-01"
     } | ConvertTo-Json
     Invoke-RestMethod -Uri "$baseUrl/api/auth/register" -Method Post -Body $bodyNoConsent -ContentType "application/json"
     Write-Host " FALHA (Deveria rejeitar sem aceite dos termos!)" -ForegroundColor Red
     exit 1
 } catch {
+    if ([int]$_.Exception.Response.StatusCode -ne 400) {
+        Write-Host " FALHA (Esperado HTTP 400; recebido: $([int]$_.Exception.Response.StatusCode))" -ForegroundColor Red
+        exit 1
+    }
     Write-Host " SUCESSO (400 Bad Request recebido corretamente)" -ForegroundColor Green
 }
 
@@ -38,6 +44,7 @@ $regBody = @{
     isCreator = $true
     handle = "smoke_creator_$timestamp"
     termsAccepted = $true
+    privacyPolicyVersion = $policy.version
     birthDate = "1995-07-20"
 } | ConvertTo-Json
 
@@ -88,12 +95,9 @@ Write-Host " SUCESSO (isCreator: $($meResp.isCreator), Handle: $($meResp.creator
 
 # 6. Step-Up 2FA em Ação Crítica: Alteração de Chave PIX
 Write-Host "[6/12] Testando Step-Up 2FA para atualização de chave PIX..." -NoNewline
-# Gerar novo OTP para a ação de Step-Up
-$loginBody = @{
-    email = $testEmail
-    password = $testPassword
-} | ConvertTo-Json
-$null = Invoke-RestMethod -Uri "$baseUrl/api/auth/login" -Method Post -Body $loginBody -ContentType "application/json"
+# O mesmo OTP de LOGIN não autoriza troca de PIX. Aguarda o cooldown da emissão do cadastro.
+Start-Sleep -Seconds 61
+$null = Invoke-RestMethod -Uri "$baseUrl/api/auth/2fa/request" -Method Post -WebSession $webSession
 
 $pixOtpResp = Invoke-RestMethod -Uri "$baseUrl/api/dev/outbox/latest?email=$testEmail" -Method Get
 $pixOtp = $pixOtpResp.otpCode
@@ -175,26 +179,30 @@ $chapBody = @{
 $chapResp = Invoke-RestMethod -Uri "$baseUrl/api/works/$workId/chapters" -Method Post -Body $chapBody -ContentType "application/json" -WebSession $webSession
 Write-Host " SUCESSO (Capítulo #1 criado com páginas vinculadas)" -ForegroundColor Green
 
-# 10. Doação Financeira e Split 83/17
-Write-Host "[10/12] Processando doação financeira (R$ 100,00) e checando split..." -NoNewline
-$donateBody = @{
-    creatorId = $creatorId
-    amountBrl = 100.00
-    paymentExternalId = "PAY-SMOKE-$timestamp"
-} | ConvertTo-Json
-
-$donateResp = Invoke-RestMethod -Uri "$baseUrl/api/monetization/donate" -Method Post -Body $donateBody -ContentType "application/json" -WebSession $webSession
-if ($donateResp.creatorNetBrl -ne 83.00 -or $donateResp.platformFeeBrl -ne 17.00) {
-    Write-Host " FALHA (Split divergente: Líquido=$($donateResp.creatorNetBrl), Taxa=$($donateResp.platformFeeBrl))" -ForegroundColor Red
+# 10. Endpoint financeiro legado deve permanecer bloqueado sem checkout confirmado
+Write-Host "[10/12] Confirmando que o endpoint legado não credita doação fictícia..." -NoNewline
+$donateBody = @{ creatorId = $creatorId; amountBrl = 100.00; paymentExternalId = "PAY-SMOKE-$timestamp" } | ConvertTo-Json
+try {
+    Invoke-RestMethod -Uri "$baseUrl/api/monetization/donate" -Method Post -Body $donateBody -ContentType "application/json" -WebSession $webSession
+    Write-Host " FALHA (Endpoint legado não deveria processar pagamento!)" -ForegroundColor Red
     exit 1
+} catch {
+    if ($_.Exception.Response.StatusCode.value__ -ne 410) {
+        Write-Host " FALHA (Esperado HTTP 410, recebido: $($_.Exception.Response.StatusCode.value__))" -ForegroundColor Red
+        exit 1
+    }
 }
-Write-Host " SUCESSO (Líquido Criador: R$ $($donateResp.creatorNetBrl) | Taxa Plataforma: R$ $($donateResp.platformFeeBrl))" -ForegroundColor Green
+Write-Host " SUCESSO (HTTP 410, nenhum crédito fictício processado)" -ForegroundColor Green
 
 # 11. Exportação de Dados Pessoais (LGPD Art. 18, V)
 Write-Host "[11/12] Testando portabilidade de dados do titular (LGPD)..." -NoNewline
 $exportResp = Invoke-RestMethod -Uri "$baseUrl/api/users/me/export" -Method Get -WebSession $webSession
 if (-not $exportResp.email -or $exportResp.email -ne $testEmail) {
     Write-Host " FALHA (Dados exportados incompletos)" -ForegroundColor Red
+    exit 1
+}
+if (-not ($exportResp.PSObject.Properties.Name -contains "financialHistory") -or -not ($exportResp.PSObject.Properties.Name -contains "privacyConsentHistory")) {
+    Write-Host " FALHA (Históricos financeiros/consentimento ausentes na exportação)" -ForegroundColor Red
     exit 1
 }
 Write-Host " SUCESSO (JSON estruturado exportado: $($exportResp.email))" -ForegroundColor Green
@@ -209,6 +217,10 @@ try {
     Write-Host " FALHA (Cookie ainda autentica após delete!)" -ForegroundColor Red
     exit 1
 } catch {
+    if ([int]$_.Exception.Response.StatusCode -ne 401) {
+        Write-Host " FALHA (Esperado HTTP 401 após exclusão; recebido: $([int]$_.Exception.Response.StatusCode))" -ForegroundColor Red
+        exit 1
+    }
     Write-Host " SUCESSO (Sessão revogada imediatamente, HTTP 401 retornado)" -ForegroundColor Green
 }
 

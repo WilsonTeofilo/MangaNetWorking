@@ -1,0 +1,20 @@
+groups:
+  - name: manganetworking-security
+    rules:
+      - alert: MfaEmailDeliveryFailure
+        expr: increase(manganetworking_security_email_delivery_total{outcome="failed"}[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: Falha no envio de e-mails de segurança
+          description: O backend registrou falhas SMTP/2FA nos últimos cinco minutos.
+
+      - alert: MfaOtpFailuresElevated
+        expr: sum(increase(manganetworking_security_otp_verification_total{outcome=~"invalid|locked"}[5m])) > 20
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: Aumento de falhas na verificação OTP
+          description: Mais de vinte verificações OTP inválidas ou bloqueadas em cinco minutos.

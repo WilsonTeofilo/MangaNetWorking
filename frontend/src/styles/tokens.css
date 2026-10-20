@@ -40,6 +40,8 @@
   --fg: var(--mn-ink);
   --fg-mute: var(--mn-mute-paper);
   --focus: var(--mn-ink);
+  /* --mn-mute (#A9A59A) has only 2.14:1 on paper; remap descendants to AA-safe ink. */
+  --mn-mute: var(--mn-mute-paper);
 }
 
 /* Foco visível acessível */

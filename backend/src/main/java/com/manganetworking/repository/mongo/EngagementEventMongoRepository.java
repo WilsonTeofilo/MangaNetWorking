@@ -11,13 +11,16 @@ import java.util.List;
 @Repository
 public interface EngagementEventMongoRepository extends MongoRepository<EngagementEventDocument, String> {
 
+    void deleteAllByUserId(String userId);
+
     /**
      * Eventos de leitura de um conjunto de obras a partir de um instante.
      * O limite superior é filtrado no serviço porque a janela de temporada é fechada.
      */
-    List<EngagementEventDocument> findByWorkIdInAndEventTypeAndTimestampAfter(
+    List<EngagementEventDocument> findByWorkIdInAndEventTypeAndTimestampBetween(
             Collection<String> workIds,
             String eventType,
-            Instant after
+            Instant fromInclusive,
+            Instant toExclusive
     );
 }

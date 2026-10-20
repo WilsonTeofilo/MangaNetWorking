@@ -34,9 +34,17 @@ public class LocalFileStorageService implements FileStorageService {
             @Value("${platform.storage.local-upload-dir:./data/uploads}") String uploadPath,
             @Value("${platform.storage.max-file-size-mb:15}") long maxFileSizeMb
     ) {
+        if (maxFileSizeMb <= 0) {
+            throw new IllegalArgumentException("O limite de tamanho do arquivo deve ser positivo.");
+        }
+        try {
+            this.maxFileSizeBytes = Math.multiplyExact(maxFileSizeMb, 1024L * 1024L);
+        } catch (ArithmeticException overflow) {
+            throw new IllegalArgumentException("O limite de tamanho do arquivo excede a capacidade suportada.", overflow);
+        }
+
         this.uploadDir = Paths.get(uploadPath).toAbsolutePath().normalize();
         this.maxFileSizeMb = maxFileSizeMb;
-        this.maxFileSizeBytes = maxFileSizeMb * 1024 * 1024;
         try {
             Files.createDirectories(this.uploadDir);
         } catch (IOException e) {

@@ -1,6 +1,7 @@
 package com.manganetworking.domain.relational;
 
 import com.manganetworking.domain.enums.Genre;
+import com.manganetworking.domain.enums.WorkFormat;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -47,6 +48,10 @@ public class WorkEntity {
 
     @Column(nullable = false, length = 20)
     private String status = "ongoing";
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "work_format", nullable = false, length = 20)
+    private WorkFormat format = WorkFormat.MANGA;
 
     @Column(nullable = false)
     private Integer totalChapters = 0;
@@ -98,6 +103,9 @@ public class WorkEntity {
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
+    public WorkFormat getFormat() { return format; }
+    public void setFormat(WorkFormat format) { this.format = format; }
 
     public Integer getTotalChapters() { return totalChapters; }
     public void setTotalChapters(Integer totalChapters) { this.totalChapters = totalChapters; }

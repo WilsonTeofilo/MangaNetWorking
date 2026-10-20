@@ -67,6 +67,16 @@ class FileStorageServiceTest {
     }
 
     @Test
+    void shouldRejectInvalidOrOverflowingConfiguredFileSizeLimit() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new LocalFileStorageService(tempDir.resolve("zero").toString(), 0));
+        assertThrows(IllegalArgumentException.class,
+                () -> new LocalFileStorageService(tempDir.resolve("negative").toString(), -1));
+        assertThrows(IllegalArgumentException.class,
+                () -> new LocalFileStorageService(tempDir.resolve("overflow").toString(), Long.MAX_VALUE));
+    }
+
+    @Test
     void shouldDeleteFileCorrectly() {
         byte[] validJpegBytes = new byte[]{(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, 0x00, 0x10};
         String filename = storageService.storeFile(validJpegBytes, "foto.jpg", "image/jpeg");

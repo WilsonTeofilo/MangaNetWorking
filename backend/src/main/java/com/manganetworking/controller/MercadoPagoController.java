@@ -18,7 +18,6 @@ import java.util.Map;
 public class MercadoPagoController {
 
     private static final Logger log = LoggerFactory.getLogger(MercadoPagoController.class);
-
     private final MercadoPagoService mercadoPagoService;
     private final AuthApplicationService authService;
 
@@ -27,24 +26,14 @@ public class MercadoPagoController {
         this.authService = authService;
     }
 
-    /**
-     * Inicia o fluxo de assinatura VIP gerando a URL oficial de Checkout do Mercado Pago.
-     */
     @PostMapping("/vip/checkout")
-    public ResponseEntity<Map<String, String>> createVipCheckout(HttpServletRequest request) {
+    public ResponseEntity<Map<String, Object>> createVipCheckout(HttpServletRequest request) {
         SessionService.UserSession session = authService.getCurrentSession(request)
                 .orElseThrow(() -> new AccessDeniedException("Autenticação necessária para assinar o plano VIP."));
-
-        String initPointUrl = mercadoPagoService.createVipCheckoutPreference(session.userId());
-
-        return ResponseEntity.ok(Map.of(
-                "checkoutUrl", initPointUrl
-        ));
+        String checkoutUrl = mercadoPagoService.createVipCheckoutPreference(session.userId());
+        return ResponseEntity.ok(Map.of("checkoutUrl", checkoutUrl, "priceBrl", mercadoPagoService.getVipPrice()));
     }
 
-    /**
-     * Webhook de notificações de pagamento do Mercado Pago (IPN / Webhooks V2).
-     */
     @PostMapping("/webhook")
     public ResponseEntity<Void> handleWebhook(
             @RequestHeader(value = "x-signature", required = false) String signature,
@@ -54,28 +43,17 @@ public class MercadoPagoController {
             @RequestBody(required = false) Map<String, Object> payload
     ) {
         String dataId = dataIdParam;
-        if (dataId == null && payload != null && payload.containsKey("data")) {
-            Object dataObj = payload.get("data");
-            if (dataObj instanceof Map<?, ?> dataMap && dataMap.containsKey("id")) {
-                dataId = String.valueOf(dataMap.get("id"));
-            }
+        if (dataId == null && payload != null && payload.get("data") instanceof Map<?, ?> data
+                && data.get("id") != null) {
+            dataId = String.valueOf(data.get("id"));
         }
-
-        if (dataId == null) {
-            return ResponseEntity.status(HttpStatus.OK).build();
+        if (type != null && !"payment".equalsIgnoreCase(type)) return ResponseEntity.ok().build();
+        if (dataId == null || signature == null || requestId == null
+                || !mercadoPagoService.verifyWebhookSignature(signature, requestId, dataId)) {
+            log.warn("[MERCADO-PAGO] Notificação de pagamento rejeitada por assinatura ausente/inválida.");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-
-        // Validação opcional da assinatura se o segredo estiver configurado
-        if (signature != null && requestId != null) {
-            boolean valid = mercadoPagoService.verifyWebhookSignature(signature, requestId, dataId);
-            if (!valid) {
-                log.warn("[MERCADO-PAGO] Assinatura do webhook inválida para dataId: {}", dataId);
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-            }
-        }
-
         mercadoPagoService.processPaymentNotification(dataId);
-
-        return ResponseEntity.status(HttpStatus.OK).build();
+        return ResponseEntity.ok().build();
     }
 }

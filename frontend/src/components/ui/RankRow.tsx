@@ -32,14 +32,14 @@ export function RankRow({ rank, work, onSelect }: RankRowProps) {
         </span>
       </div>
 
-      {/* Capa Pequena 2:3 (48x72) */}
-      <div className="w-12 h-[72px] shrink-0">
+      {/* Capa 2:3 maior para dar presença na home */}
+      <div className="w-[68px] h-[102px] shrink-0">
         <Cover
           src={work.coverUrl}
           title={work.title}
           aspectRatio="2/3"
           dropShadow={false}
-          className="w-12 h-[72px]"
+          className="w-[68px] h-[102px]"
         />
       </div>
 

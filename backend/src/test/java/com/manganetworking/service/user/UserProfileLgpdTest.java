@@ -8,10 +8,14 @@ import com.manganetworking.repository.jpa.CreatorRepository;
 import com.manganetworking.repository.jpa.UserRepository;
 import com.manganetworking.repository.jpa.WorkRepository;
 import com.manganetworking.repository.mongo.ReadingProgressMongoRepository;
+import com.manganetworking.repository.mongo.EngagementEventMongoRepository;
 import com.manganetworking.service.reading.ReadingProgressService;
 import com.manganetworking.service.session.SessionService;
 import com.manganetworking.service.storage.FileStorageService;
+import com.manganetworking.service.user.PrivacyComplianceService;
+import org.springframework.jdbc.core.JdbcTemplate;
 import com.manganetworking.service.user.dto.UserDataExportDto;
+import com.manganetworking.service.user.dto.UpdateProfileRequestDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -41,6 +45,9 @@ class UserProfileLgpdTest {
     private ReadingProgressMongoRepository progressRepository;
 
     @Mock
+    private EngagementEventMongoRepository engagementEventRepository;
+
+    @Mock
     private ReadingProgressService readingProgressService;
 
     @Mock
@@ -51,6 +58,12 @@ class UserProfileLgpdTest {
 
     @Mock
     private SessionService sessionService;
+
+    @Mock
+    private JdbcTemplate jdbcTemplate;
+
+    @Mock
+    private PrivacyComplianceService privacyComplianceService;
 
     @InjectMocks
     private UserProfileApplicationService profileService;
@@ -79,6 +92,20 @@ class UserProfileLgpdTest {
         assertThrows(AccessDeniedException.class, () ->
                 profileService.getReaderProfile(userId, thirdPartyId)
         );
+    }
+
+    @Test
+    @DisplayName("Perfil leitor não aceita avatar remoto nem caminho não normalizado")
+    void shouldAcceptOnlyNormalizedPlatformAvatar() {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(userRepository.save(any(UserEntity.class))).thenReturn(user);
+        String avatarPath = "/api/storage/123e4567-e89b-12d3-a456-426614174000.jpg";
+
+        profileService.updateProfile(userId, new UpdateProfileRequestDto(null, avatarPath, null));
+        assertEquals(avatarPath, user.getAvatarUrl());
+
+        assertThrows(IllegalArgumentException.class, () -> profileService.updateProfile(
+                userId, new UpdateProfileRequestDto(null, "https://attacker.example/avatar.jpg", null)));
     }
 
     @Test
@@ -174,16 +201,17 @@ class UserProfileLgpdTest {
     }
 
     @Test
-    @DisplayName("Não deve falhar a exclusão da conta quando o storage está indisponível")
-    void shouldNotFailAccountDeletionWhenStorageFails() {
+    @DisplayName("Não deve confirmar exclusão se o avatar não puder ser removido fisicamente")
+    void shouldAbortAccountDeletionWhenStorageFails() {
         user.setAvatarUrl("/api/storage/avatar-user.png");
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         doThrow(new RuntimeException("storage offline"))
                 .when(fileStorageService).deleteFile("avatar-user.png");
 
-        assertDoesNotThrow(() -> profileService.deleteUserAccountLgpd(userId));
+        assertThrows(IllegalStateException.class, () -> profileService.deleteUserAccountLgpd(userId));
 
-        verify(userRepository).save(user);
-        verify(progressRepository).deleteAllByUserId(userId.toString());
+        assertEquals("Wilson Teofilo", user.getName());
+        verify(userRepository, never()).save(user);
+        verify(progressRepository, never()).deleteAllByUserId(userId.toString());
     }
 }

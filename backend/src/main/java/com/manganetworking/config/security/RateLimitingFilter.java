@@ -43,7 +43,9 @@ public class RateLimitingFilter extends OncePerRequestFilter {
     private static final Set<String> STRICT_AUTH_PATHS = Set.of(
             "/api/auth/login",
             "/api/auth/register",
-            "/api/auth/google"
+            "/api/auth/google",
+            "/api/auth/password-reset/request",
+            "/api/auth/password-reset/confirm"
     );
 
     private final PlatformProperties properties;

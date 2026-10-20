@@ -18,15 +18,16 @@ function formatBrl(value: number): string {
 }
 
 export function CreatorWorkspacePage() {
-  const creator = MOCK_CREATORS['creator-teofilo'] || Object.values(MOCK_CREATORS)[0];
+  const creator = import.meta.env.DEV ? MOCK_CREATORS['creator-teofilo'] || Object.values(MOCK_CREATORS)[0] : undefined;
 
   // Painel real do autor (`GET /api/creators/workspace`); cai na demo quando não há sessão de criador.
   const [workspace, setWorkspace] = useState<CreatorWorkspaceDto | null>(null);
+  const [workspaceLoading, setWorkspaceLoading] = useState(true);
 
-  const [profileName, setProfileName] = useState(creator.name);
-  const [bio, setBio] = useState(creator.bio);
-  const [membershipPrice, setMembershipPrice] = useState(creator.membershipPriceBrl);
-  const [avatarPreview] = useState(creator.avatarUrl);
+  const [profileName, setProfileName] = useState(creator?.name ?? '');
+  const [bio, setBio] = useState(creator?.bio ?? '');
+  const [membershipPrice, setMembershipPrice] = useState<number | null>(creator?.membershipPriceBrl ?? null);
+  const [avatarPreview, setAvatarPreview] = useState(creator?.avatarUrl ?? '');
   const [declaredOriginal, setDeclaredOriginal] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
 
@@ -34,10 +35,13 @@ export function CreatorWorkspacePage() {
   const [newWorkTitle, setNewWorkTitle] = useState('');
   const [newWorkSynopsis, setNewWorkSynopsis] = useState('');
   const [newWorkGenres, setNewWorkGenres] = useState<string[]>(['ACAO', 'SHONEN']);
+  const [newWorkFormat, setNewWorkFormat] = useState<'MANGA' | 'LIGHT_NOVEL'>('MANGA');
+  const [chapterText, setChapterText] = useState('');
   const [coverUrl, setCoverUrl] = useState('');
   const [bannerUrl, setBannerUrl] = useState('');
   const [chapterPages, setChapterPages] = useState<string[]>([]);
   const [isUploadingCover, setIsUploadingCover] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isUploadingBanner, setIsUploadingBanner] = useState(false);
   const [isUploadingPages, setIsUploadingPages] = useState(false);
   const [isPublishingWork, setIsPublishingWork] = useState(false);
@@ -45,7 +49,7 @@ export function CreatorWorkspacePage() {
   const [publishSuccessMsg, setPublishSuccessMsg] = useState<string | null>(null);
   const [publishErrorMsg, setPublishErrorMsg] = useState<string | null>(null);
 
-  // Aviso de demonstração quando não há sessão de criador (backend indisponível ou papel de leitor).
+  // Estado explícito quando não há sessão de criador.
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -58,26 +62,25 @@ export function CreatorWorkspacePage() {
       .then((data) => {
         if (!active || !data) return;
         setWorkspace(data);
+        if (data.avatarUrl) setAvatarPreview(data.avatarUrl);
         if (data.name) setProfileName(data.name);
         if (data.membershipPriceBrl != null) setMembershipPrice(Number(data.membershipPriceBrl));
       })
       .catch(() => {
         if (!active) return;
-        setWorkspaceError(
-          'Painel em modo demonstração — entre como criador para ver saldo, nível e missões reais.'
-        );
-      });
+        setWorkspaceError('Entre com uma conta de criador para consultar dados reais do painel.');
+      }).finally(() => { if (active) setWorkspaceLoading(false); });
     return () => {
       active = false;
     };
   }, []);
 
   // Valores exibidos: dados do servidor quando a sessão de criador existe; zero se não autenticado (anti-fake data).
-  const displayHandle = workspace?.handle ?? creator.handle;
+  const displayHandle = workspace?.handle ?? creator?.handle ?? '—';
   const monetizationLevel = workspace?.monetizationLevel ?? 0;
-  const walletBalanceBrl = workspace ? Number(workspace.walletBalanceBrl) : 0;
-  const totalDonationsBrl = workspace ? Number(workspace.totalDonationsBrl) : 0;
-  const monthlyMembersCount = workspace ? workspace.monthlyMembersCount : 0;
+  const walletBalanceBrl = workspace ? Number(workspace.walletBalanceBrl) : creator?.walletBalanceBrl;
+  const totalDonationsBrl = workspace ? Number(workspace.totalDonationsBrl) : creator?.totalDonationsBrl;
+  const monthlyMembersCount = workspace?.monthlyMembersCount ?? creator?.monthlyMembersCount;
   const activeMissions = workspace?.missions ?? [];
 
 
@@ -93,6 +96,23 @@ export function CreatorWorkspacePage() {
       setPublishErrorMsg(err.message || 'Erro no upload da capa.');
     } finally {
       setIsUploadingCover(false);
+    }
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || isUploadingAvatar) return;
+    setIsUploadingAvatar(true);
+    setSaveError(null);
+    try {
+      const stored = await storageApi.uploadAvatar(file);
+      await creatorApi.updateProfile({ avatarUrl: stored.url });
+      setAvatarPreview(stored.url);
+    } catch {
+      setSaveError('Não foi possível salvar o avatar no servidor. Use JPEG ou PNG e tente novamente.');
+    } finally {
+      setIsUploadingAvatar(false);
     }
   };
 
@@ -159,6 +179,7 @@ export function CreatorWorkspacePage() {
           bannerUrl: bannerUrl || undefined,
           genres: newWorkGenres,
           originalAuthorDeclaration: true,
+          format: newWorkFormat,
         });
         workId = workRes.workId;
         if (!workId) {
@@ -168,11 +189,13 @@ export function CreatorWorkspacePage() {
       }
 
       // 2. Se houver páginas enviadas, publicar capítulo 1 imediatamente
-      if (chapterPages.length > 0) {
+      if (chapterPages.length > 0 || (newWorkFormat === 'LIGHT_NOVEL' && chapterText.trim())) {
         await workApi.createChapter(workId, {
           chapterNumber: 1,
           title: 'Capítulo 1: O Começo',
-          pages: chapterPages,
+          ...(newWorkFormat === 'LIGHT_NOVEL'
+            ? { format: 'PROSE' as const, content: chapterText.trim() }
+            : { format: 'IMAGE_PAGES' as const, pages: chapterPages }),
           publicReleaseAt: toBackendLocalDateTime(),
         });
       }
@@ -183,6 +206,8 @@ export function CreatorWorkspacePage() {
       setCoverUrl('');
       setBannerUrl('');
       setChapterPages([]);
+      setChapterText('');
+      setNewWorkFormat('MANGA');
       setDraftWorkId(null);
     } catch (err: any) {
       setPublishErrorMsg(err.message || 'Erro ao publicar obra no servidor.');
@@ -197,18 +222,21 @@ export function CreatorWorkspacePage() {
     setSaveError(null);
     try {
       await creatorApi.updateProfile({ name: profileName, bio });
-      if (Number.isFinite(membershipPrice)) {
+      if (membershipPrice != null && Number.isFinite(membershipPrice)) {
         await creatorApi.updateMembershipPrice(membershipPrice);
       }
       setIsSaved(true);
       setTimeout(() => setIsSaved(false), 2500);
     } catch {
-      // Sem sessão de criador (demo): mantém o feedback local sem afirmar persistência no servidor.
-      setSaveError('Não foi possível salvar no servidor — painel em modo demonstração.');
+      setSaveError('Não foi possível salvar no servidor. Verifique a sessão e tente novamente.');
     } finally {
       setIsSaving(false);
     }
   };
+
+  if (!workspaceLoading && !workspace && !import.meta.env.DEV) {
+    return <div role="status" className="mn-container py-16 text-center space-y-4"><h1 className="font-display text-3xl text-[var(--mn-paper)]">PAINEL DO CRIADOR</h1><p className="font-body text-[var(--mn-mute)]">{workspaceError ?? 'Entre com uma conta de criador para acessar este painel.'}</p></div>;
+  }
 
   return (
     <div className="mn-container py-8 space-y-10 select-none pb-24">
@@ -243,6 +271,14 @@ export function CreatorWorkspacePage() {
                 className="w-16 h-16 object-cover border border-[var(--mn-ink)]"
               />
             </div>
+
+            {workspace && (
+              <label className={`inline-flex cursor-pointer items-center gap-2 border border-[var(--mn-line)] px-3 py-2 font-pixel text-[10px] text-[var(--mn-paper)] ${isUploadingAvatar ? 'opacity-50' : ''}`}>
+                <Upload size={12} />
+                {isUploadingAvatar ? 'ENVIANDO…' : 'TROCAR AVATAR'}
+                <input type="file" accept="image/jpeg,image/png" disabled={isUploadingAvatar} onChange={handleAvatarUpload} className="sr-only" />
+              </label>
+            )}
 
             <div>
               <span className="font-pixel text-[12px] text-[var(--mn-yellow)] tracking-widest block uppercase font-bold">
@@ -324,7 +360,7 @@ export function CreatorWorkspacePage() {
             )}
 
             {/* Fallback de demonstração quando o servidor não devolve missões (sem sessão de criador). */}
-            {activeMissions.length === 0 && (
+            {import.meta.env.DEV && activeMissions.length === 0 && (
             <div className="space-y-3">
               <div className="p-3 border-2 border-[var(--mn-ink)] bg-[var(--mn-ink)] space-y-1">
                 <div className="flex items-center justify-between">
@@ -385,7 +421,7 @@ export function CreatorWorkspacePage() {
               <div className="flex justify-between items-center p-3 bg-[var(--mn-ink)] border border-[var(--mn-line)]">
                 <span className="font-body text-xs text-[var(--mn-mute)]">DOAÇÕES DIRETAS PIX RECEBIDAS</span>
                 <span className="font-display text-lg text-[var(--mn-yellow)] tabular-nums">
-                  {formatBrl(totalDonationsBrl)}
+                  {totalDonationsBrl == null ? '—' : formatBrl(totalDonationsBrl)}
                 </span>
               </div>
 
@@ -399,14 +435,14 @@ export function CreatorWorkspacePage() {
               <div className="flex justify-between items-center p-3 bg-[var(--mn-ink)] border border-[var(--mn-line)]">
                 <span className="font-body text-xs text-[var(--mn-mute)]">PREÇO DA ASSINATURA MENSAL</span>
                 <span className="font-display text-lg text-[var(--mn-yellow)] tabular-nums">
-                  {formatBrl(membershipPrice)}
+                  {membershipPrice == null ? '—' : formatBrl(membershipPrice)}
                 </span>
               </div>
 
               <div className="p-3 border-2 border-[var(--mn-yellow)] bg-[var(--mn-yellow)] text-[var(--mn-ink)] flex justify-between items-center">
                 <span className="font-display text-sm uppercase">SALDO DISPONÍVEL PARA SAQUE</span>
                 <span className="font-display text-2xl tabular-nums">
-                  {formatBrl(walletBalanceBrl)}
+                  {walletBalanceBrl == null ? '—' : formatBrl(walletBalanceBrl)}
                 </span>
               </div>
             </div>
@@ -461,6 +497,14 @@ export function CreatorWorkspacePage() {
               value={newWorkTitle}
               onChange={(e) => setNewWorkTitle(e.target.value)}
             />
+
+            <div>
+              <label htmlFor="work-format" className="font-body text-sm font-semibold text-[var(--mn-paper)] block mb-1.5">FORMATO DA OBRA</label>
+              <select id="work-format" value={newWorkFormat} onChange={(e) => setNewWorkFormat(e.target.value as 'MANGA' | 'LIGHT_NOVEL')} className="w-full p-2.5 bg-[var(--mn-ink)] text-[var(--mn-paper)] border-2 border-[var(--mn-line)] font-body text-xs focus:border-[var(--mn-yellow)] outline-none">
+                <option value="MANGA">Mangá — páginas ilustradas</option>
+                <option value="LIGHT_NOVEL">Light novel — capítulos em prosa</option>
+              </select>
+            </div>
 
             <div>
               <label className="font-body text-sm font-semibold text-[var(--mn-paper)] block mb-1.5">
@@ -545,7 +589,14 @@ export function CreatorWorkspacePage() {
             </div>
           </div>
 
-          {/* Upload de Páginas do Capítulo 1 */}
+          {newWorkFormat === 'LIGHT_NOVEL' ? (
+            <div className="p-4 border-2 border-[var(--mn-line)] bg-[var(--mn-ink)] space-y-3">
+              <label htmlFor="chapter-prose" className="font-pixel text-[12px] text-[var(--mn-yellow)] uppercase block">TEXTO DO CAPÍTULO 1</label>
+              <textarea id="chapter-prose" value={chapterText} onChange={(event) => setChapterText(event.target.value)} maxLength={2_000_000} rows={18} className="w-full p-4 bg-[var(--mn-ink-2)] text-[var(--mn-paper)] font-body text-base leading-relaxed border-2 border-[var(--mn-line)] focus:border-[var(--mn-yellow)] outline-none" placeholder="Escreva ou cole aqui o primeiro capítulo…" />
+              <p className="font-body text-xs text-[var(--mn-mute)]">Texto puro, até 2 MB. HTML é removido no servidor.</p>
+            </div>
+          ) : (
+          /* Upload de Páginas do Capítulo 1 */
           <div className="p-4 border-2 border-[var(--mn-line)] bg-[var(--mn-ink)] space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
@@ -559,7 +610,7 @@ export function CreatorWorkspacePage() {
               <label className="px-4 py-2 bg-[var(--mn-yellow)] text-[var(--mn-ink)] border-2 border-[var(--mn-ink)] font-pixel text-[12px] uppercase cursor-pointer hover:bg-[var(--mn-yellow-press)] transition-colors shrink-0">
                 <FileText size={14} className="inline mr-1.5" />
                 {isUploadingPages ? 'ENVIANDO PÁGINAS...' : `UPAR PÁGINAS (${chapterPages.length})`}
-                <input type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={handlePagesUpload} className="hidden" />
+                <input type="file" multiple accept="image/jpeg,image/png" onChange={handlePagesUpload} className="hidden" />
               </label>
             </div>
 
@@ -574,6 +625,7 @@ export function CreatorWorkspacePage() {
               </div>
             )}
           </div>
+          )}
 
           {/* Botão de Publicação */}
           <div className="pt-2">
@@ -612,8 +664,8 @@ export function CreatorWorkspacePage() {
             label="VALOR DA MENSALIDADE DE MEMBROS (R$)"
             type="number"
             step="0.01"
-            value={membershipPrice}
-            onChange={(e) => setMembershipPrice(Number(e.target.value))}
+            value={membershipPrice ?? ''}
+            onChange={(e) => setMembershipPrice(e.target.value === '' ? null : Number(e.target.value))}
             helperText="Preço cobrado dos leitores para acesso antecipado"
           />
         </div>

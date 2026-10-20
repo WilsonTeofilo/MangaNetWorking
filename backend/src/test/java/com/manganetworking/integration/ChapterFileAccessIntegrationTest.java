@@ -11,6 +11,7 @@ import com.manganetworking.repository.jpa.CreatorRepository;
 import com.manganetworking.repository.jpa.UserRepository;
 import com.manganetworking.repository.jpa.WorkRepository;
 import com.manganetworking.service.storage.ChapterFileAccessGuard;
+import com.manganetworking.service.storage.FileStorageService;
 import com.manganetworking.service.work.WorkApplicationService;
 import com.manganetworking.service.work.dto.CreateChapterRequestDto;
 import com.manganetworking.service.work.dto.CreateWorkRequestDto;
@@ -19,6 +20,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -28,6 +30,14 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.LocalDateTime;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 
@@ -41,7 +51,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * {@link WorkApplicationService#createChapter} e a leitura pelo
  * {@link ChapterFileAccessGuard} — tudo contra o Postgres de verdade, com o índice único ativo.</p>
  */
-@SpringBootTest
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Testcontainers(disabledWithoutDocker = true)
 class ChapterFileAccessIntegrationTest {
 
@@ -76,6 +86,12 @@ class ChapterFileAccessIntegrationTest {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private FileStorageService fileStorageService;
+
+    @LocalServerPort
+    private int port;
 
     @AfterEach
     void clearSecurityContext() {
@@ -125,6 +141,55 @@ class ChapterFileAccessIntegrationTest {
 
         assertThat(chapterFileRepository.findByFilename("antecipada-1.png")).isPresent();
         assertThat(guard.canRead("antecipada-1.png")).isFalse();
+    }
+
+    @Test
+    @DisplayName("Carga do leitor: 100 GETs concorrentes servem bytes reais de imagem sem 404/429")
+    void servesRealImagePageUnderConcurrentReaderLoad() throws Exception {
+        CreatorEntity creator = newCreator();
+        WorkEntity work = newWork(creator.getId());
+        byte[] realImage = Files.readAllBytes(Path.of("../frontend/public/assets/kokuin/shito.jpg"));
+        String filename = fileStorageService.storeFile(realImage, "shito.jpg", "image/jpeg");
+
+        workApplicationService.createChapter(creator.getId(), work.getId(), new CreateChapterRequestDto(
+                1, "Página de carga", null,
+                List.of("/api/storage/" + filename),
+                LocalDateTime.now().minusDays(1)));
+
+        HttpClient client = HttpClient.newHttpClient();
+        var executor = Executors.newFixedThreadPool(10);
+        try {
+            record TimedResponse(HttpResponse<byte[]> response, long elapsedNanos) {}
+            long started = System.nanoTime();
+            var requests = java.util.stream.IntStream.range(0, 100)
+                    .mapToObj(index -> java.util.concurrent.CompletableFuture.supplyAsync(() -> {
+                        try {
+                            long requestStarted = System.nanoTime();
+                            HttpRequest request = HttpRequest.newBuilder()
+                                    .uri(URI.create("http://localhost:" + port + "/api/storage/" + filename))
+                                    .GET().build();
+                            HttpResponse<byte[]> response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
+                            return new TimedResponse(response, System.nanoTime() - requestStarted);
+                        } catch (Exception exception) {
+                            throw new java.util.concurrent.CompletionException(exception);
+                        }
+                    }, executor)).toList();
+
+            var timedResponses = requests.stream().map(java.util.concurrent.CompletableFuture::join).toList();
+            var responses = timedResponses.stream().map(TimedResponse::response).toList();
+            long elapsedMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started);
+            long[] latenciesMs = timedResponses.stream().mapToLong(result -> TimeUnit.NANOSECONDS.toMillis(result.elapsedNanos())).sorted().toArray();
+            assertThat(responses).hasSize(100).allSatisfy(response -> {
+                assertThat(response.statusCode()).isEqualTo(200);
+                assertThat(response.headers().firstValue("content-type").orElse("")).startsWith("image/jpeg");
+                assertThat(response.body()).isEqualTo(realImage);
+            });
+            System.out.printf("Reader load evidence: requests=100, concurrency=10, status=200:100, elapsedMs=%d, p50Ms=%d, p95Ms=%d, maxMs=%d, payloadBytes=%d%n",
+                    elapsedMs, latenciesMs[49], latenciesMs[94], latenciesMs[99], realImage.length);
+        } finally {
+            executor.shutdownNow();
+            fileStorageService.deleteFile(filename);
+        }
     }
 
     private CreatorEntity newCreator() {

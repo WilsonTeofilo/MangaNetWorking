@@ -44,7 +44,7 @@ public class CreatorEntity {
     // Nunca serializados diretamente: dados pessoais criptografados em repouso (LGPD).
     // O acesso é feito apenas por DTOs explícitos (ex.: workspace do próprio autor).
     @JsonIgnore
-    @Column(nullable = false)
+    @Column(nullable = true)
     @Convert(converter = AesCryptoConverter.class)
     private String documentCpf;
 

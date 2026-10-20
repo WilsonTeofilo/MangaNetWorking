@@ -1,18 +1,17 @@
 package com.manganetworking.controller;
 
 import com.manganetworking.config.exception.AccessDeniedException;
-import com.manganetworking.config.properties.PlatformProperties;
 import com.manganetworking.config.security.SecurityContextUtils;
-import com.manganetworking.domain.relational.DonationEntity;
-import com.manganetworking.domain.relational.MembershipSubscriptionEntity;
 import com.manganetworking.repository.jpa.FinancialLedgerRepository;
-import com.manganetworking.service.monetization.MonetizationService;
-import com.manganetworking.service.monetization.dto.*;
+import com.manganetworking.service.monetization.dto.LedgerEntryResponseDto;
+import com.manganetworking.service.monetization.MercadoPagoService;
+import com.manganetworking.service.monetization.dto.DonationCheckoutRequestDto;
+import com.manganetworking.service.monetization.dto.MembershipCheckoutRequestDto;
+import com.manganetworking.service.monetization.dto.CheckoutResponseDto;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -21,91 +20,41 @@ import java.util.UUID;
 @RequestMapping("/api/monetization")
 public class MonetizationController {
 
-    private final MonetizationService monetizationService;
     private final FinancialLedgerRepository ledgerRepository;
-    private final PlatformProperties properties;
+    private final MercadoPagoService mercadoPagoService;
 
-    public MonetizationController(
-            MonetizationService monetizationService,
-            FinancialLedgerRepository ledgerRepository,
-            PlatformProperties properties
-    ) {
-        this.monetizationService = monetizationService;
+    public MonetizationController(FinancialLedgerRepository ledgerRepository, MercadoPagoService mercadoPagoService) {
         this.ledgerRepository = ledgerRepository;
-        this.properties = properties;
+        this.mercadoPagoService = mercadoPagoService;
+    }
+
+    @PostMapping("/donations/checkout")
+    public ResponseEntity<CheckoutResponseDto> createDonationCheckout(@Valid @RequestBody DonationCheckoutRequestDto dto) {
+        UUID payerUserId = SecurityContextUtils.requireCurrentUserId();
+        return ResponseEntity.ok(mercadoPagoService.createDonationCheckoutPreference(payerUserId, dto.creatorId(),
+                dto.workId(), dto.chapterId(), dto.amountBrl(), dto.message(), dto.idempotencyKey()));
+    }
+
+    @PostMapping("/membership/checkout")
+    public ResponseEntity<CheckoutResponseDto> createMembershipCheckout(@Valid @RequestBody MembershipCheckoutRequestDto dto) {
+        UUID payerUserId = SecurityContextUtils.requireCurrentUserId();
+        return ResponseEntity.ok(mercadoPagoService.createMembershipCheckoutPreference(payerUserId,
+                dto.creatorId(), dto.idempotencyKey()));
     }
 
     @PostMapping("/donate")
-    public ResponseEntity<DonateResponseDto> createDonation(@Valid @RequestBody DonateRequestDto dto) {
-        // Identidade do doador vem exclusivamente da sessão — nunca do corpo controlado pelo cliente.
-        UUID donorUserId = SecurityContextUtils.requireCurrentUserId();
-        String paymentId = dto.paymentExternalId() != null && !dto.paymentExternalId().isBlank()
-                ? dto.paymentExternalId()
-                : "PIX_DONATE_" + UUID.randomUUID();
-
-        DonationEntity donation = monetizationService.processDonation(
-                donorUserId,
-                dto.creatorId(),
-                dto.workId(),
-                dto.chapterId(),
-                dto.amountBrl(),
-                dto.message(),
-                paymentId
-        );
-
-        return ResponseEntity.ok(new DonateResponseDto(
-                "APPROVED",
-                donation.getId(),
-                donation.getGrossAmountBrl(),
-                donation.getPlatformFeeBrl(),
-                donation.getCreatorNetBrl(),
-                "Doação realizada com sucesso! O repasse líquido foi creditado ao autor."
-        ));
+    public ResponseEntity<Void> createDonation() {
+        return ResponseEntity.status(org.springframework.http.HttpStatus.GONE).build();
     }
 
     @PostMapping("/membership/subscribe")
-    public ResponseEntity<SubscribeMembershipResponseDto> subscribeMembership(@Valid @RequestBody SubscribeMembershipRequestDto dto) {
-        // Assinante resolvido pela sessão (evita assinar em nome de outro usuário).
-        UUID subscriberUserId = SecurityContextUtils.requireCurrentUserId();
-        String paymentId = dto.paymentExternalId() != null && !dto.paymentExternalId().isBlank()
-                ? dto.paymentExternalId()
-                : "MEMBERSHIP_" + UUID.randomUUID();
-
-        MembershipSubscriptionEntity sub = monetizationService.subscribeMembership(
-                subscriberUserId,
-                dto.creatorId(),
-                paymentId
-        );
-
-        return ResponseEntity.ok(new SubscribeMembershipResponseDto(
-                "ACTIVE",
-                sub.getId(),
-                sub.getMonthlyPriceBrl(),
-                sub.getExpiresAt(),
-                "Você agora é membro oficial! Acesso antecipado desbloqueado."
-        ));
+    public ResponseEntity<Void> subscribeMembership() {
+        return ResponseEntity.status(org.springframework.http.HttpStatus.GONE).build();
     }
 
     @PostMapping("/vip/subscribe")
-    public ResponseEntity<Map<String, Object>> subscribeVip(
-            @RequestBody(required = false) Map<String, String> body
-    ) {
-        // Assinante VIP resolvido pela sessão (o header antigo era forjável pelo cliente).
-        UUID effectiveUserId = SecurityContextUtils.requireCurrentUserId();
-        String paymentId = (body != null && body.containsKey("paymentExternalId") && !body.get("paymentExternalId").isBlank())
-                ? body.get("paymentExternalId")
-                : "VIP_SUB_" + UUID.randomUUID();
-
-        var user = monetizationService.subscribePlatformVip(effectiveUserId, paymentId);
-
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("status", "ACTIVE");
-        response.put("isVip", user.isVip());
-        response.put("vipExpiresAt", user.getVipExpiresAt());
-        // Preço autoritativo da configuração (platform.vip-price), não uma constante duplicada no código.
-        response.put("monthlyPriceBrl", properties.getVipPrice());
-        response.put("message", "Assinatura VIP MangaNetWorking ativada! Anúncios foram 100% desativados para sua conta.");
-        return ResponseEntity.ok(response);
+    public ResponseEntity<Map<String, Object>> subscribeVip() {
+        return ResponseEntity.status(org.springframework.http.HttpStatus.GONE).build();
     }
 
     @GetMapping("/ledger/{creatorId}")

@@ -10,6 +10,7 @@ import java.util.UUID;
 public record CreatorWorkspaceResponseDto(
         UUID id,
         String name,
+        String avatarUrl,
         String handle,
         int monetizationLevel,
         boolean monetizationUnlocked,

@@ -1,6 +1,7 @@
 package com.manganetworking.service.work.dto;
 
 import com.manganetworking.domain.enums.Genre;
+import com.manganetworking.domain.enums.WorkFormat;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -28,5 +29,16 @@ public record CreateWorkRequestDto(
         List<Genre> genres,
 
         @AssertTrue(message = "É obrigatório declarar que você é o autor original dos direitos da obra (Tolerância Zero para Pirataria).")
-        boolean originalAuthorDeclaration
-) {}
+        boolean originalAuthorDeclaration,
+
+        WorkFormat format
+) {
+    public CreateWorkRequestDto(String title, String originalTitle, String synopsis, String coverUrl,
+                                String bannerUrl, List<Genre> genres, boolean originalAuthorDeclaration) {
+        this(title, originalTitle, synopsis, coverUrl, bannerUrl, genres, originalAuthorDeclaration, WorkFormat.MANGA);
+    }
+
+    public CreateWorkRequestDto {
+        if (format == null) format = WorkFormat.MANGA;
+    }
+}

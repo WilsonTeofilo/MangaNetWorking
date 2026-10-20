@@ -7,9 +7,12 @@ import com.manganetworking.domain.relational.UserEntity;
 import com.manganetworking.domain.relational.WorkEntity;
 
 import com.manganetworking.repository.jpa.CreatorRepository;
+import com.manganetworking.repository.jpa.CreatorPixKeyAuditRepository;
 import com.manganetworking.repository.jpa.WorkRepository;
 import com.manganetworking.repository.mongo.CreatorMissionMongoRepository;
 import com.manganetworking.service.monetization.MonetizationService;
+import com.manganetworking.service.mfa.TwoFactorAuthService;
+import com.manganetworking.service.storage.ProfileAvatarUrlPolicy;
 import com.manganetworking.service.creator.dto.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,19 +25,22 @@ import java.util.UUID;
 public class CreatorApplicationService {
 
     private final CreatorRepository creatorRepository;
+    private final CreatorPixKeyAuditRepository pixKeyAuditRepository;
     private final WorkRepository workRepository;
     private final CreatorMissionMongoRepository missionRepository;
     private final MonetizationService monetizationService;
-    private final com.manganetworking.service.mfa.TwoFactorAuthService twoFactorAuthService;
+    private final TwoFactorAuthService twoFactorAuthService;
 
     public CreatorApplicationService(
             CreatorRepository creatorRepository,
+            CreatorPixKeyAuditRepository pixKeyAuditRepository,
             WorkRepository workRepository,
             CreatorMissionMongoRepository missionRepository,
             MonetizationService monetizationService,
-            com.manganetworking.service.mfa.TwoFactorAuthService twoFactorAuthService
+            TwoFactorAuthService twoFactorAuthService
     ) {
         this.creatorRepository = creatorRepository;
+        this.pixKeyAuditRepository = pixKeyAuditRepository;
         this.workRepository = workRepository;
         this.missionRepository = missionRepository;
         this.monetizationService = monetizationService;
@@ -88,6 +94,7 @@ public class CreatorApplicationService {
         return new CreatorWorkspaceResponseDto(
                 creator.getId(),
                 creator.getUser() != null ? creator.getUser().getName() : creator.getHandle(),
+                creator.getAvatarUrl(),
                 "@" + creator.getHandle(),
                 creator.getMonetizationLevel(),
                 creator.isMonetizationUnlocked(),
@@ -111,11 +118,11 @@ public class CreatorApplicationService {
         if (dto.name() != null && !dto.name().isBlank() && creator.getUser() != null) {
             creator.getUser().setName(com.manganetworking.util.SanitizationUtils.stripAllHtml(dto.name().trim()));
         }
-        if (dto.bio() != null) creator.setBio(com.manganetworking.util.SanitizationUtils.sanitizeText(dto.bio().trim()));
-        if (dto.instagramUrl() != null) creator.setInstagramUrl(dto.instagramUrl().trim());
-        if (dto.youtubeUrl() != null) creator.setYoutubeUrl(dto.youtubeUrl().trim());
-        if (dto.portfolioUrl() != null) creator.setPortfolioUrl(dto.portfolioUrl().trim());
-        if (dto.avatarUrl() != null) creator.setAvatarUrl(dto.avatarUrl().trim());
+        if (dto.bio() != null) creator.setBio(com.manganetworking.util.SanitizationUtils.stripAllHtml(dto.bio().trim()));
+        if (dto.instagramUrl() != null) creator.setInstagramUrl(CreatorProfileUrlPolicy.instagram(dto.instagramUrl()));
+        if (dto.youtubeUrl() != null) creator.setYoutubeUrl(CreatorProfileUrlPolicy.youtube(dto.youtubeUrl()));
+        if (dto.portfolioUrl() != null) creator.setPortfolioUrl(CreatorProfileUrlPolicy.portfolio(dto.portfolioUrl()));
+        if (dto.avatarUrl() != null) creator.setAvatarUrl(ProfileAvatarUrlPolicy.validate(dto.avatarUrl()));
 
         creatorRepository.save(creator);
     }
@@ -131,6 +138,11 @@ public class CreatorApplicationService {
      */
     @Transactional
     public void updatePixKey(UUID creatorId, UpdatePixKeyRequestDto dto) {
+        updatePixKey(creatorId, dto, "unknown");
+    }
+
+    @Transactional
+    public void updatePixKey(UUID creatorId, UpdatePixKeyRequestDto dto, String clientIp) {
         CreatorEntity creator = creatorRepository.findById(creatorId)
                 .orElseThrow(() -> new ResourceNotFoundException("Criador não encontrado"));
 
@@ -140,14 +152,31 @@ public class CreatorApplicationService {
         }
 
         // Validação obrigatória de Step-Up Authentication com o código OTP de 2FA
-        boolean codeValid = twoFactorAuthService.verifyOtp(user.getEmail(), dto.twoFactorCode().trim());
+        boolean codeValid = twoFactorAuthService.verifyOtp(
+                user.getEmail(), dto.twoFactorCode().trim(), TwoFactorAuthService.OtpPurpose.STEP_UP_PIX);
         if (!codeValid) {
             throw new SecurityException("Código 2FA inválido ou expirado. Operação de segurança abortada.");
         }
 
-        creator.setPixKey(dto.pixKey().trim());
+        String previousKey = creator.getPixKey();
+        var previousType = creator.getPixKeyType();
+        String nextKey = dto.pixKey().trim();
+        creator.setPixKey(nextKey);
         creator.setPixKeyType(dto.pixKeyType());
         creatorRepository.save(creator);
+        pixKeyAuditRepository.save(new com.manganetworking.domain.relational.CreatorPixKeyAuditEntity(
+                creator.getId(), user.getId(), previousType != null ? previousType.name() : null,
+                maskPixKey(previousKey), dto.pixKeyType().name(), maskPixKey(nextKey),
+                normalizeClientIp(clientIp)));
+    }
+
+    private String maskPixKey(String key) {
+        if (key == null || key.isBlank() || key.trim().length() <= 4) return "****";
+        return "****" + key.trim().substring(key.trim().length() - 4);
+    }
+
+    private String normalizeClientIp(String clientIp) {
+        return clientIp == null || clientIp.isBlank() ? "unknown" : clientIp.substring(0, Math.min(45, clientIp.length()));
     }
 
 

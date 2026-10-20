@@ -1,6 +1,6 @@
 # MangaNetWorking
 
-Plataforma editorial digital para publicar, ler e descobrir mangás e quadrinhos originais independentes, conectando leitores e criadores.
+Plataforma editorial digital para conectar leitores e criadores de histórias autorais. O catálogo e o leitor suportam mangás em páginas e light novels em capítulos de prosa, com renderização apropriada para cada formato.
 
 ## Como navegar na documentação
 
@@ -17,7 +17,7 @@ Plataforma editorial digital para publicar, ler e descobrir mangás e quadrinhos
 **O roadmap explica o estado; as skills explicam como executar.** O README é uma porta de entrada, não a prova de que um requisito já está implementado.
 
 > ⚠️ **ESCOPO ESTATUTÁRIO FUNDAMENTAL:**
-> - **NÃO EXISTE LOJA FÍSICA NEM VITRINE DE PRODUTOS:** A plataforma é **100% digital e editorial**. Não há venda de produtos físicos, print-on-demand (POD), estoque, frete, correios ou despacho de mercadorias.
+> - **NÃO EXISTE LOJA NEM VENDA DE OBRAS/PRODUTOS:** A plataforma é **100% digital e editorial**. Não há venda individual de mangás/capítulos, roupas ou outros produtos; sem vitrine, carrinho, print-on-demand (POD), estoque ou logística.
 > - **MONETIZAÇÃO EXCLUSIVAMENTE DIGITAL:** Doações avulsas via PIX/Cartão, Assinaturas do Clube de Membros (`Membership`) e repasse de Anúncios no leitor (58% autor / 42% plataforma), com taxa justa de 17% retida pela plataforma para sustentar os servidores e 83% repassado diretamente ao criador.
 > - **TOLERÂNCIA ZERO PARA PIRATARIA E CONTEÚDO ADULTO:** Proibido upar obras de terceiros (ex: Bleach/Tite Kubo, Naruto/Masashi Kishimoto) e proibido pornografia/hentai.
 
@@ -25,8 +25,8 @@ Plataforma editorial digital para publicar, ler e descobrir mangás e quadrinhos
 
 ## 1. Objetivo e limites do produto
 
-O MangaNetWorking é uma plataforma editorial digital para obras originais e autorais. O escopo é estritamente focado em:
-1. Publicação ágil e leitura digital de alta performance (webtoon e scroll contínuo).
+O MangaNetWorking é uma plataforma editorial digital para obras originais e autorais, em mangá ou light novel. O escopo é estritamente focado em:
+1. Publicação e leitura digital de mangás em páginas e capítulos de light novel em prosa.
 2. Algoritmo transparente de recomendação e descoberta orgânica para novos autores.
 3. Gamificação de Criadores baseada em **Seasons (Temporadas de Missões)** para impulsionar engajamento e visibilidade.
 4. Apoio financeiro direto e sem burocracia (Doações e Membros com 83% líquido para o autor).
@@ -101,9 +101,9 @@ As missões são baseadas em métricas nativas que o próprio backend já audita
 
 ## 5. Regras Financeiras e Divisão da Monetização (Split)
 
-A plataforma **NÃO possui loja física, nem estoque, nem venda de produtos impressos**. Os fluxos são 100% digitais:
-- **Doações Avulsas ao Criador:** 83% repassado ao criador / 17% retido pela plataforma.
-- **Clube de Membros (`Membership` do Criador):** Faixas definidas pelo autor entre R$ 7,99 e R$ 45,99 mensais, com split de 83% criador / 17% plataforma. Dá acesso antecipado aos capítulos de membros do autor.
+A plataforma **não vende mangás/capítulos individualmente nem possui loja física, estoque ou logística**. Os fluxos de receita previstos são digitais:
+- **Doações Avulsas ao Criador:** o split projetado é 83% criador / 17% plataforma. O endpoint legado está desativado até existir Checkout Pro com pagamento confirmado; nenhum crédito é criado sem confirmação do gateway.
+- **Clube de Membros (`Membership` do Criador):** faixas entre R$ 7,99 e R$ 45,99, com split projetado de 83% / 17% e acesso antecipado. A ativação está indisponível até receber fluxo de checkout idempotente equivalente ao VIP.
 - **Acesso Antecipado (`Early Access`):** Capítulos liberados primeiro para membros pagantes com base no campo `publicReleaseAt`, controlado com código HTTP 403 no backend.
 - **Anúncios no Leitor:** Exibição discreta a cada 30 páginas lidas, com participação de 58% para o criador e 42% para a plataforma.
 - **Assinatura VIP / Premium da Plataforma (~R$ 23 / 30 dias):**
@@ -112,6 +112,7 @@ A plataforma **NÃO possui loja física, nem estoque, nem venda de produtos impr
   - **Leitura Offline no Futuro App Mobile:** Permite download de capítulos para leitura offline encapsulada e criptografada na sandbox do aplicativo (com flag nativa `FLAG_SECURE` para impedir print/gravação de tela e sem permitir extração de arquivos para o PC).
   - **Sem furar o criador:** O Premium da plataforma **NÃO dá acesso antecipado** aos capítulos exclusivos de membros (o leitor só baixa offline os capítulos que tem direito de ler).
   - **Zero loja:** Não há venda física, cupons ou descontos de loja.
+  - **Estado de implementação:** o Checkout Pro cria uma preferência vinculada ao usuário e só ativa o VIP após webhook assinado, aprovado, em BRL e com valor conferido. A homologação Sandbox continua pendente de credenciais e URL pública de webhook.
 
 ---
 

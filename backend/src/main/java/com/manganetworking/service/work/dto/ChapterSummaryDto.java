@@ -1,5 +1,7 @@
 package com.manganetworking.service.work.dto;
 
+import com.manganetworking.domain.enums.ChapterFormat;
+
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -11,5 +13,6 @@ public record ChapterSummaryDto(
         LocalDateTime publicReleaseAt,
         boolean isEarlyAccess,
         long views,
-        long likes
+        long likes,
+        ChapterFormat format
 ) {}

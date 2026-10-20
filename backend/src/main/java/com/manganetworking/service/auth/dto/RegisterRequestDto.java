@@ -2,6 +2,7 @@ package com.manganetworking.service.auth.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 public record RegisterRequestDto(
@@ -13,8 +14,8 @@ public record RegisterRequestDto(
         @Email(message = "Formato de e-mail inválido")
         String email,
 
-        @NotBlank(message = "A senha é obrigatória")
-        @Size(min = 8, max = 100, message = "A senha deve ter no mínimo 8 caracteres")
+        @NotNull(message = "A senha é obrigatória")
+        @Size(max = 128, message = "A senha excede o limite de entrada")
         String password,
 
         boolean isCreator,
@@ -29,11 +30,9 @@ public record RegisterRequestDto(
         // Consentimento LGPD (Art. 7º, I e Art. 8º)
         Boolean termsAccepted,
 
+        @jakarta.validation.constraints.NotBlank(message = "A versão da política aceita é obrigatória")
+        String privacyPolicyVersion,
+
         // Data de nascimento para proteção e controle de maioridade (Art. 14)
         java.time.LocalDate birthDate
-) {
-    /** Construtor de conveniência para retrocompatibilidade com testes legados */
-    public RegisterRequestDto(String name, String email, String password, boolean isCreator, String handle, String cpf, Boolean isProfilePublic) {
-        this(name, email, password, isCreator, handle, cpf, isProfilePublic, true, java.time.LocalDate.of(2000, 1, 1));
-    }
-}
+        ) {}

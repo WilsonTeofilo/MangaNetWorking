@@ -1,0 +1,77 @@
+/* SobrePage — entrada da página, retrato com "tremidinha" e contorno do nome. */
+
+.sobre-page {
+  animation: sobre-page-enter 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes sobre-page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Retrato: 1.2s na ida e na volta, como no MangaTeofilo. */
+.sobre-portrait__manga {
+  transition:
+    clip-path 1.2s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.6s ease,
+    transform 0.55s ease;
+}
+
+.sobre-portrait.is-shaking {
+  animation: sobre-portrait-shake 0.55s infinite alternate ease-in-out;
+}
+
+@keyframes sobre-portrait-shake {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  20% {
+    transform: translate(-2.5px, 2.5px) rotate(-0.35deg);
+  }
+  40% {
+    transform: translate(3px, -2px) rotate(0.35deg);
+  }
+  60% {
+    transform: translate(-1.5px, 3px) rotate(-0.25deg);
+  }
+  80% {
+    transform: translate(2.5px, -1.5px) rotate(0.25deg);
+  }
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+}
+
+/* "Wilson Teofilo" em papel sobre amarelo: contorno preto para contraste. */
+.sobre-founder-name {
+  text-shadow:
+    -1.2px -1.2px 0 var(--mn-ink),
+    0 -1.2px 0 var(--mn-ink),
+    1.2px -1.2px 0 var(--mn-ink),
+    -1.2px 0 0 var(--mn-ink),
+    1.2px 0 0 var(--mn-ink),
+    -1.2px 1.2px 0 var(--mn-ink),
+    0 1.2px 0 var(--mn-ink),
+    1.2px 1.2px 0 var(--mn-ink),
+    0 3px 0 rgba(11, 11, 12, 0.3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sobre-page {
+    animation: none;
+  }
+
+  .sobre-portrait.is-shaking {
+    animation: none;
+  }
+
+  .sobre-portrait__manga {
+    transition: none;
+  }
+}

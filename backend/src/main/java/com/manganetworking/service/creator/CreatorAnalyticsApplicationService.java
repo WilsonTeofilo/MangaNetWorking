@@ -81,8 +81,8 @@ public class CreatorAnalyticsApplicationService {
 
         List<EngagementEventDocument> events = workIds.isEmpty()
                 ? List.of()
-                : engagementEventRepository.findByWorkIdInAndEventTypeAndTimestampAfter(
-                        workIds, READ_EVENT, windowStart);
+                : engagementEventRepository.findByWorkIdInAndEventTypeAndTimestampBetween(
+                        workIds, READ_EVENT, windowStart, today.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant());
 
         List<CreatorAnalyticsResponseDto.DailyReadsDto> readsPerDay = buildDailySeries(events, from, today);
         List<CreatorAnalyticsResponseDto.PageRetentionDto> retention = buildPageRetention(events);
