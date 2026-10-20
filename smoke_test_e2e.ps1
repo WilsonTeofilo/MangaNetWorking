@@ -7,7 +7,7 @@ Write-Host "       SMOKE TEST E2E COMPLETO - MANGANETWORKING          " -Foregro
 Write-Host "==========================================================" -ForegroundColor Cyan
 $timestamp = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
 $testEmail = "smoke_creator_$timestamp@test.com"
-$testPassword = "Password123!"
+$testPassword = "Smoke safe phrase 2026!"
 $policy = Invoke-RestMethod -Uri "$baseUrl/api/auth/policy" -Method Get
 
 $webSession = New-Object Microsoft.PowerShell.Commands.WebRequestSession
