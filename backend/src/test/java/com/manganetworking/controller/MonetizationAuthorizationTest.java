@@ -7,6 +7,7 @@ import com.manganetworking.domain.relational.CreatorEntity;
 import com.manganetworking.domain.relational.FinancialLedgerEntity;
 import com.manganetworking.repository.jpa.FinancialLedgerRepository;
 import com.manganetworking.service.monetization.MonetizationService;
+import com.manganetworking.service.monetization.MercadoPagoService;
 import com.manganetworking.service.session.SessionService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -65,6 +66,9 @@ class MonetizationAuthorizationTest {
 
     @MockitoBean
     private FinancialLedgerRepository ledgerRepository;
+
+    @MockitoBean
+    private MercadoPagoService mercadoPagoService;
 
     // Bean Filter incluído no slice @WebMvcTest; depende deste serviço.
     @MockitoBean
@@ -156,6 +160,26 @@ class MonetizationAuthorizationTest {
                         .contentType("application/json")
                         .content("{\"creatorId\":\"" + UUID.randomUUID() + "\",\"amountBrl\":10.00}"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("Sessão autenticada não consegue creditar doação sem checkout confirmado → 410")
+    void authenticatedUserCannotCreateUnpaidDonation() throws Exception {
+        mockMvc.perform(post("/api/monetization/donate")
+                        .with(authentication(creatorAuth(UUID.randomUUID(), UUID.randomUUID())))
+                        .contentType("application/json")
+                        .content("{\"creatorId\":\"" + UUID.randomUUID() + "\",\"amountBrl\":10.00}"))
+                .andExpect(status().isGone());
+    }
+
+    @Test
+    @DisplayName("Sessão autenticada não consegue ativar membro sem checkout confirmado → 410")
+    void authenticatedUserCannotCreateUnpaidMembership() throws Exception {
+        mockMvc.perform(post("/api/monetization/membership/subscribe")
+                        .with(authentication(creatorAuth(UUID.randomUUID(), UUID.randomUUID())))
+                        .contentType("application/json")
+                        .content("{\"creatorId\":\"" + UUID.randomUUID() + "\"}"))
+                .andExpect(status().isGone());
     }
 
     @Test

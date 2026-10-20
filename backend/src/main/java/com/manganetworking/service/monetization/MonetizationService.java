@@ -70,7 +70,7 @@ public class MonetizationService {
             throw new IllegalStateException("Transação de pagamento já foi processada anteriormente: " + paymentExternalId);
         }
 
-        CreatorEntity creator = creatorRepository.findById(creatorId)
+        CreatorEntity creator = creatorRepository.findByIdForUpdate(creatorId)
                 .orElseThrow(() -> new IllegalArgumentException("Criador não encontrado: " + creatorId));
 
         UserEntity donor = donorUserId != null ? userRepository.findById(donorUserId).orElse(null) : null;
@@ -130,6 +130,18 @@ public class MonetizationService {
             UUID creatorId,
             String paymentExternalId
     ) {
+        CreatorEntity currentCreator = creatorRepository.findById(creatorId)
+                .orElseThrow(() -> new IllegalArgumentException("Criador não encontrado: " + creatorId));
+        return subscribeMembership(subscriberUserId, creatorId, currentCreator.getMembershipPriceBrl(), paymentExternalId);
+    }
+
+    @Transactional
+    public MembershipSubscriptionEntity subscribeMembership(
+            UUID subscriberUserId,
+            UUID creatorId,
+            BigDecimal checkoutPriceBrl,
+            String paymentExternalId
+    ) {
         if (ledgerRepository.findByPaymentExternalId(paymentExternalId).isPresent()) {
             throw new IllegalStateException("Assinatura já processada: " + paymentExternalId);
         }
@@ -137,10 +149,11 @@ public class MonetizationService {
         UserEntity subscriber = userRepository.findById(subscriberUserId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado: " + subscriberUserId));
 
-        CreatorEntity creator = creatorRepository.findById(creatorId)
+        CreatorEntity creator = creatorRepository.findByIdForUpdate(creatorId)
                 .orElseThrow(() -> new IllegalArgumentException("Criador não encontrado: " + creatorId));
 
-        BigDecimal monthlyPrice = creator.getMembershipPriceBrl();
+        BigDecimal monthlyPrice = checkoutPriceBrl;
+        if (monthlyPrice == null || monthlyPrice.signum() <= 0) throw new IllegalArgumentException("Preço de checkout inválido.");
         BigDecimal feeRate = properties.getFeePercentage();
         BigDecimal platformFee = monthlyPrice.multiply(feeRate).setScale(2, RoundingMode.HALF_UP);
         BigDecimal creatorNet = monthlyPrice.subtract(platformFee);
@@ -148,24 +161,26 @@ public class MonetizationService {
         // Atualizar saldo do criador
         BigDecimal newBalance = creator.getWalletBalanceBrl().add(creatorNet);
         creator.setWalletBalanceBrl(newBalance);
-        creator.setMonthlyMembersCount(creator.getMonthlyMembersCount() + 1);
-        creatorRepository.save(creator);
 
         LocalDateTime now = LocalDateTime.now();
-        MembershipSubscriptionEntity sub = membershipRepository.findBySubscriberIdAndCreatorId(subscriberUserId, creatorId)
-                .orElseGet(() -> {
+        var existingSubscription = membershipRepository.findBySubscriberIdAndCreatorId(subscriberUserId, creatorId);
+        boolean wasActive = existingSubscription.map(MembershipSubscriptionEntity::isActive).orElse(false);
+        MembershipSubscriptionEntity sub = existingSubscription.orElseGet(() -> {
                     MembershipSubscriptionEntity newSub = new MembershipSubscriptionEntity();
                     newSub.setSubscriber(subscriber);
                     newSub.setCreator(creator);
                     newSub.setStartsAt(now);
                     return newSub;
                 });
+        if (!wasActive) creator.setMonthlyMembersCount(creator.getMonthlyMembersCount() + 1);
+        creatorRepository.save(creator);
 
         sub.setMonthlyPriceBrl(monthlyPrice);
         sub.setPlatformFeeBrl(platformFee);
         sub.setCreatorNetBrl(creatorNet);
         sub.setStatus("ACTIVE");
-        sub.setExpiresAt(now.plusDays(30));
+        LocalDateTime currentExpiry = sub.getExpiresAt();
+        sub.setExpiresAt((currentExpiry != null && currentExpiry.isAfter(now) ? currentExpiry : now).plusDays(30));
         membershipRepository.save(sub);
 
         // Gravar no Ledger
@@ -212,12 +227,14 @@ public class MonetizationService {
      */
     @Transactional
     public UserEntity subscribePlatformVip(UUID userId, String paymentExternalId) {
-        if (ledgerRepository.findByPaymentExternalId(paymentExternalId).isPresent()) {
-            throw new IllegalStateException("Assinatura VIP já processada: " + paymentExternalId);
+        if (paymentExternalId == null || paymentExternalId.isBlank() || !paymentExternalId.startsWith("MP_PAYMENT_")) {
+            throw new IllegalArgumentException("Referência de pagamento Mercado Pago inválida.");
         }
-
-        UserEntity user = userRepository.findById(userId)
+        UserEntity user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado: " + userId));
+        if (ledgerRepository.findByPaymentExternalId(paymentExternalId).isPresent()) {
+            return user;
+        }
 
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime expiresAt = (user.isVipActive() ? user.getVipExpiresAt() : now).plusDays(30);
@@ -242,7 +259,7 @@ public class MonetizationService {
         ledger.setDescription("Assinatura VIP MangaNetWorking (Sem Anúncios): " + user.getName());
         ledgerRepository.save(ledger);
 
-        log.info("[VIP PLATAFORMA] Assinatura VIP ativada para {} até {}", user.getEmail(), expiresAt);
+        log.info("[VIP PLATAFORMA] Assinatura VIP ativada para usuário {} até {}", user.getId(), expiresAt);
         return user;
     }
 }

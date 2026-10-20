@@ -86,7 +86,7 @@ class MonetizationServiceTest {
     @DisplayName("Deve processar doação com split exato: 83% para o criador e 17% taxa da plataforma")
     void shouldProcessDonationWithExactSplit() {
         when(ledgerRepository.findByPaymentExternalId("PAY_123")).thenReturn(Optional.empty());
-        when(creatorRepository.findById(creatorId)).thenReturn(Optional.of(creator));
+        when(creatorRepository.findByIdForUpdate(creatorId)).thenReturn(Optional.of(creator));
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(donationRepository.save(any(DonationEntity.class))).thenAnswer(i -> i.getArgument(0));
         when(ledgerRepository.save(any(FinancialLedgerEntity.class))).thenAnswer(i -> i.getArgument(0));
@@ -114,6 +114,23 @@ class MonetizationServiceTest {
     }
 
     @Test
+    @DisplayName("Arredonda a taxa de plataforma em centavos com HALF_UP")
+    void shouldRoundDonationSplitToCentsUsingHalfUp() {
+        when(ledgerRepository.findByPaymentExternalId("PAY_ROUNDING")).thenReturn(Optional.empty());
+        when(creatorRepository.findByIdForUpdate(creatorId)).thenReturn(Optional.of(creator));
+        when(donationRepository.save(any(DonationEntity.class))).thenAnswer(i -> i.getArgument(0));
+        when(ledgerRepository.save(any(FinancialLedgerEntity.class))).thenAnswer(i -> i.getArgument(0));
+
+        DonationEntity result = monetizationService.processDonation(
+                null, creatorId, null, null, new BigDecimal("0.05"), null, "PAY_ROUNDING"
+        );
+
+        assertEquals(new BigDecimal("0.01"), result.getPlatformFeeBrl());
+        assertEquals(new BigDecimal("0.04"), result.getCreatorNetBrl());
+        assertEquals(new BigDecimal("0.04"), creator.getWalletBalanceBrl());
+    }
+
+    @Test
     @DisplayName("Deve rejeitar doação duplicada pelo controle de idempotência do ledger")
     void shouldRejectDuplicateDonationDueToIdempotency() {
         when(ledgerRepository.findByPaymentExternalId("PAY_DUPLICATE"))
@@ -129,14 +146,28 @@ class MonetizationServiceTest {
     }
 
     @Test
+    @DisplayName("Pagamento repetido não prolonga VIP nem duplica lançamento no ledger")
+    void shouldNotExtendVipForDuplicatePayment() {
+        when(userRepository.findByIdForUpdate(userId)).thenReturn(Optional.of(user));
+        when(ledgerRepository.findByPaymentExternalId("MP_PAYMENT_123"))
+                .thenReturn(Optional.of(new FinancialLedgerEntity()));
+
+        UserEntity result = monetizationService.subscribePlatformVip(userId, "MP_PAYMENT_123");
+
+        assertSame(user, result);
+        verify(userRepository, never()).save(any(UserEntity.class));
+        verify(ledgerRepository, never()).save(any(FinancialLedgerEntity.class));
+    }
+
+    @Test
     @DisplayName("Deve ativar Assinatura VIP da Plataforma (R$ 23) sem dar acesso antecipado a capítulos de autores")
     void shouldActivatePlatformVipSubscription() {
-        when(ledgerRepository.findByPaymentExternalId("VIP_PIX_999")).thenReturn(Optional.empty());
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(ledgerRepository.findByPaymentExternalId("MP_PAYMENT_999")).thenReturn(Optional.empty());
+        when(userRepository.findByIdForUpdate(userId)).thenReturn(Optional.of(user));
         when(userRepository.save(any(UserEntity.class))).thenAnswer(i -> i.getArgument(0));
         when(ledgerRepository.save(any(FinancialLedgerEntity.class))).thenAnswer(i -> i.getArgument(0));
 
-        UserEntity updatedUser = monetizationService.subscribePlatformVip(userId, "VIP_PIX_999");
+        UserEntity updatedUser = monetizationService.subscribePlatformVip(userId, "MP_PAYMENT_999");
 
         assertTrue(updatedUser.isVip());
         assertTrue(updatedUser.isVipActive());
