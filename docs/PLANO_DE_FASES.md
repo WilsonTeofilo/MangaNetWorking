@@ -4,19 +4,19 @@
 >
 > **Última Atualização:** 19 de Outubro de 2026
 >
-> **Estado real do repositório:** ver `docs/orquestracao/ROADMAP-FASES.md` e `docs/orquestracao/AUDITORIA-ATUAL.md`.
+> **Escopo deste arquivo:** regras de produto, plano atual F0–F8 e histórico de decisões/fases antigas. A seção 4 resume o estado atual das fases; a fila detalhada e evidências de execução ficam sincronizadas em `docs/orquestracao/ROADMAP-FASES.md`. Fases legadas posteriores estão preservadas como histórico, não como status corrente. Achados abertos ficam em `docs/orquestracao/AUDITORIA-ATUAL.md` e o progresso anterior permanece em `docs/orquestracao/HISTORICO_TAREFAS.md`.
 >
-> ⚠️ **Os números de teste, build e smoke deste documento não são prova de estado.** A contagem de testes, o `npm run build` e o smoke E2E só valem com saída de terminal real. O `docker-compose.yml` de desenvolvimento foi corrigido (achado C5) e valida em `docker compose config`.
+> ⚠️ **Fonte de estado:** a seção 4 é o mapa de produto F0–F8; para logs, comandos, resultados de teste e ordem exata da fila, consulte o roadmap/auditoria. O histórico abaixo não deve ser interpretado como status atual.
 >
-> **Migrações Flyway:** V1 a V5 no repositório; V5 ainda **não confirmada** em `flyway_schema_history` real.
+> **Migrações Flyway:** V1..V11 verificadas em Postgres local e em schema limpo via Testcontainers em 19/10/2026; versões aplicadas são imutáveis.
 >
-> **Ambiente Local:** PostgreSQL (`localhost:25432`), MongoDB (`localhost:27017`), Backend Spring Boot (`localhost:8085`), Frontend Vite (`localhost:5180`).
+> **Ambiente e saúde da stack:** ver `ROADMAP-FASES.md`; não inferir que serviços estão rodando só porque o Compose existe.
 
 ---
 
 ## 1. Visão Geral do Produto e Arquitetura
 
-O **MangaNetWorking** é uma plataforma editorial **100% digital** voltada para publicação, leitura em formato vertical (webtoon/scroll infinito) e apoio financeiro a quadrinistas e mangakás independentes originais. O sistema conecta leitores e criadores sem qualquer intermediário de produtos físicos.
+O **MangaNetWorking** é uma plataforma editorial **100% digital** para conectar criadores independentes e leitores. A plataforma suporta mangás em páginas de imagem e light novels em capítulos de prosa, com leitura adequada a cada formato. A receita prevista vem de doações, membros e anúncios — sem venda de obras ou produtos físicos e sem logística.
 
 ### 1.1. Arquitetura de Software (Clean Architecture / DDD Lite)
 - **Backend API:** Java 21, Spring Boot 3.4.x, Spring Security stateless com sessão via cookie seguro, Flyway para migrações relacionais.
@@ -32,8 +32,8 @@ O **MangaNetWorking** é uma plataforma editorial **100% digital** voltada para 
 > [!IMPORTANT]
 > Estas regras são **LEI NO PROJETO**. Devem ser validadas autoritativamente no servidor (backend) e nunca delegadas à confiança da interface.
 
-1. **ZERO Loja Física / Zero Merchandising / Zero Impressão sob Demanda (POD) / Zero Estoque / Zero Frete:**
-   - A plataforma é estritamente digital. Não existe venda de mangás impressos, roupas, posters ou brindes físicos.
+1. **ZERO Loja / ZERO Venda de Obras ou Produtos / ZERO Logística:**
+   - Não há venda individual de mangás/capítulos, roupas, posters ou brindes; sem vitrine, carrinho, merchandising, impressão sob demanda, estoque, frete, correios ou despacho. A monetização permitida é por doações, membros e anúncios digitais.
 2. **Divisão Financeira Justa (Splits):**
    - **Doações Diretas e Assinaturas de Membros do Autor:** **83% para o criador / 17% para a plataforma**.
    - **Bônus de Nível 4 do Criador:** A taxa da plataforma pode cair para 10% (90% para o criador) durante a janela de elegibilidade de 15 dias, controlada pelo servidor.
@@ -54,6 +54,11 @@ O **MangaNetWorking** é uma plataforma editorial **100% digital** voltada para 
    - Proibição absoluta de scans, raws, traduções de terceiros ou pornografia/hentai explícito.
 6. **Gamificação por Seasons de 60 Dias:**
    - 4 níveis de criador, missões com recompensas semanais e bônus temporário de visibilidade de 1.5x a 2.2x no feed por 24h a 72h.
+7. **Senhas novas não podem ser fracas:**
+   - Cadastro e redefinição aceitam 8–64 pontos de código Unicode, sem restringir espaços, acentos, símbolos ou emojis por tipo de caractere.
+   - A interface explica força fraca/média/forte, mostra requisitos que faltam e permite revelar/ocultar senha por botão acessível.
+   - Apenas senhas médias ou fortes são aceitas no servidor para cadastro e reset; senhas fracas comuns, sequenciais ou repetitivas são recusadas. O login não aplica o medidor para manter acesso a credenciais legadas válidas.
+   - Classificação é heurística de produto, não consulta a uma base completa de senhas vazadas; usuário deve evitar reutilização e usar gerenciador.
 
 ---
 
@@ -79,7 +84,73 @@ O **MangaNetWorking** é uma plataforma editorial **100% digital** voltada para 
 
 ---
 
-## 4. Roadmap Oficial de Fases
+## 4. Plano atual — Fases F0 a F8
+
+Este é o plano vigente do produto. Os critérios concluídos refletem implementação e validações já registradas; itens externos ou sem execução comprovada permanecem abertos. A fila operacional detalhada está em `docs/orquestracao/ROADMAP-FASES.md`.
+
+### F0 — Infra Docker First · ✅ concluída
+**Objetivo:** subir a stack local integrada e conectar backend a PostgreSQL e MongoDB.
+
+- [x] Compose local válido; Postgres, Mongo, Redis, Mailpit, backend e frontend saudáveis; migrations aplicadas e `/api/feed` respondeu 200.
+- [x] `docker compose down` sem remover volumes; dados persistentes preservados.
+
+### F1 — Autenticação, 2FA, e-mail e senhas · 🟡 parcial
+**Objetivo:** cadastro/login seguro, Google verificado no servidor, OTP por e-mail, sessão e recuperação de conta.
+
+- [x] OTP HMAC com propósito para login/step-up PIX, limites de reenvio, SMTP/Mailpit e validação server-side do ID token Google implementados. Recuperação usa link/token SHA-256 persistido em PostgreSQL, TTL configurável de 5–60 min (padrão 30), uso único, resposta genérica, origem HTTPS validada, política de senha oficial e revogação de sessões; V13 criada.
+- [x] OTP válido de login persiste a confirmação de posse do e-mail; redefinição de senha não confirma nem altera o e-mail. Google requer claim `email_verified=true`. V12 adiciona `email_verified_at` sem editar migrations anteriores.
+- [x] Política de senha nova: 8–64 pontos de código Unicode; confirmação, revelar/ocultar acessível e medidor Fraca/Média/Forte; backend recusa senha fraca em cadastro/reset, sem bloquear login de contas legadas.
+- [x] `PasswordPolicyTest` passou 4/4 e `AuthApplicationServiceTest` passou 10/10, incluindo o bloqueio de cadastro fraco; Mailpit E2E e testes OTP/Google inválidos estão cobertos conforme evidência no roadmap.
+- [ ] Aplicar e validar V12/V13 em Postgres real; testar envio da recuperação por Mailpit e consumo concorrente. Testes focados de recuperação/controller/SMTP passaram 17/17 e a suíte completa 283/0/0 (12 ignorados); Mockito exigiu agente pré-carregado no runtime atual. Homologar ID token Google válido e configurar DNS autenticado SPF/DKIM/DMARC.
+
+### F2 — Perfis de leitor e criador · ✅ concluída
+**Objetivo:** perfis público/privado, página do criador, links, avatar e biblioteca com autorização no servidor.
+
+- [x] Privacidade e ownership verificados no backend; links externos validados; bio sanitizada.
+- [x] Avatar decodificado, limitado, redimensionado/recodificado no servidor e integrado às telas; respostas privadas sem cache compartilhado.
+
+### F3 — Obras, capítulos e leitores de mangá/light novel · ✅ concluída
+**Objetivo:** metadados no Postgres, arquivos seguros, progresso idempotente no Mongo e leitura adequada a imagem ou prosa.
+
+- [x] Publicação futura/obra arquivada respeitam guard; páginas têm MIME correto, `nosniff`, sem cache compartilhado; progresso é idempotente.
+- [x] Limites de páginas/dimensões e capítulos de prosa implementados sem quebrar o fluxo de páginas de mangá.
+- [x] Carga HTTP com página real: 100/100 respostas 200, concorrência 10, p95 190 ms; detalhe e evidência no roadmap.
+
+### F4 — Monetização e financeiro · 🟡 parcial
+**Objetivo:** doações e Clube de Membros idempotentes, splits, ledger e PIX com step-up, sem saldo fictício.
+
+- [x] Checkout idempotente, webhook validado e efeitos financeiros apenas após confirmação; UI não inventa saldo nem divide valores como autoridade.
+- [ ] Homologar o fluxo completo no Mercado Pago Sandbox com credenciais e endpoint público de webhook.
+
+### F5 — Frontend “Banca de Rua” · 🟡 parcial
+**Objetivo:** interface acessível e responsiva, sem mocks de produção ou estados financeiros falsos.
+
+- [x] Fixtures isoladas em desenvolvimento; sessão 401 vira deslogada; contraste estático, senha e Sobre Nós implementados; build de produção verde.
+- [ ] Concluir inspeção visual e navegação por teclado em todas as rotas quando o navegador de QA estiver disponível.
+
+### F6 — LGPD e AppSec · 🟡 parcial
+**Objetivo:** consentimento versionado, direitos do titular, maioridade e segurança de dados/arquivos.
+
+- [x] Reaceite server-side, auditoria append-only, exportação, exclusão, maioridade e checklist técnico aplicados; V11 substitui backfill inferido sem editar V5.
+- [ ] Publicar a Política de Privacidade aprovada e definir/sanar os dados organizacionais e legados pendentes conforme procedimento controlado.
+
+### F7 — QA, E2E e CI · 🟡 parcial
+**Objetivo:** comprovar fluxos em stack real e automatizar validação em pull request.
+
+- [x] Suíte backend em 20/10/2026: 283 testes, 0 falhas/erros e 12 ignorados por Docker indisponível; build frontend verde e smoke E2E 12/12 de execução local real previamente confirmado; workflow de CI configurado para pull requests.
+- [ ] Obter uma execução remota observada em PR; depende de branch/PR e permissão de publicação.
+
+### F8 — Prontidão de produção · 🟡 parcial
+**Objetivo:** operar sessão/OTP distribuídos, observabilidade, backup, e-mail e resposta a incidentes.
+
+- [x] Adapters Redis, métricas/logs/regras, scripts de backup/restore-check e runbook estão implementados; perfil de produção exige stores distribuídos e credenciais.
+- [ ] Prova operacional atual de Redis e restore; ativar Alertmanager/canal de plantão; configurar destino cifrado; autenticar domínio e monitorar bounces; aprovar encarregado, inventário e retenção; exercitar runbook.
+
+**Próxima sequência:** (1) passe visual/teclado F5; (2) obter execução de CI em PR; (3) com Docker acessível, provar Redis OTP e backup/restore; (4) fechar Sandbox, DNS/e-mail e decisões de governança F1/F4/F6/F8. O teste de serviço para senha fraca foi confirmado em `AuthApplicationServiceTest` (10/10). Não marcar dependências externas como concluídas sem evidência.
+
+---
+
+## 5. Histórico legado — fases 0 a 9 (não representa o estado atual)
 
 ### FASE 0: Diagnóstico e Decisões de Arquitetura (ADRs) `[CONCLUÍDO]`
 - [x] **0.1.** Inventário completo de entidades, controllers, componentes e scripts de build.
@@ -137,7 +208,7 @@ O **MangaNetWorking** é uma plataforma editorial **100% digital** voltada para 
 
 ---
 
-## 5. Roadmap de Fases 10 a 17 — Engenharia, Nuvem e Lançamento
+## 6. Histórico legado — fases 10 a 17
 
 ### FASE 10: Dockerização de Produção, Deploy & CI/CD `[CONCLUÍDO]`
 **Objetivo:** Empacotar o ecossistema completo em containers prontos para produção com builds multi-stage e pipeline automatizada no GitHub Actions.
@@ -176,28 +247,36 @@ O **MangaNetWorking** é uma plataforma editorial **100% digital** voltada para 
   - Anotações `@ConditionalOnProperty` garantindo alternância transparente entre `inmemory` (dev/testes) e `redis` (produção).
   - Orquestração no `docker-compose.prod.yml` com container `redis:7-alpine` e healthcheck nativo.
 
-### FASE 13: Validação de Serviços & 2FA Real (SMTP Gmail) `[EM ANDAMENTO]`
-**Objetivo:** Validar o ciclo completo de envio real de códigos de autenticação via SMTP e homologar pagamentos Sandbox antes do provisionamento na nuvem.
+### FASE 13: Validação de Serviços & Checkout Pro Sandbox `[BLOQUEADA POR CONFIGURAÇÃO EXTERNA]`
+**Objetivo:** Validar o envio real de códigos de autenticação e homologar o Checkout Pro VIP em Sandbox. Este plano descreve o produto; estado detalhado e próxima tarefa ficam na fila única de `docs/orquestracao/ROADMAP-FASES.md`.
 
-- [x] **13.1. Template de Configuração de E-mail e Mercado Pago no `.env`:**
-  - Adicionadas variáveis de controle `PLATFORM_MAIL_ENABLED`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MERCADOPAGO_ACCESS_TOKEN` e `MERCADOPAGO_WEBHOOK_SECRET`.
-- [ ] **13.2. Teste de Cadastro Real com 2FA via Gmail:**
-  - Inserção de senha de app do Google e envio real de OTP para e-mail do usuário.
-  - Validação de expiração (5 min), uso único e proteção anti-força bruta (5 tentativas).
-- [ ] **13.3. Teste do Checkout Pro (Mercado Pago Sandbox):**
-  - Geração de preferência para plano VIP com token `TEST-...` e validação do retorno `init_point`.
+- [x] **13.1. Configuração local de SMTP e Mercado Pago:**
+  - O backend importa `.env` quando iniciado pela raiz ou por `backend/`; o template versionado usa placeholders e `.env` permanece ignorado pelo Git.
+  - SMTP está implementado com `SmtpMfaNotificationSender`; Mailpit local recebeu e verificou um OTP ponta a ponta. Domínio autenticado e credenciais/provedor de produção continuam pendentes.
+- [x] **13.2. Entrega 2FA local via Mailpit:**
+  - E-mail recebido e OTP verificado ponta a ponta; testes cobrem expiração, uso único e limite de tentativas.
+- [ ] **13.2a. Entregabilidade em domínio de produção — bloqueada por DNS/provedor:**
+  - Preparação local concluída: adapter SMTP, remetente configurável por variáveis, envio de links de recuperação sem segredo no assunto, origem pública HTTPS obrigatória no Compose de produção e TTL de token configurável (`PASSWORD_RESET_TOKEN_TTL`, padrão `PT30M`, permitido entre 5 e 60 minutos).
+  - Para concluir: domínio controlado pelo projeto, provedor SMTP escolhido, credenciais de produção, publicação e validação de SPF/DKIM/DMARC e configuração de bounce. Não usar conta pessoal como teste de produção. Nenhuma alteração de DNS ou envio externo foi feita nesta rodada.
+- [x] **13.3. Integração de Checkout Pro VIP (código e testes automatizados):**
+  - Preferência vinculada no PostgreSQL ao usuário e preço esperado; ativação exige webhook HMAC válido e pagamento aprovado em BRL, com valor e referência conferidos.
+  - A repetição do pagamento não duplica benefício: `financial_ledger.payment_external_id` é a chave de idempotência.
+- [ ] **13.4. Homologação do Checkout Pro VIP em Sandbox — bloqueada por credenciais/endpoint público:**
+  - Código de checkout e validação de webhook estão implementados; homologação real exige credenciais de teste Mercado Pago, URL pública HTTPS alcançável pelo provedor e confirmação do pagamento de teste ponta a ponta. Não foram criadas credenciais nem exposto endpoint nesta rodada. Nenhuma compra real ou ativação em produção foi executada.
+- [x] **13.5. Bloqueio de ativação financeira sem pagamento confirmado:**
+  - Endpoints legados de VIP, doação e Clube de Membros retornam `410 Gone`; doação e membership ficam indisponíveis até receberem checkout/webhook idempotentes equivalentes.
 
-### FASE 14: Infraestrutura em Nuvem (Oracle Cloud Always Free)
-**Objetivo:** Hospedar a stack completa de produção (Postgres, Mongo, Redis, Backend Spring Boot) com custo R$ 0.
+### FASE 14: Infraestrutura em Nuvem (Oracle Cloud Always Free) `[BLOQUEADA POR ACESSO/DECISÕES EXTERNAS]`
+**Objetivo:** Preparar a hospedagem da stack em Oracle Cloud. A elegibilidade e o custo dependem dos limites e disponibilidade do plano/região; custo zero não pode ser garantido antes da criação e validação da conta/recursos.
 
-- [ ] **14.1. Provisionamento de VM Ampere A1 (ARM64 / Ubuntu 22.04):**
-  - Criação da instância Always Free com IP público fixo.
-  - Hardening de firewall: apenas portas 22 (SSH) e 80 (HTTP) abertas externamente; portas de bancos e Redis isoladas.
-- [ ] **14.2. Instalação e Deploy via `docker-compose.prod.yml`:**
-  - Instalação de Docker e Docker Compose na VM.
-  - Criação de `.env` de produção seguro com `AES_SECRET_KEY` definitiva de 256 bits e credenciais.
-  - Execução de `docker compose -f docker-compose.prod.yml up -d --build`.
-  - Confirmação de execução limpa das migrações Flyway V1 a V5 no PostgreSQL de produção.
+- [ ] **14.1. Provisionamento de VM Ampere A1 (ARM64 / Ubuntu 22.04) — não iniciado:**
+  - Pendências externas: acesso à conta Oracle Cloud, região/shape elegíveis e disponíveis, chave pública SSH autorizada e confirmação do IP/regras de rede. Nenhuma VM ou regra de firewall foi criada.
+  - Ao provisionar, expor somente SSH (22) e HTTP/HTTPS (80/443 conforme proxy TLS); manter Postgres, Mongo e Redis sem portas públicas. HTTPS precisa ser definido antes de receber credenciais ou sessões reais.
+- [x] **14.2. Preparação local do Compose de produção:**
+  - `docker-compose.prod.yml` exige credenciais por variáveis, mantém bancos/Redis na rede interna, requer Redis para sessão/rate-limit/OTP e exige `PUBLIC_FRONTEND_URL` público. A validação estática do Compose foi feita com placeholders; isso não comprova deploy.
+- [ ] **14.3. Deploy e validação operacional em Oracle — não executados:**
+  - Depois de provisionar: instalar Docker/Compose, criar `.env` fora do Git com chaves definitivas, executar a stack, validar healthchecks, migrações Flyway V1–V13 e smoke test. Não gerar nem armazenar aqui a chave AES de produção.
+  - Sem acesso autorizado à conta e ao host, nenhum serviço foi implantado, nenhuma migration foi aplicada em banco Oracle e nenhum backup/restore de produção foi testado. Nenhuma compra real ou ativação financeira de produção foi executada.
 
 ### FASE 15: Conexão Segura & Proxy Serverless (Cloudflare Pages Functions)
 **Objetivo:** Interligar o frontend em `manganetworking.pages.dev` à API na Oracle Cloud sem custos de domínio nem problemas de CORS/cookies.
@@ -209,16 +288,16 @@ O **MangaNetWorking** é uma plataforma editorial **100% digital** voltada para 
   - Acesso ao site oficial no Cloudflare Pages.
   - Cadastro de leitor, recebimento de código 2FA e login com sessão persistente.
 
-### FASE 16: Ativação Financeira do Mercado Pago & Virada de Produção
-**Objetivo:** Habilitar pagamentos reais de assinaturas VIP e doações com webhook criptografado.
+### FASE 16: Ativação Financeira do Mercado Pago & Virada de Produção `[PENDENTE — NÃO EXECUTAR SEM HOMOLOGAÇÃO]`
+**Objetivo:** Habilitar pagamentos reais somente depois da homologação Sandbox, com webhook criptográfico e idempotência. O Checkout VIP existe no código; isso não significa que produção esteja habilitada.
 
-- [ ] **16.1. Cadastro e Validação de Webhook:**
+- [ ] **16.1. Homologação do webhook VIP:**
   - Registro da URL `https://manganetworking.pages.dev/api/monetization/mercadopago/webhook` no painel do desenvolvedor MP.
-  - Simulação de notificação e validação da assinatura HMAC-SHA256 (`x-signature`).
-  - Ativação atômica do status VIP (`is_vip = true`, +30 dias).
+  - Teste Sandbox de assinatura HMAC-SHA256 (`x-signature`), pagamento aprovado, moeda/valor/referência incorretos e webhook repetido.
+  - Confirmar uma única ativação VIP de 30 dias. Não aceitar retorno do navegador como confirmação de pagamento.
 - [ ] **16.2. Virada de Chaves de Produção (`APP_USR-...`):**
-  - Substituição das credenciais de sandbox pelas credenciais reais de produção no `.env` da VM.
-  - Abertura oficial da plataforma ao público.
+  - Só após aprovação explícita de lançamento, trocar credenciais Sandbox por produção em secret manager e revisar webhook, domínio e monitoramento.
+  - Não abrir pagamentos reais enquanto doação e Clube de Membros continuarem bloqueados ou sem fluxo homologado.
 
 ### FASE 17: Analytics do Criador & Gamificação Avançada
 **Objetivo:** Entregar métricas editoriais para quadrinistas e impulsionar engajamento com Seasons de 60 dias.
@@ -230,7 +309,7 @@ O **MangaNetWorking** é uma plataforma editorial **100% digital** voltada para 
 
 ---
 
-## 6. Histórico Consolidado de Passes de Engenharia (Passes 10 ao 20)
+## 7. Histórico Consolidado de Passes de Engenharia (Passes 10 ao 22)
 
 | Passe | Data | Escopo Principal | Evidência / Resultado |
 |---|---|---|---|
@@ -245,14 +324,20 @@ O **MangaNetWorking** é uma plataforma editorial **100% digital** voltada para 
 | **Passe 18** | 19/10/2026 | **Dockerização de Produção (CI/CD) & Leitura Offline PWA VIP:**<br>- Backend `Dockerfile` multi-stage (Temurin 21 Alpine non-root + G1GC tuning).<br>- Frontend `Dockerfile` + Nginx Alpine com reverse proxy `/api/` e SPA router.<br>- `docker-compose.prod.yml` orquestrando postgres, mongo, backend e frontend.<br>- Pipeline GitHub Actions `.github/workflows/ci.yml`.<br>- PWA Service Worker (`sw.js`), `manifest.webmanifest` e `offlineStorage.ts`.<br>- Download e leitura de capítulos offline para assinantes VIP com fallback transparente no `ReaderPage.tsx`. | **Build Docker do Backend OK**, **Build Docker do Frontend OK**, **Build do Frontend Vite em 2.13s OK** (1642 módulos). |
 | **Passe 19** | 19/10/2026 | **Observabilidade Actuator/Prometheus & Store Redis Distribuído:**<br>- Spring Boot Actuator, Micrometer Prometheus e Health Probes (`/actuator/health/readiness` e `liveness`).<br>- `ObservabilityMetricsService` registrando leituras de páginas e impressões de anúncios.<br>- `RedisSessionStore` com TTL atômico e índice reverso por `userId` para purge LGPD.<br>- `RedisRateLimitStore` com contadores atômicos e TTL nativo de 120s.<br>- Suporte multi-nó Stateless no `docker-compose.prod.yml` com `redis:7-alpine`. | **197 testes do backend verdes (100% BUILD SUCCESS)**, **Build do frontend Vite OK (2.14s)**, **Docker Compose config validado**. |
 | **Passe 20** | 19/10/2026 | **Correção de Bloqueadores Críticos (C2, C3, C5), SMTP Real & Mercado Pago:**<br>- **C5 Corrigido:** `docker-compose.yml` corrigido com `${POSTGRES_PASSWORD:-...}` e adicionado container `mailpit` para dev.<br>- **C2 Blindado:** Bloqueio mandatório de avanço para nível 2 de monetização se `birthDate == null` ou idade < 18 anos.<br>- **C3 Resolvido:** Endpoint `POST /api/auth/2fa/request` criado para emissão de Step-Up OTP no e-mail do usuário.<br>- **C4 & SMTP Real:** `spring-boot-starter-mail` + `SmtpMfaNotificationSender` com template HTML da marca MangaNetWorking.<br>- **Mercado Pago Oficial:** `MercadoPagoService` gerando Checkout Pro para VIP e Doações com validação HMAC-SHA256 no webhook. | **207 testes verdes no backend (100% BUILD SUCCESS)**, **Build do frontend limpo em 2.13s**. |
+| **Passe 21** | 19/10/2026 | **Auditoria de pagamentos sem confirmação:** bloqueio dos endpoints antigos de doação, membros e VIP com `410 Gone`; UI deixou de simular sucesso local. Checkout VIP persiste preferência→usuário→valor e valida pagamento; V6 preparada, sem afirmar migração aplicada nem homologação Sandbox. | `mvn -o test`: **227 testes, 0 falhas/erros**; `npm.cmd run build`: **1644 módulos, concluído**. Sandbox segue pendente. |
+| **Passe 22** | 19/10/2026 | **UX e política de força de senha:** olho acessível para revelar/ocultar senha e confirmação; painel inline exibe força fraca/média/forte e critérios; cadastro/reset bloqueiam senhas fracas também no backend. Login preserva credenciais antigas. | Frontend build verde (1648 módulos) e `PasswordPolicyTest` 4/4 verde. A regressão de serviço foi adicionada, mas `AuthApplicationServiceTest` não concluiu por travamento no self-attach do Mockito no Windows; validar em CI antes de encerrar o aceite. |
+
+### Próximos passos (estado atual)
+
+A ordem vigente é mantida em `docs/orquestracao/ROADMAP-FASES.md`. Próximo passo imediato: confirmar em CI o teste de serviço que rejeita cadastro fraco (a execução local travou no attach do Mockito). Depois: (1) passe visual/teclado quando navegador local estiver disponível; (2) execução do workflow em PR quando houver permissão de push; (3) teste Redis OTP e backup/restore com Docker acessível; (4) alertas, destino cifrado e SMTP após escolha de provedores; (5) aprovação de encarregado e retenção pelos responsáveis organizacionais/legais. A rodada não marca esses bloqueios externos como concluídos.
 
 ---
 
-## 7. Resumo Técnico do Ambiente
+## 8. Resumo Técnico do Ambiente
 
 | Componente | Tecnologia | Porta / Path | Status de Verificação |
 |---|---|---|---|
-| **API Backend** | Spring Boot 3.4.2 / Java 21 | `8085` | 207 testes documentados no Passe 20; revalidar com `mvn -o test` |
+| **API Backend** | Spring Boot 3.4.2 / Java 21 | `8085` | 227 testes verificados no Passe 21; integração Sandbox ainda pendente |
 | **Banco Relacional** | PostgreSQL 16 (Docker) | `25432` | Migrações V1 a V5 aplicadas; testado ao vivo no smoke test |
 | **Banco NoSQL** | MongoDB 7 (Docker) | `27017` | Eventos de feed e telemetria validados ao vivo |
 | **Storage de Imagens** | Filesystem Local Sanitizado | `./data/uploads/` | Magic bytes e guard por `chapter_files` validados |
