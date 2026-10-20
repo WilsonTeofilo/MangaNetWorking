@@ -32,6 +32,7 @@ import java.util.UUID;
 public class ChapterFileAccessGuard {
 
     private static final String STATUS_SUSPENDED = "suspended";
+    private static final String STATUS_ARCHIVED_LGPD = "archived_lgpd";
 
     private final ChapterRepository chapterRepository;
     private final ChapterFileRepository chapterFileRepository;
@@ -79,6 +80,11 @@ public class ChapterFileAccessGuard {
 
         WorkEntity work = chapter.getWork();
         CreatorEntity author = work != null ? work.getAuthor() : null;
+
+        // A exclusão LGPD despublica a obra; URLs antigas não podem contornar o arquivo.
+        if (work != null && STATUS_ARCHIVED_LGPD.equalsIgnoreCase(work.getStatus())) {
+            return new AccessDecision(false, true);
+        }
 
         SessionService.UserSession session = SecurityContextUtils.getCurrentSession().orElse(null);
         UUID userId = session != null ? session.userId() : null;

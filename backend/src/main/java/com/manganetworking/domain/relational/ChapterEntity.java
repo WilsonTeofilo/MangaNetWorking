@@ -1,5 +1,7 @@
 package com.manganetworking.domain.relational;
 
+import com.manganetworking.domain.enums.ChapterFormat;
+
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -29,8 +31,15 @@ public class ChapterEntity {
 
     private String coverUrl;
 
-    @Column(columnDefinition = "TEXT", nullable = false)
+    @Column(columnDefinition = "TEXT")
     private String pagesJson;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "chapter_format", nullable = false, length = 20)
+    private ChapterFormat format = ChapterFormat.IMAGE_PAGES;
+
+    @Column(name = "content_text", columnDefinition = "TEXT")
+    private String contentText;
 
     @Column(nullable = false)
     private LocalDateTime publicReleaseAt;
@@ -75,6 +84,12 @@ public class ChapterEntity {
 
     public String getPagesJson() { return pagesJson; }
     public void setPagesJson(String pagesJson) { this.pagesJson = pagesJson; }
+
+    public ChapterFormat getFormat() { return format; }
+    public void setFormat(ChapterFormat format) { this.format = format; }
+
+    public String getContentText() { return contentText; }
+    public void setContentText(String contentText) { this.contentText = contentText; }
 
     public LocalDateTime getPublicReleaseAt() { return publicReleaseAt; }
     public void setPublicReleaseAt(LocalDateTime publicReleaseAt) { this.publicReleaseAt = publicReleaseAt; }
