@@ -33,7 +33,7 @@ public class DevOutboxController {
     @jakarta.annotation.PostConstruct
     void warnIfExposed() {
         log.warn("[DEV OUTBOX] Endpoint de desenvolvimento habilitado (profile dev/test/local): "
-                + "/api/dev/outbox/latest devolve o código 2FA sem autenticação. "
+                + "/api/dev/outbox/latest e /password-reset/latest devolvem segredos sem autenticação. "
                 + "NUNCA exponha isto publicamente.");
     }
 
@@ -48,6 +48,18 @@ public class DevOutboxController {
                         "otpCode", msg.otpCode(),
                         "purpose", msg.purpose(),
                         "sentAt", msg.sentAt()
+                )))
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/password-reset/latest")
+    public ResponseEntity<?> getLatestPasswordReset(@RequestParam String email) {
+        return devOutboxRepository.findLatestPasswordReset(email)
+                .map(message -> ResponseEntity.ok(Map.of(
+                        "destination", message.destination(),
+                        "resetUrl", message.resetUrl(),
+                        "sentAt", message.sentAt(),
+                        "expiresAt", message.expiresAt()
                 )))
                 .orElse(ResponseEntity.notFound().build());
     }

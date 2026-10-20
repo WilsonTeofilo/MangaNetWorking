@@ -39,6 +39,8 @@ public class UserEntity {
     @Column(nullable = false)
     private boolean twoFactorEnabled = true;
 
+    private LocalDateTime emailVerifiedAt;
+
     private String twoFactorSecret;
 
     @Column(nullable = false)
@@ -100,6 +102,9 @@ public class UserEntity {
 
     public boolean isTwoFactorEnabled() { return twoFactorEnabled; }
     public void setTwoFactorEnabled(boolean twoFactorEnabled) { this.twoFactorEnabled = twoFactorEnabled; }
+
+    public LocalDateTime getEmailVerifiedAt() { return emailVerifiedAt; }
+    public void setEmailVerifiedAt(LocalDateTime emailVerifiedAt) { this.emailVerifiedAt = emailVerifiedAt; }
 
     public String getTwoFactorSecret() { return twoFactorSecret; }
     public void setTwoFactorSecret(String twoFactorSecret) { this.twoFactorSecret = twoFactorSecret; }

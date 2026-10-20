@@ -12,6 +12,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
@@ -31,6 +32,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @WebMvcTest(controllers = ReportController.class)
 @Import(SecurityConfig.class)
+@ActiveProfiles("prod")
 @DisplayName("Backoffice de moderação — autorização server-side")
 class BackofficeAuthorizationTest {
 
@@ -113,6 +115,8 @@ class BackofficeAuthorizationTest {
     @WithMockUser(roles = "MODERATOR")
     void devEndpointsAreBlockedOutsideLocalProfiles() throws Exception {
         mockMvc.perform(get("/api/dev/outbox/latest"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/dev/outbox/password-reset/latest"))
                 .andExpect(status().isForbidden());
     }
 

@@ -1,45 +1,87 @@
 package com.manganetworking.service.mfa;
 
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
+import com.manganetworking.config.observability.SecurityObservabilityMetrics;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
+import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.time.Instant;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.HexFormat;
 
 /**
- * Geração e validação de códigos 2FA (OTP) com cache em memória e proteção anti-força bruta.
+ * Geração e validação de códigos 2FA (OTP) via store substituível e proteção anti-força bruta.
  */
 @Service
 public class TwoFactorAuthService {
 
     private static final long OTP_TTL_SECONDS = 300; // 5 minutos de validade
-    private static final int MAX_ATTEMPTS = 5;
     private static final int OTP_MIN = 100_000;
     private static final int OTP_RANGE = 900_000;
 
     private final SecureRandom secureRandom = new SecureRandom();
     private final MfaNotificationSender mfaNotificationSender;
+    private final SecretKeySpec hmacKey;
 
-    // Cache thread-safe de códigos OTP em memória
-    private final Map<String, OtpEntry> otpCache = new ConcurrentHashMap<>();
+    private final OtpChallengeStore challengeStore;
+    private final SecurityObservabilityMetrics metrics;
 
-    public TwoFactorAuthService(MfaNotificationSender mfaNotificationSender) {
+    @Autowired
+    public TwoFactorAuthService(
+            MfaNotificationSender mfaNotificationSender,
+            OtpChallengeStore challengeStore,
+            SecurityObservabilityMetrics metrics,
+            @Value("${platform.security.otp-hmac-secret}") String hmacSecret
+    ) {
+        if (hmacSecret == null || hmacSecret.getBytes(StandardCharsets.UTF_8).length < 32) {
+            throw new IllegalStateException("platform.security.otp-hmac-secret deve ter ao menos 32 bytes.");
+        }
         this.mfaNotificationSender = mfaNotificationSender;
+        this.challengeStore = challengeStore;
+        this.metrics = metrics;
+        this.hmacKey = new SecretKeySpec(hmacSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+    }
+
+    /** Compatibility constructor for isolated unit tests using the local adapter. */
+    public TwoFactorAuthService(MfaNotificationSender mfaNotificationSender, String hmacSecret) {
+        this(mfaNotificationSender, new InMemoryOtpChallengeStore(),
+                new SecurityObservabilityMetrics(new SimpleMeterRegistry()), hmacSecret);
     }
 
     /**
      * Gera e envia código 2FA de 6 dígitos via canal isolado (Dev Outbox)
      */
-    public String generateAndSendOtp(String userIdentifier, String destination) {
+    public String generateAndSendOtp(String userIdentifier, String destination, OtpPurpose purpose) {
         int number = secureRandom.nextInt(OTP_RANGE) + OTP_MIN;
         String otpCode = String.valueOf(number);
 
         Instant expiresAt = Instant.now().plusSeconds(OTP_TTL_SECONDS);
-        otpCache.put(userIdentifier.trim().toLowerCase(), new OtpEntry(otpCode, expiresAt, 0));
-
-        // Envia para a caixa de saída (Dev Outbox em desenvolvimento local)
-        mfaNotificationSender.sendOtp(destination, otpCode, "AUTENTICACAO_2FA");
+        String normalizedIdentifier = normalizeIdentifier(userIdentifier);
+        String codeHmac = hashOtp(normalizedIdentifier, purpose, otpCode);
+        Runnable deliverAndActivate = () -> {
+            mfaNotificationSender.sendOtp(destination, otpCode, purpose.notificationPurpose());
+            // Só torna o desafio verificável depois que o adaptador confirmou a entrega.
+            challengeStore.save(normalizedIdentifier, codeHmac, purpose.name(), expiresAt.toEpochMilli());
+            metrics.recordOtpIssued(purpose.name());
+        };
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    deliverAndActivate.run();
+                }
+            });
+        } else {
+            deliverAndActivate.run();
+        }
 
         return otpCode;
     }
@@ -47,42 +89,68 @@ public class TwoFactorAuthService {
     /**
      * Valida o código 2FA no servidor com proteção anti-força bruta (máx 5 tentativas)
      */
-    public boolean verifyOtp(String userIdentifier, String codeProvided) {
-        String key = userIdentifier.trim().toLowerCase();
-        OtpEntry entry = otpCache.get(key);
-        if (entry == null) {
-            return false;
-        }
+    public boolean verifyOtp(String userIdentifier, String codeProvided, OtpPurpose expectedPurpose) {
+        return verifyOtp(userIdentifier, codeProvided, expectedPurpose, Instant.now());
+    }
 
-        if (Instant.now().isAfter(entry.expiresAt())) {
-            otpCache.remove(key);
-            return false;
-        }
-
-        if (entry.attempts() >= MAX_ATTEMPTS) {
-            otpCache.remove(key);
+    boolean verifyOtp(String userIdentifier, String codeProvided, OtpPurpose expectedPurpose, Instant now) {
+        String key = normalizeIdentifier(userIdentifier);
+        String candidateHmac = hashOtp(key, expectedPurpose, codeProvided == null ? "" : codeProvided.trim());
+        OtpChallengeStore.VerificationResult result = challengeStore.verify(
+                key, candidateHmac, expectedPurpose.name(), now.toEpochMilli());
+        String outcome = switch (result) {
+            case VALID -> "valid";
+            case INVALID -> "invalid";
+            case MISSING_OR_EXPIRED -> "expired_or_missing";
+            case LOCKED -> "locked";
+        };
+        metrics.recordOtpVerification(outcome);
+        if (result == OtpChallengeStore.VerificationResult.LOCKED) {
             throw new SecurityException("Muitas tentativas incorretas. Código 2FA cancelado por proteção anti-força bruta.");
         }
-
-        boolean isValid = entry.code().equals(codeProvided.trim());
-        if (isValid) {
-            otpCache.remove(key); // Uso único: destrói o código imediatamente
-            return true;
-        } else {
-            int newAttempts = entry.attempts() + 1;
-            if (newAttempts >= MAX_ATTEMPTS) {
-                otpCache.remove(key);
-                throw new SecurityException("Muitas tentativas incorretas. Código 2FA cancelado por proteção anti-força bruta.");
-            }
-            otpCache.put(key, new OtpEntry(entry.code(), entry.expiresAt(), newAttempts));
-            return false;
-        }
+        return result == OtpChallengeStore.VerificationResult.VALID;
     }
 
     public int getAttempts(String userIdentifier) {
-        OtpEntry entry = otpCache.get(userIdentifier.trim().toLowerCase());
-        return entry != null ? entry.attempts() : 0;
+        return challengeStore.attempts(normalizeIdentifier(userIdentifier));
     }
 
-    private record OtpEntry(String code, Instant expiresAt, int attempts) {}
+    public void invalidateChallenge(String userIdentifier) {
+        challengeStore.invalidate(normalizeIdentifier(userIdentifier));
+    }
+
+    private String hashOtp(String identifier, OtpPurpose purpose, String code) {
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(hmacKey);
+            byte[] digest = mac.doFinal(("MangaNetWorking:2FA:v1:" + identifier + ":" + purpose.name() + ":" + code)
+                    .getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(digest);
+        } catch (GeneralSecurityException exception) {
+            throw new IllegalStateException("HMAC de OTP indisponível.", exception);
+        }
+    }
+
+    private String normalizeIdentifier(String identifier) {
+        if (identifier == null || identifier.isBlank()) {
+            throw new IllegalArgumentException("Identificador de usuário obrigatório.");
+        }
+        return identifier.trim().toLowerCase();
+    }
+
+    public enum OtpPurpose {
+        LOGIN("AUTENTICACAO_2FA"),
+        STEP_UP_PIX("STEP_UP_PIX");
+
+        private final String notificationPurpose;
+
+        OtpPurpose(String notificationPurpose) {
+            this.notificationPurpose = notificationPurpose;
+        }
+
+        String notificationPurpose() {
+            return notificationPurpose;
+        }
+    }
+
 }

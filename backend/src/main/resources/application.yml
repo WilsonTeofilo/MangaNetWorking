@@ -2,8 +2,13 @@ server:
   port: 8085
 
 spring:
+  profiles:
+    default: local
   application:
     name: manganetworking-backend
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
 
   # Carrega o .env da raiz do repositório quando o backend roda fora do Docker
   # (IDE ou `mvn spring-boot:run` a partir de backend/). O prefixo `optional:`
@@ -78,6 +83,11 @@ spring:
 
 # Parâmetros de Negócio da Plataforma MangaNetWorking
 platform:
+  password-reset:
+    frontend-url: ${PUBLIC_FRONTEND_URL:http://localhost:5180}
+    token-ttl: ${PASSWORD_RESET_TOKEN_TTL:PT30M}
+  privacy:
+    policy-version: ${PRIVACY_POLICY_VERSION:2026-10-v1}
   fee-percentage: 0.17 # 17% retido pela plataforma sobre doações e membros
   creator-share-percentage: 0.83 # 83% repasse líquido ao criador
   vip-price: 23.00 # R$ 23 / 30 dias para remoção total de anúncios
@@ -95,6 +105,7 @@ platform:
     # Em produção, defina AES_SECRET_KEY (variável de ambiente) com pelo menos 32 caracteres.
     # Se não definida, será usada uma chave de desenvolvimento local.
     aes-secret-key: ${AES_SECRET_KEY:}
+    otp-hmac-secret: ${OTP_HMAC_SECRET:manganetworking-local-otp-hmac-secret-change-before-production}
     rate-limit-per-minute: 120 # Throttling global por IP
     auth-rate-limit-per-minute: 15 # Throttling estrito para login/cadastro/2fa
     # Intervalos lidos pelo @Scheduled (fonte única — não repetir o valor no código).
@@ -106,6 +117,9 @@ platform:
     store: ${PLATFORM_SESSION_STORE:inmemory} # 'inmemory' ou 'redis'
   ratelimit:
     store: ${PLATFORM_RATELIMIT_STORE:inmemory} # 'inmemory' ou 'redis'
+  otp:
+    store: ${PLATFORM_OTP_STORE:inmemory} # 'inmemory' ou 'redis'; desafios são compartilhados entre réplicas
+    key-prefix: ${PLATFORM_OTP_KEY_PREFIX:mn:otp:challenge:}
   mail:
     enabled: ${PLATFORM_MAIL_ENABLED:false} # true para enviar via SMTP (Gmail, Resend, Brevo, Mailpit)
     from-address: ${MAIL_FROM:nao-responda@manganetworking.com}
@@ -122,6 +136,11 @@ platform:
     max-file-size-mb: ${STORAGE_MAX_FILE_SIZE_MB:15} # Limite por arquivo (defesa em profundidade; alinhado ao multipart)
 
 # Observabilidade, Health Probes e Métricas para Prometheus
+logging:
+  structured:
+    format:
+      console: logstash
+
 management:
   endpoints:
     web:
