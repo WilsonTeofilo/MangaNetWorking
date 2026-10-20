@@ -74,4 +74,36 @@ class SessionAuthenticationFilterTest {
         assertTrue(authentication.getAuthorities().stream()
                 .anyMatch(authority -> authority.getAuthority().equals("ROLE_MODERATOR")));
     }
+
+    @Test
+    void ownerSessionGetsOwnerAndModeratorAuthorities() throws ServletException, IOException {
+        SessionService sessionService = new SessionService(sessionStore, new PlatformProperties());
+        SessionAuthenticationFilter filter = new SessionAuthenticationFilter(sessionService);
+
+        String sessionId = "owner_session_id";
+        SessionService.UserSession ownerSession = new SessionService.UserSession(
+                sessionId,
+                UUID.randomUUID(),
+                "owner@example.test",
+                "Owner",
+                false,
+                false,
+                true,
+                null,
+                null,
+                Instant.now().plusSeconds(3600)
+        );
+        when(sessionStore.findById(sessionId)).thenReturn(Optional.of(ownerSession));
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setCookies(new jakarta.servlet.http.Cookie(SessionService.SESSION_COOKIE_NAME, sessionId));
+
+        filter.doFilter(request, new MockHttpServletResponse(), new MockFilterChain());
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        assertTrue(authentication.getAuthorities().stream()
+                .anyMatch(authority -> authority.getAuthority().equals("ROLE_OWNER")));
+        assertTrue(authentication.getAuthorities().stream()
+                .anyMatch(authority -> authority.getAuthority().equals("ROLE_MODERATOR")));
+    }
 }

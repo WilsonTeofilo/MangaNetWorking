@@ -61,6 +61,6 @@ Use esta tabela para achar os arquivos de um fluxo sem varrer o repositório.
 
 - `git reset`, `rebase`, `amend`, `push --force`, `clean -fd` sem autorização explícita.
 - Commit/push automático.
-- Editar migração já aplicada (`V1..V5`).
+- Editar migração já aplicada (`V1..V13`).
 - Declarar runtime concluído sem Docker real.
 - Criar janelas/abas paralelas ou subagentes para o mesmo workspace.

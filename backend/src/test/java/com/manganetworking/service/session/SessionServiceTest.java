@@ -125,6 +125,21 @@ class SessionServiceTest {
     }
 
     @Test
+    void shouldIncludeOwnerRoleInCreatedSession() {
+        // Given
+        testUser.setOwner(true);
+
+        // When
+        SessionService.UserSession session = sessionService.createSession(
+                testUser, null, new MockHttpServletResponse()
+        );
+
+        // Then
+        assertTrue(session.isOwner());
+        verify(sessionStore).save(session);
+    }
+
+    @Test
     void shouldValidateValidSession() {
         // Given
         String sessionId = "valid_session_id";

@@ -14,7 +14,7 @@
 3. **Escopo cirúrgico.** Cada rodada toca no máximo 2–3 arquivos de código, salvo migração/renomeação justificada.
 4. **Nada destrutivo sem autorização explícita:** sem `git reset`, `rebase`, `amend`, `push --force`, `clean -fd` ou reescrita de histórico.
 5. **Sem commit/push automático.** Commit só com autorização do usuário.
-6. **Migração aplicada não se edita.** Crie a próxima versão (`V6`, `V7`...). `V1..V5` são imutáveis.
+6. **Migração aplicada não se edita.** Crie a próxima versão (`V14`, `V15`...). `V1..V13` são imutáveis.
 7. **Segurança e LGPD são server-side.** O cliente nunca decide papel, 2FA, preço, propriedade ou visibilidade.
 8. **Teste é prova.** Só declare verde com a saída real (`Tests run: X, Failures: 0, Errors: 0`). Se não rodou, diga que não rodou.
 9. **Sem runtime fictício.** Docker/Testcontainers/smoke só contam com stack real. Se o Docker não subiu, o item fica pendente.

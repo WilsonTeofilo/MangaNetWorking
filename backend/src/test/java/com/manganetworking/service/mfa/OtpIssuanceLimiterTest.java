@@ -22,6 +22,21 @@ class OtpIssuanceLimiterTest {
     }
 
     @Test
+    void passwordResetNamespaceDoesNotConsumeOtpQuota() {
+        OtpIssuanceLimiter limiter = new OtpIssuanceLimiter(null, "inmemory");
+        Instant start = Instant.parse("2026-10-19T12:00:00Z");
+
+        assertTrue(limiter.tryAcquire(OtpIssuanceLimiter.PASSWORD_RESET_NAMESPACE,
+                "user@example.com", "192.0.2.10", start));
+        assertTrue(limiter.tryAcquire(OtpIssuanceLimiter.OTP_NAMESPACE,
+                "user@example.com", "192.0.2.10", start));
+        assertFalse(limiter.tryAcquire(OtpIssuanceLimiter.PASSWORD_RESET_NAMESPACE,
+                "user@example.com", "192.0.2.10", start.plusSeconds(59)));
+        assertTrue(limiter.tryAcquire(OtpIssuanceLimiter.OTP_NAMESPACE,
+                "user@example.com", "192.0.2.10", start.plusSeconds(60)));
+    }
+
+    @Test
     void accountAndIpLimitsAreIndependentAndAtomic() {
         OtpIssuanceLimiter limiter = new OtpIssuanceLimiter(null, "inmemory");
         Instant start = Instant.parse("2026-10-19T12:00:00Z");

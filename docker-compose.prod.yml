@@ -90,6 +90,8 @@ services:
       MAIL_SMTP_STARTTLS: "true"
       MAIL_FROM: ${MAIL_FROM:?Defina MAIL_FROM em um domínio autenticado}
       MAIL_FROM_NAME: ${MAIL_FROM_NAME:-MangaNetWorking}
+      # Segredo compartilhado do webhook de bounce/complaint do provedor de e-mail.
+      EMAIL_WEBHOOK_SECRET: ${EMAIL_WEBHOOK_SECRET:?Defina EMAIL_WEBHOOK_SECRET com ao menos 32 caracteres}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/manganetworking
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no ambiente}
@@ -103,8 +105,15 @@ services:
       AES_SECRET_KEY: ${AES_SECRET_KEY:?Defina AES_SECRET_KEY com chave de 256 bits}
       OTP_HMAC_SECRET: ${OTP_HMAC_SECRET:?Defina OTP_HMAC_SECRET com ao menos 32 bytes}
       PUBLIC_FRONTEND_URL: ${PUBLIC_FRONTEND_URL:?Defina a origem pública HTTPS do frontend}
+      # Token de coleta de métricas: o Prometheus usa Authorization: Bearer <token>.
+      METRICS_SCRAPE_TOKEN: ${METRICS_SCRAPE_TOKEN:?Defina METRICS_SCRAPE_TOKEN com ao menos 32 caracteres}
+      # Sem fallback para localhost em produção: CORS e retorno do checkout usam a origem pública.
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-${PUBLIC_FRONTEND_URL:?Defina a origem pública HTTPS do frontend}}
+      MERCADOPAGO_BACK_URL_BASE: ${PUBLIC_FRONTEND_URL:?Defina a origem pública HTTPS do frontend}
       PASSWORD_RESET_TOKEN_TTL: ${PASSWORD_RESET_TOKEN_TTL:-PT30M}
       COOKIE_SECURE: "true"
+      # O frontend Nginx é o único proxy confiável e acrescenta o IP real ao X-Forwarded-For.
+      TRUST_FORWARDED_HEADERS: "true"
       STORAGE_UPLOAD_DIR: /data/uploads
     volumes:
       - storage_prod_uploads:/data/uploads

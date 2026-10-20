@@ -2,6 +2,7 @@ package com.manganetworking.service.mfa;
 
 import com.manganetworking.config.properties.PlatformProperties;
 import com.manganetworking.config.observability.SecurityObservabilityMetrics;
+import com.manganetworking.service.email.EmailSuppressionService;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
@@ -33,21 +34,27 @@ public class SmtpMfaNotificationSender implements MfaNotificationSender {
     private final JavaMailSender mailSender;
     private final PlatformProperties properties;
     private final SecurityObservabilityMetrics metrics;
+    private final EmailSuppressionService suppressionService;
 
     @Autowired
     public SmtpMfaNotificationSender(JavaMailSender mailSender, PlatformProperties properties,
-                                    SecurityObservabilityMetrics metrics) {
+                                    SecurityObservabilityMetrics metrics,
+                                    EmailSuppressionService suppressionService) {
         this.mailSender = mailSender;
         this.properties = properties;
         this.metrics = metrics;
+        this.suppressionService = suppressionService;
     }
 
     public SmtpMfaNotificationSender(JavaMailSender mailSender, PlatformProperties properties) {
-        this(mailSender, properties, new SecurityObservabilityMetrics(new SimpleMeterRegistry()));
+        this(mailSender, properties, new SecurityObservabilityMetrics(new SimpleMeterRegistry()), null);
     }
 
     @Override
     public void sendOtp(String destination, String otpCode, String purpose) {
+        if (isSuppressed(destination)) {
+            return;
+        }
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
@@ -80,6 +87,9 @@ public class SmtpMfaNotificationSender implements MfaNotificationSender {
 
     @Override
     public void sendPasswordResetLink(String destination, String resetUrl, long expiresInMinutes) {
+        if (isSuppressed(destination)) {
+            return;
+        }
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
@@ -108,6 +118,33 @@ public class SmtpMfaNotificationSender implements MfaNotificationSender {
                     .log("Falha ao enviar e-mail de recuperação");
             throw new IllegalStateException("Falha no envio de recuperação.", exception);
         }
+    }
+
+    /**
+     * Endereços com bounce duro ou complaint param de receber e-mail de segurança: reenviar
+     * para um endereço que já devolveu bounce prejudica a reputação do domínio e pode gerar
+     * um laço. O evento fica registrado e o envio é contabilizado como "suppressed".
+     */
+    private boolean isSuppressed(String destination) {
+        if (suppressionService == null) {
+            return false;
+        }
+        try {
+            if (!suppressionService.isSuppressed(destination)) {
+                return false;
+            }
+        } catch (RuntimeException e) {
+            log.atWarn().addKeyValue("event", "email_suppression_check")
+                    .addKeyValue("outcome", "failed")
+                    .log("Falha ao consultar a lista de supressão; envio prosseguido");
+            return false;
+        }
+        metrics.recordEmailDelivery("suppressed");
+        log.atWarn().addKeyValue("event", "email_delivery")
+                .addKeyValue("outcome", "suppressed")
+                .addKeyValue("recipient", maskEmail(destination))
+                .log("Envio suprimido: destinatário com bounce/complaint registrado");
+        return true;
     }
 
     private String escapeHtmlAttribute(String value) {

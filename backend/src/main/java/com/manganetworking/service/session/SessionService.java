@@ -70,6 +70,7 @@ public class SessionService {
                 user.getName(),
                 user.isCreator(),
                 user.isModerator(),
+                user.isOwner(),
                 creator != null ? creator.getId() : null,
                 creator != null ? creator.getHandle() : null,
                 expiresAt
@@ -185,10 +186,30 @@ public class SessionService {
             String name,
             boolean isCreator,
             boolean isModerator,
+            boolean isOwner,
             UUID creatorId,
             String creatorHandle,
             Instant expiresAt
     ) {
+        /**
+         * Compatibilidade com sessões e testes criados antes da V14. Sessões antigas no Redis
+         * continuam válidas e são interpretadas como não-proprietárias.
+         */
+        public UserSession(
+                String sessionId,
+                UUID userId,
+                String email,
+                String name,
+                boolean isCreator,
+                boolean isModerator,
+                UUID creatorId,
+                String creatorHandle,
+                Instant expiresAt
+        ) {
+            this(sessionId, userId, email, name, isCreator, isModerator, false,
+                    creatorId, creatorHandle, expiresAt);
+        }
+
         @JsonIgnore
         public boolean isExpired() {
             return expiresAt != null && expiresAt.isBefore(Instant.now());

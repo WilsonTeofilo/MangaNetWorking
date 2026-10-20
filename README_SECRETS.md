@@ -106,7 +106,8 @@ Para receber pagamentos reais na sua conta Mercado Pago:
 
 #### 4. Credenciais de E-mail (SMTP Real vs Mailpit Local)
 
-**Opção 1: Gmail Pessoal com Senha de App (Grátis para começar)**:
+**Opção 1: Gmail pessoal com senha de app (apenas teste manual; NÃO usar em produção)**:
+> O Gmail gratuito envia como a conta pessoal e não entrega branding/SPF/DKIM/DMARC do domínio. Use somente para um teste local controlado; produção exige provedor transacional e domínio autenticado (`docs/orquestracao/EMAIL-E-2FA.md`).
 1. Acesse sua Conta Google -> **Segurança**.
 2. Ative a **Verificação em 2 etapas** (se já não estiver ativa).
 3. Na busca de configurações da conta, digite **"Senhas de app"**.

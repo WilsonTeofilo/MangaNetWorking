@@ -5,6 +5,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -15,20 +16,20 @@ public interface WorkFeedMongoRepository extends MongoRepository<WorkFeedDocumen
 
     Optional<WorkFeedDocument> findBySlug(String slug);
 
-    // Feed Geral: Ranqueado pelo Algoritmo (Discovery Score Desc). A exclusão de obras suspensas é feita
-    // na própria consulta para que uma página não seja consumida por documentos suspensos antes de o
-    // serviço filtrá-los em memória (senão a página retorna menos itens que o tamanho solicitado).
-    List<WorkFeedDocument> findAllByStatusNotOrderByDiscoveryScoreDesc(String status, Pageable pageable);
+    // Feed Geral: ranqueado pelo algoritmo. Suspensas e obras arquivadas por LGPD são excluídas
+    // na própria consulta para que uma página não seja consumida por documentos ocultos.
+    List<WorkFeedDocument> findAllByStatusNotInOrderByDiscoveryScoreDesc(Collection<String> statuses, Pageable pageable);
 
-    // Feed por Gênero: Ranqueado pelo Algoritmo, excluindo suspensas na consulta
-    List<WorkFeedDocument> findAllByGenresContainingAndStatusNotOrderByDiscoveryScoreDesc(String genre, String status, Pageable pageable);
+    // Feed por Gênero: ranqueado pelo algoritmo, excluindo estados ocultos na consulta
+    List<WorkFeedDocument> findAllByGenresContainingAndStatusNotInOrderByDiscoveryScoreDesc(
+            String genre, Collection<String> statuses, Pageable pageable);
 
-    // Obras Em Alta (Trending Score Desc), excluindo suspensas na consulta
-    List<WorkFeedDocument> findAllByStatusNotOrderByTrendingScoreDesc(String status, Pageable pageable);
+    // Obras Em Alta (Trending Score Desc), excluindo estados ocultos na consulta
+    List<WorkFeedDocument> findAllByStatusNotInOrderByTrendingScoreDesc(Collection<String> statuses, Pageable pageable);
 
-    // Lançamentos Recentes (Novos Capítulos), excluindo suspensas na consulta
-    List<WorkFeedDocument> findAllByStatusNotOrderByUpdatedAtDesc(String status, Pageable pageable);
+    // Lançamentos Recentes (Novos Capítulos), excluindo estados ocultos na consulta
+    List<WorkFeedDocument> findAllByStatusNotInOrderByUpdatedAtDesc(Collection<String> statuses, Pageable pageable);
 
-    // Remoção imediata do Feed em caso de suspensão cautelar por moderação
+    // Remoção imediata do Feed em caso de suspensão cautelar ou arquivamento por LGPD
     void deleteByWorkId(String workId);
 }

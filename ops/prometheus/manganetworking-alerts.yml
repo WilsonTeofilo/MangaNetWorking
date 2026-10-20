@@ -18,3 +18,21 @@ groups:
         annotations:
           summary: Aumento de falhas na verificação OTP
           description: Mais de vinte verificações OTP inválidas ou bloqueadas em cinco minutos.
+
+      - alert: EmailBounceRateElevated
+        expr: sum(increase(manganetworking_security_email_bounce_total{type=~"bounce|complaint"}[30m])) > 5
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: Elevação de bounces de e-mail
+          description: Mais de cinco bounces ou complaints em trinta minutos: a reputação do domínio está em risco e a entrega de OTP pode falhar.
+
+      - alert: EmailDeliveriesSuppressed
+        expr: sum(increase(manganetworking_security_email_delivery_total{outcome="suppressed"}[30m])) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Volume alto de envios de e-mail suprimidos
+          description: Endereços com bounce ou complaint estão bloqueados para receiving OTP e recuperação de senha; revisar a lista de supressão.

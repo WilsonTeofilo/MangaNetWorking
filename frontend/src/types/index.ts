@@ -117,6 +117,7 @@ export interface UserProfile {
   avatarUrl: string;
   isCreator: boolean;
   isModerator?: boolean;
+  isOwner?: boolean;
   creatorId?: string;
   isVip?: boolean;
   vipExpiresAt?: string;

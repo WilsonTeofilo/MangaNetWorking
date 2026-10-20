@@ -103,6 +103,10 @@ services:
       MAIL_SMTP_STARTTLS: "false"
       MAIL_FROM: nao-responda@localhost
       MAIL_FROM_NAME: MangaNetWorking
+      # Token de coleta de metricas (Bearer) e segredo do webhook de bounce.
+      # Vazio = webhook desabilitado e metricas restritas ao papel de moderacao.
+      METRICS_SCRAPE_TOKEN: ${METRICS_SCRAPE_TOKEN:-}
+      EMAIL_WEBHOOK_SECRET: ${EMAIL_WEBHOOK_SECRET:-}
       UPLOAD_DIR: /data/uploads
     ports:
       - "127.0.0.1:8085:8085"

@@ -127,6 +127,13 @@ class UserProfileLgpdTest {
     @Test
     @DisplayName("Deve anonimizar dados cadastrais e expurgar histórico do Mongo no Direito ao Esquecimento (LGPD)")
     void shouldAnonymizeUserDataOnRightToBeForgotten() {
+        user.setModerator(true);
+        user.setOwner(true);
+        user.setCreator(true);
+        user.setVip(true);
+        user.setVipExpiresAt(LocalDateTime.now().plusDays(30));
+        user.setEmailVerifiedAt(LocalDateTime.now());
+        user.setBirthDate(java.time.LocalDate.of(1990, 1, 1));
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
 
         profileService.deleteUserAccountLgpd(userId);
@@ -134,8 +141,15 @@ class UserProfileLgpdTest {
         assertTrue(user.getName().contains("Usuário Removido"));
         assertTrue(user.getEmail().contains("anon-"));
         assertNull(user.getPasswordHash());
+        assertNull(user.getEmailVerifiedAt());
+        assertNull(user.getBirthDate());
         assertFalse(user.isTwoFactorEnabled());
         assertFalse(user.isProfilePublic());
+        assertFalse(user.isModerator());
+        assertFalse(user.isOwner());
+        assertFalse(user.isCreator());
+        assertFalse(user.isVip());
+        assertNull(user.getVipExpiresAt());
 
         verify(userRepository).save(user);
         verify(progressRepository).deleteAllByUserId(userId.toString());

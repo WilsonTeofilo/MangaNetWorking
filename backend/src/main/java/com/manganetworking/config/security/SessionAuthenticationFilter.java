@@ -49,6 +49,14 @@ public class SessionAuthenticationFilter extends OncePerRequestFilter {
                 if (session.isModerator()) {
                     authorities.add(new SimpleGrantedAuthority("ROLE_MODERATOR"));
                 }
+                if (session.isOwner()) {
+                    // O proprietário herda as capacidades operacionais de moderação, mas
+                    // mantém ROLE_OWNER para rotas administrativas exclusivas.
+                    authorities.add(new SimpleGrantedAuthority("ROLE_OWNER"));
+                    if (!session.isModerator()) {
+                        authorities.add(new SimpleGrantedAuthority("ROLE_MODERATOR"));
+                    }
+                }
 
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                         session,

@@ -26,9 +26,8 @@ Durante o refinamento do modelo de negócio editorial do MangaNetWorking, surgir
 - **Proteção ao Criador:** A assinatura VIP **NÃO dá acesso antecipado** aos capítulos fechados de membros de autores. O leitor só tem acesso antecipado se for membro do autor.
 
 ### 3. Arquitetura Desacoplada e Reuso 100% no Mobile
-- O backend em Spring Boot 3 com Clean Architecture é uma **API REST stateless pura**, comunicando-se exclusivamente via JSON e autenticação Bearer Token / JWT.
-- **Reuso Total:** O mesmo servidor (`http://localhost:8085` em dev ou domínio em produção) e o mesmo banco relacional (PostgreSQL) e documental (MongoDB) atenderão simultaneamente o Frontend Web (React 19) e o futuro App Mobile (React Native / Flutter / Kotlin / Swift).
-- Nenhum código de backend precisará ser reescrito quando a versão mobile for iniciada.
+- O backend em Spring Boot 3 com Clean Architecture é uma **API REST**, comunicando-se via JSON e autenticação por **cookie de sessão HttpOnly/SameSite** (não JWT/Bearer em `localStorage`).
+- **Reuso Total:** o mesmo servidor (`http://localhost:8085` em dev ou domínio em produção) e os mesmos bancos PostgreSQL/MongoDB atenderão o Frontend Web (React 19) e o futuro App Mobile; o transporte de sessão do app será definido no ADR específico, sem reutilizar token em `localStorage`.
 
 ### 4. Segurança Anti-Pirataria e DRM na Leitura Offline (Mobile)
 Para viabilizar a leitura offline no aplicativo sem risco de vazamento de capítulos ou pirataria de obras independentes:

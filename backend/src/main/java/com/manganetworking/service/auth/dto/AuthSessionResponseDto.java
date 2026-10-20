@@ -10,5 +10,6 @@ public record AuthSessionResponseDto(
         boolean isCreator,
         UUID creatorId,
         String creatorHandle,
-        boolean isModerator
+        boolean isModerator,
+        boolean isOwner
 ) {}

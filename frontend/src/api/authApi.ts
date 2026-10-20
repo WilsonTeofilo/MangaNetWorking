@@ -8,10 +8,12 @@ export interface SessionUserDto {
   id: string;
   name: string;
   email: string;
+  avatarUrl?: string;
   isCreator: boolean;
   creatorId?: string;
   creatorHandle?: string;
   isModerator?: boolean;
+  isOwner?: boolean;
   isVip: boolean;
   vipExpiresAt?: string | null;
   privacyConsentRequired?: boolean;
