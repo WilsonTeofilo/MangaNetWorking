@@ -97,6 +97,8 @@ jobs:
           MAIL_USERNAME: ci-placeholder
           MAIL_PASSWORD: ci-placeholder-nao-usado
           MAIL_FROM: ci@example.invalid
+          METRICS_SCRAPE_TOKEN: ci-placeholder-metrics-scrape-token-32
+          EMAIL_WEBHOOK_SECRET: ci-placeholder-email-webhook-secret-32
         run: docker compose -f docker-compose.prod.yml config --quiet
 
       # Build direto com o daemon do runner: sem setup-buildx-action (driver
