@@ -139,7 +139,12 @@ class AuthApplicationServiceTest {
 
     @Test
     void duplicateRegistrationReturnsSameGenericResponseWithoutRevealingAccount() {
-        when(userRepository.findByEmail("teofilo@teste.com")).thenReturn(Optional.of(new UserEntity()));
+        // Conta já confirmada: o cadastro não vira e-mail nem entrega nada (é login).
+        UserEntity confirmed = new UserEntity();
+        confirmed.setEmail("teofilo@teste.com");
+        confirmed.setEmailVerifiedAt(java.time.LocalDateTime.now());
+
+        when(userRepository.findByEmail("teofilo@teste.com")).thenReturn(Optional.of(confirmed));
         RegisterRequestDto dto = new RegisterRequestDto(
                 "Teófilo", "teofilo@teste.com", "senhaForte123!", false, null, null, true,
                 true, "2026-10-v1", java.time.LocalDate.of(1990, 1, 1));
@@ -255,8 +260,7 @@ class AuthApplicationServiceTest {
     }
 
     @Test
-    void shouldCanonicalizeEmailOnRegistrationIgnoringSpacesAndCase() {
-        RegisterRequestDto dto = new RegisterRequestDto(
+    void shouldCanonicalizeEmailOnRegistrationIgnoringSpacesAndCase() {        RegisterRequestDto dto = new RegisterRequestDto(
                 "Leitor", "  Leitor.Teste@Example.COM  ", "senhaForte123!", false, null, null, true,
                 true, "2026-10-v1", java.time.LocalDate.of(1990, 1, 1));
 
@@ -290,5 +294,50 @@ class AuthApplicationServiceTest {
         IllegalArgumentException invalid = assertThrows(IllegalArgumentException.class, () ->
                 authService.login(new LoginRequestDto("leitor teste@example.com", "senhaForte123!")));
         assertTrue(invalid.getMessage().contains("espa"));
+    }
+
+    @Test
+    void resendsOtpWhenRegistrationWasLeftPending() {
+        // Cadastro interrompido: conta existe, e-mail ainda não confirmado.
+        UserEntity pending = new UserEntity();
+        pending.setEmail("pendente@teste.com");
+        pending.setPasswordHash(passwordEncoder.encode("senhaForte123!"));
+        pending.setEmailVerifiedAt(null);
+
+        when(userRepository.findByEmail("pendente@teste.com")).thenReturn(Optional.of(pending));
+
+        RegisterRequestDto dto = new RegisterRequestDto(
+                "Pendente", "  PENDENTE@Teste.com ", "senhaForte123!", false, null, null, true,
+                true, "2026-10-v1", java.time.LocalDate.of(1990, 1, 1));
+
+        Map<String, Object> result = authService.register(dto);
+
+        assertEquals("2FA_REQUIRED", result.get("status"));
+        assertEquals("pendente@teste.com", result.get("email"));
+        // O código tem de sair para o e-mail real configurado, senão o cadastro não concludes.
+        assertTrue(devOutboxRepository.findLatest("pendente@teste.com").isPresent());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void doesNotSendOtpOnRegistrationForAlreadyConfirmedAccount() {
+        // Conta já confirmada: não é cadastro, é login. Não enviamos e-mail (evita spamming
+        // e mantém a resposta idêntica para não enumerar contas existentes).
+        UserEntity confirmed = new UserEntity();
+        confirmed.setEmail("confirmada@teste.com");
+        confirmed.setPasswordHash(passwordEncoder.encode("senhaForte123!"));
+        confirmed.setEmailVerifiedAt(java.time.LocalDateTime.now());
+
+        when(userRepository.findByEmail("confirmada@teste.com")).thenReturn(Optional.of(confirmed));
+
+        RegisterRequestDto dto = new RegisterRequestDto(
+                "Confirmada", "confirmada@teste.com", "senhaForte123!", false, null, null, true,
+                true, "2026-10-v1", java.time.LocalDate.of(1990, 1, 1));
+
+        Map<String, Object> result = authService.register(dto);
+
+        assertEquals("2FA_REQUIRED", result.get("status"));
+        assertTrue(devOutboxRepository.findLatest("confirmada@teste.com").isEmpty());
+        verify(userRepository, never()).save(any());
     }
 }

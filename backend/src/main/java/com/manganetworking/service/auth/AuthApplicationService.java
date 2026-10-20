@@ -86,7 +86,19 @@ public class AuthApplicationService {
     public Map<String, Object> register(RegisterRequestDto dto, HttpServletRequest request) {
         PasswordPolicy.validateNewPassword(dto.password());
         String normalizedEmail = EmailNormalizer.normalize(dto.email());
-        if (userRepository.findByEmail(normalizedEmail).isPresent()) {
+        Optional<UserEntity> existingAccount = userRepository.findByEmail(normalizedEmail);
+        if (existingAccount.isPresent()) {
+            // Cadastro interrompido: a conta existe mas o e-mail nunca foi confirmado (a pessoa
+            // não recebeu o código ou nunca digitou). Nesse caso reenviamos o código para concluir
+            // o cadastro — o e-mail do SMTP configurado é o canal de entrega do OTP.
+            // Conta já confirmada NÃO recebe e-mail aqui: esse caso é login, e a resposta
+            // continua idêntica nos dois casos para não enumerar contas existentes.
+            UserEntity pending = existingAccount.get();
+            if (pending.getEmailVerifiedAt() == null) {
+                enforceOtpIssuanceLimit(normalizedEmail, clientIp(request));
+                twoFactorAuthService.generateAndSendOtp(normalizedEmail, normalizedEmail,
+                        TwoFactorAuthService.OtpPurpose.LOGIN);
+            }
             return registrationAccepted(normalizedEmail);
         }
 

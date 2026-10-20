@@ -498,6 +498,15 @@ O detalhe público da obra agora omite capítulos com `publicReleaseAt` futuro; 
   enviados com `outcome=sent` para o endereço real do titular, com o Mailpit recebendo `0` mensagens nesse intervalo.
 - [x] **Suíte:** `mvn -o test` → **333 testes, 0 falhas, 0 erros** (322 anteriores + 8 de `EmailNormalizerTest`,
   2 de canonicalização em `AuthApplicationServiceTest` e 1 de DTO em `AuthControllerTest`).
+- [x] **Cadastro reenvia o código quando o cadastro ficou pela metade (20/10/2026):** o titular tentou se cadastrar
+  às 20:28 (janela em que o Compose ainda mandava tudo para o Mailpit) e a conta ficou **pendente**: existe, mas
+  `email_verified_at` é nulo, ou seja, o código nunca chegou. Ao tentar de novo, a rota respondia a resposta genérica
+  **sem** enviar nada — para a pessoa, "não funciona". Agora, quando a conta existe e **ainda não foi confirmada**, o
+  cadastro **reenvia o OTP** para o e-mail configurado (mesma resposta genérica, sem revelar se a conta existe).
+  Conta **já confirmada** continua sem e-mail no cadastro — esse caso é login, e aceitar código ali daria acesso sem
+  senha (enfraqueceria o segundo fator). Prova real: `POST /api/auth/register` com `sopraimvuu1@live.com` →
+  `mfa_email_delivery outcome=sent` pelo SMTP `smtp.gmail.com` (Mailpit com a mensagem antiga de 20:28 e nenhuma
+  nova). Limitador preservado: 3 OTPs por conta/IP a cada 10 min (o 429 do segundo cadastro seguido é esse limite).
 - [ ] **Continua bloqueado:** SPF/DKIM/DMARC e domínio institucional ainda dependem de DNS/provedor; a entrega real
   continua dependendo do provedor usado (Gmail pessoal com senha de app serve para desenvolvimento, não para produção).
 

@@ -154,6 +154,9 @@ Fluxo exercitado de ponta a ponta na stack local (backend 8085, frontend 5180, P
 - [x] **SMTP real no ambiente local (20/10/2026):** o Compose local passa a repassar `MAIL_*` do `.env` (o padrão
   continuava sendo Mailpit quando as variáveis não existem). Prova: e-mail de recuperação e **código 2FA** enviados
   com `outcome=sent` para o endereço real do titular, Mailpit com `0` mensagens no mesmo intervalo. Suíte: **333/0/0**.
+- [x] **Cadastro que ficou pela metade retoma (20/10/2026):** conta existente e ainda **não confirmada** volta a
+  receber o código de 2FA pelo SMTP configurado (antes a rota respondia sem enviar nada e a pessoa ficava travada).
+  Conta já confirmada não recebe e-mail no cadastro — esse caso é login.
 
 ### F2 — Perfis de leitor e criador · ✅ concluída
 **Objetivo:** perfis público/privado, página do criador, links, avatar e biblioteca com autorização no servidor.
