@@ -1,7 +1,7 @@
 # E-mail, 2FA e Google OAuth — Plano de Implementação
 
 > Resposta à pergunta: *como fazer o código 2FA chegar por e-mail com a marca MangaNetWorking, reaproveitando o que o projeto antigo fazia?*
-> Este documento é **plano**. Nenhum código foi escrito ainda.
+> Plano histórico e referência arquitetural. O código SMTP/2FA descrito abaixo já existe. Em 2026-10-19/20, a recuperação de senha foi implementada separadamente por link de uso único: V13 guarda apenas SHA-256 do token; `PASSWORD_RESET_TOKEN_TTL` aceita 5–60 min (padrão 30); `PUBLIC_FRONTEND_URL` precisa ser HTTPS (HTTP somente em localhost). Testes unitários, controller e SMTP passaram 17/17; a suíte completa reportou 284 testes, 0 falhas/erros e 12 ignorados sem Docker. V12/V13 em PostgreSQL real, Mailpit E2E da recuperação, concorrência, DNS autenticado e provedor continuam pendentes. OTP de login/step-up permanece independente.
 
 ---
 

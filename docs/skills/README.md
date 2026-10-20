@@ -1,6 +1,6 @@
 # Skills — Procedimentos Operacionais Reutilizáveis
 
-Esta pasta reúne **procedimentos operacionais padronizados** para desenvolvimento e manutenção no MangaNetWorking. Cada skill responde **como executar** com qualidade e rigor técnico. O contexto de negócio, regras imutáveis e status do roadmap residem no documento mestre `docs/PLANO_DE_FASES.md`.
+Esta pasta reúne **procedimentos operacionais padronizados** para desenvolvimento e manutenção no MangaNetWorking. Cada skill responde **como executar** com qualidade e rigor técnico. Regras de produto ficam em `docs/PLANO_DE_FASES.md`; estado e fila de execução, em `docs/orquestracao/ROADMAP-FASES.md`; achados abertos, em `docs/orquestracao/AUDITORIA-ATUAL.md`.
 
 ---
 
@@ -18,5 +18,5 @@ Esta pasta reúne **procedimentos operacionais padronizados** para desenvolvimen
 ## 2. Princípios de Uso
 
 1. **Auto-Contidas:** Cada skill possui um único arquivo `SKILL.md` abrangente, evitando fragmentação em múltiplos sub-arquivos.
-2. **Contexto de Negócio:** Requisitos de produto, splits de comissão, regras de 2FA e status de implementação são lidos exclusivamente em `docs/PLANO_DE_FASES.md`.
+2. **Contexto:** Requisitos de produto e regras imutáveis vêm de `docs/PLANO_DE_FASES.md`; o estado corrente vem do roadmap/auditoria canônicos, sem duplicar a fila neste README.
 3. **Decisões Arquiteturais:** Decisões duradouras sobre tecnologias e modelos de dados estão documentadas em `docs/decisions/` (ADR-001 a ADR-006).
