@@ -3,6 +3,7 @@ package com.manganetworking.service.mfa;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.manganetworking.config.observability.SecurityObservabilityMetrics;
+import com.manganetworking.util.EmailNormalizer;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -16,6 +17,7 @@ import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.HexFormat;
+import java.util.Locale;
 
 /**
  * Geração e validação de códigos 2FA (OTP) via store substituível e proteção anti-força bruta.
@@ -135,7 +137,12 @@ public class TwoFactorAuthService {
         if (identifier == null || identifier.isBlank()) {
             throw new IllegalArgumentException("Identificador de usuário obrigatório.");
         }
-        return identifier.trim().toLowerCase();
+        // O identificador é o e-mail do titular: canonicaliza (trim + minúsculas) para que
+        // o OTP seja sempre gerado e verificado sob a mesma chave. Dados legados fora do
+        // padrão continuam funcionando com a normalização simples anterior.
+        return EmailNormalizer.isValid(identifier)
+                ? EmailNormalizer.normalize(identifier)
+                : identifier.trim().toLowerCase(Locale.ROOT);
     }
 
     public enum OtpPurpose {

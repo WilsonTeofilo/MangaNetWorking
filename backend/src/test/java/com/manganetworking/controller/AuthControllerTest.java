@@ -74,6 +74,34 @@ class AuthControllerTest {
     }
 
     @Test
+    void shouldAcceptRegisterWithPaddedAndUppercaseEmail() throws Exception {
+        // O e-mail com espaço nas pontas e maiúsculas NÃO pode ser rejeitado como
+        // "formato inválido": a canonicalização acontece no serviço (trim + minúsculas).
+        when(authApplicationService.register(any(), any())).thenReturn(Map.of(
+                "status", "2FA_REQUIRED",
+                "message", "Se os dados estiverem disponíveis, enviaremos instruções para o e-mail informado."));
+
+        String payload = """
+                {
+                    "name": "Leitor Teste",
+                    "email": "  Leitor.Teste@Example.COM  ",
+                    "password": "senhaForte99!",
+                    "termsAccepted": true,
+                    "privacyPolicyVersion": "2026-10-v1",
+                    "birthDate": "1990-01-01"
+                }
+                """;
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("2FA_REQUIRED"));
+
+        verify(authApplicationService).register(any(), any());
+    }
+
+    @Test
     void shouldRejectRegisterWithInvalidEmailOrShortPassword() throws Exception {
         // Payload inválido: email zoado e senha com menos de 8 caracteres
         String invalidPayload = """

@@ -25,7 +25,7 @@ function Get-LatestOtp([string]$Email) {
         $_.To | Where-Object { $_.Address -eq $Email }
     } | Select-Object -First 1
     if (-not $target) {
-        throw "OTP não encontrado para $Email no Dev Outbox nem no Mailpit"
+        throw "OTP não encontrado para $Email no Dev Outbox nem no Mailpit. Se o .env aponta para um SMTP real (MAIL_HOST), o código foi enviado para a caixa de e-mail de verdade: rode o smoke com PLATFORM_MAIL_ENABLED=false (Dev Outbox) ou MAIL_HOST=mailpit."
     }
 
     $message = Invoke-RestMethod -Uri "$mailpitBase/message/$($target.ID)" -Method Get

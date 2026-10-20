@@ -74,6 +74,8 @@ spring:
           auth: ${MAIL_SMTP_AUTH:false}
           starttls:
             enable: ${MAIL_SMTP_STARTTLS:false}
+          # Sem timeout, um SMTP travado segura a requisição de login/2FA até o
+          # container morrer: erro de envio precisa virar erro rápido.
           connectiontimeout: 5000
           timeout: 5000
           writetimeout: 5000

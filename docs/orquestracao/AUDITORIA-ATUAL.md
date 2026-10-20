@@ -471,6 +471,36 @@ O detalhe público da obra agora omite capítulos com `publicReleaseAt` futuro; 
 - [ ] **Dívida arquitetural remanescente (não refatorada para evitar regressão):** classes acima do patamar de manutenção — `MercadoPagoService` (565 lin/23 métodos; acopla HTTP, assinatura webhook e domínio monetário), `WorkApplicationService` (359 lin/8 métodos; orquestra persistência, recomendação e sync), `RecommendationAlgorithmService` (263 lin/11 métodos; scoring + jobagem) e `CreatorWorkspacePage.tsx` (729 lin; página única com criação, publicação e analytics). Os fallbacks de desenvolvimento em `application.yml`/`PlatformProperties` (origins/CORS/back-url `localhost`) são cobertos por fail-fast em `prod`, mas `MERCADOPAGO_BACK_URL_BASE` e `CORS_ALLOWED_ORIGINS` dependem de env em produção para não cair em localhost. O ideal seria extrair adapters de pagamento e extrair componentes do workspace; fora escopo desta rodada.
 - [ ] **Externo:** Google ID token/DNS, SMTP de produção, Sandbox Mercado Pago, Oracle e decisões LGPD continuam bloqueados; não houve fabricação de runtime.
 
+## 7.19 E-mail canonicalizado e SMTP real no ambiente local (2026-10-20)
+
+- [x] **Uma regra só de e-mail, aplicada no servidor:** `com.manganetworking.util.EmailNormalizer` canonicaliza
+  o endereço digitado (espaços removidos, tudo em minúsculas, aspas/chevrons de "copiar e colar" removidos) e
+  valida o formato (RFC 5321: ≤254 caracteres, parte local ≤64, sem espaço interno, sem ponto no início/fim/dobrado,
+  domínio com rótulos válidos e TLD alfabético). Entrada inválida vira **HTTP 400** com mensagem clara
+  (`IllegalArgumentException` → `GlobalExceptionHandler`), nunca 500. Aplicado em **cadastro, login, Google OAuth,
+  verificação de 2FA, recuperação de senha, emissão de OTP, Dev Outbox e webhook de bounce** — antes a mesma
+  normalização estava duplicada em 6 classes (`trim().toLowerCase()`), o que permitia divergência entre o e-mail
+  gravado e o e-mail consultado.
+- [x] **O `@Email` do Bean Validation foi trocado pela regra do domínio** nos DTOs de cadastro, login, 2FA, recuperação
+  e evento de entrega: o validador do framework rejeitava endereço com espaço nas pontas (`" pessoa@dominio.com "`)
+  antes de qualquer tratamento, que era exatamente o sintoma reportado. O DTO agora aceita a entrada crua e a
+  canonicalização acontece no serviço, com a resposta de erro no lugar certo.
+- [x] **Prova real (20/10/2026):** cadastro com `"  Leitor.Teste@Example.COM  "` gravou `leitor.teste@example.com` e
+  disparou o OTP para o endereço canônico; login com `" LEITOR.TESTE@Example.com "` encontrou a mesma conta;
+  `POST /api/auth/password-reset/request` com `" wilsonteofilosouza@live.com "` (com espaços) enviou o e-mail para o
+  endereço canônico; endereço com espaço interno (`leitor teste@...`) foi recusado com 400.
+- [x] **SMTP real funcionando em ambiente local:** o Compose local ignorava o `.env` e fixava `MAIL_HOST: mailpit`,
+  `MAIL_SMTP_AUTH: "false"` e `MAIL_FROM: nao-responda@localhost` — ou seja, **todo OTP ia para o Mailpit e nunca
+  saía para a internet**. Agora o Compose repassa `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`,
+  `MAIL_SMTP_AUTH`, `MAIL_SMTP_STARTTLS`, `MAIL_FROM` e `MAIL_FROM_NAME` do `.env`, com o Mailpit como padrão quando
+  as variáveis não existem (stack continua funcionando sem credencial). Prova real: container com
+  `MAIL_HOST=smtp.gmail.com`, `MAIL_PORT=587`, `auth=true`, `starttls=true`; e-mail de recuperação e **código 2FA**
+  enviados com `outcome=sent` para o endereço real do titular, com o Mailpit recebendo `0` mensagens nesse intervalo.
+- [x] **Suíte:** `mvn -o test` → **333 testes, 0 falhas, 0 erros** (322 anteriores + 8 de `EmailNormalizerTest`,
+  2 de canonicalização em `AuthApplicationServiceTest` e 1 de DTO em `AuthControllerTest`).
+- [ ] **Continua bloqueado:** SPF/DKIM/DMARC e domínio institucional ainda dependem de DNS/provedor; a entrega real
+  continua dependendo do provedor usado (Gmail pessoal com senha de app serve para desenvolvimento, não para produção).
+
 ## 8. Ordem de correção
 
 A fila está em `docs/orquestracao/ROADMAP-FASES.md`. Resumo:

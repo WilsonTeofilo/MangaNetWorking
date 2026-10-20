@@ -2,6 +2,7 @@ package com.manganetworking.controller;
 
 import com.manganetworking.service.email.EmailSuppressionService;
 import com.manganetworking.service.email.dto.EmailDeliveryEventDto;
+import com.manganetworking.util.EmailNormalizer;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -54,7 +55,16 @@ public class EmailWebhookController {
                     .body(Map.of("message", "Webhook de e-mail não autorizado."));
         }
 
-        suppressionService.record(event.email(), event.eventType(), event.reason(), event.provider(), event.occurredAt());
+        // O endereço do evento é canonicalizado (trim + minúsculas) antes de virar hash:
+        // o mesmo endereço com caixa diferente precisa cair na mesma lista de supressão.
+        String normalizedEmail;
+        try {
+            normalizedEmail = EmailNormalizer.normalize(event.email());
+        } catch (IllegalArgumentException invalid) {
+            return ResponseEntity.badRequest().body(Map.of("message", "E-mail do evento inválido."));
+        }
+
+        suppressionService.record(normalizedEmail, event.eventType(), event.reason(), event.provider(), event.occurredAt());
         return ResponseEntity.ok(Map.of("status", "RECORDED"));
     }
 }

@@ -127,6 +127,40 @@ Adicionar **Mailpit** ao `docker-compose.yml`:
 
 No perfil `dev`, apontar `MAIL_HOST=localhost`, `MAIL_PORT=1025`, `MAIL_USERNAME=`, `MAIL_PASSWORD=`, `MAIL_FROM=dev@manganetworking.local`. Você vê todos os e-mails em `http://localhost:8025`, sem enviar nada para fora.
 
+### 5.1 Estado real em 20/10/2026 — Mailpit ou SMTP de verdade, é só o `.env`
+
+O Compose local **não fixa mais** `MAIL_HOST: mailpit`: ele repassa do `.env` `MAIL_HOST`, `MAIL_PORT`,
+`MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_SMTP_AUTH`, `MAIL_SMTP_STARTTLS`, `MAIL_FROM` e `MAIL_FROM_NAME`,
+mantendo o Mailpit como padrão quando as variáveis não existem. Antes, o `.env` era ignorado e **todo OTP
+ia só para o Mailpit** — o sintoma de "o 2FA não chega no meu e-mail".
+
+```bash
+# .env (fora do repositório, ver .gitignore)
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USERNAME=conta@gmail.com
+MAIL_PASSWORD=senha-de-app-16-caracteres
+MAIL_SMTP_AUTH=true
+MAIL_SMTP_STARTTLS=true
+MAIL_FROM=conta@gmail.com
+MAIL_FROM_NAME=MangaNetWorking
+PLATFORM_MAIL_ENABLED=true
+```
+
+Regras para o remetente:
+
+- a conta do `MAIL_USERNAME` precisa ser a mesma do `MAIL_FROM` (ou um alias verificado no provedor);
+  o Gmail recusa com `553 sender address mismatch` quando não são;
+- use **senha de app** (16 caracteres) e não a senha da conta;
+- `MAIL_FROM_NAME` é o nome de exibição, e não o remetente técnico;
+- para testar **sem** SMTP real: deixe `MAIL_HOST` ausente/vazio no `.env` (cai no Mailpit) ou rode com
+  `PLATFORM_MAIL_ENABLED=false` para usar a Dev Outbox (útil para automação: o `smoke_test_e2e.ps1` lê o OTP
+  da Dev Outbox ou do Mailpit e **não** consegue ler a caixa de e-mail real).
+
+Prova real em 20/10/2026: container com `smtp.gmail.com:587`, `auth=true` e `starttls=true`; e-mail de
+recuperação de senha e **código 2FA** enviados com `outcome=sent` para o endereço do titular, com `0` mensagens
+no Mailpit no mesmo intervalo.
+
 O endpoint `/api/dev/outbox/latest` pode continuar existindo como conveniência, mas a fonte de verdade do teste é o Mailpit.
 
 ---

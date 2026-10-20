@@ -10,6 +10,7 @@ import com.manganetworking.service.mfa.MfaNotificationSender;
 import com.manganetworking.service.mfa.OtpIssuanceLimiter;
 import com.manganetworking.service.mfa.TwoFactorAuthService;
 import com.manganetworking.service.session.SessionService;
+import com.manganetworking.util.EmailNormalizer;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,7 +75,7 @@ public class PasswordResetApplicationService {
 
     @Transactional
     public Map<String, String> request(PasswordResetRequestDto dto, HttpServletRequest request) {
-        String email = dto.email().trim().toLowerCase(Locale.ROOT);
+        String email = EmailNormalizer.normalize(dto.email());
         // Rate limiting applies identically before account lookup to avoid an existence oracle.
         // The password-reset namespace is independent from the login OTP quota.
         if (!limiter.tryAcquire(OtpIssuanceLimiter.PASSWORD_RESET_NAMESPACE, email,

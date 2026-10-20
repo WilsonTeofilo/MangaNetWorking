@@ -1,6 +1,7 @@
 package com.manganetworking.service.email;
 
 import com.manganetworking.config.observability.SecurityObservabilityMetrics;
+import com.manganetworking.util.EmailNormalizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -97,8 +98,12 @@ public class EmailSuppressionService {
         if (email == null) {
             return null;
         }
-        String trimmed = email.trim().toLowerCase(Locale.ROOT);
-        return trimmed.isEmpty() || !trimmed.contains("@") ? null : trimmed;
+        try {
+            return EmailNormalizer.normalize(email);
+        } catch (IllegalArgumentException invalid) {
+            // Evento de entrega com endereço inválido não tem o que suprimir.
+            return null;
+        }
     }
 
     private String hash(String normalizedEmail) {

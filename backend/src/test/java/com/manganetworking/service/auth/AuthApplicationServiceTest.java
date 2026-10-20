@@ -253,4 +253,42 @@ class AuthApplicationServiceTest {
         assertEquals("Código 2FA incorreto ou expirado", ex.getMessage());
         assertNull(response.getCookie(SessionService.SESSION_COOKIE_NAME));
     }
+
+    @Test
+    void shouldCanonicalizeEmailOnRegistrationIgnoringSpacesAndCase() {
+        RegisterRequestDto dto = new RegisterRequestDto(
+                "Leitor", "  Leitor.Teste@Example.COM  ", "senhaForte123!", false, null, null, true,
+                true, "2026-10-v1", java.time.LocalDate.of(1990, 1, 1));
+
+        when(userRepository.findByEmail("leitor.teste@example.com")).thenReturn(Optional.empty());
+
+        Map<String, Object> result = authService.register(dto);
+        assertEquals("2FA_REQUIRED", result.get("status"));
+
+        ArgumentCaptor<UserEntity> captor = ArgumentCaptor.forClass(UserEntity.class);
+        verify(userRepository).save(captor.capture());
+        assertEquals("leitor.teste@example.com", captor.getValue().getEmail());
+
+        // O OTP tem de sair para o endereço canônico, senão o código nunca chega.
+        assertTrue(devOutboxRepository.findLatest("leitor.teste@example.com").isPresent());
+    }
+
+    @Test
+    void shouldCanonicalizeEmailOnLoginAndRejectAddressWithInnerSpaces() {
+        UserEntity user = new UserEntity();
+        user.setEmail("leitor.teste@example.com");
+        user.setPasswordHash(passwordEncoder.encode("senhaForte123!"));
+        user.setEmailVerifiedAt(java.time.LocalDateTime.now());
+        user.setName("Leitor");
+
+        when(userRepository.findByEmail("leitor.teste@example.com")).thenReturn(Optional.of(user));
+
+        Map<String, Object> result = authService.login(
+                new LoginRequestDto(" LEITOR.TESTE@Example.com ", "senhaForte123!"));
+        assertEquals("2FA_REQUIRED", result.get("status"));
+
+        IllegalArgumentException invalid = assertThrows(IllegalArgumentException.class, () ->
+                authService.login(new LoginRequestDto("leitor teste@example.com", "senhaForte123!")));
+        assertTrue(invalid.getMessage().contains("espa"));
+    }
 }

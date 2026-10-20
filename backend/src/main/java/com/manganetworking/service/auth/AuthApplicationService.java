@@ -11,6 +11,7 @@ import com.manganetworking.service.auth.dto.*;
 import com.manganetworking.service.session.SessionService;
 import com.manganetworking.service.user.PrivacyComplianceService;
 import com.manganetworking.util.CpfValidator;
+import com.manganetworking.util.EmailNormalizer;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import com.google.api.client.http.javanet.NetHttpTransport;
@@ -84,7 +85,7 @@ public class AuthApplicationService {
     @Transactional
     public Map<String, Object> register(RegisterRequestDto dto, HttpServletRequest request) {
         PasswordPolicy.validateNewPassword(dto.password());
-        String normalizedEmail = dto.email().trim().toLowerCase();
+        String normalizedEmail = EmailNormalizer.normalize(dto.email());
         if (userRepository.findByEmail(normalizedEmail).isPresent()) {
             return registrationAccepted(normalizedEmail);
         }
@@ -150,7 +151,7 @@ public class AuthApplicationService {
     @Transactional
     public Map<String, Object> login(LoginRequestDto dto, HttpServletRequest request) {
         PasswordPolicy.validate(dto.password());
-        String normalizedEmail = dto.email().trim().toLowerCase();
+        String normalizedEmail = EmailNormalizer.normalize(dto.email());
         UserEntity user = userRepository.findByEmail(normalizedEmail)
                 .orElse(null);
 
@@ -213,7 +214,7 @@ public class AuthApplicationService {
             throw new SecurityException("Token Google inválido");
         }
 
-        String normalizedEmail = email.trim().toLowerCase();
+        String normalizedEmail = EmailNormalizer.normalize(email);
         String verifiedName = (String) claims.get("name");
         String verifiedAvatarUrl = (String) claims.get("picture");
         UserEntity user = userRepository.findByEmail(normalizedEmail).orElse(null);
@@ -253,7 +254,7 @@ public class AuthApplicationService {
     }
 
     public AuthSessionResponseDto verify2Fa(Verify2FaRequestDto dto, HttpServletResponse response) {
-        String normalizedEmail = dto.email().trim().toLowerCase();
+        String normalizedEmail = EmailNormalizer.normalize(dto.email());
         boolean valid = twoFactorAuthService.verifyOtp(normalizedEmail, dto.code(), TwoFactorAuthService.OtpPurpose.LOGIN);
         if (!valid) {
             throw new SecurityException("Código 2FA incorreto ou expirado");

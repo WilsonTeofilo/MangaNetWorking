@@ -2,6 +2,8 @@ package com.manganetworking.service.mfa;
 
 import org.springframework.stereotype.Component;
 
+import com.manganetworking.util.EmailNormalizer;
+
 import java.time.Instant;
 import java.util.Locale;
 import java.util.Map;
@@ -45,7 +47,11 @@ public class DevOutboxRepository {
     }
 
     private String normalize(String destination) {
-        return destination.trim().toLowerCase(Locale.ROOT);
+        try {
+            return EmailNormalizer.normalize(destination);
+        } catch (IllegalArgumentException invalid) {
+            return destination.trim().toLowerCase(Locale.ROOT);
+        }
     }
 
     public record DevOutboxMessage(String destination, String otpCode, String purpose, Instant sentAt) {}

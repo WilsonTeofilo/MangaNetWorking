@@ -147,6 +147,13 @@ Fluxo exercitado de ponta a ponta na stack local (backend 8085, frontend 5180, P
 - [x] V14/`ROLE_OWNER` aplicada em PostgreSQL real (`is_owner boolean`); proprietário herda moderação, `/api/owner/**` exige papel próprio e `/auth/me` devolve `isOwner`/avatar. Login de conta inexistente/sem senha executa BCrypt descartável; `prod` falha com OTP HMAC padrão/curto ou cookie sem `Secure`; o Compose exige `PUBLIC_FRONTEND_URL` e deriva CORS/retorno do Mercado Pago dessa origem, sem fallback localhost. `TRUST_FORWARDED_HEADERS` configurável e habilitado atrás do Nginx. A exclusão LGPD limpa privilégios e dados de nascimento/verificação; o feed exclui obras `suspended` e `archived_lgpd`.
 - [x] Criar a conta DONO de `Wilsonteofilosouza@live.com`; cadastro confirmado por OTP, `is_owner=true`/`is_moderator=true` aplicados no PostgreSQL e sessão real verificada em `/api/auth/me`. A senha inicial de 9 caracteres foi recusada; a senha forte fornecida pelo titular não foi registrada nem persistida no repositório.
 - [ ] Homologar ID token Google válido e configurar DNS autenticado SPF/DKIM/DMARC; sem credenciais/domínio reais, permanece aberto (#44, #46).
+- [x] **E-mail canonicalizado no servidor (20/10/2026):** `EmailNormalizer` (trim + minúsculas + validação RFC 5321) é
+  aplicado em cadastro, login, Google OAuth, 2FA, recuperação de senha, OTP, Dev Outbox e webhook de bounce; endereço
+  com espaço nas pontas ou em maiúsculas passa a ser aceito e gravado canônico, e endereço inválido vira 400 explícito.
+  Antes o `@Email` do framework recusava `" pessoa@dominio.com "` antes de qualquer tratamento.
+- [x] **SMTP real no ambiente local (20/10/2026):** o Compose local passa a repassar `MAIL_*` do `.env` (o padrão
+  continuava sendo Mailpit quando as variáveis não existem). Prova: e-mail de recuperação e **código 2FA** enviados
+  com `outcome=sent` para o endereço real do titular, Mailpit com `0` mensagens no mesmo intervalo. Suíte: **333/0/0**.
 
 ### F2 — Perfis de leitor e criador · ✅ concluída
 **Objetivo:** perfis público/privado, página do criador, links, avatar e biblioteca com autorização no servidor.
