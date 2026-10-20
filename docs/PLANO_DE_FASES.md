@@ -2,7 +2,7 @@
 
 > **DOCUMENTO MESTRE DE PRODUTO & REGRAS DE NEGÓCIO**
 >
-> **Última Atualização:** 19 de Outubro de 2026
+> **Última Atualização:** 20 de Outubro de 2026
 >
 > **Escopo deste arquivo:** regras de produto, plano atual F0–F8 e histórico de decisões/fases antigas. A seção 4 resume o estado atual das fases; a fila detalhada e evidências de execução ficam sincronizadas em `docs/orquestracao/ROADMAP-FASES.md`. Fases legadas posteriores estão preservadas como histórico, não como status corrente. Achados abertos ficam em `docs/orquestracao/AUDITORIA-ATUAL.md` e o progresso anterior permanece em `docs/orquestracao/HISTORICO_TAREFAS.md`.
 >
