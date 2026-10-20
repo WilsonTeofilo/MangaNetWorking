@@ -46,6 +46,10 @@ public class UserEntity {
     @Column(nullable = false)
     private boolean isModerator = false;
 
+    // Proprietário da plataforma: acesso administrativo máximo, nunca concedido pelo cliente.
+    @Column(nullable = false)
+    private boolean isOwner = false;
+
     // Assinatura VIP da Plataforma (Remove 100% dos anúncios)
     @Column(nullable = false)
     private boolean isVip = false;
@@ -114,6 +118,9 @@ public class UserEntity {
 
     public boolean isModerator() { return isModerator; }
     public void setModerator(boolean moderator) { isModerator = moderator; }
+
+    public boolean isOwner() { return isOwner; }
+    public void setOwner(boolean owner) { isOwner = owner; }
 
     public boolean isVip() { return isVip; }
     public void setVip(boolean vip) { isVip = vip; }

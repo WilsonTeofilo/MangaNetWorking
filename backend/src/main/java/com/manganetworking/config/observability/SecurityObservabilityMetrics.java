@@ -24,4 +24,9 @@ public class SecurityObservabilityMetrics {
     public void recordEmailDelivery(String outcome) {
         registry.counter("manganetworking.security.email.delivery", "outcome", outcome).increment();
     }
+
+    /** Eventos de entrega informados pelo provedor (bounce, complaint, delivery). */
+    public void recordEmailBounce(String eventType) {
+        registry.counter("manganetworking.security.email.bounce", "type", eventType).increment();
+    }
 }

@@ -262,7 +262,16 @@ public class UserProfileApplicationService {
         user.setPasswordHash(null);
         user.setTwoFactorEnabled(false);
         user.setTwoFactorSecret(null);
+        user.setEmailVerifiedAt(null);
         user.setProfilePublic(false);
+        // A anonimização é também remoção de privilégios: uma conta excluída não pode
+        // conservar poderes administrativos, criador, VIP ou dados de nascimento.
+        user.setModerator(false);
+        user.setOwner(false);
+        user.setCreator(false);
+        user.setVip(false);
+        user.setVipExpiresAt(null);
+        user.setBirthDate(null);
         user.getLikedWorks().clear();
         userRepository.save(user);
 

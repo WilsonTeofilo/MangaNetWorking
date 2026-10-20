@@ -13,6 +13,8 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin }: HeaderProps) 
   const { user, isAuthenticated, toggleCreatorMode, logout } = useAuth();
   const { openVip } = useModals();
   const isLoggedIn = isAuthenticated;
+  // O proprietário herda a operação de moderação no backend; a UI reflete o mesmo acesso.
+  const canModerate = Boolean(user.isOwner || user.isModerator);
 
   const handleLogout = async () => {
     await logout();
@@ -110,6 +112,17 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin }: HeaderProps) 
               {user.isCreator ? 'MODO CRIADOR' : 'MODO LEITOR'}
             </button>
 
+            {/* Identidade administrativa explícita; autorização real continua no backend. */}
+            {user.isOwner && (
+              <div
+                className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#E8402F] text-[#F4EFE3] border-2 border-[#0B0B0C] shadow-[2px_2px_0_#F4EFE3] font-pixel text-[12px] uppercase font-bold tracking-wider"
+                title="Proprietário da plataforma"
+              >
+                <ShieldAlert size={12} />
+                <span>DONO</span>
+              </div>
+            )}
+
             {/* VIP Status / Assinar VIP */}
             {user.isVip ? (
               <div
@@ -132,7 +145,7 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin }: HeaderProps) 
             )}
 
             {/* O atalho é só conveniência; o servidor também valida o papel. */}
-            {user.isModerator && (
+            {canModerate && (
               <button
                 type="button"
                 onClick={() => setCurrentTab('moderation')}

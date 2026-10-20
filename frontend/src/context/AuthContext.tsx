@@ -24,7 +24,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const GUEST_USER: UserProfile = {
   uid: 'guest', name: 'Visitante', email: '', avatarUrl: '', isCreator: false,
-  isModerator: false, isVip: false, activeMemberships: {}, favorites: [],
+  isModerator: false, isOwner: false, isVip: false, activeMemberships: {}, favorites: [],
 };
 
 /** Mescla os dados autoritativos da sessão no perfil, preservando apenas preferências de interface. */
@@ -34,9 +34,11 @@ function applySession(prev: UserProfile, session: SessionUserDto): UserProfile {
     uid: session.id,
     name: session.name || prev.name,
     email: session.email || prev.email,
+    avatarUrl: session.avatarUrl || prev.avatarUrl,
     isCreator: session.isCreator,
     creatorId: session.creatorId || undefined,
     isModerator: Boolean(session.isModerator),
+    isOwner: Boolean(session.isOwner),
     privacyConsentRequired: Boolean(session.privacyConsentRequired),
     privacyPolicyVersion: session.privacyPolicyVersion,
   };

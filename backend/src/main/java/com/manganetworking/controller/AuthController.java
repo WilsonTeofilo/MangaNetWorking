@@ -1,6 +1,5 @@
 package com.manganetworking.controller;
 
-import com.manganetworking.repository.jpa.UserRepository;
 import com.manganetworking.service.auth.AuthApplicationService;
 import com.manganetworking.service.auth.PasswordResetApplicationService;
 import com.manganetworking.service.auth.dto.*;
@@ -11,7 +10,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -19,13 +17,11 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthApplicationService authService;
-    private final UserRepository userRepository;
     private final PasswordResetApplicationService passwordResetService;
 
-    public AuthController(AuthApplicationService authService, UserRepository userRepository,
+    public AuthController(AuthApplicationService authService,
                           PasswordResetApplicationService passwordResetService) {
         this.authService = authService;
-        this.userRepository = userRepository;
         this.passwordResetService = passwordResetService;
     }
 
@@ -78,25 +74,9 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<Map<String, Object>> me(HttpServletRequest request) {
-        return authService.getCurrentSession(request)
-                .map(session -> {
-                    var user = userRepository.findById(session.userId()).orElse(null);
-                    Map<String, Object> body = new HashMap<>();
-                    body.put("id", session.userId());
-                    body.put("name", session.name());
-                    body.put("email", session.email());
-                    body.put("isCreator", session.isCreator());
-                    body.put("creatorId", session.creatorId() != null ? session.creatorId() : "");
-                    body.put("creatorHandle", session.creatorHandle() != null ? session.creatorHandle() : "");
-                    body.put("isModerator", session.isModerator());
-                    body.put("isVip", user != null && user.isVipActive());
-                    body.put("vipExpiresAt", user != null ? user.getVipExpiresAt() : null);
-                    body.put("privacyConsentRequired", user == null || user.getPrivacyPolicyVersion() == null
-                            || !authService.currentPolicyVersion().equals(user.getPrivacyPolicyVersion()));
-                    body.put("privacyPolicyVersion", authService.currentPolicyVersion());
-                    return ResponseEntity.ok(body);
-                })
+    public ResponseEntity<CurrentSessionResponseDto> me(HttpServletRequest request) {
+        return authService.currentSession(request)
+                .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
     }
 

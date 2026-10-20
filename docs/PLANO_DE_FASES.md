@@ -8,7 +8,7 @@
 >
 > ⚠️ **Fonte de estado:** a seção 4 é o mapa de produto F0–F8; para logs, comandos, resultados de teste e ordem exata da fila, consulte o roadmap/auditoria. O histórico abaixo não deve ser interpretado como status atual.
 >
-> **Migrações Flyway:** V1..V13 aplicadas em PostgreSQL local real e em schema limpo via Testcontainers até 20/10/2026; versões aplicadas são imutáveis.
+> **Migrações Flyway:** V1..V16 aplicadas em PostgreSQL local real e em schema limpo via Testcontainers até 20/10/2026; versões aplicadas são imutáveis. A V14 acrescenta `users.is_owner` (papel de proprietário), a V15 cria a auditoria append-only de governança de dados e a V16 registra eventos de entrega de e-mail (bounce/complaint) sem gravar o endereço em claro.
 >
 > **Ambiente e saúde da stack:** ver `ROADMAP-FASES.md`; não inferir que serviços estão rodando só porque o Compose existe.
 
@@ -88,6 +88,45 @@ O **MangaNetWorking** é uma plataforma editorial **100% digital** para conectar
 
 Este é o plano vigente do produto. Os critérios concluídos refletem implementação e validações já registradas; itens externos ou sem execução comprovada permanecem abertos. A fila operacional detalhada está em `docs/orquestracao/ROADMAP-FASES.md`, que agora organiza o fechamento nos Blocos A–D (itens 32–56): A local, B segurança/governança, C configuração externa e D documentação.
 
+### 4.0 O que já dá para fazer localmente (verificado em 20/10/2026)
+
+Fluxo exercitado de ponta a ponta na stack local (backend 8085, frontend 5180, Postgres, Mongo, Redis, Mailpit):
+
+| Ação | Situação | Como foi verificado |
+|---|---|---|
+| Criar conta de **leitor** (cadastro + 2FA por e-mail + sessão) | ✅ funciona | `POST /api/auth/register` → OTP no Mailpit → `2fa/verify` → cookie HttpOnly; `/api/auth/me` devolve a sessão |
+| Criar conta de **criador** (handle próprio) | ✅ funciona | mesmo fluxo com `isCreator=true`; `creatorId`/`creatorHandle` no `/me` |
+| Entrar, sair e revogar sessão | ✅ funciona | logout devolve `401` imediato na sessão revogada |
+| Recuperar senha por e-mail | ✅ funciona (Mailpit) | pedido → link → nova senha → 2FA → `/me`; TTL, uso único e concorrência cobertos |
+| **Upar imagem** (capa, página, avatar) | ✅ funciona | `POST /api/storage/upload` com validação de magic bytes e limite de tamanho/dimensões |
+| **Criar obra** (com autoria original declarada) | ✅ funciona | `POST /api/works` → `workId` + `slug`; feed e catálogo listam a obra |
+| **Publicar capítulo** com páginas vinculadas | ✅ funciona | `POST /api/works/{id}/chapters` → capítulo 1 com páginas; leitura pública liberada |
+| **Ler a obra** (detalhe, capítulo e página) | ✅ funciona | `GET /api/works/{slug}` e `GET /api/works/{slug}/chapters/{n}`; página servida pelo storage |
+| Biblioteca (favoritar) e progresso de leitura | ✅ funciona | `POST /api/users/me/library/{workId}/toggle` e `POST /api/users/me/reading-progress/track` (Mongo) |
+| Denunciar e moderar (fila, suspensão) | ✅ funciona | `POST /api/reports` (público) + fila do DONO/moderador + suspensão cautelar |
+| Workspace do criador (analytics, missões, chave PIX com step-up 2FA) | ✅ funciona | `/api/creators/workspace`, `/api/creators/analytics`, `PUT /api/creators/pix-key` com OTP |
+| Painel do DONO (governança de dados) | ⚠️ parcial | existe o papel `ROLE_OWNER` e os endpoints de auditoria/saneamento; **não há dashboard de produto** |
+| **Editar obra/capítulo já publicado** | ❌ **não existe** | não há `PUT/PATCH/DELETE` de obra ou capítulo na API: só criar |
+| Comentários na obra | ❌ não existe | o modelo tem `comments_count`, mas não há API de comentário |
+| Doação, membresia e VIP | ❌ bloqueado | checkout Mercado Pago exige credenciais Sandbox/webhook público; a rota legada devolve `410` (nenhum crédito fictício) |
+| Login social (Google) | ❌ bloqueado | exige ID token real e domínio/DNS (#44) |
+| E-mail para destinatário real | ❌ bloqueado | só Mailpit local; falta domínio autenticado e provedor (#46) |
+
+> Observação operacional: o cadastro tem limite de 3 OTPs por IP a cada 10 minutos e cooldown de 60 s.
+> Em testes seguidos, o `429` é do limitador de emissão de OTP, não um defeito.
+
+### 4.1 O que ainda não dá (ordem de bloqueio)
+
+1. **Produto incompleto:** edição/exclusão de obra e capítulo, comentários, dashboard do DONO e o
+   motor completo de analytics/Seasons (F17).
+2. **Paginação real:** checkout do Mercado Pago (Sandbox, webhook público e chaves de produção).
+3. **Identidade e e-mail reais:** ID token Google, domínio com SPF/DKIM/DMARC, provedor de e-mail e
+   monitoramento de bounce hooked no provedor (o mecanismo já existe no servidor).
+4. **Governança:** texto oficial da Política de Privacidade, nomeação e publicação do encarregado,
+   prazos de retenção aprovados, destino off-site real e KMS da chave de backup.
+5. **Infra de produção:** conta Oracle, shape Ampere A1, chave SSH, DNS/TLS e o deploy em si —
+   com o terreno pronto (`ops/deploy/deploy-prod.ps1`, `docs/ops/PRODUCAO-ORACLE.md`).
+
 ### F0 — Infra Docker First · ✅ concluída
 **Objetivo:** subir a stack local integrada e conectar backend a PostgreSQL e MongoDB.
 
@@ -101,7 +140,9 @@ Este é o plano vigente do produto. Os critérios concluídos refletem implement
 - [x] OTP válido de login persiste a confirmação de posse do e-mail; redefinição de senha não confirma nem altera o e-mail. Google requer claim `email_verified=true`. V12 adiciona `email_verified_at` sem editar migrations anteriores.
 - [x] Política de senha nova: 8–64 pontos de código Unicode; confirmação, revelar/ocultar acessível e medidor Fraca/Média/Forte; backend recusa senha fraca em cadastro/reset, sem bloquear login de contas legadas.
 - [x] `PasswordPolicyTest` passou 4/4 e `AuthApplicationServiceTest` passou 10/10, incluindo o bloqueio de cadastro fraco; Mailpit E2E do OTP de login e testes de OTP/Google inválidos estão cobertos. A recuperação por link foi exercitada no Mailpit (pedido → link → nova senha → 2FA → `/me`), com expirado/malformado/reuso cobertos e concorrência real 204/401 (#34–#36).
-- [x] V12/V13 aplicadas e validadas em PostgreSQL real; envio da recuperação por Mailpit e consumo concorrente exercitados. Dois Testcontainers (concorrência e rotação) passaram; suíte completa 291/0/0 com Docker. O `CHAR(64)` da V13 foi corrigido para `VARCHAR(64)` antes de qualquer aplicação durável; o CI efêmero que aplicou a versão anterior foi descartado.
+- [x] V12/V13 aplicadas e validadas em PostgreSQL real; envio da recuperação por Mailpit e consumo concorrente exercitados. Dois Testcontainers (concorrência e rotação) passaram; suíte completa 322/0/0 com Docker. O `CHAR(64)` da V13 foi corrigido para `VARCHAR(64)` antes de qualquer aplicação durável; o CI efêmero que aplicou a versão anterior foi descartado.
+- [x] V14/`ROLE_OWNER` aplicada em PostgreSQL real (`is_owner boolean`); proprietário herda moderação, `/api/owner/**` exige papel próprio e `/auth/me` devolve `isOwner`/avatar. Login de conta inexistente/sem senha executa BCrypt descartável; `prod` falha com OTP HMAC padrão/curto ou cookie sem `Secure`; o Compose exige `PUBLIC_FRONTEND_URL` e deriva CORS/retorno do Mercado Pago dessa origem, sem fallback localhost. `TRUST_FORWARDED_HEADERS` configurável e habilitado atrás do Nginx. A exclusão LGPD limpa privilégios e dados de nascimento/verificação; o feed exclui obras `suspended` e `archived_lgpd`.
+- [x] Criar a conta DONO de `Wilsonteofilosouza@live.com`; cadastro confirmado por OTP, `is_owner=true`/`is_moderator=true` aplicados no PostgreSQL e sessão real verificada em `/api/auth/me`. A senha inicial de 9 caracteres foi recusada; a senha forte fornecida pelo titular não foi registrada nem persistida no repositório.
 - [ ] Homologar ID token Google válido e configurar DNS autenticado SPF/DKIM/DMARC; sem credenciais/domínio reais, permanece aberto (#44, #46).
 
 ### F2 — Perfis de leitor e criador · ✅ concluída
@@ -110,12 +151,14 @@ Este é o plano vigente do produto. Os critérios concluídos refletem implement
 - [x] Privacidade e ownership verificados no backend; links externos validados; bio sanitizada.
 - [x] Avatar decodificado, limitado, redimensionado/recodificado no servidor e integrado às telas; respostas privadas sem cache compartilhado.
 
-### F3 — Obras, capítulos e leitores de mangá/light novel · ✅ concluída
+### F3 — Obras, capítulos e leitores de mangá/light novel · 🟡 parcial
 **Objetivo:** metadados no Postgres, arquivos seguros, progresso idempotente no Mongo e leitura adequada a imagem ou prosa.
 
 - [x] Publicação futura/obra arquivada respeitam guard; páginas têm MIME correto, `nosniff`, sem cache compartilhado; progresso é idempotente.
 - [x] Limites de páginas/dimensões e capítulos de prosa implementados sem quebrar o fluxo de páginas de mangá.
 - [x] Carga HTTP com página real: 100/100 respostas 200, concorrência 10, p95 190 ms; detalhe e evidência no roadmap.
+- [x] Fluxo completo verificado em 20/10/2026: criar obra, publicar capítulo com páginas e **ler a obra por uma segunda conta** (detalhe público, capítulo e página) — ver 4.0.
+- [ ] **Lacunas de produto:** não existe `PUT/PATCH/DELETE` de obra ou capítulo (só criação) e não há API de comentários. Editar ou remover conteúdo publicado é a próxima entrega de F3.
 
 ### F4 — Monetização e financeiro · 🟡 parcial
 **Objetivo:** doações e Clube de Membros idempotentes, splits, ledger e PIX com step-up, sem saldo fictício.
@@ -123,22 +166,24 @@ Este é o plano vigente do produto. Os critérios concluídos refletem implement
 - [x] Checkout idempotente, webhook validado e efeitos financeiros apenas após confirmação; UI não inventa saldo nem divide valores como autoridade.
 - [ ] Homologar o fluxo completo no Mercado Pago Sandbox com credenciais e endpoint público de webhook.
 
-### F5 — Frontend “Banca de Rua” · 🟡 parcial
+### F5 — Frontend “Banca de Rua” · ✅ concluída (evidência estrutural de QA)
 **Objetivo:** interface acessível e responsiva, sem mocks de produção ou estados financeiros falsos.
 
 - [x] Fixtures isoladas em desenvolvimento; sessão 401 vira deslogada; contraste estático, senha e Sobre Nós implementados; build de produção verde.
-- [ ] Concluir inspeção visual e navegação por teclado em todas as rotas. Home, catálogo, biblioteca, sobre, login e reset foram inspecionados; após login real com OTP, feed, catálogo, sobre e perfil do leitor também. Tab real percorreu 10–14 elementos por rota com outline de 3 px e sem armadilha observada; faltam as rotas autenticadas de criador/moderador (#40).
+- [x] Inspeção de teclado/layout concluída em todas as rotas, incluindo moderação (2 denúncias reais) e workspace do criador; foco visível de 3 px, sem overflow horizontal e com labels corrigidos em gênero, sinopse e biografia (#40). A captura pixel não foi produzida pela ferramenta (aba não visível), então a evidência é estrutural (DOM, acessibilidade e layout), não pixel a pixel.
 
 ### F6 — LGPD e AppSec · 🟡 parcial
 **Objetivo:** consentimento versionado, direitos do titular, maioridade e segurança de dados/arquivos.
 
 - [x] Reaceite server-side, auditoria append-only, exportação, exclusão, maioridade e checklist técnico aplicados; V11 substitui backfill inferido sem editar V5.
-- [ ] Publicar a Política de Privacidade aprovada e definir/sanar os dados organizacionais e legados pendentes conforme procedimento controlado.
+- [x] Hardening de AppSec: `/auth/me` sem repositório no controller, BCrypt descartável contra enumeração por tempo, guarda de segredos no profile `prod` e `TRUST_FORWARDED_HEADERS` explícito atrás do proxy; nenhum segredo de produção hardcoded encontrado.
+- [x] Mecanismo de publicação controlada da Política de Privacidade (`GET /api/legal/privacy-policy` + `ops/legal/publish-privacy-policy.ps1`, log append-only) e saneamento controlado de dado legado (CPF sentinela, `ROLE_OWNER`, auditoria em `privacy_governance_actions`/V15; 16 registros saneados). Monitoramento de bounce com supressão (V16) e token de coleta de métricas.
+- [ ] **Publicar a Política de Privacidade aprovada** (texto oficial e aprovação são decisão humana) e **nomear/publicar o encarregado**, aprovar inventário e prazos de retenção — modelo pronto em `docs/ops/INVENTARIO-DADOS.md`, decisão pendente.
 
 ### F7 — QA, E2E e CI · ✅ concluída
 **Objetivo:** comprovar fluxos em stack real e automatizar validação em pull request.
 
-- [x] Suíte backend em 20/10/2026: 291 testes, 0 falhas/erros, com Docker disponível (concorrência e rotação em Testcontainers); build frontend verde e smoke E2E 12/12 local; workflow de CI configurado para pull requests.
+- [x] Suíte backend em 20/10/2026: 322 testes, 0 falhas/erros, com Docker disponível (concorrência e rotação em Testcontainers); build frontend verde e smoke E2E 12/12 local; workflow de CI configurado para pull requests.
 - [x] Job `docker-validation` recebeu `MAIL_*` fictícios; Compose de produção validado sem `.env` localmente (`docker compose config --quiet` = 0). O run `39448285071` do PR #5 ficou verde em backend, frontend, Docker e smoke 12/12; a falha anterior de V13 foi corrigida e a senha do smoke foi alinhada à política atual (#43).
 
 ### F8 — Prontidão de produção · 🟡 parcial
@@ -146,9 +191,12 @@ Este é o plano vigente do produto. Os critérios concluídos refletem implement
 
 - [x] Adapters Redis, métricas/logs/regras, script de backup/restore e runbook estão implementados; perfil de produção exige stores distribuídos e credenciais. OTP, sessão e throttle foram observados no Redis real (`mn:otp:issue`, `mn:password-reset:issue`, `mn:session`).
 - [x] Backup e restore-check locais executados com manifest SHA-256, Postgres/Mongo e storage; banco restaurado confirmou 17 usuários e V13. O script foi corrigido para Windows PowerShell 5.1.
-- [ ] Retenção, cifra e destino off-site; ativar Alertmanager/canal de plantão; autenticar domínio e monitorar bounces; aprovar encarregado, inventário e retenção; exercitar runbook. Itens 42 e 45–49 do roadmap.
+- [x] Cifra em repouso do backup (AES-256-CBC + HMAC-SHA256), cópia off-site conferida por SHA-256 e retenção com log, executadas de verdade; resta o destino off-site real, o KMS e a aprovação de prazos.
+- [x] Canal de plantão ativo no ambiente local: Prometheus e Alertmanager oficiais, `promtool`/`amtool` aprovados, 2 regras ativas e alerta sintético crítico entregue no e-mail. Monitoramento de bounce nativo do servidor (webhook autenticado, supressão de envios, V16) e token dedicado de coleta de métricas. Exercício de runbook automatizado e registrado.
+- [x] Mecanismo de publicação da Política de Privacidade e saneamento controlado de CPF sentinela implementados e executados (16 registros legados saneados com auditoria append-only em V15).
+- [ ] Dependências externas que fecham os itens 42 e 45–49: texto oficial aprovado da política, nomeação e publicação do encarregado, prazos de retenção aprovados, destino off-site real e KMS, domínio autenticado (SPF/DKIM/DMARC) e provedor de e-mail, canal institucional de plantão.
 
-**Próxima sequência:** Bloco A concluído localmente até #39 e #43; #40 está parcial (rotas de criador/moderador pendentes), #41 pendente (boot `prod`/failover), #42 parcial (restore local feito; retenção/cifra/off-site pendentes) e #44 bloqueado por Google/DNS; #56 concluído. Depois Bloco B (45–49) → Bloco C (50–55). O teste de serviço para senha fraca foi confirmado em `AuthApplicationServiceTest` (10/10). Não marcar dependências externas como concluídas sem evidência.
+**Próxima sequência:** Bloco A concluído localmente até #39 e #43; #40 concluído (rotas de criador/moderador QA com sessão real), #41 pendente (boot `prod`/failover), #42 parcial (restore, cifra, off-site e retenção feitos no ambiente local; falta o destino externo e a aprovação) e #44 bloqueado por Google/DNS; #56 concluído. No Bloco B, 45, 46, 48 e 49 têm a parte técnica pronta e comprovada; 47 tem o modelo pronto, e todos seguem abertos pela decisão organizacional. Depois Bloco C (50–55). Não marcar dependências externas como concluídas sem evidência.
 
 ---
 
@@ -277,7 +325,7 @@ Este é o plano vigente do produto. Os critérios concluídos refletem implement
 - [x] **14.2. Preparação local do Compose de produção:**
   - `docker-compose.prod.yml` exige credenciais por variáveis, mantém bancos/Redis na rede interna, requer Redis para sessão/rate-limit/OTP e exige `PUBLIC_FRONTEND_URL` público. A validação estática do Compose foi feita com placeholders; isso não comprova deploy.
 - [ ] **14.3. Deploy e validação operacional em Oracle — não executados:**
-  - Depois de provisionar: instalar Docker/Compose, criar `.env` fora do Git com chaves definitivas, executar a stack, validar healthchecks, migrações Flyway V1–V13 e smoke test. Não gerar nem armazenar aqui a chave AES de produção.
+  - Depois de provisionar: instalar Docker/Compose, criar `.env` fora do Git com chaves definitivas, executar a stack, validar healthchecks, migrações Flyway V1–V16 e smoke test. Não gerar nem armazenar aqui a chave AES de produção.
   - Sem acesso autorizado à conta e ao host, nenhum serviço foi implantado, nenhuma migration foi aplicada em banco Oracle e nenhum backup/restore de produção foi testado. Nenhuma compra real ou ativação financeira de produção foi executada.
 
 ### FASE 15: Conexão Segura & Proxy Serverless (Cloudflare Pages Functions)
@@ -332,7 +380,7 @@ Este é o plano vigente do produto. Os critérios concluídos refletem implement
 
 ### Próximos passos (estado atual)
 
-A ordem vigente é mantida em `docs/orquestracao/ROADMAP-FASES.md`. V12/V13, recuperação no Mailpit, concorrência, rotação e backup/restore local já foram executados; restam o passe autenticado/teclado completo (#40), boot `prod` entre réplicas (#41), retenção/cifra/off-site do backup (#42) e um run remoto verde em PR (#43). Bloqueios externos para fases 13/14: domínio/provedor e DNS autenticado; credenciais Sandbox e webhook HTTPS público; acesso Oracle, região/shape disponível e chave SSH aprovada. Nenhuma compra real ou infraestrutura externa foi criada. A suíte backend passou 291/0/0 com Docker; o restore local foi verificado em bancos isolados.
+A ordem vigente é mantida em `docs/orquestracao/ROADMAP-FASES.md`. V12/V13, recuperação no Mailpit, concorrência, rotação e backup/restore local já foram executados; restam o passe autenticado/teclado completo (#40), boot `prod` entre réplicas (#41), retenção/cifra/off-site do backup (#42) e um run remoto verde em PR (#43). Bloqueios externos para fases 13/14: domínio/provedor e DNS autenticado; credenciais Sandbox e webhook HTTPS público; acesso Oracle, região/shape disponível e chave SSH aprovada. Nenhuma compra real ou infraestrutura externa foi criada. A suíte backend passou 322/0/0 com Docker; o restore local foi verificado em bancos isolados.
 
 ---
 
@@ -340,8 +388,8 @@ A ordem vigente é mantida em `docs/orquestracao/ROADMAP-FASES.md`. V12/V13, rec
 
 | Componente | Tecnologia | Porta / Path | Status de Verificação |
 |---|---|---|---|
-| **API Backend** | Spring Boot 3.4.2 / Java 21 | `8085` | 291 testes em 20/10/2026, 0 falhas/erros/ignorados com Docker; Sandbox pendente |
-| **Banco Relacional** | PostgreSQL 16 (Docker) | `25432` | V1–V13 aplicadas em stack local real; V13 com `token_hash VARCHAR(64)` e `validate` verde |
+| **API Backend** | Spring Boot 3.4.2 / Java 21 | `8085` | 322 testes em 20/10/2026, 0 falhas/erros/ignorados com Docker; Sandbox pendente |
+| **Banco Relacional** | PostgreSQL 16 (Docker) | `25432` | V1–V16 aplicadas em stack local real; V13 com `token_hash VARCHAR(64)`, V14 com `is_owner` e `validate` verde |
 | **Banco NoSQL** | MongoDB 7 (Docker) | `27017` | Eventos de feed e telemetria validados ao vivo |
 | **Storage de Imagens** | Filesystem Local Sanitizado | `./data/uploads/` | Magic bytes e guard por `chapter_files` validados |
 | **Frontend Web** | React 19 / TypeScript / Vite | `5180` | Build limpo em 20/10/2026 (1649 módulos) |

@@ -151,6 +151,21 @@ class RecommendationAlgorithmServiceTest {
     }
 
     @Test
+    @DisplayName("Obra arquivada por LGPD é removida do feed e não é rematerializada")
+    void removesArchivedLgpdWorkFromFeed() {
+        RecommendationAlgorithmService algorithm = newService();
+
+        WorkEntity archived = suspendedWork();
+        archived.setStatus("archived_lgpd");
+
+        WorkFeedDocument result = algorithm.syncWorkToFeed(archived);
+
+        assertNull(result, "Obra arquivada por LGPD não deve ser materializada no feed");
+        verify(feedRepo).deleteByWorkId(archived.getId().toString());
+        verify(feedRepo, never()).save(any(WorkFeedDocument.class));
+    }
+
+    @Test
     @DisplayName("Reindexação não ressuscita obra suspensa e ainda sincroniza as ativas")
     void reindexDoesNotResurrectSuspendedWork() {
         RecommendationAlgorithmService algorithm = newService();

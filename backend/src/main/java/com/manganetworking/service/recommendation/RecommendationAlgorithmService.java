@@ -39,8 +39,11 @@ public class RecommendationAlgorithmService {
     private static final double MAX_CREATOR_BOOST = 2.5;
     private static final long MIN_VIEWS_FOR_QUALITY = 40;
 
-    /** Obra suspensa cautelarmente pela moderação: não pode existir no feed. */
+    /** Obra suspensa cautelarmente ou arquivada por exclusão LGPD: não pode existir no feed. */
     private static final String SUSPENDED_STATUS = "suspended";
+    private static final String ARCHIVED_LGPD_STATUS = "archived_lgpd";
+    private static final java.util.Set<String> HIDDEN_STATUSES =
+            java.util.Set.of(SUSPENDED_STATUS, ARCHIVED_LGPD_STATUS);
 
     private final WorkRepository workRepository;
     private final ChapterRepository chapterRepository;
@@ -111,18 +114,18 @@ public class RecommendationAlgorithmService {
     /**
      * Calcula a pontuação de uma obra e materializa/atualiza o documento no MongoDB.
      *
-     * <p><b>Invariante:</b> obra suspensa cautelarmente não pode existir no feed. Quando a obra está
-     * suspensa, o documento é removido do MongoDB e o método retorna {@code null}. Sem essa guarda, o
-     * recálculo agendado (ou a publicação de capítulo pelo próprio autor) recriaria o documento que a
-     * moderação removeu no {@code afterCommit} da suspensão.</p>
+     * <p><b>Invariante:</b> obra suspensa cautelarmente ou arquivada por exclusão LGPD não pode existir no feed.
+     * Quando a obra está oculta, o documento é removido do MongoDB e o método retorna {@code null}. Sem essa
+     * guarda, o recálculo agendado (ou a publicação de capítulo pelo próprio autor) recriaria o documento que a
+     * moderação removeu no {@code afterCommit} da suspensão ou que a exclusão de conta arquivou.</p>
      *
-     * @return o documento materializado, ou {@code null} se a obra estiver suspensa (removida do feed)
+     * @return o documento materializado, ou {@code null} se a obra estiver oculta (removida do feed)
      */
     @Transactional(readOnly = true)
     public WorkFeedDocument syncWorkToFeed(WorkEntity work) {
-        if (isSuspended(work)) {
+        if (isHidden(work)) {
             workFeedMongoRepository.deleteByWorkId(work.getId().toString());
-            log.debug("[ALGORITMO] Obra '{}' suspensa: removida do feed.", work.getTitle());
+            log.debug("[ALGORITMO] Obra '{}' oculta ({}): removida do feed.", work.getTitle(), work.getStatus());
             return null;
         }
 
@@ -207,7 +210,7 @@ public class RecommendationAlgorithmService {
      * a leitura da associação LAZY do autor ocorre com a sessão JPA aberta (OSIV desligado) e deixa de
      * depender de a sessão da requisição original ainda estar viva na fase {@code afterCommit}.</p>
      *
-     * @return o documento materializado, ou {@code null} se a obra não existir ou estiver suspensa
+     * @return o documento materializado, ou {@code null} se a obra não existir ou estiver oculta
      */
     @Transactional(readOnly = true)
     public WorkFeedDocument syncWorkById(UUID workId) {
@@ -216,13 +219,14 @@ public class RecommendationAlgorithmService {
                 .orElse(null);
     }
 
-    private boolean isSuspended(WorkEntity work) {
-        return work.getStatus() != null && SUSPENDED_STATUS.equalsIgnoreCase(work.getStatus());
+    private boolean isHidden(WorkEntity work) {
+        return work.getStatus() != null
+                && HIDDEN_STATUSES.stream().anyMatch(status -> status.equalsIgnoreCase(work.getStatus()));
     }
 
     /**
      * Reindexa o catálogo inteiro (job agendado ou reindexação manual).
-     * Uma falha em uma obra não interrompe as demais; obras suspensas são removidas do feed
+     * Uma falha em uma obra não interrompe as demais; obras suspensas/arquivadas por LGPD são removidas do feed
      * (ver {@link #syncWorkToFeed(WorkEntity)}).
      */
     @Transactional(readOnly = true)

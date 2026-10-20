@@ -8,6 +8,7 @@ import org.springframework.core.env.Environment;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -48,6 +49,18 @@ public class SecurityConfig {
      */
     @Value("${platform.cors.allowed-origins:http://localhost:5180,http://localhost:5173,http://localhost:3000,http://127.0.0.1:5180,http://127.0.0.1:5173,http://127.0.0.1:3000}")
     private List<String> allowedOrigins;
+
+    /**
+     * Token dedicado de coleta de métricas ({@code platform.metrics.scrape-token}).
+     * <p>
+     * O Prometheus não consegue usar a sessão por cookie HttpOnly; com o token configurado,
+     * {@code Authorization: Bearer <token>} libera apenas {@code /actuator/prometheus} e
+     * {@code /actuator/metrics/**}. Sem token, essas rotas continuam exigindo papel de
+     * moderação, como antes.
+     * </p>
+     */
+    @Value("${platform.metrics.scrape-token:}")
+    private String metricsScrapeToken;
 
     public SecurityConfig(
             SessionAuthenticationFilter sessionAuthenticationFilter,
@@ -94,12 +107,22 @@ public class SecurityConfig {
                         // Observabilidade e Healthcheck de Containers / Prometheus
                         .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
                         // Métricas expõem topologia, pool de conexões e latência: NÃO ficam públicas.
-                // Health segue público para os probes; métricas exigem papel de moderação.
-                .requestMatchers("/actuator/prometheus", "/actuator/metrics/**").hasRole("MODERATOR")
+                        // Health segue público para os probes; métricas exigem papel de moderação
+                        // ou o token dedicado de coleta (Bearer) configurado para o Prometheus.
+                .requestMatchers("/actuator/prometheus", "/actuator/metrics/**")
+                .access((authentication, context) -> new AuthorizationDecision(
+                        hasValidScrapeToken(context.getRequest())
+                                || hasModeratorRole(authentication)
+                ))
                         // Endpoints Públicos de Autenticação
                         .requestMatchers("/api/auth/**").permitAll()
+                        // Documentos legais públicos (Política de Privacidade publicada)
+                        .requestMatchers(HttpMethod.GET, "/api/legal/**").permitAll()
                         // Webhook assinado do Mercado Pago para confirmação de pagamentos
                         .requestMatchers(HttpMethod.POST, "/api/monetization/mercadopago/webhook").permitAll()
+                        // Webhook de bounce/complaint do provedor de e-mail: a autenticação é o
+                        // segredo compartilhado conferido no controller (rota fechada sem ele).
+                        .requestMatchers(HttpMethod.POST, "/api/webhooks/email/**").permitAll()
                         // Dev outbox: apenas em perfis locais (defesa em profundidade além do @Profile do controller).
                         .requestMatchers("/api/dev/**")
                         .access((authentication, context) -> new AuthorizationDecision(devEndpointsEnabled))
@@ -124,6 +147,8 @@ public class SecurityConfig {
                         // Envio de denúncia é público; fila e ações são exclusivas de moderadores
                         .requestMatchers(HttpMethod.POST, "/api/reports").permitAll()
                         .requestMatchers("/api/reports/**").hasRole("MODERATOR")
+                        // Área administrativa do proprietário: papel exclusivo, nunca inferido do cliente.
+                        .requestMatchers("/api/owner/**").hasRole("OWNER")
                         .requestMatchers("/error").permitAll()
                         // Qualquer outra rota exige sessão autenticada
                         .anyRequest().authenticated()
@@ -140,6 +165,29 @@ public class SecurityConfig {
      * Security (o filtro rodaria antes/depois sem os matchers de autorização). O
      * {@link SecurityFilterChain} é a única porta de entrada.
      */
+    /**
+     * Verifica o token de coleta de métricas no header {@code Authorization: Bearer}.
+     * A comparação é em tempo constante para não vazar o token por tempo de resposta.
+     */
+    private boolean hasValidScrapeToken(jakarta.servlet.http.HttpServletRequest request) {
+        if (metricsScrapeToken == null || metricsScrapeToken.isBlank()) {
+            return false;
+        }
+        String header = request.getHeader("Authorization");
+        if (header == null || !header.startsWith("Bearer ")) {
+            return false;
+        }
+        byte[] presented = header.substring("Bearer ".length()).trim().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        byte[] expected = metricsScrapeToken.trim().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        return java.security.MessageDigest.isEqual(presented, expected);
+    }
+
+    private boolean hasModeratorRole(java.util.function.Supplier<Authentication> authenticationSupplier) {
+        Authentication authentication = authenticationSupplier == null ? null : authenticationSupplier.get();
+        return authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(authority -> "ROLE_MODERATOR".equals(authority.getAuthority()));
+    }
+
     @Bean
     public FilterRegistrationBean<RateLimitingFilter> rateLimitingFilterRegistration(RateLimitingFilter filter) {
         FilterRegistrationBean<RateLimitingFilter> registration = new FilterRegistrationBean<>(filter);

@@ -45,6 +45,11 @@ public class AuthApplicationService {
     private final PrivacyComplianceService privacyComplianceService;
     private final String googleClientId;
     private final GoogleIdTokenVerifier googleIdTokenVerifier;
+    /**
+     * Hash descartável usado para manter custo de BCrypt mesmo quando o e-mail não existe
+     * ou a conta é somente Google. Evita enumeração de contas por diferença de tempo.
+     */
+    private final String dummyPasswordHash;
 
     public AuthApplicationService(
             UserRepository userRepository,
@@ -68,6 +73,7 @@ public class AuthApplicationService {
                 new NetHttpTransport(), GsonFactory.getDefaultInstance())
                 .setAudience(Collections.singletonList(this.googleClientId))
                 .build();
+        this.dummyPasswordHash = passwordEncoder.encode("manganetworking-timing-only-not-a-credential");
     }
 
     @Transactional
@@ -148,7 +154,12 @@ public class AuthApplicationService {
         UserEntity user = userRepository.findByEmail(normalizedEmail)
                 .orElse(null);
 
-        if (user == null || user.getPasswordHash() == null || !passwordEncoder.matches(dto.password(), user.getPasswordHash())) {
+        // Executa BCrypt também para conta inexistente/sem senha, reduzindo a diferença de
+        // tempo entre "e-mail desconhecido" e "senha incorreta".
+        String passwordHash = user == null || user.getPasswordHash() == null
+                ? dummyPasswordHash
+                : user.getPasswordHash();
+        if (user == null || passwordHash == null || !passwordEncoder.matches(dto.password(), passwordHash)) {
             throw new SecurityException("Credenciais inválidas");
         }
         if (passwordEncoder.upgradeEncoding(user.getPasswordHash())) {
@@ -269,7 +280,8 @@ public class AuthApplicationService {
                 user.isCreator(),
                 creator != null ? creator.getId() : null,
                 creator != null ? creator.getHandle() : null,
-                user.isModerator()
+                user.isModerator(),
+                user.isOwner()
         );
     }
 
@@ -281,6 +293,32 @@ public class AuthApplicationService {
     public Optional<SessionService.UserSession> getCurrentSession(HttpServletRequest request) {
         String sessionId = extractSessionId(request);
         return sessionService.validateSession(sessionId);
+    }
+
+    /**
+     * Read model de {@code GET /api/auth/me}. O controller não acessa repositório diretamente;
+     * avatar, VIP e consentimento são resolvidos aqui, sempre a partir da sessão autenticada.
+     */
+    public Optional<CurrentSessionResponseDto> currentSession(HttpServletRequest request) {
+        return getCurrentSession(request).map(session -> {
+            UserEntity user = userRepository.findById(session.userId()).orElse(null);
+            String policyVersion = privacyComplianceService.currentPolicyVersion();
+            return new CurrentSessionResponseDto(
+                    session.userId(),
+                    session.name(),
+                    session.email(),
+                    user != null && user.getAvatarUrl() != null ? user.getAvatarUrl() : "",
+                    session.isCreator(),
+                    session.creatorId(),
+                    session.creatorHandle(),
+                    session.isModerator(),
+                    session.isOwner(),
+                    user != null && user.isVipActive(),
+                    user != null ? user.getVipExpiresAt() : null,
+                    user == null || privacyComplianceService.consentRequired(user),
+                    policyVersion
+            );
+        });
     }
 
     public String currentPolicyVersion() {

@@ -205,6 +205,7 @@ class AuthApplicationServiceTest {
         user.setName("Escritor Will");
         user.setEmail("will@teste.com");
         user.setCreator(true);
+        user.setOwner(true);
         user.setPasswordHash(passwordEncoder.encode("minhaSenha123"));
         assertNull(user.getEmailVerifiedAt(), "the account is not verified before completing its email OTP");
 
@@ -230,6 +231,7 @@ class AuthApplicationServiceTest {
         assertNotNull(sessionDto);
         assertEquals("will@teste.com", sessionDto.email());
         assertEquals("Escritor Will", sessionDto.name());
+        assertTrue(sessionDto.isOwner(), "owner role must travel through the authenticated session DTO");
         assertNotNull(user.getEmailVerifiedAt(), "successful LOGIN OTP must persist mailbox verification");
 
         // Cookie de sessão HttpOnly emitido
