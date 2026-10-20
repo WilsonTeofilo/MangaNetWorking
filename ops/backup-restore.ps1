@@ -55,7 +55,9 @@ if ($Mode -eq 'Backup') {
             createdAtUtc = [DateTime]::UtcNow.ToString('o')
             composeFile = [IO.Path]::GetFileName($composePath)
             files = @($files | ForEach-Object {
-                [ordered]@{ path = [IO.Path]::GetRelativePath($resolvedBackupPath, $_.FullName); sha256 = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash }
+                # Windows PowerShell 5.1 não tem [IO.Path]::GetRelativePath.
+                $relative = $_.FullName.Substring($resolvedBackupPath.Length).TrimStart('\', '/')
+                [ordered]@{ path = $relative; sha256 = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash }
             })
         }
         $manifest | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $resolvedBackupPath 'manifest.json') -Encoding utf8
