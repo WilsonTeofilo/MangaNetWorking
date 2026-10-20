@@ -55,11 +55,11 @@ Legenda: ✅ pronto · 🟡 parcial · 🔴 bloqueado/pendente · ⏸️ fora do
 - `loginWithGoogle` valida o ID token no servidor, exige `GOOGLE_CLIENT_ID` e `email_verified`, e usa email/nome/avatar das claims; o DTO não aceita identidade declarada pelo cliente. Ainda não há teste com token Google válido real.
 - `POST /api/auth/2fa/request` autenticado emite OTP `STEP_UP_PIX`; `/2fa/verify` consome apenas `LOGIN`, e troca de PIX consome apenas `STEP_UP_PIX`.
 - Cooldown de 60 s e máximo de 3 emissões em 10 min por conta/IP estão implementados; Redis executa a aquisição atomicamente quando configurado. Desafios OTP agora têm adapter Redis atômico e compartilhado; a operação real do adapter ainda não foi verificada nesta rodada.
-- Cadastro duplicado e solicitação de reset retornam resposta genérica; o cadastro usa versão da política hardcoded (`v1.0`), pendente de F6.
+- Cadastro duplicado e solicitação de reset retornam resposta genérica; a versão da política vem de `PRIVACY_POLICY_VERSION` e o aceite é verificado/registrado no servidor.
 - Limite de senha continua em 8–64 pontos de código Unicode, aceitando espaços, acentos, símbolos e emojis. Cadastro/reset mostram força Fraca/Média/Forte, critérios e botão acessível de mostrar/ocultar; somente Média/Forte passam pela regra do servidor. Login mantém validação de tamanho, sem o novo gate de força, para não bloquear credenciais legadas. A classificação é heurística e não substitui consulta a base completa de senhas vazadas. Novos hashes usam BCrypt sobre SHA-256/Base64; hashes BCrypt legados continuam válidos e são atualizados após login bem-sucedido.
 - Jackson rejeita campos JSON desconhecidos globalmente; teste HTTP confirma que `twoFactorEnabled` e `role` são rejeitados antes de chegar ao serviço.
-- Recuperação de senha usa link com token aleatório de 32 bytes; somente SHA-256 é persistido em `password_reset_tokens` (V13), com TTL configurável de 5–60 minutos (padrão 30), uso único e lock transacional. A origem `PUBLIC_FRONTEND_URL` precisa ser HTTPS (HTTP só em localhost); SMTP envia link. Resposta é genérica para conta existente/inexistente e falha de entrega não expõe detalhes. Repetição não substitui link ativo. A redefinição aplica `PasswordPolicy`, mantém perfil/e-mail/2FA, invalida sessões e desafio OTP pendente e não autentica automaticamente. Rota SPA remove fragmento/token do endereço assim que capturado; meta referrer `no-referrer`.
-- V12 e V13 ainda não foram aplicadas/verificadas em PostgreSQL real. Testes focados recuperação/SMTP/controller: 17/17; suíte completa em 20/10/2026: 283 testes, 0 falhas, 0 erros e 12 ignorados. Mockito foi pré-carregado para contornar a restrição de attach do JDK 26. SMTP/Mailpit ponta a ponta da recuperação e concorrência de consumo em Postgres ainda não foram exercitados.
+- Recuperação de senha usa link com token aleatório de 32 bytes; somente SHA-256 é persistido em `password_reset_tokens` (V13), com TTL configurável de 5–60 minutos (padrão 30), uso único e lock transacional. A origem `PUBLIC_FRONTEND_URL` precisa ser HTTPS (HTTP só em localhost); SMTP envia link. Sem SMTP, o adaptador local guarda link apenas nos perfis `dev/test/local`, disponível na Dev Outbox até expirar; endpoint não existe em produção. Resposta é genérica para conta existente/inexistente e falha de entrega não expõe detalhes. Repetição não substitui link ativo. A redefinição aplica `PasswordPolicy`, mantém perfil/e-mail/2FA, invalida sessões e desafio OTP pendente e não autentica automaticamente. Rota SPA remove fragmento/token do endereço assim que capturado; meta referrer `no-referrer`.
+- V12 e V13 ainda não foram aplicadas/verificadas em PostgreSQL real. Testes focados recuperação/SMTP/controller: 17/17; suíte completa em 20/10/2026: 284 testes, 0 falhas, 0 erros e 12 ignorados. Mockito foi pré-carregado para contornar a restrição de attach do JDK 26. SMTP/Mailpit ponta a ponta da recuperação e concorrência de consumo em Postgres ainda não foram exercitados.
 
 **Aceite**
 - [x] Entrega ponta a ponta ao Mailpit; adapter SMTP implementado e coberto por teste unitário; `DevOutbox` restrito a `dev/test/local`.
@@ -72,15 +72,15 @@ Legenda: ✅ pronto · 🟡 parcial · 🔴 bloqueado/pendente · ⏸️ fora do
 - [x] Cooldown de 60 s e limite de 3 envios por 10 min por conta/IP implementados; integração Redis existe, mas teste operacional depende de Docker.
 - [x] Reenvio: 1 por 60 s, no máximo 3 por 10 min; cadastro/reset não revelam existência da conta.
 - [x] Implementação do fluxo de recuperação por link: token com hash persistido, expiração e uso único, SMTP, limite por conta/IP, senha oficial, revogação de sessões e OTP pendente; V13 criada.
-- [x] Testes unitários de recuperação, endpoints MVC, adapter/composição SMTP e rejeição de TTL/origem insegura: 17/17 focados; suíte completa 283/0/0, 12 ignorados.
+- [x] Testes unitários de recuperação, endpoints MVC, adapter/composição SMTP e rejeição de TTL/origem insegura: 17/17 focados; suíte completa 284/0/0, 12 ignorados.
 - [ ] Aplicar V12/V13 em PostgreSQL real, exercitar recuperação ponta a ponta no Mailpit e validar consumo concorrente do token.
-- Evidência de 20/10/2026: suíte backend completa **283 testes, 0 falhas, 0 erros, 12 ignorados**; agente Mockito pré-carregado no processo. O build frontend já estava verde na rodada anterior; não foi reexecutado nesta atualização.
+- Evidência de 20/10/2026: suíte backend completa **284 testes, 0 falhas, 0 erros, 12 ignorados**; agente Mockito pré-carregado no processo. O build frontend passou nesta rodada com 1.649 módulos transformados.
 - [x] Posse do e-mail persistida após primeiro OTP de login válido; e-mail Google confirmado apenas pela claim verificada do ID token.
 - [ ] Aplicar V12 e verificar o campo `email_verified_at` em Postgres real antes do próximo release.
 - [x] Testes cobrem OTP expirado, reuso, 6ª tentativa, purpose trocado, token Google inválido e composição SMTP.
 - [x] Payloads rejeitam campos não mapeados, incluindo tentativas de enviar papel ou estado de 2FA pelo cliente.
 - [x] Senha 8–64 Unicode, confirmação no cadastro/reset e migração transparente de BCrypt legado; testes de política, Unicode e compatibilidade de hash.
-- [x] Indicador Fraca/Média/Forte com critérios visíveis, senha fraca bloqueada no cadastro/reset no frontend e backend; olhos acessíveis para senha e confirmações. `PasswordPolicyTest`: 4/4; `AuthApplicationServiceTest`: 10/10, incluindo rejeição de cadastro fraco. Suíte completa em 20/10/2026: 283 testes, 0 falhas/erros, 12 ignorados por indisponibilidade do Docker. A força é heurística, não consulta serviço abrangente de senhas vazadas.
+- [x] Indicador Fraca/Média/Forte com critérios visíveis, senha fraca bloqueada no cadastro/reset no frontend e backend; olhos acessíveis para senha e confirmações. `PasswordPolicyTest`: 4/4; `AuthApplicationServiceTest`: 10/10, incluindo rejeição de cadastro fraco. Suíte completa em 20/10/2026: 284 testes, 0 falhas/erros, 12 ignorados por indisponibilidade do Docker. A força é heurística, não consulta serviço abrangente de senhas vazadas.
 
 ---
 
@@ -213,17 +213,17 @@ Legenda: ✅ pronto · 🟡 parcial · 🔴 bloqueado/pendente · ⏸️ fora do
 **Objetivo:** provar o fluxo completo em stack real.
 
 **Estado real**
-- Última suíte em 20/10/2026: **283 testes, 0 falhas/erros, 12 ignorados**; Testcontainers não acessou Docker por `AccessDeniedException`.
+- Última suíte em 20/10/2026: **284 testes, 0 falhas/erros, 12 ignorados**; Testcontainers não acessou Docker por `AccessDeniedException`.
 - Testes de integração tiveram execução real verde em rodada anterior; nesta rodada os dependentes de Docker foram ignorados.
 - Smoke E2E executado em stack real: 12/12 etapas passaram. Também exercitou consentimento, sessão Redis, step-up PIX, upload, obra/capítulo, rota financeira 410, exportação e exclusão.
 - Workflow em `.github/workflows/ci.yml` mantém gatilho `pull_request` e adiciona smoke em stack Docker; ainda não há execução observada em um PR remoto.
 
 **Aceite**
-- [x] `mvn -o test` verde em 20/10/2026: 283 testes, 0 falhas/erros; 12 ignorados nesta rodada por indisponibilidade do Docker.
+- [x] `mvn -o test` verde em 20/10/2026: 284 testes, 0 falhas/erros; 12 ignorados nesta rodada por indisponibilidade do Docker.
 - [x] Stack saudável e migrations V1..V11 verificadas em execução anterior; V12 ainda requer validação em PostgreSQL real.
 - [x] Smoke 12/12 com evidência local.
-- [x] `npm run build` verde: 1648 módulos, TypeScript + Vite.
-- [ ] CI rodando em PR (workflow configurado para PR; execução remota requer PR e não foi iniciada por não haver autorização de commit/push).
+- [x] `npm run build` verde em 20/10/2026: 1649 módulos, TypeScript + Vite.
+- [ ] CI rodando em PR: workflow configurado, mas ainda sem execução remota observada; requer PR/publicação autorizada.
 
 ---
 

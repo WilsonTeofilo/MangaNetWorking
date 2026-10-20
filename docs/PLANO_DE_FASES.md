@@ -97,11 +97,11 @@ Este é o plano vigente do produto. Os critérios concluídos refletem implement
 ### F1 — Autenticação, 2FA, e-mail e senhas · 🟡 parcial
 **Objetivo:** cadastro/login seguro, Google verificado no servidor, OTP por e-mail, sessão e recuperação de conta.
 
-- [x] OTP HMAC com propósito para login/step-up PIX, limites de reenvio, SMTP/Mailpit e validação server-side do ID token Google implementados. Recuperação usa link/token SHA-256 persistido em PostgreSQL, TTL configurável de 5–60 min (padrão 30), uso único, resposta genérica, origem HTTPS validada, política de senha oficial e revogação de sessões; V13 criada.
+- [x] OTP HMAC com propósito para login/step-up PIX, limites de reenvio, SMTP/Mailpit e validação server-side do ID token Google implementados. Recuperação usa link/token SHA-256 persistido em PostgreSQL, TTL configurável de 5–60 min (padrão 30), uso único, resposta genérica, origem HTTPS validada, política de senha oficial e revogação de sessões; sem SMTP, a Dev Outbox guarda o link somente em perfis locais e até expirar. V13 criada.
 - [x] OTP válido de login persiste a confirmação de posse do e-mail; redefinição de senha não confirma nem altera o e-mail. Google requer claim `email_verified=true`. V12 adiciona `email_verified_at` sem editar migrations anteriores.
 - [x] Política de senha nova: 8–64 pontos de código Unicode; confirmação, revelar/ocultar acessível e medidor Fraca/Média/Forte; backend recusa senha fraca em cadastro/reset, sem bloquear login de contas legadas.
 - [x] `PasswordPolicyTest` passou 4/4 e `AuthApplicationServiceTest` passou 10/10, incluindo o bloqueio de cadastro fraco; Mailpit E2E e testes OTP/Google inválidos estão cobertos conforme evidência no roadmap.
-- [ ] Aplicar e validar V12/V13 em Postgres real; testar envio da recuperação por Mailpit e consumo concorrente. Testes focados de recuperação/controller/SMTP passaram 17/17 e a suíte completa 283/0/0 (12 ignorados); Mockito exigiu agente pré-carregado no runtime atual. Homologar ID token Google válido e configurar DNS autenticado SPF/DKIM/DMARC.
+- [ ] Aplicar e validar V12/V13 em Postgres real; testar envio da recuperação por Mailpit e consumo concorrente. Testes focados de recuperação/controller/SMTP passaram 17/17 e a suíte completa 284/0/0 (12 ignorados); Mockito exigiu agente pré-carregado no runtime atual. Homologar ID token Google válido e configurar DNS autenticado SPF/DKIM/DMARC.
 
 ### F2 — Perfis de leitor e criador · ✅ concluída
 **Objetivo:** perfis público/privado, página do criador, links, avatar e biblioteca com autorização no servidor.
@@ -137,7 +137,7 @@ Este é o plano vigente do produto. Os critérios concluídos refletem implement
 ### F7 — QA, E2E e CI · 🟡 parcial
 **Objetivo:** comprovar fluxos em stack real e automatizar validação em pull request.
 
-- [x] Suíte backend em 20/10/2026: 283 testes, 0 falhas/erros e 12 ignorados por Docker indisponível; build frontend verde e smoke E2E 12/12 de execução local real previamente confirmado; workflow de CI configurado para pull requests.
+- [x] Suíte backend em 20/10/2026: 284 testes, 0 falhas/erros e 12 ignorados por Docker indisponível; build frontend verde e smoke E2E 12/12 de execução local real previamente confirmado; workflow de CI configurado para pull requests.
 - [ ] Obter uma execução remota observada em PR; depende de branch/PR e permissão de publicação.
 
 ### F8 — Prontidão de produção · 🟡 parcial
@@ -309,7 +309,7 @@ Este é o plano vigente do produto. Os critérios concluídos refletem implement
 
 ---
 
-## 7. Histórico Consolidado de Passes de Engenharia (Passes 10 ao 22)
+## 7. Histórico Consolidado de Passes de Engenharia (Passes 10 ao 23)
 
 | Passe | Data | Escopo Principal | Evidência / Resultado |
 |---|---|---|---|
@@ -326,10 +326,11 @@ Este é o plano vigente do produto. Os critérios concluídos refletem implement
 | **Passe 20** | 19/10/2026 | **Correção de Bloqueadores Críticos (C2, C3, C5), SMTP Real & Mercado Pago:**<br>- **C5 Corrigido:** `docker-compose.yml` corrigido com `${POSTGRES_PASSWORD:-...}` e adicionado container `mailpit` para dev.<br>- **C2 Blindado:** Bloqueio mandatório de avanço para nível 2 de monetização se `birthDate == null` ou idade < 18 anos.<br>- **C3 Resolvido:** Endpoint `POST /api/auth/2fa/request` criado para emissão de Step-Up OTP no e-mail do usuário.<br>- **C4 & SMTP Real:** `spring-boot-starter-mail` + `SmtpMfaNotificationSender` com template HTML da marca MangaNetWorking.<br>- **Mercado Pago Oficial:** `MercadoPagoService` gerando Checkout Pro para VIP e Doações com validação HMAC-SHA256 no webhook. | **207 testes verdes no backend (100% BUILD SUCCESS)**, **Build do frontend limpo em 2.13s**. |
 | **Passe 21** | 19/10/2026 | **Auditoria de pagamentos sem confirmação:** bloqueio dos endpoints antigos de doação, membros e VIP com `410 Gone`; UI deixou de simular sucesso local. Checkout VIP persiste preferência→usuário→valor e valida pagamento; V6 preparada, sem afirmar migração aplicada nem homologação Sandbox. | `mvn -o test`: **227 testes, 0 falhas/erros**; `npm.cmd run build`: **1644 módulos, concluído**. Sandbox segue pendente. |
 | **Passe 22** | 19/10/2026 | **UX e política de força de senha:** olho acessível para revelar/ocultar senha e confirmação; painel inline exibe força fraca/média/forte e critérios; cadastro/reset bloqueiam senhas fracas também no backend. Login preserva credenciais antigas. | Frontend build verde (1648 módulos) e `PasswordPolicyTest` 4/4 verde. A regressão de serviço foi adicionada, mas `AuthApplicationServiceTest` não concluiu por travamento no self-attach do Mockito no Windows; validar em CI antes de encerrar o aceite. |
+| **Passe 23** | 20/10/2026 | **Recuperação de conta e consolidação seletiva:** token aleatório de uso único com hash no banco, TTL configurável e origem HTTPS validada; Dev Outbox local respeita expiração; atualização dos bloqueios reais das fases 13/14. Migrations V6–V13, backend de identidade, interface e documentos foram separados em commits locais, sem push. | `mvn -o test`: **284 testes, 0 falhas, 0 erros, 12 ignorados**; `npm.cmd run build`: **1649 módulos**; Compose local/prod validado (prod com placeholders). V12/V13 reais, DNS, Sandbox e OCI continuam pendentes. |
 
 ### Próximos passos (estado atual)
 
-A ordem vigente é mantida em `docs/orquestracao/ROADMAP-FASES.md`. Próximo passo imediato: confirmar em CI o teste de serviço que rejeita cadastro fraco (a execução local travou no attach do Mockito). Depois: (1) passe visual/teclado quando navegador local estiver disponível; (2) execução do workflow em PR quando houver permissão de push; (3) teste Redis OTP e backup/restore com Docker acessível; (4) alertas, destino cifrado e SMTP após escolha de provedores; (5) aprovação de encarregado e retenção pelos responsáveis organizacionais/legais. A rodada não marca esses bloqueios externos como concluídos.
+A ordem vigente é mantida em `docs/orquestracao/ROADMAP-FASES.md`. Próximo passo técnico local: aplicar e validar V12/V13 em PostgreSQL real, testar recuperação via Mailpit e concorrência de consumo do token. Bloqueios externos para fases 13/14: domínio/provedor e DNS autenticado; credenciais Sandbox e webhook HTTPS público; acesso Oracle, região/shape disponível e chave SSH aprovada. Depois do provisionamento, validar deploy, healthchecks, migrações V1–V13 e backup/restore. Nenhuma compra real ou infraestrutura externa foi criada. A suíte de serviço já passou localmente; 12 integrações continuam sem Docker.
 
 ---
 
@@ -337,8 +338,8 @@ A ordem vigente é mantida em `docs/orquestracao/ROADMAP-FASES.md`. Próximo pas
 
 | Componente | Tecnologia | Porta / Path | Status de Verificação |
 |---|---|---|---|
-| **API Backend** | Spring Boot 3.4.2 / Java 21 | `8085` | 227 testes verificados no Passe 21; integração Sandbox ainda pendente |
-| **Banco Relacional** | PostgreSQL 16 (Docker) | `25432` | Migrações V1 a V5 aplicadas; testado ao vivo no smoke test |
+| **API Backend** | Spring Boot 3.4.2 / Java 21 | `8085` | 284 testes em 20/10/2026; 12 integrações ignoradas sem Docker; Sandbox pendente |
+| **Banco Relacional** | PostgreSQL 16 (Docker) | `25432` | V1–V11 verificadas em stack local; V12–V13 aguardam aplicação/verificação após as migrations desta consolidação |
 | **Banco NoSQL** | MongoDB 7 (Docker) | `27017` | Eventos de feed e telemetria validados ao vivo |
 | **Storage de Imagens** | Filesystem Local Sanitizado | `./data/uploads/` | Magic bytes e guard por `chapter_files` validados |
-| **Frontend Web** | React 19 / TypeScript / Vite | `5180` | Build limpo (1640 módulos compilados em 2.47s) |
+| **Frontend Web** | React 19 / TypeScript / Vite | `5180` | Build limpo em 20/10/2026 (1649 módulos) |
