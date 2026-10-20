@@ -2,6 +2,7 @@ package com.manganetworking.controller;
 
 import com.manganetworking.service.session.SessionService;
 import com.manganetworking.service.storage.ChapterFileAccessGuard;
+import com.manganetworking.service.storage.AvatarImageProcessor;
 import com.manganetworking.service.storage.FileStorageService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +28,9 @@ class FileStorageControllerTest {
 
     @MockitoBean
     private ChapterFileAccessGuard fileAccessGuard;
+
+    @MockitoBean
+    private AvatarImageProcessor avatarImageProcessor;
 
     @MockitoBean
     private SessionService sessionService;

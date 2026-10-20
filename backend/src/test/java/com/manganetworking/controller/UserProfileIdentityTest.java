@@ -29,6 +29,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 
 /**
  * Regressão anti-IDOR: os endpoints de perfil devem derivar a identidade exclusivamente da
@@ -69,8 +70,8 @@ class UserProfileIdentityTest {
                         .with(authentication(sessionAuth(sessionUserId))))
                 .andExpect(status().isOk());
 
-        verify(profileService).deleteUserAccountLgpd(sessionUserId);
-        verify(profileService, never()).deleteUserAccountLgpd(spoofedId);
+        verify(profileService).deleteUserAccountLgpd(sessionUserId, "127.0.0.1");
+        verify(profileService, never()).deleteUserAccountLgpd(eq(spoofedId), anyString());
     }
 
     @Test
@@ -86,6 +87,32 @@ class UserProfileIdentityTest {
 
         verify(profileService).getReadingHistory(sessionUserId.toString());
         verify(profileService, never()).getReadingHistory(spoofedId.toString());
+    }
+
+    @Test
+    @DisplayName("Perfil público pode ser consultado anonimamente e identidade vem apenas da sessão")
+    void publicReaderProfileAllowsAnonymousVisitors() throws Exception {
+        UUID targetUserId = UUID.randomUUID();
+        mockMvc.perform(get("/api/users/{userId}/profile", targetUserId))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", "no-store"));
+
+        verify(profileService).getReaderProfile(targetUserId, null);
+    }
+
+    @Test
+    @DisplayName("Consulta de perfil autenticada envia a identidade da sessão, ignorando header forjado")
+    void readerProfileUsesSessionIdentity() throws Exception {
+        UUID targetUserId = UUID.randomUUID();
+        UUID sessionUserId = UUID.randomUUID();
+        UUID spoofedUserId = UUID.randomUUID();
+
+        mockMvc.perform(get("/api/users/{userId}/profile", targetUserId)
+                        .header("X-Current-User-Id", spoofedUserId.toString())
+                        .with(authentication(sessionAuth(sessionUserId))))
+                .andExpect(status().isOk());
+
+        verify(profileService).getReaderProfile(targetUserId, sessionUserId);
     }
 
     @Test

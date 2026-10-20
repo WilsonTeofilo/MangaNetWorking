@@ -5,11 +5,13 @@ import com.manganetworking.service.creator.CreatorApplicationService;
 import com.manganetworking.service.creator.dto.*;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.CacheControl;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.Map;
 import java.util.UUID;
+import jakarta.servlet.http.HttpServletRequest;
 
 @RestController
 @RequestMapping("/api/creators")
@@ -23,7 +25,9 @@ public class CreatorController {
 
     @GetMapping("/{handle}")
     public ResponseEntity<CreatorPublicProfileResponseDto> getPublicCreatorProfile(@PathVariable String handle) {
-        return ResponseEntity.ok(creatorService.getPublicCreatorProfile(handle));
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(creatorService.getPublicCreatorProfile(handle));
     }
 
     @GetMapping("/workspace")
@@ -43,10 +47,11 @@ public class CreatorController {
 
     @PutMapping("/pix-key")
     public ResponseEntity<Map<String, String>> updatePixKey(
-            @Valid @RequestBody UpdatePixKeyRequestDto dto
+            @Valid @RequestBody UpdatePixKeyRequestDto dto,
+            HttpServletRequest request
     ) {
         UUID creatorId = com.manganetworking.config.security.SecurityContextUtils.requireCurrentCreatorId();
-        creatorService.updatePixKey(creatorId, dto);
+        creatorService.updatePixKey(creatorId, dto, request.getRemoteAddr());
         return ResponseEntity.ok(Map.of("message", "Chave PIX atualizada com sucesso"));
     }
 

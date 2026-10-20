@@ -4,6 +4,7 @@ import com.jayway.jsonpath.JsonPath;
 import com.manganetworking.config.security.SecurityConfig;
 import com.manganetworking.service.session.SessionService;
 import com.manganetworking.service.storage.ChapterFileAccessGuard;
+import com.manganetworking.service.storage.AvatarImageProcessor;
 import com.manganetworking.service.storage.FileStorageService;
 import com.manganetworking.service.storage.LocalFileStorageService;
 import org.junit.jupiter.api.DisplayName;
@@ -21,8 +22,12 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.awt.Color;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import javax.imageio.ImageIO;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.startsWith;
@@ -48,10 +53,19 @@ class FileStorageUploadTest {
     /** Diretório temporário isolado, criado antes da subida do contexto Spring. */
     private static final Path UPLOAD_DIR = createTempUploadDir();
 
-    /** Assinatura JPEG mínima válida para a checagem de magic bytes. */
-    private static final byte[] JPEG_BYTES = new byte[]{
-            (byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, 0x00, 0x10, 'J', 'F', 'I', 'F', 0x00
-    };
+    /** Imagem JPEG decodificável, também usada pelos testes de dimensões das páginas. */
+    private static final byte[] JPEG_BYTES = createJpeg(1, 1);
+
+    private static byte[] createJpeg(int width, int height) {
+        try {
+            BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            ImageIO.write(image, "jpg", output);
+            return output.toByteArray();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
 
     private static Path createTempUploadDir() {
         try {
@@ -66,6 +80,11 @@ class FileStorageUploadTest {
         @Bean
         FileStorageService fileStorageService() {
             return new LocalFileStorageService(UPLOAD_DIR.toString(), 15);
+        }
+
+        @Bean
+        AvatarImageProcessor avatarImageProcessor() {
+            return new AvatarImageProcessor();
         }
     }
 
@@ -98,7 +117,46 @@ class FileStorageUploadTest {
 
         mockMvc.perform(get("/api/storage/{filename}", filename))
                 .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "image/jpeg"))
+                .andExpect(header().string("X-Content-Type-Options", "nosniff"))
                 .andExpect(content().bytes(JPEG_BYTES));
+    }
+
+    @Test
+    @WithMockUser(roles = "READER")
+    @DisplayName("Avatar de leitor é recortado, redimensionado e recodificado como JPEG pelo servidor")
+    void readerAvatarIsNormalizedServerSide() throws Exception {
+        BufferedImage source = new BufferedImage(800, 400, BufferedImage.TYPE_INT_ARGB);
+        var graphics = source.createGraphics();
+        graphics.setColor(Color.RED);
+        graphics.fillRect(0, 0, 800, 400);
+        graphics.dispose();
+        ByteArrayOutputStream input = new ByteArrayOutputStream();
+        ImageIO.write(source, "png", input);
+
+        MvcResult result = mockMvc.perform(multipart("/api/storage/avatar")
+                        .file(new MockMultipartFile("file", "perfil.png", "image/png", input.toByteArray())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.filename", org.hamcrest.Matchers.endsWith(".jpg")))
+                .andReturn();
+
+        String filename = JsonPath.read(result.getResponse().getContentAsString(), "$.filename");
+        BufferedImage stored = ImageIO.read(UPLOAD_DIR.resolve(filename).toFile());
+        assertThat(stored.getWidth()).isEqualTo(512);
+        assertThat(stored.getHeight()).isEqualTo(512);
+        assertThat(Files.readAllBytes(UPLOAD_DIR.resolve(filename))[0] & 0xFF).isEqualTo(0xFF);
+    }
+
+    @Test
+    @WithMockUser(roles = "READER")
+    @DisplayName("Avatar que não pode ser decodificado é rejeitado")
+    void invalidAvatarIsRejected() throws Exception {
+        byte[] invalidImage = new byte[]{
+                (byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, 0x00, 0x10, 'J', 'F', 'I', 'F', 0x00
+        };
+        mockMvc.perform(multipart("/api/storage/avatar")
+                        .file(new MockMultipartFile("file", "perfil.jpg", "image/jpeg", invalidImage)))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -112,6 +170,16 @@ class FileStorageUploadTest {
                 .andExpect(jsonPath("$.length()").value(2))
                 .andExpect(jsonPath("$[0].filename").isNotEmpty())
                 .andExpect(jsonPath("$[1].filename").isNotEmpty());
+    }
+
+    @Test
+    @WithMockUser(roles = "CREATOR")
+    @DisplayName("Página com dimensão acima do limite é rejeitada antes de salvar o lote")
+    void oversizedPageDimensionsAreRejected() throws Exception {
+        byte[] oversized = createJpeg(8193, 1);
+        mockMvc.perform(multipart("/api/storage/upload/batch")
+                        .file(new MockMultipartFile("files", "pagina-grande.jpg", "image/jpeg", oversized)))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

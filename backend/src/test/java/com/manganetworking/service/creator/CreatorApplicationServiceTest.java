@@ -4,10 +4,16 @@ import com.manganetworking.config.exception.AccessDeniedException;
 import com.manganetworking.config.exception.ResourceNotFoundException;
 import com.manganetworking.domain.nosql.CreatorMissionDocument;
 import com.manganetworking.domain.relational.CreatorEntity;
+import com.manganetworking.domain.relational.CreatorPixKeyAuditEntity;
 import com.manganetworking.domain.relational.UserEntity;
+import com.manganetworking.domain.enums.PixKeyType;
 import com.manganetworking.repository.jpa.CreatorRepository;
+import com.manganetworking.repository.jpa.CreatorPixKeyAuditRepository;
 import com.manganetworking.repository.jpa.WorkRepository;
 import com.manganetworking.repository.mongo.CreatorMissionMongoRepository;
+import com.manganetworking.service.creator.dto.UpdateCreatorIdentityRequestDto;
+import com.manganetworking.service.creator.dto.UpdatePixKeyRequestDto;
+import com.manganetworking.service.mfa.TwoFactorAuthService;
 import com.manganetworking.service.monetization.MonetizationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -23,13 +29,16 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class CreatorApplicationServiceTest {
 
     @Mock
     private CreatorRepository creatorRepository;
+
+    @Mock
+    private CreatorPixKeyAuditRepository pixKeyAuditRepository;
 
     @Mock
     private WorkRepository workRepository;
@@ -39,6 +48,9 @@ class CreatorApplicationServiceTest {
 
     @Mock
     private MonetizationService monetizationService;
+
+    @Mock
+    private TwoFactorAuthService twoFactorAuthService;
 
     @InjectMocks
     private CreatorApplicationService creatorService;
@@ -60,6 +72,82 @@ class CreatorApplicationServiceTest {
         user.setName("Autor Teste");
         user.setBirthDate(java.time.LocalDate.now().minusYears(20));
         creator.setUser(user);
+    }
+
+    @Test
+    @DisplayName("Atualiza redes apenas com domínios oficiais e portfólio HTTPS")
+    void shouldValidatePublicCreatorProfileLinks() {
+        when(creatorRepository.findById(creatorId)).thenReturn(Optional.of(creator));
+        when(creatorRepository.save(any(CreatorEntity.class))).thenReturn(creator);
+
+        creatorService.updateCreatorIdentity(creatorId, new UpdateCreatorIdentityRequestDto(
+                null, null, " https://www.instagram.com/autor ",
+                "https://youtu.be/video", "https://portfolio.example/autor", null));
+
+        assertEquals("https://www.instagram.com/autor", creator.getInstagramUrl());
+        assertEquals("https://youtu.be/video", creator.getYoutubeUrl());
+        assertEquals("https://portfolio.example/autor", creator.getPortfolioUrl());
+        verify(creatorRepository).save(creator);
+    }
+
+    @Test
+    @DisplayName("Remove HTML da bio e aceita apenas avatar normalizado pela plataforma")
+    void shouldSanitizeBioAndRequireNormalizedAvatarUrl() {
+        when(creatorRepository.findById(creatorId)).thenReturn(Optional.of(creator));
+        String avatarPath = "/api/storage/123e4567-e89b-12d3-a456-426614174000.jpg";
+
+        creatorService.updateCreatorIdentity(creatorId, new UpdateCreatorIdentityRequestDto(
+                null, "Autor <img src=x onerror=alert(1)> seguro", null, null, null, avatarPath));
+
+        assertEquals("Autor  seguro", creator.getBio());
+        assertEquals(avatarPath, creator.getAvatarUrl());
+        assertThrows(IllegalArgumentException.class, () -> creatorService.updateCreatorIdentity(
+                creatorId, new UpdateCreatorIdentityRequestDto(null, null, null, null, null,
+                        "https://attacker.example/avatar.jpg")));
+    }
+
+    @Test
+    @DisplayName("Rejeita links sociais falsos e portfólio sem HTTPS antes de persistir")
+    void shouldRejectUntrustedCreatorProfileLinks() {
+        when(creatorRepository.findById(creatorId)).thenReturn(Optional.of(creator));
+
+        assertThrows(IllegalArgumentException.class, () -> creatorService.updateCreatorIdentity(
+                creatorId, new UpdateCreatorIdentityRequestDto(null, null,
+                        "https://instagram.com.evil.example/autor", null, null, null)));
+        assertThrows(IllegalArgumentException.class, () -> creatorService.updateCreatorIdentity(
+                creatorId, new UpdateCreatorIdentityRequestDto(null, null,
+                        null, "http://youtube.com/@autor", null, null)));
+        assertThrows(IllegalArgumentException.class, () -> creatorService.updateCreatorIdentity(
+                creatorId, new UpdateCreatorIdentityRequestDto(null, null,
+                        null, null, "javascript:alert(1)", null)));
+
+        verify(creatorRepository, never()).save(any(CreatorEntity.class));
+    }
+
+    @Test
+    @DisplayName("Registra troca de PIX em auditoria append-only com chaves mascaradas")
+    void auditsPixKeyChangeWithoutPersistingRawKeys() {
+        creator.setPixKey("old-private-pix-value-1234");
+        creator.setPixKeyType(PixKeyType.CPF);
+        when(creatorRepository.findById(creatorId)).thenReturn(Optional.of(creator));
+        when(twoFactorAuthService.verifyOtp("autor@test.com", "123456", TwoFactorAuthService.OtpPurpose.STEP_UP_PIX))
+                .thenReturn(true);
+
+        creatorService.updatePixKey(creatorId,
+                new UpdatePixKeyRequestDto("new-private-pix-value-9876", PixKeyType.EMAIL, "123456"),
+                "203.0.113.42");
+
+        org.mockito.ArgumentCaptor<CreatorPixKeyAuditEntity> auditCaptor =
+                org.mockito.ArgumentCaptor.forClass(CreatorPixKeyAuditEntity.class);
+        verify(pixKeyAuditRepository).save(auditCaptor.capture());
+        CreatorPixKeyAuditEntity audit = auditCaptor.getValue();
+        assertEquals("****1234", audit.getPreviousKeyMask());
+        assertEquals("****9876", audit.getNewKeyMask());
+        assertEquals("CPF", audit.getPreviousKeyType());
+        assertEquals("EMAIL", audit.getNewKeyType());
+        assertEquals("203.0.113.42", audit.getClientIp());
+        assertEquals(creator.getUser().getId(), audit.getActorUserId());
+        verify(creatorRepository).save(creator);
     }
 
     private CreatorMissionDocument mission(String missionId, String ownerId, boolean completed, int progress, int goal) {

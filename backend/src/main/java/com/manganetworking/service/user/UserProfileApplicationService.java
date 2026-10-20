@@ -9,14 +9,17 @@ import com.manganetworking.repository.jpa.CreatorRepository;
 import com.manganetworking.repository.jpa.UserRepository;
 import com.manganetworking.repository.jpa.WorkRepository;
 import com.manganetworking.repository.mongo.ReadingProgressMongoRepository;
+import com.manganetworking.repository.mongo.EngagementEventMongoRepository;
 import com.manganetworking.service.reading.ReadingProgressService;
 import com.manganetworking.service.session.SessionService;
 import com.manganetworking.service.storage.FileStorageService;
+import com.manganetworking.service.storage.ProfileAvatarUrlPolicy;
 import com.manganetworking.service.user.dto.*;
 import com.manganetworking.util.StorageFileNames;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.format.DateTimeFormatter;
@@ -32,27 +35,36 @@ public class UserProfileApplicationService {
     private final UserRepository userRepository;
     private final WorkRepository workRepository;
     private final ReadingProgressMongoRepository progressRepository;
+    private final EngagementEventMongoRepository engagementEventRepository;
     private final ReadingProgressService readingProgressService;
     private final CreatorRepository creatorRepository;
     private final FileStorageService fileStorageService;
     private final SessionService sessionService;
+    private final JdbcTemplate jdbcTemplate;
+    private final PrivacyComplianceService privacyComplianceService;
 
     public UserProfileApplicationService(
             UserRepository userRepository,
             WorkRepository workRepository,
             ReadingProgressMongoRepository progressRepository,
+            EngagementEventMongoRepository engagementEventRepository,
             ReadingProgressService readingProgressService,
             CreatorRepository creatorRepository,
             FileStorageService fileStorageService,
-            SessionService sessionService
+            SessionService sessionService,
+            JdbcTemplate jdbcTemplate,
+            PrivacyComplianceService privacyComplianceService
     ) {
         this.userRepository = userRepository;
         this.workRepository = workRepository;
         this.progressRepository = progressRepository;
+        this.engagementEventRepository = engagementEventRepository;
         this.readingProgressService = readingProgressService;
         this.creatorRepository = creatorRepository;
         this.fileStorageService = fileStorageService;
         this.sessionService = sessionService;
+        this.jdbcTemplate = jdbcTemplate;
+        this.privacyComplianceService = privacyComplianceService;
     }
 
     @Transactional(readOnly = true)
@@ -101,7 +113,7 @@ public class UserProfileApplicationService {
             user.setName(com.manganetworking.util.SanitizationUtils.stripAllHtml(dto.name().trim()));
         }
         if (dto.avatarUrl() != null) {
-            user.setAvatarUrl(dto.avatarUrl().trim());
+            user.setAvatarUrl(ProfileAvatarUrlPolicy.validate(dto.avatarUrl()));
         }
         if (dto.isProfilePublic() != null) {
             user.setProfilePublic(dto.isProfilePublic());
@@ -154,8 +166,13 @@ public class UserProfileApplicationService {
     /**
      * Direito de Portabilidade do Titular de Dados (Art. 18, V da LGPD)
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public UserDataExportDto exportUserData(UUID currentUserId) {
+        return exportUserData(currentUserId, null);
+    }
+
+    @Transactional
+    public UserDataExportDto exportUserData(UUID currentUserId, String remoteIp) {
         UserEntity user = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado: " + currentUserId));
 
@@ -174,6 +191,27 @@ public class UserProfileApplicationService {
                 .map(ReadingProgressResponseDto::from)
                 .toList();
 
+        List<java.util.Map<String, Object>> consentHistory = jdbcTemplate.queryForList(
+                "SELECT policy_version, purpose, accepted_at, remote_ip, user_agent " +
+                        "FROM privacy_consent_events WHERE user_id = ? ORDER BY accepted_at", currentUserId);
+        List<java.util.Map<String, Object>> financialHistory = jdbcTemplate.queryForList("""
+                SELECT record_type, amount_brl, status, created_at, counterparty FROM (
+                    SELECT 'DONATION' AS record_type, d.gross_amount_brl AS amount_brl, d.status,
+                           d.created_at, c.handle AS counterparty
+                    FROM donations d JOIN creators c ON c.id = d.creator_id WHERE d.donor_user_id = ?
+                    UNION ALL
+                    SELECT 'MEMBERSHIP', m.monthly_price_brl, m.status, m.created_at, c.handle
+                    FROM membership_subscriptions m JOIN creators c ON c.id = m.creator_id
+                    WHERE m.subscriber_user_id = ?
+                    UNION ALL
+                    SELECT l.transaction_type, l.gross_amount_brl, 'CONFIRMED', l.created_at,
+                           COALESCE(c.handle, 'MangaNetWorking')
+                    FROM financial_ledger l LEFT JOIN creators c ON c.id = l.creator_id WHERE l.user_id = ?
+                ) history ORDER BY created_at
+                """, currentUserId, currentUserId, currentUserId);
+
+        privacyComplianceService.auditRequest(currentUserId, "DATA_EXPORT", remoteIp);
+
         return new UserDataExportDto(
                 user.getId(),
                 user.getName(),
@@ -182,8 +220,14 @@ public class UserProfileApplicationService {
                 user.isCreator(),
                 user.isVipActive(),
                 user.getCreatedAt(),
+                user.getBirthDate(),
+                user.isProfilePublic(),
+                user.getTermsAcceptedAt(),
+                user.getPrivacyPolicyVersion(),
                 likedWorks,
-                readingHistory
+                readingHistory,
+                consentHistory,
+                financialHistory
         );
     }
 
@@ -198,14 +242,18 @@ public class UserProfileApplicationService {
      */
     @Transactional
     public void deleteUserAccountLgpd(UUID currentUserId) {
+        deleteUserAccountLgpd(currentUserId, null);
+    }
+
+    @Transactional
+    public void deleteUserAccountLgpd(UUID currentUserId, String remoteIp) {
         UserEntity user = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado: " + currentUserId));
 
-        // 1. Revogar sessões antes de qualquer alteração (invalida o cookie imediatamente)
+        // Só revoga/anonimiza depois que a mídia identificável foi fisicamente removida.
+        deleteStoredFileStrictly(user.getAvatarUrl());
+        creatorRepository.findByUserId(currentUserId).ifPresent(creator -> deleteStoredFileStrictly(creator.getAvatarUrl()));
         sessionService.revokeSessionsForUser(currentUserId);
-
-        // 2. Remover a imagem de perfil do titular do storage (dado pessoal biométrico/facial)
-        deleteStoredFileQuietly(user.getAvatarUrl());
 
         // 3. Anonimizar credenciais e dados cadastrais no PostgreSQL
         user.setName("Usuário Removido (LGPD)");
@@ -218,20 +266,37 @@ public class UserProfileApplicationService {
         user.getLikedWorks().clear();
         userRepository.save(user);
 
+        // Mensagens livres podem conter dados pessoais; os registros contábeis permanecem íntegros.
+        jdbcTemplate.update("UPDATE donations SET message = NULL WHERE donor_user_id = ?", currentUserId);
+
         // 4. Anonimizar o perfil público de criador (CPF, PIX, handle, bio, redes e avatar).
         //    CPF/PIX/handle são NOT NULL no schema; o placeholder preserva a integridade sem
         //    identificar o titular. O handle anonimizado usa o UUID completo para não colidir
         //    com o índice único de creators.handle.
         creatorRepository.findByUserId(currentUserId).ifPresent(creator -> anonymizeCreator(creator));
 
-        // 5. Excluir telemetria e progresso de leitura no MongoDB
+        // 5. Expurgar progresso e eventos de engajamento vinculados ao titular no MongoDB.
         progressRepository.deleteAllByUserId(currentUserId.toString());
+        engagementEventRepository.deleteAllByUserId(currentUserId.toString());
+        privacyComplianceService.auditRequest(currentUserId, "ACCOUNT_DELETE", remoteIp);
+    }
+
+    @Transactional
+    public void acceptCurrentPrivacyPolicy(UUID userId, String version, String remoteIp, String userAgent) {
+        if (!privacyComplianceService.currentPolicyVersion().equals(version)) {
+            throw new IllegalArgumentException("A política mudou durante o aceite; atualize a página e tente novamente.");
+        }
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado"));
+        user.setTermsAcceptedAt(java.time.LocalDateTime.now());
+        user.setPrivacyPolicyVersion(version);
+        userRepository.save(user);
+        privacyComplianceService.recordConsent(userId, version, "POLICY_REACCEPTANCE", remoteIp, userAgent);
     }
 
     private void anonymizeCreator(CreatorEntity creator) {
         String anonymousSuffix = creator.getId() != null ? creator.getId().toString() : UUID.randomUUID().toString();
 
-        deleteStoredFileQuietly(creator.getAvatarUrl());
         creator.setAvatarUrl(null);
         creator.setBio(null);
         creator.setInstagramUrl(null);
@@ -253,28 +318,22 @@ public class UserProfileApplicationService {
     }
 
 
-    /**
-     * Remove um arquivo do storage sem interromper a exclusão da conta quando o binário já não
-     * existe ou o storage está indisponível (a obrigação legal é apagar o dado, não falhar o fluxo).
-     * <p>
-     * Só apaga caminhos servidos pela própria plataforma: {@code avatarUrl} aceita qualquer URL
-     * externa no cadastro, e extrair o último segmento de uma URL de terceiros poderia apagar um
-     * arquivo local homônimo pertencente a outra obra/usuário.
-     * </p>
-     */
-    private void deleteStoredFileQuietly(String storedUrl) {
+    /** Exclui apenas arquivos próprios; URL inválida ou falha física interrompe a exclusão. */
+    private void deleteStoredFileStrictly(String storedUrl) {
         if (storedUrl == null
                 || !(storedUrl.startsWith("/api/storage/") || storedUrl.startsWith("/api/uploads/"))) {
             return;
         }
         String filename = StorageFileNames.fromPageToken(storedUrl);
-        if (filename == null) {
-            return;
-        }
+        if (filename == null) throw new IllegalStateException("Referência de avatar local inválida; exclusão interrompida.");
         try {
             fileStorageService.deleteFile(filename);
+            if (fileStorageService.exists(filename)) {
+                throw new IllegalStateException("O arquivo de avatar ainda existe no storage após a tentativa de exclusão.");
+            }
         } catch (RuntimeException exception) {
-            log.warn("[LGPD] Falha ao remover arquivo '{}' do storage: {}", filename, exception.getMessage());
+            log.error("[LGPD] Exclusão interrompida: falha ao remover avatar '{}' do storage.", filename, exception);
+            throw new IllegalStateException("Não foi possível apagar o avatar. A exclusão da conta não foi concluída.", exception);
         }
     }
 }

@@ -89,7 +89,7 @@ class CreatorAnalyticsApplicationServiceTest {
     void shouldComputeRetentionAndFinancialTotals() {
         when(creatorRepository.findById(creatorId)).thenReturn(Optional.of(creator));
         when(workRepository.findAllByAuthorId(creatorId)).thenReturn(List.of(work));
-        when(engagementEventRepository.findByWorkIdInAndEventTypeAndTimestampAfter(any(), eq("READ"), any()))
+        when(engagementEventRepository.findByWorkIdInAndEventTypeAndTimestampBetween(any(), eq("READ"), any(), any()))
                 .thenReturn(List.of(
                         read("leitor-a", 1),
                         read("leitor-a", 2),
@@ -149,7 +149,7 @@ class CreatorAnalyticsApplicationServiceTest {
         assertThat(response.pageRetention()).isEmpty();
         assertThat(response.netEarningsBrl()).isEqualByComparingTo(BigDecimal.ZERO);
         verify(engagementEventRepository, never())
-                .findByWorkIdInAndEventTypeAndTimestampAfter(any(), any(), any());
+                .findByWorkIdInAndEventTypeAndTimestampBetween(any(), any(), any(), any());
     }
 
     @Test
