@@ -507,10 +507,11 @@ export function CreatorWorkspacePage() {
             </div>
 
             <div>
-              <label className="font-body text-sm font-semibold text-[var(--mn-paper)] block mb-1.5">
+              <label htmlFor="work-genre" className="font-body text-sm font-semibold text-[var(--mn-paper)] block mb-1.5">
                 GÊNERO PRINCIPAL
               </label>
               <select
+                id="work-genre"
                 value={newWorkGenres[0] || 'ACAO'}
                 onChange={(e) => setNewWorkGenres([e.target.value])}
                 className="w-full p-2.5 bg-[var(--mn-ink)] text-[var(--mn-paper)] border-2 border-[var(--mn-line)] font-body text-xs focus:border-[var(--mn-yellow)] outline-none"
@@ -528,10 +529,11 @@ export function CreatorWorkspacePage() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="font-body text-sm font-semibold text-[var(--mn-paper)] block">
+            <label htmlFor="work-synopsis" className="font-body text-sm font-semibold text-[var(--mn-paper)] block">
               SINOPSE EDITORIAL
             </label>
             <textarea
+              id="work-synopsis"
               placeholder="Descreva o enredo da sua obra para atrair novos leitores..."
               value={newWorkSynopsis}
               onChange={(e) => setNewWorkSynopsis(e.target.value)}
@@ -671,10 +673,11 @@ export function CreatorWorkspacePage() {
         </div>
 
         <div className="space-y-1.5">
-          <label className="font-body text-sm font-semibold text-[var(--mn-paper)] block">
+          <label htmlFor="creator-bio" className="font-body text-sm font-semibold text-[var(--mn-paper)] block">
             BIOGRAFIA EDITORIAL
           </label>
           <textarea
+            id="creator-bio"
             value={bio}
             onChange={(e) => setBio(e.target.value)}
             rows={3}

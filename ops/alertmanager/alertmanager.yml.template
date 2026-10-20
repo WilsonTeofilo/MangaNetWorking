@@ -1,0 +1,66 @@
+# Alertmanager — MangaNetWorking (modelo)
+#
+# O Alertmanager não interpola variáveis de ambiente: o arquivo efetivo é renderizado a
+# partir deste modelo em cada instalação, com os placeholders substituídos pelo script
+# `ops/alertmanager/apply-alert-rules.ps1` (que também valida com `amtool check-config`).
+#
+# Placeholders obrigatórios:
+#   {{SMTP_SMARTHOST}}  host:port do SMTP autenticado do canal de plantão
+#   {{SMTP_USERNAME}}   usuário do SMTP
+#   {{SMTP_PASSWORD}}   senha do SMTP (fora do Git)
+#   {{SMTP_FROM}}      remetente do alerta
+#   {{ONCALL_EMAIL}}   caixa de plantão
+#   {{CRITICAL_EMAIL}} escalonamento crítico
+#   {{SMTP_REQUIRE_TLS}} true em produção; false apenas no Mailpit local (sem TLS)
+#
+# As opções SMTP ficam em `global` (nomes `smtp_*`), que é a forma aceita tanto pelas
+# versões antigas do Alertmanager quanto pela atual (0.34+).
+#
+# Os endereços abaixo são placeholders: o canal real depende de decisão organizacional
+# (item 45 do roadmap).
+global:
+  resolve_timeout: 5m
+  smtp_smarthost: '{{SMTP_SMARTHOST}}'
+  smtp_from: '{{SMTP_FROM}}'
+  smtp_auth_username: '{{SMTP_USERNAME}}'
+  smtp_auth_password: '{{SMTP_PASSWORD}}'
+  smtp_require_tls: {{SMTP_REQUIRE_TLS}}
+
+route:
+  receiver: plantao-estado
+  group_by:
+    - alertname
+    - severity
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - receiver: plantao-critico
+      matchers:
+        - severity="critical"
+      repeat_interval: 30m
+      continue: false
+
+receivers:
+  - name: plantao-estado
+    email_configs:
+      - to: '{{ONCALL_EMAIL}}'
+        send_resolved: true
+        headers:
+          Subject: '[MangaNetWorking] {{ .Status | toUpper }} - {{ .CommonLabels.alertname }}'
+
+  - name: plantao-critico
+    email_configs:
+      - to: '{{CRITICAL_EMAIL}}'
+        send_resolved: true
+        headers:
+          Subject: '[MangaNetWorking][CRITICO] {{ .Status | toUpper }} - {{ .CommonLabels.alertname }}'
+
+inhibit_rules:
+  # Um alerta crítico suprime o warning correspondente do mesmo alerta.
+  - source_matchers:
+      - severity="critical"
+    target_matchers:
+      - severity="warning"
+    equal:
+      - alertname

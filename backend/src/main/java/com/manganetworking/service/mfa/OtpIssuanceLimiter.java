@@ -16,11 +16,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Pattern;
 
-/** Shared account/IP throttle for sensitive OTP issuance. Redis mode is atomic across replicas. */
+/**
+ * Shared account/IP throttle for sensitive issuance flows. Redis mode is atomic across replicas.
+ * Each namespace has an independent cooldown/window, so password recovery cannot consume the
+ * login OTP quota (and vice versa).
+ */
 @Component
 public class OtpIssuanceLimiter {
 
+    public static final String OTP_NAMESPACE = "otp";
+    public static final String PASSWORD_RESET_NAMESPACE = "password-reset";
+    private static final Pattern NAMESPACE_PATTERN = Pattern.compile("[a-z0-9-]{1,32}");
     private static final long COOLDOWN_MILLIS = 60_000;
     private static final long WINDOW_MILLIS = 600_000;
     private static final int MAX_ISSUANCES = 3;
@@ -61,12 +69,21 @@ public class OtpIssuanceLimiter {
     }
 
     public boolean tryAcquire(String accountIdentifier, String clientIp) {
-        return tryAcquire(accountIdentifier, clientIp, Instant.now());
+        return tryAcquire(OTP_NAMESPACE, accountIdentifier, clientIp, Instant.now());
+    }
+
+    public boolean tryAcquire(String namespace, String accountIdentifier, String clientIp) {
+        return tryAcquire(namespace, accountIdentifier, clientIp, Instant.now());
     }
 
     boolean tryAcquire(String accountIdentifier, String clientIp, Instant now) {
-        String accountKey = "mn:otp:issue:account:" + digest(normalize(accountIdentifier));
-        String ipKey = "mn:otp:issue:ip:" + digest(normalize(clientIp));
+        return tryAcquire(OTP_NAMESPACE, accountIdentifier, clientIp, now);
+    }
+
+    boolean tryAcquire(String namespace, String accountIdentifier, String clientIp, Instant now) {
+        String prefix = "mn:" + normalizeNamespace(namespace) + ":issue:";
+        String accountKey = prefix + "account:" + digest(normalize(accountIdentifier));
+        String ipKey = prefix + "ip:" + digest(normalize(clientIp));
         long nowMillis = now.toEpochMilli();
 
         if (redisEnabled) {
@@ -106,6 +123,13 @@ public class OtpIssuanceLimiter {
         while (!timestamps.isEmpty() && now - timestamps.peekFirst() >= WINDOW_MILLIS) {
             timestamps.removeFirst();
         }
+    }
+
+    private String normalizeNamespace(String namespace) {
+        if (namespace == null || !NAMESPACE_PATTERN.matcher(namespace).matches()) {
+            throw new IllegalArgumentException("Namespace de limitação inválido.");
+        }
+        return namespace;
     }
 
     private String normalize(String value) {

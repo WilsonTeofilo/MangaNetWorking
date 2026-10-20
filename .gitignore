@@ -38,3 +38,8 @@ Thumbs.db
 # Storage de arquivos local
 data/uploads/
 data/
+
+# Configuracoes renderizadas de operacao (contem credenciais de SMTP do canal de plantao)
+ops/alertmanager/alertmanager.rendered.yml
+ops/**/*.mnbak
+ops/**/*.key

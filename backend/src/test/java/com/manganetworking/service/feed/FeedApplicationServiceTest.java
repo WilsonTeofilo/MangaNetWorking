@@ -25,24 +25,28 @@ class FeedApplicationServiceTest {
     private final FeedApplicationService service = new FeedApplicationService(repository, algorithm);
 
     @Test
-    @DisplayName("Feed público exclui suspensas na própria consulta (não consome slot da página)")
-    void excludesSuspendedInQuery() {
+    @DisplayName("Feed público exclui suspensas e arquivadas LGPD na própria consulta")
+    void excludesHiddenInQuery() {
         WorkFeedDocument active = feedDoc("active-work", "ongoing");
-        when(repository.findAllByStatusNotOrderByDiscoveryScoreDesc(eq("suspended"), any(Pageable.class)))
+        when(repository.findAllByStatusNotInOrderByDiscoveryScoreDesc(
+                eq(List.of("suspended", "archived_lgpd")), any(Pageable.class)))
                 .thenReturn(List.of(active));
 
         List<FeedWorkResponseDto> results = service.getFeed("recommended", null, 0, 20);
 
         assertEquals(List.of("active-work"), results.stream().map(FeedWorkResponseDto::workId).toList());
-        verify(repository).findAllByStatusNotOrderByDiscoveryScoreDesc(eq("suspended"), any(Pageable.class));
+        verify(repository).findAllByStatusNotInOrderByDiscoveryScoreDesc(
+                eq(List.of("suspended", "archived_lgpd")), any(Pageable.class));
     }
 
     @Test
     @DisplayName("Filtro em memória permanece como defesa extra contra status com caixa variante")
     void keepsInMemoryDefenseAgainstCaseVariant() {
         WorkFeedDocument suspended = feedDoc("suspended-work", "SUSPENDED");
-        when(repository.findAllByStatusNotOrderByDiscoveryScoreDesc(eq("suspended"), any(Pageable.class)))
-                .thenReturn(List.of(suspended));
+        WorkFeedDocument archived = feedDoc("archived-work", "Archived_LGPD");
+        when(repository.findAllByStatusNotInOrderByDiscoveryScoreDesc(
+                eq(List.of("suspended", "archived_lgpd")), any(Pageable.class)))
+                .thenReturn(List.of(suspended, archived));
 
         List<FeedWorkResponseDto> results = service.getFeed("recommended", null, 0, 20);
 
@@ -50,31 +54,35 @@ class FeedApplicationServiceTest {
     }
 
     @Test
-    @DisplayName("Ordenações trending/fresh também excluem suspensas na consulta")
-    void trendingAndFreshExcludeSuspendedInQuery() {
-        when(repository.findAllByStatusNotOrderByTrendingScoreDesc(eq("suspended"), any(Pageable.class)))
+    @DisplayName("Ordenações trending/fresh também excluem estados ocultos na consulta")
+    void trendingAndFreshExcludeHiddenInQuery() {
+        when(repository.findAllByStatusNotInOrderByTrendingScoreDesc(
+                eq(List.of("suspended", "archived_lgpd")), any(Pageable.class)))
                 .thenReturn(List.of());
-        when(repository.findAllByStatusNotOrderByUpdatedAtDesc(eq("suspended"), any(Pageable.class)))
+        when(repository.findAllByStatusNotInOrderByUpdatedAtDesc(
+                eq(List.of("suspended", "archived_lgpd")), any(Pageable.class)))
                 .thenReturn(List.of());
 
         service.getFeed("trending", null, 0, 10);
         service.getFeed("fresh", null, 0, 10);
 
-        verify(repository).findAllByStatusNotOrderByTrendingScoreDesc(eq("suspended"), any(Pageable.class));
-        verify(repository).findAllByStatusNotOrderByUpdatedAtDesc(eq("suspended"), any(Pageable.class));
+        verify(repository).findAllByStatusNotInOrderByTrendingScoreDesc(
+                eq(List.of("suspended", "archived_lgpd")), any(Pageable.class));
+        verify(repository).findAllByStatusNotInOrderByUpdatedAtDesc(
+                eq(List.of("suspended", "archived_lgpd")), any(Pageable.class));
     }
 
     @Test
-    @DisplayName("Feed por gênero exclui suspensas na consulta (gênero normalizado)")
-    void genreFeedExcludesSuspendedInQuery() {
-        when(repository.findAllByGenresContainingAndStatusNotOrderByDiscoveryScoreDesc(
-                eq("ACAO"), eq("suspended"), any(Pageable.class)))
+    @DisplayName("Feed por gênero exclui estados ocultos na consulta (gênero normalizado)")
+    void genreFeedExcludesHiddenInQuery() {
+        when(repository.findAllByGenresContainingAndStatusNotInOrderByDiscoveryScoreDesc(
+                eq("ACAO"), eq(List.of("suspended", "archived_lgpd")), any(Pageable.class)))
                 .thenReturn(List.of());
 
         service.getFeed("recommended", "Ação", 0, 10);
 
-        verify(repository).findAllByGenresContainingAndStatusNotOrderByDiscoveryScoreDesc(
-                eq("ACAO"), eq("suspended"), any(Pageable.class));
+        verify(repository).findAllByGenresContainingAndStatusNotInOrderByDiscoveryScoreDesc(
+                eq("ACAO"), eq(List.of("suspended", "archived_lgpd")), any(Pageable.class));
     }
 
     private WorkFeedDocument feedDoc(String workId, String status) {

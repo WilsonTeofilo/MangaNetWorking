@@ -7,8 +7,34 @@ Write-Host "       SMOKE TEST E2E COMPLETO - MANGANETWORKING          " -Foregro
 Write-Host "==========================================================" -ForegroundColor Cyan
 $timestamp = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
 $testEmail = "smoke_creator_$timestamp@test.com"
-$testPassword = "Password123!"
+$testPassword = "Smoke safe phrase 2026!"
 $policy = Invoke-RestMethod -Uri "$baseUrl/api/auth/policy" -Method Get
+
+# OTP local pode estar no Dev Outbox (mail desabilitado) ou no Mailpit (mail habilitado).
+function Get-LatestOtp([string]$Email) {
+    try {
+        $outbox = Invoke-RestMethod -Uri "$baseUrl/api/dev/outbox/latest?email=$([uri]::EscapeDataString($Email))" -Method Get
+        if ($outbox.otpCode) { return $outbox.otpCode }
+    } catch {
+        # 404 é esperado quando o adaptador SMTP/Mailpit está ativo.
+    }
+
+    $mailpitBase = "http://localhost:8025/api/v1"
+    $messages = Invoke-RestMethod -Uri "$mailpitBase/messages?limit=25" -Method Get
+    $target = $messages.messages | Where-Object {
+        $_.To | Where-Object { $_.Address -eq $Email }
+    } | Select-Object -First 1
+    if (-not $target) {
+        throw "OTP não encontrado para $Email no Dev Outbox nem no Mailpit"
+    }
+
+    $message = Invoke-RestMethod -Uri "$mailpitBase/message/$($target.ID)" -Method Get
+    $match = [regex]::Match("$($message.Text) $($message.HTML)", '\b\d{6}\b')
+    if (-not $match.Success) {
+        throw "E-mail encontrado, mas sem código OTP de 6 dígitos para $Email"
+    }
+    return $match.Value
+}
 
 $webSession = New-Object Microsoft.PowerShell.Commands.WebRequestSession
 
@@ -55,15 +81,14 @@ if ($regResp.status -ne "2FA_REQUIRED") {
 }
 Write-Host " SUCESSO (Status: 2FA_REQUIRED)" -ForegroundColor Green
 
-# 3. Resgate de OTP no Dev Outbox
-Write-Host "[3/12] Consultando Dev Outbox seguro para resgate do código OTP..." -NoNewline
-$outboxResp = Invoke-RestMethod -Uri "$baseUrl/api/dev/outbox/latest?email=$testEmail" -Method Get
-$otpCode = $outboxResp.otpCode
+# 3. Resgate de OTP no adaptador local (Dev Outbox ou Mailpit)
+Write-Host "[3/12] Consultando adaptador local seguro para resgate do código OTP..." -NoNewline
+$otpCode = Get-LatestOtp $testEmail
 if (-not $otpCode) {
-    Write-Host " FALHA (Código OTP não encontrado no Dev Outbox)" -ForegroundColor Red
+    Write-Host " FALHA (Código OTP não encontrado no adaptador local)" -ForegroundColor Red
     exit 1
 }
-Write-Host " SUCESSO (OTP: $otpCode)" -ForegroundColor Green
+Write-Host " SUCESSO (OTP obtido)" -ForegroundColor Green
 
 # 4. Validação de 2FA e Emissão de Cookie de Sessão HttpOnly
 Write-Host "[4/12] Validando 2FA e capturando cookie de sessão..." -NoNewline
@@ -99,8 +124,7 @@ Write-Host "[6/12] Testando Step-Up 2FA para atualização de chave PIX..." -NoN
 Start-Sleep -Seconds 61
 $null = Invoke-RestMethod -Uri "$baseUrl/api/auth/2fa/request" -Method Post -WebSession $webSession
 
-$pixOtpResp = Invoke-RestMethod -Uri "$baseUrl/api/dev/outbox/latest?email=$testEmail" -Method Get
-$pixOtp = $pixOtpResp.otpCode
+$pixOtp = Get-LatestOtp $testEmail
 
 $pixBody = @{
     pixKey = "chave.pix.$timestamp@banco.com"

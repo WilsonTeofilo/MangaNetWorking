@@ -12,12 +12,15 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -40,9 +43,6 @@ class AuthControllerTest {
 
     @MockBean
     private com.manganetworking.service.session.SessionService sessionService;
-
-    @MockBean
-    private com.manganetworking.repository.jpa.UserRepository userRepository;
 
     @Test
     void shouldRegisterSuccessfullyAndReturn2FaRequired() throws Exception {
@@ -132,6 +132,18 @@ class AuthControllerTest {
     }
 
     @Test
+    void passwordResetConfirmMapsInvalidTokenToUnauthorized() throws Exception {
+        doThrow(new SecurityException("Link inválido ou expirado. Solicite uma nova recuperação de senha."))
+                .when(passwordResetApplicationService).confirm(any());
+
+        mockMvc.perform(post("/api/auth/password-reset/confirm")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"opaque-token\",\"newPassword\":\"A long safe phrase 2026!\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Link inválido ou expirado. Solicite uma nova recuperação de senha."));
+    }
+
+    @Test
     void shouldRejectVerify2FaWithInvalidCodeLength() throws Exception {
         // Código 2FA deve ser exatamente 6 dígitos numéricos
         String invalidCodePayload = """
@@ -158,6 +170,7 @@ class AuthControllerTest {
                 false,
                 null,
                 null,
+                false,
                 false
         );
 
@@ -169,5 +182,26 @@ class AuthControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("AUTHENTICATED"))
                 .andExpect(jsonPath("$.user.email").value("leitor@teste.com"));
+    }
+
+    @Test
+    void meReturnsUnauthorizedWithoutAuthenticatedSession() throws Exception {
+        when(authApplicationService.currentSession(any())).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/api/auth/me"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void meReturnsOwnerFlagFromSessionReadModel() throws Exception {
+        CurrentSessionResponseDto dto = new CurrentSessionResponseDto(
+                UUID.randomUUID(), "Dono", "dono@teste.com", "", false, null, null,
+                false, true, false, null, false, "2026-10-v1");
+        when(authApplicationService.currentSession(any())).thenReturn(Optional.of(dto));
+
+        mockMvc.perform(get("/api/auth/me"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.isOwner").value(true))
+                .andExpect(jsonPath("$.email").value("dono@teste.com"));
     }
 }

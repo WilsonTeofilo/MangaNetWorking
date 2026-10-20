@@ -35,6 +35,24 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void shouldPreserveExplicitResponseStatusSuchAsTooManyRequests() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRequestURI("/api/auth/login");
+
+        var ex = new org.springframework.web.server.ResponseStatusException(
+                HttpStatus.TOO_MANY_REQUESTS, "Aguarde antes de solicitar outro código de segurança.");
+        ResponseEntity<Map<String, Object>> response = handler.handleResponseStatusException(ex, request);
+
+        assertEquals(HttpStatus.TOO_MANY_REQUESTS, response.getStatusCode());
+        Map<String, Object> body = response.getBody();
+        assertNotNull(body);
+        assertEquals(429, body.get("status"));
+        assertEquals("Too Many Requests", body.get("error"));
+        assertEquals("Aguarde antes de solicitar outro código de segurança.", body.get("message"));
+        assertEquals("/api/auth/login", body.get("path"));
+    }
+
+    @Test
     void shouldFormatResourceNotFoundException() {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setRequestURI("/api/works/999");
