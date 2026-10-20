@@ -12,7 +12,7 @@ services:
       # Em produção, substitua por uma senha segura via variável de ambiente ou secrets.
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-manga_dev_local_secure_2026}
     ports:
-      - "25432:5432"
+      - "127.0.0.1:25432:5432"
     volumes:
       - manganetworking_postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -29,7 +29,7 @@ services:
     environment:
       MONGO_INITDB_DATABASE: manganetworking_events
     ports:
-      - "27017:27017"
+      - "127.0.0.1:27017:27017"
     volumes:
       - manganetworking_mongo_data:/data/db
     healthcheck:
@@ -44,7 +44,7 @@ services:
     container_name: manganetworking-redis
     restart: always
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - manganetworking_redis_data:/data
     healthcheck:
@@ -59,13 +59,79 @@ services:
     container_name: manganetworking-mailpit
     restart: always
     ports:
-      - "1025:1025" # Porta SMTP
-      - "8025:8025" # Interface Web do Inbox
+      - "127.0.0.1:1025:1025" # Porta SMTP local
+      - "127.0.0.1:8025:8025" # Interface Web do Inbox local
     healthcheck:
       test: ["CMD-SHELL", "wget --spider -q http://localhost:8025/ || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
+
+  # API local: perfil de desenvolvimento, conectada aos serviços desta stack.
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: manganetworking-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/manganetworking
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-manga_dev_local_secure_2026}
+      SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/manganetworking_events
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      PLATFORM_SESSION_STORE: redis
+      PLATFORM_RATELIMIT_STORE: redis
+      PLATFORM_OTP_STORE: redis
+      PLATFORM_MAIL_ENABLED: ${PLATFORM_MAIL_ENABLED:-true}
+      PUBLIC_FRONTEND_URL: ${PUBLIC_FRONTEND_URL:-http://localhost:5180}
+      PASSWORD_RESET_TOKEN_TTL: ${PASSWORD_RESET_TOKEN_TTL:-PT30M}
+      MAIL_HOST: mailpit
+      MAIL_PORT: 1025
+      MAIL_SMTP_AUTH: "false"
+      MAIL_SMTP_STARTTLS: "false"
+      MAIL_FROM: nao-responda@localhost
+      MAIL_FROM_NAME: MangaNetWorking
+      UPLOAD_DIR: /data/uploads
+    ports:
+      - "127.0.0.1:8085:8085"
+    volumes:
+      - manganetworking_uploads:/data/uploads
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8085/actuator/health/readiness || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # Interface web local, servida pelo Nginx com proxy /api para o backend.
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: manganetworking-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:5180:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1/ || exit 1"]
+      interval: 20s
+      timeout: 3s
+      retries: 3
 
 volumes:
   manganetworking_postgres_data:
@@ -76,5 +142,8 @@ volumes:
     driver: local
   manganetworking_redis_data:
     name: manganetworking_redis_data
+    driver: local
+  manganetworking_uploads:
+    name: manganetworking_uploads
     driver: local
 

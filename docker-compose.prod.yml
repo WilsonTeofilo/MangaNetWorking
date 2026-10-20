@@ -31,12 +31,14 @@ services:
     restart: always
     environment:
       MONGO_INITDB_DATABASE: manganetworking_events
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:?Defina MONGO_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?Defina MONGO_ROOT_PASSWORD}
     volumes:
       - mongo_prod_data:/data/db
     networks:
       - internal_network
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      test: ["CMD-SHELL", "mongosh --username \"$$MONGO_INITDB_ROOT_USERNAME\" --password \"$$MONGO_INITDB_ROOT_PASSWORD\" --authenticationDatabase admin --eval \"db.adminCommand('ping')\""]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -48,12 +50,15 @@ services:
     image: redis:7-alpine
     container_name: manganetworking-redis-prod
     restart: always
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?Defina REDIS_PASSWORD para o Redis de produção}"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Defina REDIS_PASSWORD para o Redis de produção}
     volumes:
       - redis_prod_data:/data
     networks:
       - internal_network
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
       interval: 10s
       timeout: 3s
       retries: 5
@@ -76,15 +81,29 @@ services:
         condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: prod
+      PLATFORM_MAIL_ENABLED: "true"
+      MAIL_HOST: ${MAIL_HOST:?Defina MAIL_HOST para o servidor SMTP autenticado}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:?Defina MAIL_USERNAME para o servidor SMTP}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:?Defina MAIL_PASSWORD para o servidor SMTP}
+      MAIL_SMTP_AUTH: "true"
+      MAIL_SMTP_STARTTLS: "true"
+      MAIL_FROM: ${MAIL_FROM:?Defina MAIL_FROM em um domínio autenticado}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-MangaNetWorking}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/manganetworking
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no ambiente}
-      SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/manganetworking_events
+      SPRING_DATA_MONGODB_URI: ${SPRING_DATA_MONGODB_URI:?Defina SPRING_DATA_MONGODB_URI com autenticação Mongo e authSource=admin}
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Defina REDIS_PASSWORD para o Redis de produção}
       PLATFORM_SESSION_STORE: redis
       PLATFORM_RATELIMIT_STORE: redis
+      PLATFORM_OTP_STORE: redis
       AES_SECRET_KEY: ${AES_SECRET_KEY:?Defina AES_SECRET_KEY com chave de 256 bits}
+      OTP_HMAC_SECRET: ${OTP_HMAC_SECRET:?Defina OTP_HMAC_SECRET com ao menos 32 bytes}
+      PUBLIC_FRONTEND_URL: ${PUBLIC_FRONTEND_URL:?Defina a origem pública HTTPS do frontend}
+      PASSWORD_RESET_TOKEN_TTL: ${PASSWORD_RESET_TOKEN_TTL:-PT30M}
       COOKIE_SECURE: "true"
       STORAGE_UPLOAD_DIR: /data/uploads
     volumes:
@@ -115,7 +134,7 @@ services:
     networks:
       - internal_network
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost/ || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1/ || exit 1"]
       interval: 20s
       timeout: 3s
       retries: 3
