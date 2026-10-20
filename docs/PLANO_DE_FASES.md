@@ -99,10 +99,10 @@ Fluxo exercitado de ponta a ponta na stack local (backend 8085, frontend 5180, P
 | Entrar, sair e revogar sessão | ✅ funciona | logout devolve `401` imediato na sessão revogada |
 | Recuperar senha por e-mail | ✅ funciona (Mailpit) | pedido → link → nova senha → 2FA → `/me`; TTL, uso único e concorrência cobertos |
 | **Upar imagem** (capa, página, avatar) | ✅ funciona | `POST /api/storage/upload` com validação de magic bytes e limite de tamanho/dimensões |
-| **Criar obra** (com autoria original declarada) | ✅ funciona | `POST /api/works` → `workId` + `slug`; feed e catálogo listam a obra |
+| **Criar obra** (com autoria original declarada) | ✅ funciona | `POST /api/works` → `id` + `slug`; feed e catálogo listam a obra |
 | **Publicar capítulo** com páginas vinculadas | ✅ funciona | `POST /api/works/{id}/chapters` → capítulo 1 com páginas; leitura pública liberada |
-| **Ler a obra** (detalhe, capítulo e página) | ✅ funciona | `GET /api/works/{slug}` e `GET /api/works/{slug}/chapters/{n}`; página servida pelo storage |
-| Biblioteca (favoritar) e progresso de leitura | ✅ funciona | `POST /api/users/me/library/{workId}/toggle` e `POST /api/users/me/reading-progress/track` (Mongo) |
+| **Ler a obra** (detalhe, capítulo e página) | ✅ funciona | verificado com **uma segunda conta**: `GET /api/works/{slug}` → 200 (`status=ongoing`), `GET /api/works/{slug}/chapters/1` → `locked=false`, e a página em `/api/storage/...` → **200 sem sessão** (conteúdo público) |
+| Biblioteca (favoritar) e progresso de leitura | ✅ funciona | `POST /api/users/library/{workId}/toggle` e `POST /api/users/reading-progress/track` (Mongo), com `GET /api/users/reading-progress` |
 | Denunciar e moderar (fila, suspensão) | ✅ funciona | `POST /api/reports` (público) + fila do DONO/moderador + suspensão cautelar |
 | Workspace do criador (analytics, missões, chave PIX com step-up 2FA) | ✅ funciona | `/api/creators/workspace`, `/api/creators/analytics`, `PUT /api/creators/pix-key` com OTP |
 | Painel do DONO (governança de dados) | ⚠️ parcial | existe o papel `ROLE_OWNER` e os endpoints de auditoria/saneamento; **não há dashboard de produto** |
@@ -114,6 +114,9 @@ Fluxo exercitado de ponta a ponta na stack local (backend 8085, frontend 5180, P
 
 > Observação operacional: o cadastro tem limite de 3 OTPs por IP a cada 10 minutos e cooldown de 60 s.
 > Em testes seguidos, o `429` é do limitador de emissão de OTP, não um defeito.
+>
+> Evidência desta rodada: CI remoto verde no commit `a9136d6` (run `39485302906`) com os quatro
+> jobs — backend (322 testes), frontend, validação do Compose de produção e smoke 12/12.
 
 ### 4.1 O que ainda não dá (ordem de bloqueio)
 
