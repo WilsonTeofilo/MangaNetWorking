@@ -2,7 +2,7 @@
 
 > **Data:** 20/10/2026 · **Escopo:** working tree real (backend Spring Boot, frontend React, Docker, documentação).
 > **Método:** leitura do código/diff e verificações anotadas nas seções 7.2–7.6.
-> **Verificação mais recente:** `mvn -o test` com agente Mockito pré-carregado → **284 testes, 0 falhas, 0 erros, 12 ignorados**; Docker inacessível por `AccessDeniedException`, então os testes Testcontainers foram ignorados. Testes focados de recuperação/controller/SMTP → **17/17**; `npm.cmd run build` → **1649 módulos, sucesso**. Compose local e de produção passaram `config --quiet` (prod com placeholders); nenhum serviço foi iniciado nesta rodada. A seção 7.15 registra o estado mais recente. Smoke 12/12 e F0 stack/Migrations V11 foram verificados anteriormente, não reexecutados.
+> **Verificação mais recente:** `mvn -o test` → **291 testes, 0 falhas, 0 erros, 0 ignorados**; Docker/Testcontainers disponíveis. V13 aplicada em PostgreSQL real (`character varying(64)`, `validate` verde); fluxo de recuperação no Mailpit, consumo concorrente 204/401 e rotação de token exercitados. `npm.cmd run build` já estava verde; container frontend foi reconstruído para inspeção visual. Compose local e de produção passaram `config --quiet` (prod com `MAIL_*` fictícios, sem `.env`). As seções 7.15–7.16 registram o estado mais recente. Smoke 12/12 e a stack F0 foram verificados anteriormente; nesta rodada foram executados testes reais, QA visual autenticado parcial e backup/restore local.
 
 ---
 
@@ -192,7 +192,7 @@ O detalhe público da obra agora omite capítulos com `publicReleaseAt` futuro; 
 | M5 | `AuthContext` mantém demo em 401 | `AuthContext.tsx:49` | 401 = deslogado; demo só em DEV |
 | M6 | Várias telas têm fallback de catálogo/capítulo para mock | `App.tsx`, `useCatalogWorks.ts`, `BibliotecaPage.tsx`, `HomePage.tsx`, `ReaderProfilePage.tsx`, `WorkDetailPage.tsx` | Isolar fixtures de demonstração em DEV; 401 sempre desloga |
 | M7 | Avatar não é recodificado no servidor — resolvido | Pipeline de `/api/storage/avatar` | ImageIO com limites, crop 512×512 e JPEG recodificado; testes verdes |
-| M8 | Stores têm fallback local para dev/test; operação Redis OTP ainda não foi verificada nesta rodada | `RedisSessionStore`, `RedisRateLimitStore`, `RedisOtpChallengeStore` | Compose e profile prod selecionam/exigem Redis; executar teste operacional entre réplicas antes de escalar |
+| M8 | Stores têm fallback local para dev/test; operação Redis OTP/sessão/throttle foi observada na stack real, mas boot `prod` entre réplicas e TTL/failover seguem não executados | `RedisSessionStore`, `RedisRateLimitStore`, `RedisOtpChallengeStore` | Compose e profile prod selecionam/exigem Redis; executar teste operacional entre réplicas antes de escalar |
 | M9 | Sem métrica/alerta de falha 2FA e bounce de e-mail | `TwoFactorAuthService` | Contadores, alerta e bloqueio progressivo |
 
 ---
@@ -220,7 +220,7 @@ O detalhe público da obra agora omite capítulos com `publicReleaseAt` futuro; 
 - **Split financeiro:** `BigDecimal` + `HALF_UP`, constantes em `application.yml`.
 - **Rate limit:** buckets separados, storage/OPTIONS fora do contador, `Retry-After` real.
 - **Cookie:** `SameSite=Lax` + `Secure` configurável por `platform.security.cookie-secure`.
-- **Migrações:** V1..V11 aplicadas e imutáveis; limiter Redis usa chaves expiráveis, sem tabela SQL. Desafios OTP usam adapter selecionável em memória ou Redis (operação real atual pendente).
+- **Migrações:** V1..V13 aplicadas em PostgreSQL real e imutáveis; V13 usa `VARCHAR(64)` e o `validate` do Hibernate está verde. Limiter Redis usa chaves expiráveis, sem tabela SQL. Desafios OTP usam adapter selecionável em memória ou Redis; a operação real foi observada no Redis local.
 
 ---
 
@@ -399,9 +399,11 @@ O detalhe público da obra agora omite capítulos com `publicReleaseAt` futuro; 
 
 ## 7.14 Recuperação de senha por link (2026-10-19)
 
+> **Nota histórica:** o comportamento foi revisto em 7.15–7.16. Onde este bloco diz que o reenvio não substitui o link ativo ou que falha SMTP limpa o token, prevalece o estado atual: reenvio rotaciona o token e falha de entrega mantém o token até expirar.
+
 - [x] O fluxo anterior com OTP `RESET_PASSWORD` foi substituído para recuperação por e-mail; OTP de login e step-up permanecem separados.
 - [x] V13 cria `password_reset_tokens`, com hash SHA-256 único, FK para usuário, expiração e índice; token aleatório de 32 bytes nunca é persistido em texto puro.
-- [x] Solicitação genérica para conta inexistente, throttling account/IP compartilhado, não substitui link ativo; falha SMTP limpa token e não altera a resposta pública.
+- [x] Solicitação genérica para conta inexistente, throttling account/IP em namespace próprio; reenvio rotaciona o token ativo e falha SMTP mantém o token até expirar, sem alterar a resposta pública.
 - [x] Confirmação usa política oficial, encoder oficial, lock pessimista do token e usuário, revoga sessões e desafio OTP, consome token e não altera email verificado/perfil nem cria sessão.
 - [x] SMTP envia link configurado via `PUBLIC_FRONTEND_URL`; frontend oferece solicitação genérica, rota de nova senha com confirmação/força, fragmento removido da barra e `Referrer-Policy: no-referrer`.
 - [x] Testes focados de recuperação, SMTP e controller: 16/16 verdes. `npm.cmd run build` verde.
@@ -409,14 +411,27 @@ O detalhe público da obra agora omite capítulos com `publicReleaseAt` futuro; 
 
 ## 7.15 Estado consolidado em 20/10/2026 — recuperação, commits e bloqueios externos
 
-- [x] Recuperação: token aleatório de 32 bytes; persistência apenas do SHA-256; uso único com lock transacional; TTL via `PASSWORD_RESET_TOKEN_TTL` (5–60 min, padrão 30); `PUBLIC_FRONTEND_URL` aceita HTTPS e HTTP apenas em localhost; resposta genérica; rate limit por conta/IP; senha validada pela política oficial; sessões e desafio OTP pendentes revogados sem autenticação automática ou confirmação de e-mail.
+- [x] Recuperação: token aleatório de 32 bytes; persistência apenas do SHA-256; uso único com lock transacional; TTL via `PASSWORD_RESET_TOKEN_TTL` (5–60 min, padrão 30); `PUBLIC_FRONTEND_URL` aceita HTTPS e HTTP apenas em localhost, sem path/query; resposta genérica; throttle no namespace `password-reset`, separado do OTP de login; senha validada pela política oficial; sessões e desafio OTP pendentes revogados sem autenticação automática ou confirmação de e-mail. Reenvio rotaciona o token ativo e o envio SMTP ocorre após commit, sem invalidar o token em falha de e-mail.
 - [x] Desenvolvimento sem SMTP: link fica na Dev Outbox em memória apenas nos perfis `dev/test/local`, some após expirar e é acessível somente pelo endpoint de perfil local; a rota não existe em produção.
-- [x] Evidência: testes focados 17/17; suíte completa **284/0/0, 12 ignorados**; build frontend **1649 módulos**; Compose local/prod estático validado.
-- [ ] Persistir V12/V13 em Postgres real, exercitar recuperação via Mailpit e validar consumo concorrente do token; Testcontainers/Docker inacessíveis nesta rodada.
+- [x] Evidência em 20/10/2026: V13 aplicada em PostgreSQL real (`token_hash character varying(64)`, `validate` verde); fluxo Mailpit pedido→link→nova senha→2FA→`/me` com 2FA real; duas confirmações simultâneas retornaram 204/401; teste de rotação prova hash anterior ausente e novo presente; suíte completa **291/0/0** com Docker; Compose de produção validado sem `.env` usando `MAIL_*` fictícios.
+- [x] Correção adicional: `ResponseStatusException` (ex.: throttle 429) deixou de ser mapeada para 500 pelo handler genérico; teste de controller/handler cobre o status.
+- [ ] Homologar ID token Google válido e DNS autenticado SPF/DKIM/DMARC; dependem de credenciais/domínio reais (#44, #46).
 - [ ] Fases 13.2a/13.4 dependem de domínio/provedor/DNS autenticado, credenciais Sandbox e webhook HTTPS público. Nenhuma compra real foi feita.
 - [ ] Fase 14 não foi implantada: requer conta Oracle autorizada, região/shape disponíveis, chave SSH aprovada e decisão de rede/TLS. Compose não equivale a VM; nenhuma infraestrutura externa ou migration de produção foi criada.
-- [x] Consolidação local seletiva em commits por migration, auth, frontend, F3, perfis/uploads, pagamentos, infra, CI e documentação; sem push. Alterações de outras áreas ainda permanecem no working tree e não foram descartadas nem consolidadas às cegas.
-- [x] Suíte backend completa: **282 testes, 0 falhas, 0 erros, 12 ignorados** (execução com agente Mockito pré-carregado e sem fork por restrição de attach do runtime). Build frontend passou.
+- [x] As alterações desta rodada permanecem no working tree; não houve commit nem push sem autorização. Nenhum trabalho existente foi descartado.
+- [x] Suíte backend completa: **291 testes, 0 falhas, 0 erros, 0 ignorados** (Docker/Testcontainers disponíveis). Build frontend já estava verde; container foi reconstruído para a inspeção visual.
+
+## 7.16 Backup/restore real e QA autenticado (2026-10-20)
+
+- [x] `ops/backup-restore.ps1 -Mode Backup`: dump PostgreSQL, archive MongoDB e storage copiados; manifest com SHA-256 gerado. A execução revelou e corrigiu uma incompatibilidade com Windows PowerShell 5.1 (`[IO.Path]::GetRelativePath` não existe); o caminho relativo passou a ser calculado por substring.
+- [x] `ops/backup-restore.ps1 -Mode RestoreCheck`: restore em banco PostgreSQL e pasta de storage isolados; consulta no banco restaurado retornou **17 usuários** e **Flyway versão 13, success=true**. Nenhum dado ativo foi sobrescrito.
+- [x] `docker compose config --quiet` local e de produção (com `MAIL_*` fictícios e sem `.env`) retornaram 0.
+- [x] `mvn -o test`: **291 testes, 0 falhas, 0 erros, 0 ignorados**. `npm.cmd run build`: **3,78 s, sucesso**.
+- [x] QA autenticado no navegador: login real com OTP do Mailpit, feed, catálogo, sobre, Biblioteca (estado vazio) e perfil do leitor inspecionados. Foco visível medido em `Sair da conta` (`outline: solid 3px rgb(169, 165, 154)`); viewport 1296×886 com navegação desktop visível e mobile oculta.
+- [x] Tab real percorreu 10–14 elementos em feed, catálogo, sobre e perfil; todos os focados estavam visíveis, com `outline: solid 3px`, sem armadilha observada. Login/reset e biblioteca foram inspecionados por focáveis, sem traversal completo.
+- [ ] Rotas autenticadas de criador/moderador e o passe visual completo seguem pendentes (#40).
+- [ ] O feed local referencia capas antigas de smoke cujo volume `/data/uploads` está vazio; `GET /api/storage/*` retorna 404. É dado de teste órfão já registrado em F3, não regressão do fluxo de recuperação; limpeza/restauração exige autorização.
+- [ ] Permanecem externos: ID token Google real/DNS autenticado, Sandbox/webhook, retenção/cifra/off-site, Alertmanager/canal, DPO/inventário e drill. O backup local não substitui cópia off-site.
 
 ## 8. Ordem de correção
 

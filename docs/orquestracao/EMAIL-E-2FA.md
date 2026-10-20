@@ -1,7 +1,7 @@
 # E-mail, 2FA e Google OAuth — Plano de Implementação
 
 > Resposta à pergunta: *como fazer o código 2FA chegar por e-mail com a marca MangaNetWorking, reaproveitando o que o projeto antigo fazia?*
-> Plano histórico e referência arquitetural. O código SMTP/2FA descrito abaixo já existe. Em 2026-10-19/20, a recuperação de senha foi implementada separadamente por link de uso único: V13 guarda apenas SHA-256 do token; `PASSWORD_RESET_TOKEN_TTL` aceita 5–60 min (padrão 30); `PUBLIC_FRONTEND_URL` precisa ser HTTPS (HTTP somente em localhost). Testes unitários, controller e SMTP passaram 17/17; a suíte completa reportou 284 testes, 0 falhas/erros e 12 ignorados sem Docker. V12/V13 em PostgreSQL real, Mailpit E2E da recuperação, concorrência, DNS autenticado e provedor continuam pendentes. OTP de login/step-up permanece independente.
+> Plano histórico e referência arquitetural. O código SMTP/2FA descrito abaixo já existe. Em 2026-10-20, a recuperação de senha foi validada separadamente por link de uso único: V13 guarda apenas SHA-256 do token; `PASSWORD_RESET_TOKEN_TTL` aceita 5–60 min (padrão 30); `PUBLIC_FRONTEND_URL` precisa ser HTTPS (HTTP somente em localhost), sem path/query. V13 foi aplicada em PostgreSQL real com `token_hash VARCHAR(64)` e Hibernate `validate` subiu; o fluxo Mailpit (pedido → link → nova senha → 2FA → `/me`) foi exercitado; duas confirmações simultâneas produziram 204/401; o reenvio rotaciona o token ativo; o throttle usa o namespace `password-reset`, separado do OTP de login; o envio SMTP ocorre após commit. A suíte completa passou 291/0/0 com Docker. DNS autenticado, provedor de produção e ID token Google real continuam pendentes. OTP de login/step-up permanece independente.
 
 ---
 
@@ -141,7 +141,7 @@ O endpoint `/api/dev/outbox/latest` pode continuar existindo como conveniência,
 | TTL | 5 minutos |
 | Uso único | remove no sucesso |
 | Tentativas | 5, depois invalida |
-| Propósito | `LOGIN`, `STEP_UP_PIX`, `RESET_PASSWORD` vinculados à chave; código de um propósito não vale no outro |
+| Propósito | `LOGIN` e `STEP_UP_PIX` vinculados à chave; código de um propósito não vale no outro. Recuperação de senha usa token de link, não um propósito OTP. |
 | Reenvio | cooldown 60 s; máximo 3 por 10 min por conta |
 | Rate limit | bucket estrito por IP além do bucket por conta |
 | Anti-enumeração | resposta genérica em cadastro/recuperação |

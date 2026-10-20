@@ -12,14 +12,16 @@ Legenda: ✅ pronto · 🟡 parcial · 🔴 bloqueado/pendente · ⏸️ fora do
 | Fase | Entrega | Estado |
 |---|---|---|
 | **F0** | Infra Docker First (Postgres 16, Mongo 7, rede, volumes) | ✅ stack local validada |
-| **F1** | Auth, 2FA por e-mail, Google OAuth, sessão, rate limit, força de senha e recuperação por link | 🟡 implementação e testes unitários locais verdes; V12/V13 ainda não aplicadas, Mailpit desta recuperação, OTP Redis operacional, token Google real e DNS autenticado pendentes |
+| **F1** | Auth, 2FA por e-mail, Google OAuth, sessão, rate limit, força de senha e recuperação por link | 🟡 V12/V13, Mailpit, concorrência/reenvio, throttle separado, origem e SMTP pós-commit validados; OTP Redis operacional; faltam ID token Google real e DNS autenticado (#44, #46) |
 | **F2** | Perfis de leitor e criador, avatar, biblioteca | ✅ privacidade server-side, links, bio, avatar integrado e cache privado verificados |
 | **F3** | Obras, capítulos, storage e leitores de mangá/light novel | ✅ teste HTTP concorrente com imagem real; storage legado ainda contém referências órfãs |
 | **F4** | Monetização, split 83/17 e 58/42, ledger, PIX | 🟡 checkout idempotente de doações/membros implementado; Sandbox e validação de ponta a ponta pendentes |
-| **F5** | Frontend "Banca de Rua" e remoção de dados falsos | 🟡 contraste estático corrigido e build verde; inspeção visual/teclado completa das rotas bloqueada pela indisponibilidade do navegador local |
+| **F5** | Frontend "Banca de Rua" e remoção de dados falsos | 🟡 rotas públicas, reset e feed/catálogo/sobre/perfil autenticados inspecionados; Tab real com foco visível em 4 rotas; rotas de criador/moderador pendentes (#40) |
 | **F6** | LGPD e AppSec (consentimento, exclusão, maioridade, uploads) | 🟡 V11 invalida backfill inferido; reaceite e auditoria implementados; texto oficial da política ainda não fornecido/publicado |
-| **F7** | QA, smoke E2E, CI e empacotamento de produção | 🟡 smoke 12/12 e build verdes; workflow configurado para PR, execução remota requer PR e permissão de push |
-| **F8** | Prontidão de produção (observabilidade, Redis, e-mail, backup) | 🟡 adapters OTP Redis, métricas/alertas, script de backup/restore-check e runbook implementados; operação real e controles externos pendentes |
+| **F7** | QA, smoke E2E, CI e empacotamento de produção | 🟡 smoke 12/12 e build verdes; `MAIL_*` fictícios corrigidos e Compose de produção validado sem `.env` localmente; execução remota em PR ainda não observada (#43) |
+| **F8** | Prontidão de produção (observabilidade, Redis, e-mail, backup) | 🟡 OTP/sessão/rate-limit observados em Redis real; backup/restore local executado com checksums; métricas/alertas, runbook, retenção/cifra, destino off-site e operação externa pendentes |
+
+> **Nomenclatura:** F0–F8 é o mapa vigente. Menções a F9–F17 em itens históricos são a numeração legada de fases posteriores, preservada apenas como rastreabilidade; não são fases adicionais do estado atual.
 
 ---
 
@@ -30,13 +32,13 @@ Legenda: ✅ pronto · 🟡 parcial · 🔴 bloqueado/pendente · ⏸️ fora do
 **Estado real**
 - Compose local usa `${POSTGRES_PASSWORD:-manga_dev_local_secure_2026}` e sobe Postgres, Mongo, Redis, Mailpit, backend e frontend; portas do host ficam limitadas a `127.0.0.1`.
 - `docker compose up -d --build` construiu e iniciou a stack; os seis serviços (Postgres, Mongo, Redis, Mailpit, backend e frontend) ficaram `healthy`. O feed respondeu HTTP 200 diretamente e pelo proxy frontend.
-- Em PostgreSQL 16/Mongo 7 descartáveis e isolados, o backend iniciou e Flyway aplicou V1..V11 com `success=true`. O volume local preexistente também validou V1..V11; não foi apagado. V12 foi criada após essa validação e ainda não foi aplicada.
+- Em PostgreSQL 16/Mongo 7 descartáveis e isolados, o backend iniciou e Flyway aplicou as migrations com `success=true`. O volume local preexistente validou V1..V13; não foi apagado. A V13 foi corrigida para `VARCHAR(64)` antes da aplicação durável e o Hibernate `validate` subiu.
 - `docker compose down` (sem `-v`) preservou volumes nomeados de Postgres, Mongo, Redis e uploads; a stack foi iniciada novamente.
 
 **Aceite**
 - [x] `${POSTGRES_PASSWORD:-...}` (ou `.env` obrigatório) no compose local.
 - [x] `docker compose up -d` com Postgres e Mongo `healthy`.
-- [x] Backend sobe aplicando migrações V1..V11 em banco limpo; `GET /api/feed` responde 200. V12 segue pendente de aplicação/verificação real.
+- [x] Backend sobe aplicando V1..V13 em banco limpo e no volume local; `GET /api/feed` responde 200 e `validate` está verde.
 - [x] `docker compose down` sem perda de volume.
 
 ---
@@ -54,12 +56,12 @@ Legenda: ✅ pronto · 🟡 parcial · 🔴 bloqueado/pendente · ⏸️ fora do
 - Assunto do e-mail não contém o OTP; teste confirma que o código só aparece no corpo. SPF/DKIM/DMARC ainda dependem de domínio e provedor externos.
 - `loginWithGoogle` valida o ID token no servidor, exige `GOOGLE_CLIENT_ID` e `email_verified`, e usa email/nome/avatar das claims; o DTO não aceita identidade declarada pelo cliente. Ainda não há teste com token Google válido real.
 - `POST /api/auth/2fa/request` autenticado emite OTP `STEP_UP_PIX`; `/2fa/verify` consome apenas `LOGIN`, e troca de PIX consome apenas `STEP_UP_PIX`.
-- Cooldown de 60 s e máximo de 3 emissões em 10 min por conta/IP estão implementados; Redis executa a aquisição atomicamente quando configurado. Desafios OTP agora têm adapter Redis atômico e compartilhado; a operação real do adapter ainda não foi verificada nesta rodada.
+- Cooldown de 60 s e máximo de 3 emissões em 10 min por conta/IP estão implementados; Redis executa a aquisição atomicamente quando configurado. Desafios OTP usam adapter Redis atômico e compartilhado; a operação real foi observada na stack local (`mn:otp:issue`, `mn:password-reset:issue`, `mn:session`).
 - Cadastro duplicado e solicitação de reset retornam resposta genérica; a versão da política vem de `PRIVACY_POLICY_VERSION` e o aceite é verificado/registrado no servidor.
 - Limite de senha continua em 8–64 pontos de código Unicode, aceitando espaços, acentos, símbolos e emojis. Cadastro/reset mostram força Fraca/Média/Forte, critérios e botão acessível de mostrar/ocultar; somente Média/Forte passam pela regra do servidor. Login mantém validação de tamanho, sem o novo gate de força, para não bloquear credenciais legadas. A classificação é heurística e não substitui consulta a base completa de senhas vazadas. Novos hashes usam BCrypt sobre SHA-256/Base64; hashes BCrypt legados continuam válidos e são atualizados após login bem-sucedido.
 - Jackson rejeita campos JSON desconhecidos globalmente; teste HTTP confirma que `twoFactorEnabled` e `role` são rejeitados antes de chegar ao serviço.
-- Recuperação de senha usa link com token aleatório de 32 bytes; somente SHA-256 é persistido em `password_reset_tokens` (V13), com TTL configurável de 5–60 minutos (padrão 30), uso único e lock transacional. A origem `PUBLIC_FRONTEND_URL` precisa ser HTTPS (HTTP só em localhost); SMTP envia link. Sem SMTP, o adaptador local guarda link apenas nos perfis `dev/test/local`, disponível na Dev Outbox até expirar; endpoint não existe em produção. Resposta é genérica para conta existente/inexistente e falha de entrega não expõe detalhes. Repetição não substitui link ativo. A redefinição aplica `PasswordPolicy`, mantém perfil/e-mail/2FA, invalida sessões e desafio OTP pendente e não autentica automaticamente. Rota SPA remove fragmento/token do endereço assim que capturado; meta referrer `no-referrer`.
-- V12 e V13 ainda não foram aplicadas/verificadas em PostgreSQL real. Testes focados recuperação/SMTP/controller: 17/17; suíte completa em 20/10/2026: 284 testes, 0 falhas, 0 erros e 12 ignorados. Mockito foi pré-carregado para contornar a restrição de attach do JDK 26. SMTP/Mailpit ponta a ponta da recuperação e concorrência de consumo em Postgres ainda não foram exercitados.
+- Recuperação de senha usa link com token aleatório de 32 bytes; somente SHA-256 é persistido em `password_reset_tokens` (V13), com TTL configurável de 5–60 minutos (padrão 30), uso único e lock transacional. A origem `PUBLIC_FRONTEND_URL` precisa ser HTTPS (HTTP só em localhost), sem path/query; SMTP envia link. Sem SMTP, o adaptador local guarda link apenas nos perfis `dev/test/local`, disponível na Dev Outbox até expirar; endpoint não existe em produção. Resposta é genérica para conta existente/inexistente e falha de entrega não expõe detalhes. Um novo pedido rotaciona o token ativo; o throttle usa namespace `password-reset`; o SMTP roda após commit e falha de e-mail mantém o token válido. A redefinição aplica `PasswordPolicy`, mantém perfil/e-mail/2FA, invalida sessões e desafio OTP pendente e não autentica automaticamente. Rota SPA remove fragmento/token do endereço assim que capturado; meta referrer `no-referrer`.
+- V12/V13 foram aplicadas em PostgreSQL real: V13 usa `token_hash VARCHAR(64)`, Hibernate `validate` subiu e o fluxo foi exercitado. Evidência de 20/10/2026: Mailpit E2E (pedido → link → nova senha → 2FA → `/me`), concorrência 204/401, rotação provada e suíte completa 291/0/0 com Docker.
 
 **Aceite**
 - [x] Entrega ponta a ponta ao Mailpit; adapter SMTP implementado e coberto por teste unitário; `DevOutbox` restrito a `dev/test/local`.
@@ -69,18 +71,18 @@ Legenda: ✅ pronto · 🟡 parcial · 🔴 bloqueado/pendente · ⏸️ fora do
 - [x] OTP armazenado como HMAC, vinculado a `purpose` (`LOGIN`, `STEP_UP_PIX`). Recuperação usa token de link distinto, não OTP.
 - [x] `POST /api/auth/2fa/request` autenticado para emissão de step-up.
 - [x] Step-up vinculado a `STEP_UP_PIX` e troca de PIX valida somente esse purpose.
-- [x] Cooldown de 60 s e limite de 3 envios por 10 min por conta/IP implementados; integração Redis existe, mas teste operacional depende de Docker.
+- [x] Cooldown de 60 s e limite de 3 envios por 10 min por conta/IP implementados; Redis real observado na stack local.
 - [x] Reenvio: 1 por 60 s, no máximo 3 por 10 min; cadastro/reset não revelam existência da conta.
-- [x] Implementação do fluxo de recuperação por link: token com hash persistido, expiração e uso único, SMTP, limite por conta/IP, senha oficial, revogação de sessões e OTP pendente; V13 criada.
-- [x] Testes unitários de recuperação, endpoints MVC, adapter/composição SMTP e rejeição de TTL/origem insegura: 17/17 focados; suíte completa 284/0/0, 12 ignorados.
-- [ ] Aplicar V12/V13 em PostgreSQL real, exercitar recuperação ponta a ponta no Mailpit e validar consumo concorrente do token.
-- Evidência de 20/10/2026: suíte backend completa **284 testes, 0 falhas, 0 erros, 12 ignorados**; agente Mockito pré-carregado no processo. O build frontend passou nesta rodada com 1.649 módulos transformados.
+- [x] Implementação do fluxo de recuperação por link: token com hash persistido, expiração e uso único, SMTP após commit, limite por conta/IP separado, senha oficial, revogação de sessões e OTP pendente; V13 aplicada.
+- [x] Testes unitários de recuperação, endpoints MVC, adapter/composição SMTP e rejeição de TTL/origem insegura; suíte completa 291/0/0 com Docker.
+- [x] Aplicar V12/V13 em PostgreSQL real, exercitar recuperação ponta a ponta no Mailpit e validar consumo concorrente do token: 204/401, rotação e suíte verdes.
+- [x] Evidência de 20/10/2026: suíte backend completa **291 testes, 0 falhas, 0 erros, 0 ignorados**; build frontend já verde; container reconstruído para inspeção visual.
 - [x] Posse do e-mail persistida após primeiro OTP de login válido; e-mail Google confirmado apenas pela claim verificada do ID token.
-- [ ] Aplicar V12 e verificar o campo `email_verified_at` em Postgres real antes do próximo release.
+- [x] V12 aplicada e campo `email_verified_at` confirmado em Postgres real; V13 aplicada na sequência.
 - [x] Testes cobrem OTP expirado, reuso, 6ª tentativa, purpose trocado, token Google inválido e composição SMTP.
 - [x] Payloads rejeitam campos não mapeados, incluindo tentativas de enviar papel ou estado de 2FA pelo cliente.
 - [x] Senha 8–64 Unicode, confirmação no cadastro/reset e migração transparente de BCrypt legado; testes de política, Unicode e compatibilidade de hash.
-- [x] Indicador Fraca/Média/Forte com critérios visíveis, senha fraca bloqueada no cadastro/reset no frontend e backend; olhos acessíveis para senha e confirmações. `PasswordPolicyTest`: 4/4; `AuthApplicationServiceTest`: 10/10, incluindo rejeição de cadastro fraco. Suíte completa em 20/10/2026: 284 testes, 0 falhas/erros, 12 ignorados por indisponibilidade do Docker. A força é heurística, não consulta serviço abrangente de senhas vazadas.
+- [x] Indicador Fraca/Média/Forte com critérios visíveis, senha fraca bloqueada no cadastro/reset no frontend e backend; olhos acessíveis para senha e confirmações. `PasswordPolicyTest`: 4/4; `AuthApplicationServiceTest`: 10/10, incluindo rejeição de cadastro fraco. Suíte completa em 20/10/2026: 291 testes, 0 falhas/erros. A força é heurística, não consulta serviço abrangente de senhas vazadas.
 
 ---
 
@@ -213,17 +215,17 @@ Legenda: ✅ pronto · 🟡 parcial · 🔴 bloqueado/pendente · ⏸️ fora do
 **Objetivo:** provar o fluxo completo em stack real.
 
 **Estado real**
-- Última suíte em 20/10/2026: **284 testes, 0 falhas/erros, 12 ignorados**; Testcontainers não acessou Docker por `AccessDeniedException`.
-- Testes de integração tiveram execução real verde em rodada anterior; nesta rodada os dependentes de Docker foram ignorados.
+- Última suíte em 20/10/2026: **291 testes, 0 falhas/erros, 0 ignorados**; Docker/Testcontainers disponíveis.
+- Testes de integração reais verdes nesta rodada: V13 aplicada, recuperação concorrente, rotação de token e contexto Hibernate `validate`.
 - Smoke E2E executado em stack real: 12/12 etapas passaram. Também exercitou consentimento, sessão Redis, step-up PIX, upload, obra/capítulo, rota financeira 410, exportação e exclusão.
-- Workflow em `.github/workflows/ci.yml` mantém gatilho `pull_request` e adiciona smoke em stack Docker; ainda não há execução observada em um PR remoto.
+- Workflow em `.github/workflows/ci.yml` mantém gatilho `pull_request` e adiciona smoke em stack Docker; a execução remota `39364042018` (PR #4) foi observada com falha de tipo V13, já corrigida. Falta observar um novo run verde.
 
 **Aceite**
-- [x] `mvn -o test` verde em 20/10/2026: 284 testes, 0 falhas/erros; 12 ignorados nesta rodada por indisponibilidade do Docker.
-- [x] Stack saudável e migrations V1..V11 verificadas em execução anterior; V12 ainda requer validação em PostgreSQL real.
+- [x] `mvn -o test` verde em 20/10/2026: 291 testes, 0 falhas/erros, 0 ignorados (Docker disponível).
+- [x] Stack saudável e migrations V1..V13 verificadas em PostgreSQL real; V13 aplicada nesta rodada.
 - [x] Smoke 12/12 com evidência local.
 - [x] `npm run build` verde em 20/10/2026: 1649 módulos, TypeScript + Vite.
-- [ ] CI rodando em PR: workflow configurado, mas ainda sem execução remota observada; requer PR/publicação autorizada.
+- [ ] CI rodando em PR: execução remota observada com falha de V13 já corrigida; falta novo run verde com smoke. Requer PR/publicação autorizada.
 
 ---
 
@@ -232,51 +234,88 @@ Legenda: ✅ pronto · 🟡 parcial · 🔴 bloqueado/pendente · ⏸️ fora do
 **Estado real**
 - Os adapters Redis para sessão, rate limit e desafios OTP existem; Compose local e de produção selecionam Redis. O profile `prod` falha no boot se algum deles estiver como `inmemory`.
 - Compose de produção exige autenticação Mongo e senha Redis; o backend recebe URI Mongo autenticada e senha Redis por ambiente.
-- A suíte/smoke anterior comprovou sessão Redis no fluxo real; nesta rodada o Docker negou acesso e a porta local 6379 não estava disponível, portanto a validação operacional atual dos scripts OTP Redis ficou pendente. Fora do Compose, o default permanece `inmemory` para dev/test.
+- A suíte/smoke anterior comprovou sessão Redis no fluxo real; nesta rodada o Redis real foi observado com chaves `mn:session`, `mn:otp:issue` e `mn:password-reset:issue`. O boot do profile `prod` entre réplicas e failover ainda não foram executados. Fora do Compose, o default permanece `inmemory` para dev/test.
 - Logs estruturados, contadores Micrometer de OTP/e-mail e regras Prometheus foram adicionados. É necessário importar as regras e configurar Alertmanager/plantão no ambiente operacional.
-- Script de backup com checksums e restore-check isolado foi adicionado, junto ao runbook; não foi executado por depender do Docker nesta rodada. A cópia ainda precisa de criptografia e destino externo com KMS.
+- Script de backup com checksums e restore-check isolado foi executado nesta rodada: backup de Postgres, Mongo e storage, manifest com SHA-256 e restauração em banco Mongo/Postgres isolado. O script foi corrigido para Windows PowerShell 5.1 (sem `[IO.Path]::GetRelativePath`). A cópia ainda precisa de criptografia e destino externo com KMS/retenção aprovada.
 
 **Aceite**
 - [x] Store distribuído de desafios OTP, TTL, purpose, uso único e verificação atômica; profile `prod` exige Redis para sessão, rate limit e OTP.
-- [x] Teste Testcontainers cobre purpose, expiração, cinco tentativas e consumo concorrente único; os 2 testes de integração foram ignorados nesta rodada porque Docker não estava acessível.
-- [ ] Teste operacional atual com Redis real nesta rodada; daemon Docker negou acesso e Redis local não estava disponível.
+- [x] Teste Testcontainers cobre purpose, expiração, cinco tentativas e consumo concorrente único; nesta rodada os testes de integração rodaram com Docker real.
+- [x] Prova operacional atual com Redis real: OTP, sessão e throttle observados; `prod` não aceita `inmemory`. Falta boot entre réplicas/failover.
 - [x] Logs estruturados seguros, contadores Micrometer de OTP/e-mail e regras Prometheus versionadas.
 - [ ] Alertas ativos: regras precisam ser carregadas no Prometheus/Alertmanager e canal de plantão configurado.
-- [x] Script de backup e restore-check de Postgres, Mongo e storage com manifest/checksums e alvos de restore isolados.
-- [ ] Execução real de backup/restore, retenção aprovada, cifra em repouso e destino externo ainda pendentes.
+- [x] Script de backup e restore-check de Postgres, Mongo e storage com manifest/checksums e alvos de restore isolados; execução real 0 falhas, 17 usuários e V13 restaurados.
+- [ ] Retenção aprovada, cifra em repouso e destino externo ainda pendentes; o backup local não substitui cópia off-site.
 - [ ] SMTP com domínio autenticado SPF/DKIM/DMARC e monitoramento de bounce dependem do domínio e provedor escolhidos.
 - [ ] Encarregado/DPO, inventário completo de operações e prazos de retenção exigem definição/aprovação organizacional/legal; auditoria de exportação/exclusão já existe.
 - [x] Runbook de incidente e rotação de chaves documentado; exercício operacional e validação do operador pendentes.
 
-**Próximo passo F8:** quando Docker estiver acessível, testar OTP Redis e o ciclo de backup/restore isolado; depois ligar regras/canal de alerta e fechar as decisões externas de DNS, provedor SMTP, retenção e encarregado.
+**Próximo passo F8:** executar boot `prod` entre réplicas e failover Redis; ligar regras/canal de alerta; aprovar retenção, cifra e destino off-site; fechar DNS/provedor SMTP e encarregado/DPO. O backup/restore local já foi executado com checksums.
 
 ## Próximas ações calculadas
 
-1. **F5 — passe visual/teclado em todas as rotas:** executar quando o navegador e a aplicação local estiverem acessíveis; build e inspeção estática não substituem essa auditoria.
-2. **F7 — CI em PR:** obter execução remota quando houver branch/PR e permissão de publicação; o workflow já declara `pull_request`.
-3. **F8 — prova operacional:** com Docker permitido, executar Testcontainers Redis OTP e Backup/RestoreCheck em dados isolados; validar auth de Mongo/Redis também no boot de produção.
-4. **F8 — produção externa:** importar regras no Alertmanager, configurar destino cifrado de backup, escolher provedor SMTP e comprovar SPF/DKIM/DMARC/bounce.
-5. **F6/F8 — governança:** obter decisão organizacional sobre encarregado/DPO, inventário de operações e prazos de retenção; não inventar esses dados no código.
-6. **F1 — identidade de produção:** validar um ID token Google válido em ambiente de homologação; a posse de e-mail comum já é registrada após OTP `LOGIN`, e o Google exige claim verificada.
-7. **F1/F0 — schema:** aplicar V12 e verificar `email_verified_at` em PostgreSQL real antes do próximo release.
+> **Ordem vigente em 20/10/2026:** Bloco A → Bloco B → Bloco C. O Bloco D (documentação) pode ocorrer em paralelo. A fila única abaixo é a fonte de escopo e aceite; os itens 1–31 registram o que já foi feito, e 32–56 detalham o fechamento.
+
+### Bloco A — fechar o desenvolvimento local
+| # | Fase | Entrega |
+|---|---|---|
+| 32 | F7 | ✅ CI de produção com `MAIL_*` fictícios; Compose validado sem `.env` localmente |
+| 33 | F1/F0 | ✅ V12/V13 aplicadas em PostgreSQL real; `token_hash VARCHAR(64)` e `validate` verdes |
+| 34 | F1 | ✅ Recuperação E2E no Mailpit; expirado/malformado/reutilizado cobertos por teste |
+| 35 | F1 | ✅ Consumo concorrente do token: 204/401, apenas um vencedor |
+| 36 | F1 | ✅ Reenvio com token ativo: rotação e invalidação do link anterior |
+| 37 | F1/F8 | ✅ Throttle `password-reset` separado do OTP de login |
+| 38 | F1 | ✅ `PUBLIC_FRONTEND_URL` sem path/query e link na rota real do SPA |
+| 39 | F1 | ✅ Envio SMTP após commit; falha de e-mail não reverte o token |
+| 40 | F5 | 🟡 Rotas públicas/reset e feed/catálogo/sobre/perfil autenticados; Tab real com foco visível; criador/moderador pendentes |
+| 41 | F8 | 🟡 OTP/sessão/rate-limit reais observados no Redis; boot `prod` ainda não executado |
+| 42 | F8 | 🟡 Backup/restore local executado com SHA-256 e bancos isolados; retenção e destino cifrado off-site pendentes |
+| 43 | F7 | 🟡 Execução remota observada (falha V13); novo PR verde ainda pendente |
+| 44 | F1 | 🔴 ID token Google válido em homologação pendente |
+
+### Bloco B — segurança e governança
+| # | Fase | Entrega |
+|---|---|---|
+| 45 | F8 | Alertmanager e canal de plantão ativos |
+| 46 | F1/F8 | Provedor SMTP, domínio, SPF/DKIM/DMARC e bounce |
+| 47 | F6/F8 | Encarregado/DPO, inventário de operações e retenção |
+| 48 | F6 | Política de Privacidade publicada e CPF sentinela saneado |
+| 49 | F8 | Exercício de incidente e rotação de chaves |
+
+### Bloco C — configuração externa
+| # | Fase | Entrega |
+|---|---|---|
+| 50 | F4/13.4 | Mercado Pago Sandbox: credenciais, webhook HTTPS e pagamento de teste |
+| 51 | F14/14.1 | Conta Oracle, VM Ampere, SSH e firewall |
+| 52 | F14/14.3 | Deploy Oracle, `.env`, AES, V1–V13, healthchecks e smoke |
+| 53 | F15 | Pages Function, `BACKEND_API_URL` e E2E front↔back |
+| 54 | F16 | Chaves de produção do Mercado Pago, só após homologação |
+| 55 | F17 | Analytics do criador e motor de Seasons |
+
+### Bloco D — documentação
+| # | Fase | Entrega |
+|---|---|---|
+| 56 | — | ✅ V1..V13, ADR-003/006, `README_SECRETS`, contagens atuais (291/0/0), nomenclatura F9–F17 legada e `SameSite=Lax` alinhados |
 
 ---
 
 ## Fila única (ordem de execução)
 
+> Os itens **32–56** são a ordem vigente (Blocos A–D). Os itens **1–31** ficam como registro do que já foi entregue; **29–31** continuam abertos e estão detalhados em #40 e #41–#43.
+
 | # | Item | Fase | Escopo de código | Critério |
 |---|---|---|---|---|
 | 1 | Corrigir interpolação e completar compose local | F0 | `docker-compose.yml` | ✅ 6 serviços; portas locais; imagens construídas |
-| 2 | Subir stack e validar migrações | F0 | — | ✅ Feed 200; V1..V11 em Postgres limpo; volumes preservados |
+| 2 | Subir stack e validar migrações | F0 | - | ✅ Feed 200; V1..V13 no volume local e em Postgres limpo; volumes preservados |
 | 3 | Verificar token Google no servidor | F1 | `AuthApplicationService`, `GoogleLoginRequestDto`, config | ✅ claims verificadas; token inválido rejeitado; teste direcionado verde |
-| 4 | Homologar SMTP real + Mailpit | F1 | `SmtpMfaNotificationSender`, `application.yml`, compose | 🟡 Mailpit E2E confirmado; falta DNS autenticado |
+| 4 | Homologar SMTP real + Mailpit | F1 | `SmtpMfaNotificationSender`, `application.yml`, compose | 🟡 Mailpit E2E do OTP confirmado; falta DNS autenticado (#46) |
 | 5 | Endpoint de step-up OTP com purpose | F1/F4 | `AuthController`, `AuthApplicationService`, `TwoFactorAuthService` | ✅ `/2fa/request` autenticado; PIX aceita apenas código `STEP_UP_PIX` |
 | 6 | OTP como HMAC + purpose | F1 | `TwoFactorAuthService` | ✅ HMAC constant-time; reuso e troca de purpose falham; chave de produção obrigatória |
 | 7 | Maioridade obrigatória | F4/F6 | `CreatorApplicationService` + testes | ✅ data ausente e menoridade bloqueadas antes do nível 2 |
 | 8 | CPF real no onboarding | F6 | `AuthApplicationService`, DTO | Sem CPF fake |
-| 9 | Consentimento versionado e eventos auditáveis | F6 | V11, Auth, perfil e política | ✅ reaceite server-side; texto oficial da política pendente |
+| 9 | Consentimento versionado e eventos auditáveis | F6 | V11, Auth, perfil e política | ✅ reaceite server-side; texto oficial da política pendente (#48) |
 | 10 | Checkout para doações e membros | F4 | gateway, controllers, ledger, frontend | Sem crédito/acesso antes de webhook confirmado |
-| 11 | Homologar Checkout VIP Sandbox | F4 | `.env`, túnel e webhook | Pagamento Sandbox ativa uma única vez |
+| 11 | Homologar Checkout VIP Sandbox | F4 | `.env`, túnel e webhook | Pagamento Sandbox ativa uma única vez (#50) |
 | 12 | Remover mocks de produção | F5 | `CreatorWorkspacePage`, `AuthContext`, `App.tsx`, `BibliotecaPage` | Nenhum `MOCK_*` fora de DEV |
 | 13 | Testes de integração + smoke | F7 | `smoke_test_e2e.ps1`, CI | 12/12 |
 | 14 | Redis para sessão/rate limit | F8 | `SessionStore`, `RateLimitStore` | `SCAN`, Redis no compose local |
@@ -286,17 +325,42 @@ Legenda: ✅ pronto · 🟡 parcial · 🔴 bloqueado/pendente · ⏸️ fora do
 | 18 | Validar links públicos de criador | F2 | `CreatorApplicationService`, `CreatorProfileUrlPolicy` | ✅ domínios sociais aprovados; HTTP/hosts falsos rejeitados |
 | 19 | Redimensionar e recodificar avatar no servidor | F2 | storage/avatar pipeline | ✅ endpoint autenticado; limite/dimensões impostos; JPEG 512×512 e imagem inválida cobertos por teste |
 | 20 | Vincular OTP ao purpose e armazenar HMAC | F1/F4 | MFA, Auth, PIX | ✅ consolidado com itens 5 e 6; login e step-up separados; chave de produção via `OTP_HMAC_SECRET`; 6ª tentativa bloqueada |
-| 21 | Reenvio OTP com cooldown e limite por conta/IP | F1 | Auth/MFA e rate limit | ✅ código e testes locais; teste Redis real pendente |
+| 21 | Reenvio OTP com cooldown e limite por conta/IP | F1 | Auth/MFA e rate limit | ✅ código e testes locais; teste Redis real pendente (#41) |
 | 22 | Filtrar capítulos agendados e bloquear obra arquivada no leitor/storage | F3 | `WorkApplicationService`, `ChapterFileAccessGuard` | ✅ futuro oculto; arquivamento LGPD bloqueia detalhe e URL antiga |
 | 23 | Limites de quantidade e dimensão das páginas + teste de carga | F3 | upload/leitor | ✅ 100 GETs com página real: 100×200, concorrência 10, p95 190 ms |
 | 24 | Auditoria append-only da troca de PIX | F4 | V7, `CreatorApplicationService`, `CreatorController` | ✅ gravação mascarada e trigger de imutabilidade testados em PostgreSQL real |
 | 25 | Sobre nós com história da plataforma e do criador | F5 | `SobrePage` e fotos locais | ✅ copy sem promessas de recursos ainda inexistentes; build frontend verde |
 | 26 | Suporte a light novels em prosa | F3 | `WorkEntity`, capítulos, API e leitor | ✅ V8 separa `PROSE`/`IMAGE_PAGES`; testes preservam fluxo de mangá |
 | 27 | Rejeitar campos JSON desconhecidos em DTOs | F1 | `application.yml`, `AuthControllerTest` | ✅ `twoFactorEnabled` e `role` extras retornam 400; serviço não é invocado |
-| 28 | Medidor de força, visibilidade de senha e bloqueio de senhas fracas | F1/F5 | `PasswordInput`, `LoginPage`, `PasswordPolicy` | ✅ build verde; policy 4/4 e AuthApplicationServiceTest 10/10; suíte completa 273 sem falhas/erros (12 Testcontainers ignorados sem Docker) |
-| 29 | Fechar passe visual/teclado em todas as rotas | F5 | rotas/telas frontend | 🟡 bloqueado: navegador local indisponível nesta sessão |
-| 30 | Obter execução real do CI em PR | F7 | GitHub Actions/PR | 🟡 workflow configurado; requer push/PR e permissão remota |
-| 31 | Operar Redis OTP e backup/restore isolado | F8 | Testcontainers/Compose/scripts ops | 🟡 testes adicionados; runtime Docker não acessível nesta rodada |
+| 28 | Medidor de força, visibilidade de senha e bloqueio de senhas fracas | F1/F5 | `PasswordInput`, `LoginPage`, `PasswordPolicy` | ✅ build verde; policy 4/4 e AuthApplicationServiceTest 10/10; suíte completa 291 sem falhas/erros (Docker disponível) |
+| 29 | Fechar passe visual/teclado em todas as rotas | F5 | rotas/telas frontend | 🟡 rotas públicas e reset no navegador; autenticado/tab-order parciais; detalhado em #40 |
+| 30 | Obter execução real do CI em PR | F7 | GitHub Actions/PR | 🟡 run `39364042018` observado com falha de V13; novo run verde pendente; detalhado em #43 |
+| 31 | Operar Redis OTP e backup/restore isolado | F8 | Testcontainers/Compose/scripts ops | 🟡 Redis real contém `mn:otp:issue`, `mn:password-reset:issue`, `mn:session`; backup/restore pendente; detalhado em #41–#42 |
+| 32 | Fornecer `MAIL_*` fictícios no job `docker-validation` | F7 | `.github/workflows/ci.yml` | ✅ Compose de produção valida sem `.env`; `docker compose config --quiet` local = 0 |
+| 33 | Aplicar V12/V13 em PostgreSQL real e resolver `CHAR(64)` | F1/F0 | V13, `PasswordResetTokenEntity`, schema | ✅ Flyway aplicou V13; `character varying(64)`; Hibernate `validate` subiu |
+| 34 | Recuperação E2E no Mailpit | F1 | `PasswordResetApplicationService`, Mailpit | ✅ pedido→link→nova senha→2FA→`/me`; expirado/malformado/reuso cobertos |
+| 35 | Consumo concorrente do token | F1 | repositório/serviço de reset | ✅ duas confirmações concorrentes: 204 e 401; token removido |
+| 36 | Reenvio com token ativo | F1 | serviço/controller de reset | ✅ rotação: hash anterior ausente, hash novo presente |
+| 37 | Namespace próprio de throttle | F1/F8 | `OtpIssuanceLimiter` | ✅ `password-reset` não consome cota de OTP; teste de isolamento |
+| 38 | Validar origem pública | F1 | config/`PasswordResetApplicationService` | ✅ rejeita path/query; link real do Mailpit aponta para `/reset-password#token=` |
+| 39 | Enviar SMTP após commit | F1 | serviço de reset/notificação | ✅ envio via `afterCommit`; falha SMTP mantém token e resposta genérica |
+| 40 | Passe visual/teclado F5 | F5 | rotas/telas frontend | 🟡 públicas/reset e feed/catálogo/sobre/perfil autenticados; Tab real percorrido com outline 3px; rotas de criador/moderador pendentes |
+| 41 | Prova operacional Redis | F8 | stores Redis, Compose | 🟡 OTP/sessão/rate-limit reais observados; boot `prod` e TTL/failover pendentes |
+| 42 | Backup/restore real | F8 | `ops/backup-restore.ps1` | 🟡 backup, checksums e restore isolado executados; retenção/cifra/off-site pendentes |
+| 43 | CI remoto em PR | F7 | GitHub Actions/PR | 🟡 PR #4/run `39364042018` observado; falha V13 corrigida, novo PR verde pendente |
+| 44 | Google válido em homologação | F1 | `AuthApplicationService`/config | 🔴 token real e DNS autenticado indisponíveis |
+| 45 | Alertmanager/plantão | F8 | regras Prometheus/ops | Regras carregadas; canal de plantão testado |
+| 46 | SMTP de produção | F1/F8 | `.env`/DNS/provedor | SPF/DKIM/DMARC validados; bounce monitorado; sem conta pessoal |
+| 47 | DPO/inventário/retenção | F6/F8 | docs/ops | Decisão registrada; prazos aprovados |
+| 48 | Política e CPF sentinela | F6 | docs/scripts | Texto publicado; CPF legado saneado com evidência |
+| 49 | Incidente/rotação | F8 | runbook | Exercício registrado; rotação ensaiada |
+| 50 | Sandbox Mercado Pago | F4/13.4 | `.env`, webhook | Pagamento teste ativa VIP uma vez; HMAC/valor/moeda conferidos |
+| 51 | Oracle VM | F14/14.1 | infra | VM/SSH/firewall; bancos/Redis sem porta pública |
+| 52 | Deploy Oracle | F14/14.3 | Compose/`.env` | Healthchecks, V1–V13 e smoke verdes |
+| 53 | Cloudflare Function | F15 | `functions/api/[[path]].ts` | `/api/*`, cookies e uploads funcionam; sem fallback local em produção |
+| 54 | Mercado Pago produção | F16 | secrets/webhook | Só após #50; chaves e webhook revisados |
+| 55 | Analytics/Seasons | F17 | serviços/controllers | Série por dia, retenção, líquido; janela de 60 dias idempotente |
+| 56 | Alinhamento documental | — | docs | Contradições listadas corrigidas; nenhum segredo exposto |
 
 > **Pendente honesto:** o deploy real (Fase 13 "em produção") exige credenciais/infra que não estão nesta máquina; nada foi publicado. O job de rotação usa join em memória obras×eventos (adequado ao MVP, não a milhões de obras).
 

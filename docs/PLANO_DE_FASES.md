@@ -8,7 +8,7 @@
 >
 > ⚠️ **Fonte de estado:** a seção 4 é o mapa de produto F0–F8; para logs, comandos, resultados de teste e ordem exata da fila, consulte o roadmap/auditoria. O histórico abaixo não deve ser interpretado como status atual.
 >
-> **Migrações Flyway:** V1..V11 verificadas em Postgres local e em schema limpo via Testcontainers em 19/10/2026; versões aplicadas são imutáveis.
+> **Migrações Flyway:** V1..V13 aplicadas em PostgreSQL local real e em schema limpo via Testcontainers até 20/10/2026; versões aplicadas são imutáveis.
 >
 > **Ambiente e saúde da stack:** ver `ROADMAP-FASES.md`; não inferir que serviços estão rodando só porque o Compose existe.
 
@@ -86,7 +86,7 @@ O **MangaNetWorking** é uma plataforma editorial **100% digital** para conectar
 
 ## 4. Plano atual — Fases F0 a F8
 
-Este é o plano vigente do produto. Os critérios concluídos refletem implementação e validações já registradas; itens externos ou sem execução comprovada permanecem abertos. A fila operacional detalhada está em `docs/orquestracao/ROADMAP-FASES.md`.
+Este é o plano vigente do produto. Os critérios concluídos refletem implementação e validações já registradas; itens externos ou sem execução comprovada permanecem abertos. A fila operacional detalhada está em `docs/orquestracao/ROADMAP-FASES.md`, que agora organiza o fechamento nos Blocos A–D (itens 32–56): A local, B segurança/governança, C configuração externa e D documentação.
 
 ### F0 — Infra Docker First · ✅ concluída
 **Objetivo:** subir a stack local integrada e conectar backend a PostgreSQL e MongoDB.
@@ -97,11 +97,12 @@ Este é o plano vigente do produto. Os critérios concluídos refletem implement
 ### F1 — Autenticação, 2FA, e-mail e senhas · 🟡 parcial
 **Objetivo:** cadastro/login seguro, Google verificado no servidor, OTP por e-mail, sessão e recuperação de conta.
 
-- [x] OTP HMAC com propósito para login/step-up PIX, limites de reenvio, SMTP/Mailpit e validação server-side do ID token Google implementados. Recuperação usa link/token SHA-256 persistido em PostgreSQL, TTL configurável de 5–60 min (padrão 30), uso único, resposta genérica, origem HTTPS validada, política de senha oficial e revogação de sessões; sem SMTP, a Dev Outbox guarda o link somente em perfis locais e até expirar. V13 criada.
+- [x] OTP HMAC com propósito para login/step-up PIX, limites de reenvio, SMTP/Mailpit e validação server-side do ID token Google implementados. Recuperação usa link/token SHA-256 persistido em PostgreSQL, TTL configurável de 5–60 min (padrão 30), uso único, resposta genérica, origem HTTPS validada sem path/query, política de senha oficial e revogação de sessões; sem SMTP, a Dev Outbox guarda o link somente em perfis locais e até expirar. V13 aplicada em PostgreSQL real com `token_hash VARCHAR(64)` e `validate` verde; o throttle usa namespace `password-reset`, separado do OTP de login, e o envio ocorre após commit.
 - [x] OTP válido de login persiste a confirmação de posse do e-mail; redefinição de senha não confirma nem altera o e-mail. Google requer claim `email_verified=true`. V12 adiciona `email_verified_at` sem editar migrations anteriores.
 - [x] Política de senha nova: 8–64 pontos de código Unicode; confirmação, revelar/ocultar acessível e medidor Fraca/Média/Forte; backend recusa senha fraca em cadastro/reset, sem bloquear login de contas legadas.
-- [x] `PasswordPolicyTest` passou 4/4 e `AuthApplicationServiceTest` passou 10/10, incluindo o bloqueio de cadastro fraco; Mailpit E2E e testes OTP/Google inválidos estão cobertos conforme evidência no roadmap.
-- [ ] Aplicar e validar V12/V13 em Postgres real; testar envio da recuperação por Mailpit e consumo concorrente. Testes focados de recuperação/controller/SMTP passaram 17/17 e a suíte completa 284/0/0 (12 ignorados); Mockito exigiu agente pré-carregado no runtime atual. Homologar ID token Google válido e configurar DNS autenticado SPF/DKIM/DMARC.
+- [x] `PasswordPolicyTest` passou 4/4 e `AuthApplicationServiceTest` passou 10/10, incluindo o bloqueio de cadastro fraco; Mailpit E2E do OTP de login e testes de OTP/Google inválidos estão cobertos. A recuperação por link foi exercitada no Mailpit (pedido → link → nova senha → 2FA → `/me`), com expirado/malformado/reuso cobertos e concorrência real 204/401 (#34–#36).
+- [x] V12/V13 aplicadas e validadas em PostgreSQL real; envio da recuperação por Mailpit e consumo concorrente exercitados. Dois Testcontainers (concorrência e rotação) passaram; suíte completa 291/0/0 com Docker. O `CHAR(64)` da V13 foi corrigido para `VARCHAR(64)` antes de qualquer aplicação durável; o CI efêmero que aplicou a versão anterior foi descartado.
+- [ ] Homologar ID token Google válido e configurar DNS autenticado SPF/DKIM/DMARC; sem credenciais/domínio reais, permanece aberto (#44, #46).
 
 ### F2 — Perfis de leitor e criador · ✅ concluída
 **Objetivo:** perfis público/privado, página do criador, links, avatar e biblioteca com autorização no servidor.
@@ -126,7 +127,7 @@ Este é o plano vigente do produto. Os critérios concluídos refletem implement
 **Objetivo:** interface acessível e responsiva, sem mocks de produção ou estados financeiros falsos.
 
 - [x] Fixtures isoladas em desenvolvimento; sessão 401 vira deslogada; contraste estático, senha e Sobre Nós implementados; build de produção verde.
-- [ ] Concluir inspeção visual e navegação por teclado em todas as rotas quando o navegador de QA estiver disponível.
+- [ ] Concluir inspeção visual e navegação por teclado em todas as rotas. Home, catálogo, biblioteca, sobre, login e reset foram inspecionados; após login real com OTP, feed, catálogo, sobre e perfil do leitor também. Tab real percorreu 10–14 elementos por rota com outline de 3 px e sem armadilha observada; faltam as rotas autenticadas de criador/moderador (#40).
 
 ### F6 — LGPD e AppSec · 🟡 parcial
 **Objetivo:** consentimento versionado, direitos do titular, maioridade e segurança de dados/arquivos.
@@ -137,16 +138,17 @@ Este é o plano vigente do produto. Os critérios concluídos refletem implement
 ### F7 — QA, E2E e CI · 🟡 parcial
 **Objetivo:** comprovar fluxos em stack real e automatizar validação em pull request.
 
-- [x] Suíte backend em 20/10/2026: 284 testes, 0 falhas/erros e 12 ignorados por Docker indisponível; build frontend verde e smoke E2E 12/12 de execução local real previamente confirmado; workflow de CI configurado para pull requests.
-- [ ] Obter uma execução remota observada em PR; depende de branch/PR e permissão de publicação.
+- [x] Suíte backend em 20/10/2026: 291 testes, 0 falhas/erros, com Docker disponível (concorrência e rotação em Testcontainers); build frontend verde e smoke E2E 12/12 de execução local real previamente confirmado; workflow de CI configurado para pull requests.
+- [x] Job `docker-validation` recebeu `MAIL_*` fictícios; Compose de produção validado sem `.env` localmente (`docker compose config --quiet` = 0). A execução remota `39364042018` foi observada com falha de V13, já corrigida; falta observar um novo run verde em PR (#43).
 
 ### F8 — Prontidão de produção · 🟡 parcial
 **Objetivo:** operar sessão/OTP distribuídos, observabilidade, backup, e-mail e resposta a incidentes.
 
-- [x] Adapters Redis, métricas/logs/regras, scripts de backup/restore-check e runbook estão implementados; perfil de produção exige stores distribuídos e credenciais.
-- [ ] Prova operacional atual de Redis e restore; ativar Alertmanager/canal de plantão; configurar destino cifrado; autenticar domínio e monitorar bounces; aprovar encarregado, inventário e retenção; exercitar runbook.
+- [x] Adapters Redis, métricas/logs/regras, script de backup/restore e runbook estão implementados; perfil de produção exige stores distribuídos e credenciais. OTP, sessão e throttle foram observados no Redis real (`mn:otp:issue`, `mn:password-reset:issue`, `mn:session`).
+- [x] Backup e restore-check locais executados com manifest SHA-256, Postgres/Mongo e storage; banco restaurado confirmou 17 usuários e V13. O script foi corrigido para Windows PowerShell 5.1.
+- [ ] Retenção, cifra e destino off-site; ativar Alertmanager/canal de plantão; autenticar domínio e monitorar bounces; aprovar encarregado, inventário e retenção; exercitar runbook. Itens 42 e 45–49 do roadmap.
 
-**Próxima sequência:** (1) passe visual/teclado F5; (2) obter execução de CI em PR; (3) com Docker acessível, provar Redis OTP e backup/restore; (4) fechar Sandbox, DNS/e-mail e decisões de governança F1/F4/F6/F8. O teste de serviço para senha fraca foi confirmado em `AuthApplicationServiceTest` (10/10). Não marcar dependências externas como concluídas sem evidência.
+**Próxima sequência:** Bloco A concluído localmente até #39; #40 está parcial (rotas de criador/moderador pendentes), #41 pendente (boot `prod`/failover), #42 parcial (restore local feito; retenção/cifra/off-site pendentes), #43 pendente (novo run remoto verde) e #44 bloqueado por Google/DNS; #56 concluído. Depois Bloco B (45–49) → Bloco C (50–55). O teste de serviço para senha fraca foi confirmado em `AuthApplicationServiceTest` (10/10). Não marcar dependências externas como concluídas sem evidência.
 
 ---
 
@@ -283,7 +285,7 @@ Este é o plano vigente do produto. Os critérios concluídos refletem implement
 
 - [ ] **15.1. Implementação de Pages Function (`functions/api/[[path]].ts`):**
   - Proxy reverso transparente de `/api/*` para o IP público da VM Oracle.
-  - Preservação estrita de headers de autorização, cookies `HttpOnly` com `SameSite=Strict`, e payload de uploads multipart.
+  - Preservação estrita de cookies de sessão `HttpOnly` com `SameSite=Lax` (e `Secure` em produção), headers de autorização quando houver, e payload de uploads multipart.
 - [ ] **15.2. Teste End-to-End Front <-> Back:**
   - Acesso ao site oficial no Cloudflare Pages.
   - Cadastro de leitor, recebimento de código 2FA e login com sessão persistente.
@@ -330,7 +332,7 @@ Este é o plano vigente do produto. Os critérios concluídos refletem implement
 
 ### Próximos passos (estado atual)
 
-A ordem vigente é mantida em `docs/orquestracao/ROADMAP-FASES.md`. Próximo passo técnico local: aplicar e validar V12/V13 em PostgreSQL real, testar recuperação via Mailpit e concorrência de consumo do token. Bloqueios externos para fases 13/14: domínio/provedor e DNS autenticado; credenciais Sandbox e webhook HTTPS público; acesso Oracle, região/shape disponível e chave SSH aprovada. Depois do provisionamento, validar deploy, healthchecks, migrações V1–V13 e backup/restore. Nenhuma compra real ou infraestrutura externa foi criada. A suíte de serviço já passou localmente; 12 integrações continuam sem Docker.
+A ordem vigente é mantida em `docs/orquestracao/ROADMAP-FASES.md`. V12/V13, recuperação no Mailpit, concorrência, rotação e backup/restore local já foram executados; restam o passe autenticado/teclado completo (#40), boot `prod` entre réplicas (#41), retenção/cifra/off-site do backup (#42) e um run remoto verde em PR (#43). Bloqueios externos para fases 13/14: domínio/provedor e DNS autenticado; credenciais Sandbox e webhook HTTPS público; acesso Oracle, região/shape disponível e chave SSH aprovada. Nenhuma compra real ou infraestrutura externa foi criada. A suíte backend passou 291/0/0 com Docker; o restore local foi verificado em bancos isolados.
 
 ---
 
@@ -338,8 +340,8 @@ A ordem vigente é mantida em `docs/orquestracao/ROADMAP-FASES.md`. Próximo pas
 
 | Componente | Tecnologia | Porta / Path | Status de Verificação |
 |---|---|---|---|
-| **API Backend** | Spring Boot 3.4.2 / Java 21 | `8085` | 284 testes em 20/10/2026; 12 integrações ignoradas sem Docker; Sandbox pendente |
-| **Banco Relacional** | PostgreSQL 16 (Docker) | `25432` | V1–V11 verificadas em stack local; V12–V13 aguardam aplicação/verificação após as migrations desta consolidação |
+| **API Backend** | Spring Boot 3.4.2 / Java 21 | `8085` | 291 testes em 20/10/2026, 0 falhas/erros/ignorados com Docker; Sandbox pendente |
+| **Banco Relacional** | PostgreSQL 16 (Docker) | `25432` | V1–V13 aplicadas em stack local real; V13 com `token_hash VARCHAR(64)` e `validate` verde |
 | **Banco NoSQL** | MongoDB 7 (Docker) | `27017` | Eventos de feed e telemetria validados ao vivo |
 | **Storage de Imagens** | Filesystem Local Sanitizado | `./data/uploads/` | Magic bytes e guard por `chapter_files` validados |
 | **Frontend Web** | React 19 / TypeScript / Vite | `5180` | Build limpo em 20/10/2026 (1649 módulos) |
