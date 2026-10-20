@@ -92,6 +92,11 @@ jobs:
           MONGO_ROOT_PASSWORD: ci-placeholder-nao-usado
           SPRING_DATA_MONGODB_URI: mongodb://ci-placeholder:ci-placeholder-nao-usado@mongodb:27017/manganetworking_events?authSource=admin
           REDIS_PASSWORD: ci-placeholder-nao-usado
+          MAIL_HOST: smtp.ci.example.invalid
+          MAIL_PORT: "587"
+          MAIL_USERNAME: ci-placeholder
+          MAIL_PASSWORD: ci-placeholder-nao-usado
+          MAIL_FROM: ci@example.invalid
         run: docker compose -f docker-compose.prod.yml config --quiet
 
       # Build direto com o daemon do runner: sem setup-buildx-action (driver
