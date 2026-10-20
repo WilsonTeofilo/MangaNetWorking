@@ -135,11 +135,11 @@ Este é o plano vigente do produto. Os critérios concluídos refletem implement
 - [x] Reaceite server-side, auditoria append-only, exportação, exclusão, maioridade e checklist técnico aplicados; V11 substitui backfill inferido sem editar V5.
 - [ ] Publicar a Política de Privacidade aprovada e definir/sanar os dados organizacionais e legados pendentes conforme procedimento controlado.
 
-### F7 — QA, E2E e CI · 🟡 parcial
+### F7 — QA, E2E e CI · ✅ concluída
 **Objetivo:** comprovar fluxos em stack real e automatizar validação em pull request.
 
-- [x] Suíte backend em 20/10/2026: 291 testes, 0 falhas/erros, com Docker disponível (concorrência e rotação em Testcontainers); build frontend verde e smoke E2E 12/12 de execução local real previamente confirmado; workflow de CI configurado para pull requests.
-- [x] Job `docker-validation` recebeu `MAIL_*` fictícios; Compose de produção validado sem `.env` localmente (`docker compose config --quiet` = 0). A execução remota `39364042018` foi observada com falha de V13, já corrigida; falta observar um novo run verde em PR (#43).
+- [x] Suíte backend em 20/10/2026: 291 testes, 0 falhas/erros, com Docker disponível (concorrência e rotação em Testcontainers); build frontend verde e smoke E2E 12/12 local; workflow de CI configurado para pull requests.
+- [x] Job `docker-validation` recebeu `MAIL_*` fictícios; Compose de produção validado sem `.env` localmente (`docker compose config --quiet` = 0). O run `39448285071` do PR #5 ficou verde em backend, frontend, Docker e smoke 12/12; a falha anterior de V13 foi corrigida e a senha do smoke foi alinhada à política atual (#43).
 
 ### F8 — Prontidão de produção · 🟡 parcial
 **Objetivo:** operar sessão/OTP distribuídos, observabilidade, backup, e-mail e resposta a incidentes.
@@ -148,7 +148,7 @@ Este é o plano vigente do produto. Os critérios concluídos refletem implement
 - [x] Backup e restore-check locais executados com manifest SHA-256, Postgres/Mongo e storage; banco restaurado confirmou 17 usuários e V13. O script foi corrigido para Windows PowerShell 5.1.
 - [ ] Retenção, cifra e destino off-site; ativar Alertmanager/canal de plantão; autenticar domínio e monitorar bounces; aprovar encarregado, inventário e retenção; exercitar runbook. Itens 42 e 45–49 do roadmap.
 
-**Próxima sequência:** Bloco A concluído localmente até #39; #40 está parcial (rotas de criador/moderador pendentes), #41 pendente (boot `prod`/failover), #42 parcial (restore local feito; retenção/cifra/off-site pendentes), #43 pendente (novo run remoto verde) e #44 bloqueado por Google/DNS; #56 concluído. Depois Bloco B (45–49) → Bloco C (50–55). O teste de serviço para senha fraca foi confirmado em `AuthApplicationServiceTest` (10/10). Não marcar dependências externas como concluídas sem evidência.
+**Próxima sequência:** Bloco A concluído localmente até #39 e #43; #40 está parcial (rotas de criador/moderador pendentes), #41 pendente (boot `prod`/failover), #42 parcial (restore local feito; retenção/cifra/off-site pendentes) e #44 bloqueado por Google/DNS; #56 concluído. Depois Bloco B (45–49) → Bloco C (50–55). O teste de serviço para senha fraca foi confirmado em `AuthApplicationServiceTest` (10/10). Não marcar dependências externas como concluídas sem evidência.
 
 ---
 

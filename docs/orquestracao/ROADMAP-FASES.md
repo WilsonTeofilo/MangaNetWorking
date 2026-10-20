@@ -18,7 +18,7 @@ Legenda: ✅ pronto · 🟡 parcial · 🔴 bloqueado/pendente · ⏸️ fora do
 | **F4** | Monetização, split 83/17 e 58/42, ledger, PIX | 🟡 checkout idempotente de doações/membros implementado; Sandbox e validação de ponta a ponta pendentes |
 | **F5** | Frontend "Banca de Rua" e remoção de dados falsos | 🟡 rotas públicas, reset e feed/catálogo/sobre/perfil autenticados inspecionados; Tab real com foco visível em 4 rotas; rotas de criador/moderador pendentes (#40) |
 | **F6** | LGPD e AppSec (consentimento, exclusão, maioridade, uploads) | 🟡 V11 invalida backfill inferido; reaceite e auditoria implementados; texto oficial da política ainda não fornecido/publicado |
-| **F7** | QA, smoke E2E, CI e empacotamento de produção | 🟡 smoke 12/12 e build verdes; `MAIL_*` fictícios corrigidos e Compose de produção validado sem `.env` localmente; execução remota em PR ainda não observada (#43) |
+| **F7** | QA, smoke E2E, CI e empacotamento de produção | ✅ build e smoke 12/12 locais; Compose de produção validado sem `.env`; CI remoto verde no PR #5 (run `39448285071`) |
 | **F8** | Prontidão de produção (observabilidade, Redis, e-mail, backup) | 🟡 OTP/sessão/rate-limit observados em Redis real; backup/restore local executado com checksums; métricas/alertas, runbook, retenção/cifra, destino off-site e operação externa pendentes |
 
 > **Nomenclatura:** F0–F8 é o mapa vigente. Menções a F9–F17 em itens históricos são a numeração legada de fases posteriores, preservada apenas como rastreabilidade; não são fases adicionais do estado atual.
@@ -218,14 +218,14 @@ Legenda: ✅ pronto · 🟡 parcial · 🔴 bloqueado/pendente · ⏸️ fora do
 - Última suíte em 20/10/2026: **291 testes, 0 falhas/erros, 0 ignorados**; Docker/Testcontainers disponíveis.
 - Testes de integração reais verdes nesta rodada: V13 aplicada, recuperação concorrente, rotação de token e contexto Hibernate `validate`.
 - Smoke E2E executado em stack real: 12/12 etapas passaram. Também exercitou consentimento, sessão Redis, step-up PIX, upload, obra/capítulo, rota financeira 410, exportação e exclusão.
-- Workflow em `.github/workflows/ci.yml` mantém gatilho `pull_request` e adiciona smoke em stack Docker; a execução remota `39364042018` (PR #4) foi observada com falha de tipo V13, já corrigida. Falta observar um novo run verde.
+- Workflow em `.github/workflows/ci.yml` mantém gatilho `pull_request` e executa smoke em stack Docker. A execução `39364042018` (PR #4) falhou por tipo V13; após a correção e o ajuste da senha do smoke, o run `39448285071` do PR #5 ficou **verde nos quatro jobs**: backend, frontend, Docker e Smoke 12/12.
 
 **Aceite**
 - [x] `mvn -o test` verde em 20/10/2026: 291 testes, 0 falhas/erros, 0 ignorados (Docker disponível).
 - [x] Stack saudável e migrations V1..V13 verificadas em PostgreSQL real; V13 aplicada nesta rodada.
 - [x] Smoke 12/12 com evidência local.
 - [x] `npm run build` verde em 20/10/2026: 1649 módulos, TypeScript + Vite.
-- [ ] CI rodando em PR: execução remota observada com falha de V13 já corrigida; falta novo run verde com smoke. Requer PR/publicação autorizada.
+- [x] CI rodando em PR: run `39448285071` (PR #5) verde em backend, frontend, Docker e smoke 12/12. Sem merge automático.
 
 ---
 
@@ -270,7 +270,7 @@ Legenda: ✅ pronto · 🟡 parcial · 🔴 bloqueado/pendente · ⏸️ fora do
 | 40 | F5 | 🟡 Rotas públicas/reset e feed/catálogo/sobre/perfil autenticados; Tab real com foco visível; criador/moderador pendentes |
 | 41 | F8 | 🟡 OTP/sessão/rate-limit reais observados no Redis; boot `prod` ainda não executado |
 | 42 | F8 | 🟡 Backup/restore local executado com SHA-256 e bancos isolados; retenção e destino cifrado off-site pendentes |
-| 43 | F7 | 🟡 Execução remota observada (falha V13); novo PR verde ainda pendente |
+| 43 | F7 | ✅ Execução remota verde no PR #5: run `39448285071`, quatro jobs aprovados |
 | 44 | F1 | 🔴 ID token Google válido em homologação pendente |
 
 ### Bloco B — segurança e governança
@@ -333,9 +333,9 @@ Legenda: ✅ pronto · 🟡 parcial · 🔴 bloqueado/pendente · ⏸️ fora do
 | 26 | Suporte a light novels em prosa | F3 | `WorkEntity`, capítulos, API e leitor | ✅ V8 separa `PROSE`/`IMAGE_PAGES`; testes preservam fluxo de mangá |
 | 27 | Rejeitar campos JSON desconhecidos em DTOs | F1 | `application.yml`, `AuthControllerTest` | ✅ `twoFactorEnabled` e `role` extras retornam 400; serviço não é invocado |
 | 28 | Medidor de força, visibilidade de senha e bloqueio de senhas fracas | F1/F5 | `PasswordInput`, `LoginPage`, `PasswordPolicy` | ✅ build verde; policy 4/4 e AuthApplicationServiceTest 10/10; suíte completa 291 sem falhas/erros (Docker disponível) |
-| 29 | Fechar passe visual/teclado em todas as rotas | F5 | rotas/telas frontend | 🟡 rotas públicas e reset no navegador; autenticado/tab-order parciais; detalhado em #40 |
-| 30 | Obter execução real do CI em PR | F7 | GitHub Actions/PR | 🟡 run `39364042018` observado com falha de V13; novo run verde pendente; detalhado em #43 |
-| 31 | Operar Redis OTP e backup/restore isolado | F8 | Testcontainers/Compose/scripts ops | 🟡 Redis real contém `mn:otp:issue`, `mn:password-reset:issue`, `mn:session`; backup/restore pendente; detalhado em #41–#42 |
+| 29 | Fechar passe visual/teclado em todas as rotas | F5 | rotas/telas frontend | 🟡 públicas/reset e feed/catálogo/sobre/perfil autenticados; Tab real verde; criador/moderador pendentes; detalhado em #40 |
+| 30 | Obter execução real do CI em PR | F7 | GitHub Actions/PR | ✅ PR #5/run `39448285071` verde nos quatro jobs; detalhado em #43 |
+| 31 | Operar Redis OTP e backup/restore isolado | F8 | Testcontainers/Compose/scripts ops | 🟡 Redis real e restore local comprovados; boot `prod`/failover e retenção/cifra pendentes; detalhado em #41–#42 |
 | 32 | Fornecer `MAIL_*` fictícios no job `docker-validation` | F7 | `.github/workflows/ci.yml` | ✅ Compose de produção valida sem `.env`; `docker compose config --quiet` local = 0 |
 | 33 | Aplicar V12/V13 em PostgreSQL real e resolver `CHAR(64)` | F1/F0 | V13, `PasswordResetTokenEntity`, schema | ✅ Flyway aplicou V13; `character varying(64)`; Hibernate `validate` subiu |
 | 34 | Recuperação E2E no Mailpit | F1 | `PasswordResetApplicationService`, Mailpit | ✅ pedido→link→nova senha→2FA→`/me`; expirado/malformado/reuso cobertos |
@@ -347,7 +347,7 @@ Legenda: ✅ pronto · 🟡 parcial · 🔴 bloqueado/pendente · ⏸️ fora do
 | 40 | Passe visual/teclado F5 | F5 | rotas/telas frontend | 🟡 públicas/reset e feed/catálogo/sobre/perfil autenticados; Tab real percorrido com outline 3px; rotas de criador/moderador pendentes |
 | 41 | Prova operacional Redis | F8 | stores Redis, Compose | 🟡 OTP/sessão/rate-limit reais observados; boot `prod` e TTL/failover pendentes |
 | 42 | Backup/restore real | F8 | `ops/backup-restore.ps1` | 🟡 backup, checksums e restore isolado executados; retenção/cifra/off-site pendentes |
-| 43 | CI remoto em PR | F7 | GitHub Actions/PR | 🟡 PR #4/run `39364042018` observado; falha V13 corrigida, novo PR verde pendente |
+| 43 | CI remoto em PR | F7 | GitHub Actions/PR | ✅ PR #5/run `39448285071`: backend, frontend, Docker e smoke 12/12 verdes |
 | 44 | Google válido em homologação | F1 | `AuthApplicationService`/config | 🔴 token real e DNS autenticado indisponíveis |
 | 45 | Alertmanager/plantão | F8 | regras Prometheus/ops | Regras carregadas; canal de plantão testado |
 | 46 | SMTP de produção | F1/F8 | `.env`/DNS/provedor | SPF/DKIM/DMARC validados; bounce monitorado; sem conta pessoal |

@@ -2,7 +2,7 @@
 
 > **Data:** 20/10/2026 · **Escopo:** working tree real (backend Spring Boot, frontend React, Docker, documentação).
 > **Método:** leitura do código/diff e verificações anotadas nas seções 7.2–7.6.
-> **Verificação mais recente:** `mvn -o test` → **291 testes, 0 falhas, 0 erros, 0 ignorados**; Docker/Testcontainers disponíveis. V13 aplicada em PostgreSQL real (`character varying(64)`, `validate` verde); fluxo de recuperação no Mailpit, consumo concorrente 204/401 e rotação de token exercitados. `npm.cmd run build` já estava verde; container frontend foi reconstruído para inspeção visual. Compose local e de produção passaram `config --quiet` (prod com `MAIL_*` fictícios, sem `.env`). As seções 7.15–7.16 registram o estado mais recente. Smoke 12/12 e a stack F0 foram verificados anteriormente; nesta rodada foram executados testes reais, QA visual autenticado parcial e backup/restore local.
+> **Verificação mais recente:** `mvn -o test` → **291 testes, 0 falhas, 0 erros, 0 ignorados**; Docker/Testcontainers disponíveis. V13 aplicada em PostgreSQL real (`character varying(64)`, `validate` verde); fluxo de recuperação no Mailpit, consumo concorrente 204/401 e rotação de token exercitados. `npm.cmd run build` já estava verde; container frontend foi reconstruído para inspeção visual. Compose local e de produção passaram `config --quiet` (prod com `MAIL_*` fictícios, sem `.env`). As seções 7.15–7.16 registram o estado mais recente. Nesta rodada foram executados testes reais, smoke 12/12 local, QA visual autenticado parcial, backup/restore local e CI remoto verde no PR #5.
 
 ---
 
@@ -427,6 +427,8 @@ O detalhe público da obra agora omite capítulos com `publicReleaseAt` futuro; 
 - [x] `ops/backup-restore.ps1 -Mode RestoreCheck`: restore em banco PostgreSQL e pasta de storage isolados; consulta no banco restaurado retornou **17 usuários** e **Flyway versão 13, success=true**. Nenhum dado ativo foi sobrescrito.
 - [x] `docker compose config --quiet` local e de produção (com `MAIL_*` fictícios e sem `.env`) retornaram 0.
 - [x] `mvn -o test`: **291 testes, 0 falhas, 0 erros, 0 ignorados**. `npm.cmd run build`: **3,78 s, sucesso**.
+- [x] Smoke E2E local 12/12 após trocar a senha fixa do script por uma frase aceita pela política atual. O mesmo script passou no CI remoto do PR #5, run `39448285071`, junto com backend, frontend e Docker.
+- [x] A primeira execução remota do PR #5 falhou apenas no smoke porque `Password123!` tinha 12 caracteres mas era rejeitada pela política; a correção foi um commit no próprio PR e o run seguinte ficou verde.
 - [x] QA autenticado no navegador: login real com OTP do Mailpit, feed, catálogo, sobre, Biblioteca (estado vazio) e perfil do leitor inspecionados. Foco visível medido em `Sair da conta` (`outline: solid 3px rgb(169, 165, 154)`); viewport 1296×886 com navegação desktop visível e mobile oculta.
 - [x] Tab real percorreu 10–14 elementos em feed, catálogo, sobre e perfil; todos os focados estavam visíveis, com `outline: solid 3px`, sem armadilha observada. Login/reset e biblioteca foram inspecionados por focáveis, sem traversal completo.
 - [ ] Rotas autenticadas de criador/moderador e o passe visual completo seguem pendentes (#40).
