@@ -102,11 +102,11 @@ Fluxo exercitado de ponta a ponta na stack local (backend 8085, frontend 5180, P
 | **Criar obra** (com autoria original declarada) | ✅ funciona | `POST /api/works` → `id` + `slug`; feed e catálogo listam a obra |
 | **Publicar capítulo** com páginas vinculadas | ✅ funciona | `POST /api/works/{id}/chapters` → capítulo 1 com páginas; leitura pública liberada |
 | **Ler a obra** (detalhe, capítulo e página) | ✅ funciona | verificado com **uma segunda conta**: `GET /api/works/{slug}` → 200 (`status=ongoing`), `GET /api/works/{slug}/chapters/1` → `locked=false`, e a página em `/api/storage/...` → **200 sem sessão** (conteúdo público) |
-| Biblioteca (favoritar) e progresso de leitura | ✅ funciona | `POST /api/users/library/{workId}/toggle` e `POST /api/users/reading-progress/track` (Mongo), com `GET /api/users/reading-progress` |
+| Biblioteca (favoritar) e progresso de leitura | ✅ funciona | `POST /api/users/library/{workId}/toggle` → `{"liked":true}`; `POST /api/users/reading-progress/track` → 200 e `GET /api/users/reading-progress` devolve o item (Mongo) |
 | Denunciar e moderar (fila, suspensão) | ✅ funciona | `POST /api/reports` (público) + fila do DONO/moderador + suspensão cautelar |
 | Workspace do criador (analytics, missões, chave PIX com step-up 2FA) | ✅ funciona | `/api/creators/workspace`, `/api/creators/analytics`, `PUT /api/creators/pix-key` com OTP |
 | Painel do DONO (governança de dados) | ⚠️ parcial | existe o papel `ROLE_OWNER` e os endpoints de auditoria/saneamento; **não há dashboard de produto** |
-| **Editar obra/capítulo já publicado** | ❌ **não existe** | não há `PUT/PATCH/DELETE` de obra ou capítulo na API: só criar |
+| **Editar obra/capítulo já publicado** | ❌ **não existe** | com sessão autenticada, `PUT /api/works/{id}`, `PUT /api/works/{id}/chapters/1`, `DELETE /api/works/{id}` e `DELETE .../chapters/1` respondem **405 Method Not Allowed**: só há `POST` (criar) e `GET` (ler) |
 | Comentários na obra | ❌ não existe | o modelo tem `comments_count`, mas não há API de comentário |
 | Doação, membresia e VIP | ❌ bloqueado | checkout Mercado Pago exige credenciais Sandbox/webhook público; a rota legada devolve `410` (nenhum crédito fictício) |
 | Login social (Google) | ❌ bloqueado | exige ID token real e domínio/DNS (#44) |
