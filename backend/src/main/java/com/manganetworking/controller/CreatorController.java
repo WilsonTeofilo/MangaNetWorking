@@ -3,12 +3,14 @@ package com.manganetworking.controller;
 import com.manganetworking.domain.relational.CreatorEntity;
 import com.manganetworking.service.creator.CreatorApplicationService;
 import com.manganetworking.service.creator.dto.*;
+import com.manganetworking.service.work.dto.CreatorWorkSummaryResponseDto;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.CacheControl;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import jakarta.servlet.http.HttpServletRequest;
@@ -67,6 +69,7 @@ public class CreatorController {
     public ResponseEntity<Map<String, Object>> countFollowers(@PathVariable String handle) {
         return ResponseEntity.ok(Map.of("followers", followService.countFollowers(handle)));
     }
+
 
     @GetMapping("/workspace")
     public ResponseEntity<CreatorWorkspaceResponseDto> getCreatorWorkspace() {

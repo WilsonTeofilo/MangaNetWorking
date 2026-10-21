@@ -14,10 +14,24 @@ export interface CreateWorkPayload {
 export interface CreateChapterPayload {
   chapterNumber: number;
   title: string;
+  coverUrl?: string;
   pages?: string[];
   publicReleaseAt: string;
   format?: 'IMAGE_PAGES' | 'PROSE';
   content?: string;
+}
+
+/** Resumo de uma obra na lista "Minhas obras" (espelha `CreatorWorkSummaryResponseDto`). */
+export interface CreatorWorkSummaryDto {
+  id: string;
+  title: string;
+  slug: string;
+  coverUrl?: string | null;
+  bannerUrl?: string | null;
+  status: string;
+  totalChapters: number;
+  totalViews: number;
+  totalLikes: number;
 }
 
 /** Projeção do item de feed (MongoDB) retornada por `GET /api/feed`. */
@@ -158,6 +172,35 @@ export const workApi = {
       method: 'POST',
       body: JSON.stringify(payload),
     });
+  },
+
+  /** As obras do próprio autor (tela "Minhas obras"). */
+  listMyWorks() {
+    return request<CreatorWorkSummaryDto[]>('/works/mine', { method: 'GET' });
+  },
+
+  /**
+   * Configuração da obra: capa, banner, categorias, título, sinopse e estado.
+   * Não mexe em capítulos — cada capítulo tem o próprio fluxo de publicação.
+   */
+  updateWork(workId: string, payload: {
+    title: string;
+    synopsis: string;
+    coverUrl: string;
+    bannerUrl?: string;
+    genres?: string[];
+    format?: string;
+    status?: string;
+  }) {
+    return request(`/works/${encodeURIComponent(workId)}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  /** Remove a obra do autor. */
+  deleteWork(workId: string) {
+    return request(`/works/${encodeURIComponent(workId)}`, { method: 'DELETE' });
   },
 
   /**

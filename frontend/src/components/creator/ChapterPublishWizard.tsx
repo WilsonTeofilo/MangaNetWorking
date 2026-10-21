@@ -6,25 +6,24 @@ import { Button } from '../ui/Button';
 import { Field } from '../ui/Field';
 
 /**
- * Publicação de obra + capítulo em 5 etapas, na mesma ordem e com as mesmas regras do
+ * Publicação de um CAPÍTULO em 5 etapas, na mesma ordem e com as mesmas regras do
  * MangaTeofilo (`useChapterWizard` + `ChapterStepUpload/Organize/Cover/Review/Publish`):
  *
- *   1. Upload (capa e páginas)  2. Organizar páginas  3. Ajustar capa
- *   4. Revisar metadados         5. Publicar
+ *   1. Upload (páginas)   2. Organizar páginas   3. Capa do capítulo
+ *   4. Revisar             5. Publicar
  *
- * O avanço é travado até a etapa atual estar completa e o checklist mostra o estado de
- * cada passo. A pré-visualização das páginas é local (objectURL), como no MangaTeofilo.
+ * A obra **já existe**: ela vem escolhida na tela "Capítulos" (que lista as obras de
+ * "Minhas obras"). Aqui não se cria nem se configura obra — só o capítulo.
+ * O avanço é travado até a etapa atual estar completa e o checklist mostra o estado.
  */
 
 const STEPS = [
-  { id: 1, label: 'Upload (capa e páginas)' },
+  { id: 1, label: 'Upload (páginas)' },
   { id: 2, label: 'Organizar páginas' },
-  { id: 3, label: 'Ajustar capa' },
-  { id: 4, label: 'Revisar metadados' },
+  { id: 3, label: 'Capa do capítulo' },
+  { id: 4, label: 'Revisar' },
   { id: 5, label: 'Publicar' },
 ] as const;
-
-const GENRES = ['ACAO', 'AVENTURA', 'ROMANCE', 'FANTASIA', 'SCI_FI', 'SHONEN', 'DRAMA', 'TERROR'];
 
 interface PageItem {
   key: string;
@@ -32,47 +31,50 @@ interface PageItem {
   previewUrl: string;
 }
 
-export function ChapterPublishWizard() {
+export function ChapterPublishWizard({
+  workId,
+  workTitle,
+  nextChapterNumber,
+}: {
+  workId: string;
+  workTitle: string;
+  nextChapterNumber: number;
+}) {
   const [step, setStep] = useState<number>(1);
-  const [coverFile, setCoverFile] = useState<File | null>(null);
-  const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [pages, setPages] = useState<PageItem[]>([]);
   const [dragging, setDragging] = useState(false);
   const [preview, setPreview] = useState<PageItem | null>(null);
-  const [title, setTitle] = useState('');
-  const [synopsis, setSynopsis] = useState('');
-  const [genres, setGenres] = useState<string[]>(['ACAO']);
-  const [format, setFormat] = useState<'MANGA' | 'LIGHT_NOVEL'>('MANGA');
-  const [declared, setDeclared] = useState(false);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [chapterTitle, setChapterTitle] = useState(`Capítulo ${nextChapterNumber}`);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const pagesInputRef = useRef<HTMLInputElement | null>(null);
   const coverInputRef = useRef<HTMLInputElement | null>(null);
 
-  const uploadStepReady = Boolean(coverFile) && pages.length > 0;
-  const organizeStepReady = pages.length > 0;
-  const coverStepReady = Boolean(coverFile);
-  const metadataStepReady = title.trim().length > 0 && synopsis.trim().length > 0 && declared;
+  const uploadReady = pages.length > 0;
+  const organizeReady = pages.length > 0;
+  const coverReady = true;
+  const reviewReady = chapterTitle.trim().length > 0 && pages.length > 0;
 
   const checklist = useMemo(
     () => [
-      { id: 1, label: 'Upload (capa e páginas)', ok: uploadStepReady },
-      { id: 2, label: 'Organizar páginas', ok: organizeStepReady },
-      { id: 3, label: 'Ajustar capa', ok: coverStepReady },
-      { id: 4, label: 'Revisar metadados', ok: metadataStepReady },
-      { id: 5, label: 'Publicar', ok: uploadStepReady && organizeStepReady && coverStepReady && metadataStepReady },
+      { id: 1, label: 'Upload (páginas)', ok: uploadReady },
+      { id: 2, label: 'Organizar páginas', ok: organizeReady },
+      { id: 3, label: 'Capa do capítulo', ok: coverReady },
+      { id: 4, label: 'Revisar', ok: reviewReady },
+      { id: 5, label: 'Publicar', ok: uploadReady && organizeReady && reviewReady },
     ],
-    [uploadStepReady, organizeStepReady, coverStepReady, metadataStepReady]
+    [uploadReady, organizeReady, reviewReady]
   );
 
   const maxStep = useMemo(() => {
-    if (!uploadStepReady) return 1;
-    if (!organizeStepReady) return 2;
-    if (!coverStepReady) return 3;
-    if (!metadataStepReady) return 4;
+    if (!uploadReady) return 1;
+    if (!organizeReady) return 2;
+    if (!reviewReady) return 4;
     return 5;
-  }, [uploadStepReady, organizeStepReady, coverStepReady, metadataStepReady]);
+  }, [uploadReady, organizeReady, reviewReady]);
 
   const goToStep = (target: number) => {
     setStep(Math.min(Math.max(1, target), maxStep));
@@ -123,42 +125,38 @@ export function ChapterPublishWizard() {
   };
 
   const publish = async () => {
-    if (!coverFile) {
-      setError('Envie a capa da obra.');
+    if (pages.length === 0) {
+      setError('Envie pelo menos uma página do capítulo.');
       return;
     }
     setBusy(true);
     setError(null);
     setSuccess(null);
     try {
-      const cover = await storageApi.uploadFile(coverFile);
       const uploaded: string[] = [];
       for (const page of pages) {
         const stored = await storageApi.uploadFile(page.file);
         uploaded.push(stored.url);
       }
-
-      const work = await workApi.createWork({
-        title: title.trim(),
-        synopsis: synopsis.trim(),
-        coverUrl: cover.url,
-        genres,
-        originalAuthorDeclaration: true,
-        format,
-      });
-
-      if (uploaded.length > 0) {
-        await workApi.createChapter(work.workId, {
-          chapterNumber: 1,
-          title: 'Capítulo 1: O Começo',
-          pages: uploaded,
-          publicReleaseAt: new Date().toISOString(),
-        });
+      let coverUrl: string | undefined;
+      if (coverFile) {
+        const storedCover = await storageApi.uploadFile(coverFile);
+        coverUrl = storedCover.url;
       }
 
-      setSuccess(`Obra "${title.trim()}" publicada com ${uploaded.length} página(s).`);
+      // O capítulo NASCE dentro de uma obra já existente (escolhida em "Capítulos").
+      await workApi.createChapter(workId, {
+        chapterNumber: nextChapterNumber,
+        title: chapterTitle.trim(),
+        coverUrl,
+        pages: uploaded,
+        publicReleaseAt: new Date().toISOString(),
+      });
+
+      setSuccess(`Capítulo publicado em "${workTitle}".`);
+      setPages([]);
     } catch (err: any) {
-      setError(err?.message || 'Não foi possível publicar. Verifique os dados e tente novamente.');
+      setError(err?.message || 'Não foi possível publicar o capítulo. Verifique os dados e tente novamente.');
     } finally {
       setBusy(false);
     }
@@ -166,8 +164,12 @@ export function ChapterPublishWizard() {
 
   return (
     <div className="space-y-6">
+      <p className="font-pixel text-[11px] uppercase text-[var(--mn-mute)]">
+        Publicando em <span className="text-[var(--mn-yellow)]">{workTitle}</span> · capítulo {nextChapterNumber}
+      </p>
+
       {/* Checklist de publicação (mesma ordem do MangaTeofilo) */}
-      <nav aria-label="Etapas de publicação" className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-4">
+      <nav aria-label="Etapas de publicação do capítulo" className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-4">
         <ol className="grid sm:grid-cols-5 gap-2">
           {STEPS.map((item) => {
             const state = checklist.find((entry) => entry.id === item.id);
@@ -201,10 +203,10 @@ export function ChapterPublishWizard() {
         </ol>
       </nav>
 
-      {/* ETAPA 1 — Upload */}
+      {/* ETAPA 1 — Upload das páginas */}
       {step === 1 && (
         <section className="border-2 border-[var(--mn-yellow)] bg-[var(--mn-ink-2)] p-5 space-y-4">
-          <h3 className="font-display text-xl text-[var(--mn-paper)] uppercase">Envie a capa e as páginas</h3>
+          <h3 className="font-display text-xl text-[var(--mn-paper)] uppercase">Envie as páginas do capítulo</h3>
           <div
             onDragOver={(event) => {
               event.preventDefault();
@@ -238,49 +240,11 @@ export function ChapterPublishWizard() {
               }}
             />
           </div>
-
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div className="border-2 border-[var(--mn-line)] p-3 space-y-2">
-              <p className="font-pixel text-[11px] uppercase text-[var(--mn-mute)]">Capa da obra (2:3)</p>
-              {coverPreview ? (
-                <img src={coverPreview} alt="Pré-visualização da capa" className="w-24 h-32 object-cover border-2 border-[var(--mn-line)]" />
-              ) : (
-                <p className="font-pixel text-[11px] uppercase text-[var(--mn-mute)]">Nenhum arquivo selecionado</p>
-              )}
-              <Button type="button" variant="ghost" onClick={() => coverInputRef.current?.click()}>
-                {coverFile ? 'TROCAR CAPA' : 'ESCOLHER CAPA'}
-              </Button>
-              <input
-                ref={coverInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                className="hidden"
-                onChange={(event) => {
-                  pickCover(event.target.files?.[0]);
-                  event.target.value = '';
-                }}
-              />
-            </div>
-
-            <div className="border-2 border-[var(--mn-line)] p-3 space-y-2">
-              <p className="font-pixel text-[11px] uppercase text-[var(--mn-mute)]">
-                Páginas ({pages.length})
-              </p>
-              {pages.length === 0 && (
-                <p className="font-pixel text-[11px] uppercase text-[var(--mn-mute)]">Nenhuma página selecionada</p>
-              )}
-              <ul className="flex flex-wrap gap-2">
-                {pages.map((page, index) => (
-                  <li key={page.key} className="relative">
-                    <img src={page.previewUrl} alt={`Página ${index + 1}`} className="w-14 h-20 object-cover border border-[var(--mn-line)]" />
-                    <span className="absolute bottom-0 left-0 bg-black/70 px-1 font-pixel text-[9px] text-white">
-                      Pág {index + 1}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
+          {pages.length > 0 && (
+            <p className="font-pixel text-[11px] uppercase text-[var(--mn-mute)]">
+              {pages.length} página(s) selecionada(s)
+            </p>
+          )}
         </section>
       )}
 
@@ -289,8 +253,8 @@ export function ChapterPublishWizard() {
         <section className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-5 space-y-4">
           <h3 className="font-display text-xl text-[var(--mn-paper)] uppercase">Organize as páginas</h3>
           <p className="font-body text-xs text-[var(--mn-mute)]">
-            A ordem das páginas é a ordem de leitura. Use as setas para mover, o ícone de lixeira para remover
-            e o zoom para conferir antes de publicar.
+            A ordem das páginas é a ordem de leitura. Use as setas para mover, o ícone de lixeira para
+            remover e o zoom para conferir antes de publicar.
           </p>
           <ul className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
             {pages.map((page, index) => (
@@ -342,124 +306,70 @@ export function ChapterPublishWizard() {
         </section>
       )}
 
-      {/* ETAPA 3 — Ajustar capa */}
+      {/* ETAPA 3 — Capa do capítulo */}
       {step === 3 && (
         <section className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-5 space-y-4">
-          <h3 className="font-display text-xl text-[var(--mn-paper)] uppercase">Ajustar capa</h3>
+          <h3 className="font-display text-xl text-[var(--mn-paper)] uppercase">Capa do capítulo</h3>
           <p className="font-body text-xs text-[var(--mn-mute)]">
-            A capa é recortada e redimensionada pelo servidor (512px, sem metadados). Confira o enquadramento
-            e troque o arquivo se precisar.
+            Opcional: se você não enviar, o capítulo usa a capa da obra.
           </p>
           <div className="flex flex-wrap items-center gap-4">
             {coverPreview && (
-              <img src={coverPreview} alt="Capa da obra" className="w-40 h-56 object-cover border-2 border-[var(--mn-yellow)]" />
+              <img src={coverPreview} alt="Capa do capítulo" className="w-28 h-40 object-cover border-2 border-[var(--mn-yellow)]" />
             )}
             <Button type="button" variant="ghost" onClick={() => coverInputRef.current?.click()}>
-              {coverFile ? 'TROCAR ARQUIVO DA CAPA' : 'ESCOLHER A CAPA'}
+              {coverFile ? 'TROCAR ARQUIVO' : 'ESCOLHER CAPA DO CAPÍTULO'}
             </Button>
+            <input
+              ref={coverInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={(event) => {
+                pickCover(event.target.files?.[0]);
+                event.target.value = '';
+              }}
+            />
           </div>
         </section>
       )}
 
-      {/* ETAPA 4 — Revisar metadados */}
+      {/* ETAPA 4 — Revisar */}
       {step === 4 && (
         <section className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-5 space-y-4">
-          <h3 className="font-display text-xl text-[var(--mn-paper)] uppercase">Revise os metadados</h3>
-          <Field label="TÍTULO DA OBRA" value={title} onChange={(event) => setTitle(event.target.value)} />
-          <div className="space-y-1.5">
-            <label htmlFor="wizard-synopsis" className="font-body text-sm font-semibold text-[var(--mn-paper)] block">
-              SINOPSE
-            </label>
-            <textarea
-              id="wizard-synopsis"
-              value={synopsis}
-              onChange={(event) => setSynopsis(event.target.value)}
-              rows={3}
-              className="w-full p-3 bg-[var(--mn-ink-2)] text-[var(--mn-paper)] font-body text-sm border-2 border-[var(--mn-line)] focus:border-[var(--mn-paper)] focus:shadow-[3px_3px_0_var(--mn-yellow)] outline-none"
-            />
-          </div>
-          <div className="space-y-2">
-            <p className="font-body text-sm font-semibold text-[var(--mn-paper)]">GÊNEROS</p>
-            <div className="flex flex-wrap gap-2">
-              {GENRES.map((genre) => (
-                <button
-                  key={genre}
-                  type="button"
-                  onClick={() =>
-                    setGenres((current) =>
-                      current.includes(genre) ? current.filter((item) => item !== genre) : [...current, genre]
-                    )
-                  }
-                  aria-pressed={genres.includes(genre)}
-                  className={`px-3 py-1 border-2 font-pixel text-[11px] uppercase transition-colors ${
-                    genres.includes(genre)
-                      ? 'bg-[var(--mn-yellow)] text-[var(--mn-ink)] border-[var(--mn-ink)]'
-                      : 'border-[var(--mn-line)] text-[var(--mn-paper)] hover:border-[var(--mn-yellow)]'
-                  }`}
-                >
-                  {genre}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="space-y-2">
-            <p className="font-body text-sm font-semibold text-[var(--mn-paper)]">FORMATO</p>
-            <div className="flex gap-2">
-              {(['MANGA', 'LIGHT_NOVEL'] as const).map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  onClick={() => setFormat(option)}
-                  aria-pressed={format === option}
-                  className={`px-3 py-1 border-2 font-pixel text-[11px] uppercase transition-colors ${
-                    format === option
-                      ? 'bg-[var(--mn-yellow)] text-[var(--mn-ink)] border-[var(--mn-ink)]'
-                      : 'border-[var(--mn-line)] text-[var(--mn-paper)] hover:border-[var(--mn-yellow)]'
-                  }`}
-                >
-                  {option === 'MANGA' ? 'MANGÁ (PÁGINAS)' : 'LIGHT NOVEL (PROSA)'}
-                </button>
-              ))}
-            </div>
-          </div>
-          <label className="flex items-start gap-2">
-            <input
-              type="checkbox"
-              checked={declared}
-              onChange={(event) => setDeclared(event.target.checked)}
-              className="mt-1 w-5 h-5 accent-[var(--mn-yellow)] cursor-pointer"
-            />
-            <span className="font-display text-sm text-[var(--mn-paper)] uppercase leading-snug">
-              Declaro que todas as obras e capítulos publicados nesta conta são de minha autoria original.
-            </span>
-          </label>
-        </section>
-      )}
-
-      {/* ETAPA 5 — Publicar */}
-      {step === 5 && (
-        <section className="border-2 border-[var(--mn-yellow)] bg-[var(--mn-ink-2)] p-5 space-y-4">
-          <h3 className="font-display text-xl text-[var(--mn-paper)] uppercase">Publicar</h3>
+          <h3 className="font-display text-xl text-[var(--mn-paper)] uppercase">Revise antes de publicar</h3>
+          <Field label="TÍTULO DO CAPÍTULO" value={chapterTitle} onChange={(event) => setChapterTitle(event.target.value)} />
           <dl className="grid sm:grid-cols-2 gap-2 font-body text-sm">
             <div className="flex justify-between border-b border-[var(--mn-line)] py-1">
-              <dt className="text-[var(--mn-mute)]">Título</dt>
-              <dd className="text-[var(--mn-paper)]">{title}</dd>
+              <dt className="text-[var(--mn-mute)]">Obra</dt>
+              <dd className="text-[var(--mn-paper)]">{workTitle}</dd>
+            </div>
+            <div className="flex justify-between border-b border-[var(--mn-line)] py-1">
+              <dt className="text-[var(--mn-mute)]">Número</dt>
+              <dd className="text-[var(--mn-paper)]">{nextChapterNumber}</dd>
             </div>
             <div className="flex justify-between border-b border-[var(--mn-line)] py-1">
               <dt className="text-[var(--mn-mute)]">Páginas</dt>
               <dd className="text-[var(--mn-paper)]">{pages.length}</dd>
             </div>
             <div className="flex justify-between border-b border-[var(--mn-line)] py-1">
-              <dt className="text-[var(--mn-mute)]">Formato</dt>
-              <dd className="text-[var(--mn-paper)]">{format}</dd>
-            </div>
-            <div className="flex justify-between border-b border-[var(--mn-line)] py-1">
-              <dt className="text-[var(--mn-mute)]">Gêneros</dt>
-              <dd className="text-[var(--mn-paper)]">{genres.join(', ') || '—'}</dd>
+              <dt className="text-[var(--mn-mute)]">Capa própria</dt>
+              <dd className="text-[var(--mn-paper)]">{coverFile ? 'sim' : 'usa a capa da obra'}</dd>
             </div>
           </dl>
+        </section>
+      )}
+
+      {/* ETAPA 5 — Publicar */}
+      {step === 5 && (
+        <section className="border-2 border-[var(--mn-yellow)] bg-[var(--mn-ink-2)] p-5 space-y-4">
+          <h3 className="font-display text-xl text-[var(--mn-paper)] uppercase">Publicar capítulo</h3>
+          <p className="font-body text-xs text-[var(--mn-mute)]">
+            O capítulo entra na obra <strong className="text-[var(--mn-paper)]">{workTitle}</strong> e fica
+            disponível no catálogo.
+          </p>
           <Button onClick={publish} disabled={busy} variant="primary" className="!px-6">
-            {busy ? 'PUBLICANDO...' : 'PUBLICAR OBRA NO CATÁLOGO OFICIAL'}
+            {busy ? 'PUBLICANDO...' : 'PUBLICAR CAPÍTULO'}
           </Button>
         </section>
       )}
@@ -469,9 +379,7 @@ export function ChapterPublishWizard() {
         <Button type="button" variant="ghost" onClick={() => goToStep(step - 1)} disabled={step <= 1}>
           <ChevronLeft size={14} /> VOLTAR
         </Button>
-        <span className="font-pixel text-[11px] uppercase text-[var(--mn-mute)]">
-          Etapa {step} de 5
-        </span>
+        <span className="font-pixel text-[11px] uppercase text-[var(--mn-mute)]">Etapa {step} de 5</span>
         <Button type="button" variant="ghost" onClick={() => goToStep(step + 1)} disabled={step >= maxStep}>
           AVANÇAR <ChevronRight size={14} />
         </Button>

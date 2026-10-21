@@ -4,7 +4,6 @@ import { ShieldAlert, Check, Upload } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Field } from '../components/ui/Field';
 import { CreatorMissionsPanel } from '../components/creator/CreatorMissionsPanel';
-import { ChapterPublishWizard } from '../components/creator/ChapterPublishWizard';
 import { AvatarCropper } from '../components/common/AvatarCropper';
 import { LevelPatch } from '../components/ui/LevelPatch';
 import { Sticker } from '../components/ui/Sticker';
@@ -264,19 +263,6 @@ export function CreatorWorkspacePage({ section = 'dashboard', onOpenPublicProfil
         />
       )}
 
-      {/* 4. Publicacao em 5 etapas (mesma ordem e regras do MangaTeofilo) */}
-      {section === 'works' && (
-      <section className="border-2 border-[var(--mn-yellow)] bg-[var(--mn-ink-2)] p-6 sm:p-8 space-y-6 shadow-[6px_6px_0_var(--mn-yellow)]">
-        <div>
-          <h2 className="font-display text-3xl text-[var(--mn-paper)] uppercase">PUBLICAR OBRA</h2>
-          <p className="font-body text-xs text-[var(--mn-mute)] mt-0.5">
-            Upload, organizaÃ§Ã£o das pÃ¡ginas, capa, metadados e publicaÃ§Ã£o â€” nesta ordem,
-            com o checklist e o travamento de etapa do MangaTeofilo.
-          </p>
-        </div>
-        <ChapterPublishWizard />
-      </section>
-      )}
 
       {/* Recortador de avatar: arraste + zoom antes de gravar (padrao MangaTeofilo) */}
       {avatarCropFile && (

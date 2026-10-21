@@ -675,6 +675,20 @@ O detalhe público da obra agora omite capítulos com `publicReleaseAt` futuro; 
   confirmacao em **modal**, foco visivel, alvos >= 44px e informacao nunca so por cor.
 - [x] **Suite:** **366 testes**, 0 falhas, 0 erros; build do frontend verde.
 
+## 7.26 Obras e CapÃ­tulos: responsabilidades separadas (2026-10-21)
+
+- [x] **A mistura foi corrigida:** "Minhas obras" e "CapÃ­tulos" passam a terpaper as responsabilidades
+  separadas do MangaTeofilo (`ObrasList`/`ObrasEditor` x `CreatorChaptersPage`):
+  - **Minhas obras**: lanÃ§ar e CONFIGURAR a obra (capa, banner, categorias, tÃ­tulo, sinopse e
+    estado). NÃ£o publica capÃ­tulo.
+  - **CapÃ­tulos**: escolher uma obra SUA (o seletor lista as obras de "Minhas obras") e publicar o
+    capÃ­tulo no fluxo de 5 etapas (pÃ¡ginas, capa do capÃ­tulo, revisÃ£o, publicaÃ§Ã£o). NÃ£o cria obra.
+- [x] **API nova (a ediÃ§Ã£o de obra nÃ£o existia):** `PUT /api/works/{workId}` (sÃ³ o autor; capa/banner
+  validados por `WorkImageUrlPolicy`, que sÃ³ aceita arquivo enviado ao storage da plataforma),
+  `DELETE /api/works/{workId}` (sÃ³ o autor) e `GET /api/works/mine` (a lista do painel).
+- [x] **Suite:** **366 testes**, 0 falhas, 0 erros; build do frontend verde.
+
+## 8. Ordem de corre
 ## 8. Ordem de corre
 ## 8. Ordem de corre
 ## 8. Ordem de corre

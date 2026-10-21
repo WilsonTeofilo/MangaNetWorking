@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -177,7 +178,93 @@ public class WorkApplicationService {
     /**
      * Cadastro de nova obra pelo autor com declaração obrigatória de autoria original
      */
+    /**
+     * Lista as obras do proprio autor (tela "Minhas obras").
+     *
+     * @param creatorId autor da sessao
+     * @return as obras dele, da mais atual para a mais antiga
+     */
+    @Transactional(readOnly = true)
+    public List<CreatorWorkSummaryResponseDto> listCreatorWorks(UUID creatorId) {
+        return workRepository.findAllByAuthorId(creatorId).stream()
+                .map(work -> new CreatorWorkSummaryResponseDto(
+                        work.getId(),
+                        work.getTitle(),
+                        work.getSlug(),
+                        work.getCoverUrl(),
+                        work.getBannerUrl(),
+                        work.getStatus(),
+                        work.getTotalChapters(),
+                        work.getTotalViews(),
+                        work.getTotalLikes()))
+                .sorted(Comparator.comparing(CreatorWorkSummaryResponseDto::title, String.CASE_INSENSITIVE_ORDER))
+                .toList();
+    }
+
+    /**
+     * Atualiza a configuracao da obra pelo proprio autor (capa, banner, categorias,
+     * titulo, sinopse e estado). Capitulos NAO sao tocados aqui: cada capitulo tem
+     * o proprio fluxo de publicacao.
+     *
+     * @param creatorId autor da sessao
+     * @param workId    obra a atualizar
+     * @param dto       novos dados
+     * @return a obra atualizada
+     */
+    /**
+     * Remove a obra do proprio autor (com os capitulos vinculados em cascata).
+     *
+     * @param creatorId autor da sessao
+     * @param workId    obra a remover
+     */
     @Transactional
+    public void deleteWork(UUID creatorId, UUID workId) {
+        WorkEntity work = workRepository.findById(workId)
+                .orElseThrow(() -> new ResourceNotFoundException("Obra nao encontrada"));
+        if (work.getAuthor() == null || !creatorId.equals(work.getAuthor().getId())) {
+            throw new AccessDeniedException("Apenas o autor da obra pode remove-la.");
+        }
+        workRepository.delete(work);
+    }
+
+    public WorkEntity updateWork(UUID creatorId, UUID workId, UpdateWorkRequestDto dto) {
+        WorkEntity work = workRepository.findById(workId)
+                .orElseThrow(() -> new ResourceNotFoundException("Obra nÃ£o encontrada"));
+        if (work.getAuthor() == null || !creatorId.equals(work.getAuthor().getId())) {
+            throw new AccessDeniedException("Apenas o autor da obra pode alterÃ¡-la.");
+        }
+
+        work.setTitle(com.manganetworking.util.SanitizationUtils.stripAllHtml(dto.title().trim()));
+        work.setSynopsis(com.manganetworking.util.SanitizationUtils.sanitizeText(dto.synopsis().trim()));
+        work.setCoverUrl(WorkImageUrlPolicy.cover(dto.coverUrl()));
+        work.setBannerUrl(dto.bannerUrl() != null && !dto.bannerUrl().isBlank()
+                ? WorkImageUrlPolicy.banner(dto.bannerUrl())
+                : null);
+        if (dto.genres() != null && !dto.genres().isEmpty()) {
+            work.setGenres(new ArrayList<>(dto.genres()));
+        }
+        if (dto.format() != null) {
+            work.setFormat(dto.format());
+        }
+        if (dto.status() != null && !dto.status().isBlank()) {
+            work.setStatus(normalizeWorkStatus(dto.status()));
+        }
+
+        WorkEntity saved = workRepository.save(work);
+        publishFeedSync(saved.getId(), "atualizacao");
+        return saved;
+    }
+
+    /** Estados aceitos na configuracao da obra (rascunho, em lancamento, concluida). */
+    private String normalizeWorkStatus(String status) {
+        String value = status.trim().toLowerCase(Locale.ROOT);
+        return switch (value) {
+            case "draft" -> "draft";
+            case "completed" -> "completed";
+            default -> "ongoing";
+        };
+    }
+
     public WorkEntity createWork(UUID creatorId, CreateWorkRequestDto dto) {
         if (!dto.originalAuthorDeclaration()) {
             throw new IllegalArgumentException("É obrigatório declarar a autoria original da obra.");

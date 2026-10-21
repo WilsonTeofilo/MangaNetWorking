@@ -14,8 +14,11 @@ import com.manganetworking.domain.relational.ChapterEntity;
 import com.manganetworking.domain.relational.WorkEntity;
 import com.manganetworking.service.work.dto.CreateChapterRequestDto;
 import com.manganetworking.service.work.dto.CreateWorkRequestDto;
+import com.manganetworking.service.work.dto.UpdateWorkRequestDto;
+import com.manganetworking.service.work.dto.CreatorWorkSummaryResponseDto;
 import jakarta.validation.Valid;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -59,6 +62,46 @@ public class WorkController {
                 "isEarlyAccess", chapter.isEarlyAccessForMembers(),
                 "message", "Capítulo cadastrado com sucesso."
         ));
+    }
+
+    /**
+     * Configuracao da obra pelo proprio autor (capa, banner, categorias, titulo,
+     * sinopse e estado). Capitulos tem o proprio fluxo de publicacao.
+     */
+    @PutMapping("/{workId}")
+    public ResponseEntity<Map<String, Object>> updateWork(
+            @PathVariable UUID workId,
+            @Valid @RequestBody UpdateWorkRequestDto dto
+    ) {
+        UUID creatorId = SecurityContextUtils.requireCurrentCreatorId();
+        WorkEntity work = workService.updateWork(creatorId, workId, dto);
+        return ResponseEntity.ok(Map.of(
+                "workId", work.getId(),
+                "title", work.getTitle(),
+                "slug", work.getSlug(),
+                "status", work.getStatus(),
+                "message", "Obra atualizada com sucesso."
+        ));
+    }
+
+    /**
+     * As obras do proprio autor (tela "Minhas obras"): capa, estado e numeros para
+     * configurar e acompanhar cada obra.
+     */
+    /** Remove a obra do proprio autor. */
+    @DeleteMapping("/{workId}")
+    public ResponseEntity<Map<String, Object>> deleteWork(@PathVariable UUID workId) {
+        UUID creatorId = SecurityContextUtils.requireCurrentCreatorId();
+        workService.deleteWork(creatorId, workId);
+        return ResponseEntity.ok(Map.of("message", "Obra removida do catÃ¡logo."));
+    }
+
+    @GetMapping("/mine")
+    public ResponseEntity<List<CreatorWorkSummaryResponseDto>> listMyWorks() {
+        UUID creatorId = SecurityContextUtils.requireCurrentCreatorId();
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(workService.listCreatorWorks(creatorId));
     }
 
     @GetMapping("/{slug}")

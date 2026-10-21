@@ -132,14 +132,20 @@ public class SecurityConfig {
                                 "/api/uploads/upload", "/api/uploads/upload/batch").hasRole("CREATOR")
                         .requestMatchers(HttpMethod.GET, "/api/feed/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/feed/sync").hasRole("MODERATOR")
+                        // As obras do proprio autor: dados privados do painel.
+                        .requestMatchers(HttpMethod.GET, "/api/works/mine").hasRole("CREATOR")
                         .requestMatchers(HttpMethod.GET, "/api/works/**").permitAll()
                         // Comentário da obra é ação de leitor: vale para qualquer conta autenticada,
                         // então precisa vir ANTES da regra de POST de /api/works/** (só criador).
+                        // Configuracao da obra (capa, banner, categorias) e do autor.
+                        .requestMatchers(HttpMethod.PUT, "/api/works/*").hasRole("CREATOR")
+                        .requestMatchers(HttpMethod.DELETE, "/api/works/*").hasRole("CREATOR")
                         .requestMatchers(HttpMethod.POST, "/api/works/*/comments").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/works/**").hasRole("CREATOR")
                         // Workspace do criador é dado privado (saldo, doações, chave PIX): exige sessão de criador.
                         // Deve vir ANTES do permitAll de /api/creators/** (primeiro match vence).
                         .requestMatchers(HttpMethod.GET, "/api/creators/workspace").hasRole("CREATOR")
+                        .requestMatchers(HttpMethod.GET, "/api/creators/workspace/works").hasRole("CREATOR")
                         .requestMatchers(HttpMethod.GET, "/api/creators/analytics", "/api/creators/season").hasRole("CREATOR")
                         // Transição de leitor para escritor e seguir/seguir-fora: ação de qualquer conta
                         // autenticada. Precisa vir ANTES da regra de POST de /api/creators/** (só criador).
