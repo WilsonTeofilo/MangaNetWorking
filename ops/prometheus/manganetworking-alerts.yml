@@ -26,7 +26,7 @@ groups:
           severity: critical
         annotations:
           summary: Elevação de bounces de e-mail
-          description: Mais de cinco bounces ou complaints em trinta minutos: a reputação do domínio está em risco e a entrega de OTP pode falhar.
+          description: "Mais de cinco bounces ou complaints em trinta minutos: a reputação do domínio está em risco e a entrega de OTP pode falhar."
 
       - alert: EmailDeliveriesSuppressed
         expr: sum(increase(manganetworking_security_email_delivery_total{outcome="suppressed"}[30m])) > 10

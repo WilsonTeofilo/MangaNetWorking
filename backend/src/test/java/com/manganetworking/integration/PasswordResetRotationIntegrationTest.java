@@ -64,6 +64,7 @@ class PasswordResetRotationIntegrationTest {
         UserEntity user = new UserEntity();
         String email = "reset-rotation-" + UUID.randomUUID() + "@example.test";
         user.setEmail(email);
+        user.setUsername("resetrotation" + UUID.randomUUID().toString().replace("-", "").substring(0, 12));
         user.setName("Reset Rotation");
         user.setPasswordHash("$2a$12$integrationOnly");
         users.save(user);

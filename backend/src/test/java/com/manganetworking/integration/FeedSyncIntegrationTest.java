@@ -224,6 +224,7 @@ class FeedSyncIntegrationTest {
 
         UserEntity user = new UserEntity();
         user.setEmail(handle + "@exemplo.test");
+        user.setUsername(handle);
         user.setName("Autor de Integração");
         user.setCreator(true);
         user.setPasswordHash("$2a$12$testeDeIntegracaoSemLogin");

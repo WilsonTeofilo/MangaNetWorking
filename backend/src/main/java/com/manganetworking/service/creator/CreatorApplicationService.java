@@ -2,18 +2,22 @@ package com.manganetworking.service.creator;
 
 import com.manganetworking.config.exception.ResourceNotFoundException;
 import com.manganetworking.domain.nosql.CreatorMissionDocument;
+import com.manganetworking.domain.enums.PixKeyType;
 import com.manganetworking.domain.relational.CreatorEntity;
 import com.manganetworking.domain.relational.UserEntity;
 import com.manganetworking.domain.relational.WorkEntity;
 
 import com.manganetworking.repository.jpa.CreatorRepository;
 import com.manganetworking.repository.jpa.CreatorPixKeyAuditRepository;
+import com.manganetworking.repository.jpa.UserRepository;
 import com.manganetworking.repository.jpa.WorkRepository;
 import com.manganetworking.repository.mongo.CreatorMissionMongoRepository;
 import com.manganetworking.service.monetization.MonetizationService;
 import com.manganetworking.service.mfa.TwoFactorAuthService;
 import com.manganetworking.service.storage.ProfileAvatarUrlPolicy;
 import com.manganetworking.service.creator.dto.*;
+import com.manganetworking.util.CpfValidator;
+import com.manganetworking.util.SocialLinkPolicy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,6 +34,7 @@ public class CreatorApplicationService {
     private final CreatorMissionMongoRepository missionRepository;
     private final MonetizationService monetizationService;
     private final TwoFactorAuthService twoFactorAuthService;
+    private final UserRepository userRepository;
 
     public CreatorApplicationService(
             CreatorRepository creatorRepository,
@@ -37,7 +42,8 @@ public class CreatorApplicationService {
             WorkRepository workRepository,
             CreatorMissionMongoRepository missionRepository,
             MonetizationService monetizationService,
-            TwoFactorAuthService twoFactorAuthService
+            TwoFactorAuthService twoFactorAuthService,
+            UserRepository userRepository
     ) {
         this.creatorRepository = creatorRepository;
         this.pixKeyAuditRepository = pixKeyAuditRepository;
@@ -45,6 +51,58 @@ public class CreatorApplicationService {
         this.missionRepository = missionRepository;
         this.monetizationService = monetizationService;
         this.twoFactorAuthService = twoFactorAuthService;
+        this.userRepository = userRepository;
+    }
+
+    /**
+     * Transição de leitor para escritor.
+     *
+     * <p>Leitor só lê, curte, comenta e usa a biblioteca. Quem quiser publicar assume o perfil
+     * de escritor e precisa declarar <strong>pelo menos um vínculo social</strong> — é o que dá
+     * identidade pública verificável ao perfil e evita perfis de fachada. O CPF é opcional:
+     * só é exigido para monetizar.</p>
+     */
+    @Transactional
+    public CreatorEntity applyAsWriter(UUID userId, ApplyAsCreatorRequestDto dto) {
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado"));
+
+        if (creatorRepository.findByUserId(userId).isPresent()) {
+            throw new IllegalArgumentException("Você já tem um perfil de escritor.");
+        }
+
+        String instagram = SocialLinkPolicy.sanitizeOptional(dto.instagramUrl());
+        String youtube = SocialLinkPolicy.sanitizeOptional(dto.youtubeUrl());
+        String portfolio = SocialLinkPolicy.sanitizeOptional(dto.portfolioUrl());
+        if (instagram == null && youtube == null && portfolio == null) {
+            throw new IllegalArgumentException(
+                    "Informe pelo menos um link social (Instagram, YouTube ou portfólio) para criar o perfil de escritor.");
+        }
+
+        String cpf = dto.cpf() == null || dto.cpf().isBlank() ? null : dto.cpf().replaceAll("\\D", "");
+        if (cpf != null && !CpfValidator.isValid(cpf)) {
+            throw new IllegalArgumentException("O CPF informado é inválido.");
+        }
+
+        CreatorEntity creator = new CreatorEntity();
+        creator.setUser(user);
+        creator.setHandle(dto.handle() != null && !dto.handle().isBlank()
+                ? dto.handle().replace("@", "").trim()
+                : "autor_" + UUID.randomUUID().toString().substring(0, 6));
+        creator.setBio("Novo escritor na MangaNetWorking.");
+        creator.setInstagramUrl(instagram);
+        creator.setYoutubeUrl(youtube);
+        creator.setPortfolioUrl(portfolio);
+        creator.setDocumentCpf(cpf);
+        creator.setPixKey(user.getEmail());
+        creator.setPixKeyType(PixKeyType.EMAIL);
+        creator.setMonetizationLevel(0);
+        creatorRepository.save(creator);
+
+        user.setCreator(true);
+        userRepository.save(user);
+
+        return creator;
     }
 
 

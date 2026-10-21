@@ -67,6 +67,11 @@ public class UserProfileApplicationService {
         this.privacyComplianceService = privacyComplianceService;
     }
 
+    /** Identificador gerado automaticamente (placeholder) que ainda pode ser reivindicado. */
+    private boolean isGeneratedUsername(UserEntity user) {
+        return user.getUsername() != null
+                && user.getUsername().equals("user_" + user.getId().toString().replace("-", "").substring(0, 12));
+    }
     @Transactional(readOnly = true)
     public ReaderProfileResponseDto getReaderProfile(UUID targetUserId, UUID currentUserId) {
         UserEntity user = userRepository.findById(targetUserId)
@@ -115,7 +120,21 @@ public class UserProfileApplicationService {
         if (dto.avatarUrl() != null) {
             user.setAvatarUrl(ProfileAvatarUrlPolicy.validate(dto.avatarUrl()));
         }
-        if (dto.isProfilePublic() != null) {
+        if (dto.username() != null && !dto.username().isBlank()) {
+        String requested = com.manganetworking.util.UsernamePolicy.normalize(dto.username());
+        if (!requested.equalsIgnoreCase(user.getUsername())) {
+          // Username é imutável depois de escolhido: só a conta que ainda usa o
+          // identificador gerado (user_<id>) pode reivindicar um username próprio.
+          if (!isGeneratedUsername(user)) {
+            throw new IllegalArgumentException("Este username já foi escolhido e não pode ser alterado.");
+          }
+          if (userRepository.existsByUsernameIgnoreCase(requested)) {
+            throw new IllegalArgumentException("Este username já está em uso.");
+          }
+          user.setUsername(requested);
+        }
+      }
+      if (dto.isProfilePublic() != null) {
             user.setProfilePublic(dto.isProfilePublic());
         }
 

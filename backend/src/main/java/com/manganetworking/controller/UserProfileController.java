@@ -18,9 +18,12 @@ import jakarta.servlet.http.HttpServletRequest;
 public class UserProfileController {
 
     private final UserProfileApplicationService profileService;
+    private final com.manganetworking.service.user.PublicProfileService publicProfileService;
 
-    public UserProfileController(UserProfileApplicationService profileService) {
+    public UserProfileController(UserProfileApplicationService profileService,
+                                 com.manganetworking.service.user.PublicProfileService publicProfileService) {
         this.profileService = profileService;
+        this.publicProfileService = publicProfileService;
     }
 
     @GetMapping("/{userId}/profile")
@@ -31,6 +34,17 @@ public class UserProfileController {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(profileService.getReaderProfile(userId, currentUserId));
+    }
+
+    /**
+     * Perfil público por username — a página pública que os demais visitam.
+     * A privacidade é decidida no serviço: perfil privado devolve apenas o username.
+     */
+    @GetMapping("/{username}/public-profile")
+    public ResponseEntity<PublicProfileResponseDto> getPublicProfile(@PathVariable String username) {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(publicProfileService.getPublicProfile(username));
     }
 
     @PutMapping("/profile")

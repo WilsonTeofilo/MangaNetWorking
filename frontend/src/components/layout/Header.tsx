@@ -1,25 +1,87 @@
-import { Heart, BookOpen, Compass, Info, User as UserIcon, Crown, ShieldAlert, LogOut } from 'lucide-react';
+import { Heart, BookOpen, Compass, Info, User as UserIcon, Crown, ShieldAlert, LogOut, ChevronDown, PenLine, LayoutDashboard, Trophy, BarChart3, BookMarked, Coins } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useModals } from '../../context/ModalContext';
 import logoSymbol from '../../assets/brand/logo-symbol.svg';
 
+export type AppTab =
+  | 'feed'
+  | 'works'
+  | 'library'
+  | 'about'
+  | 'login'
+  | 'moderation'
+  | 'account'
+  | 'reader-profile'
+  | 'onboarding'
+  | 'public-profile'
+  | 'creator-dashboard'
+  | 'creator-missions'
+  | 'creator-analytics'
+  | 'creator-works'
+  | 'creator-chapters'
+  | 'creator-monetization';
+
 interface HeaderProps {
-  currentTab: 'feed' | 'works' | 'library' | 'creator-workspace' | 'reader-profile' | 'login' | 'moderation' | 'about';
-  setCurrentTab: (tab: 'feed' | 'works' | 'library' | 'creator-workspace' | 'reader-profile' | 'login' | 'moderation' | 'about') => void;
+  currentTab: AppTab;
+  setCurrentTab: (tab: AppTab) => void;
   onOpenLogin?: () => void;
+  /** Username aberto na página pública (usado no item "Minha conta"). */
+  publicProfileUsername?: string;
 }
 
-export function Header({ currentTab, setCurrentTab, onOpenLogin }: HeaderProps) {
-  const { user, isAuthenticated, toggleCreatorMode, logout } = useAuth();
+/**
+ * Cabeçalho da banca.
+ *
+ * Não existe mais a divisão "modo criador / modo leitor" no topo: o papel é do servidor e
+ * a pessoa escolhe o que quer fazer pelo menu do próprio avatar (canto superior direito),
+ * no mesmo formato do MangaTeofilo.
+ */
+export function Header({ currentTab, setCurrentTab, onOpenLogin, publicProfileUsername }: HeaderProps) {
+  const { user, isAuthenticated, logout } = useAuth();
   const { openVip } = useModals();
-  const isLoggedIn = isAuthenticated;
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
   // O proprietário herda a operação de moderação no backend; a UI reflete o mesmo acesso.
   const canModerate = Boolean(user.isOwner || user.isModerator);
 
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onClickOutside);
+    document.addEventListener('keydown', onEscape);
+    return () => {
+      document.removeEventListener('mousedown', onClickOutside);
+      document.removeEventListener('keydown', onEscape);
+    };
+  }, [menuOpen]);
+
+  const go = (tab: AppTab) => {
+    setMenuOpen(false);
+    setCurrentTab(tab);
+  };
+
   const handleLogout = async () => {
+    setMenuOpen(false);
     await logout();
     setCurrentTab('feed');
   };
+
+  const creatorMenu: { label: string; tab: AppTab; icon: typeof LayoutDashboard }[] = [
+    { label: 'Workspace do criador', tab: 'creator-dashboard', icon: LayoutDashboard },
+    { label: 'Minhas obras', tab: 'creator-works', icon: BookMarked },
+    { label: 'Capítulos', tab: 'creator-chapters', icon: PenLine },
+    { label: 'Missões & XP', tab: 'creator-missions', icon: Trophy },
+    { label: 'Analytics', tab: 'creator-analytics', icon: BarChart3 },
+    { label: 'Monetização', tab: 'creator-monetization', icon: Coins },
+  ];
 
   return (
     <>
@@ -27,11 +89,11 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin }: HeaderProps) 
         {/* Container próprio da barra: mais largo que o mn-container (1200px) e com
             respiro crescente, no padrão do header do MangaTeofilo. */}
         <div className="w-full max-w-[1440px] 2xl:max-w-[1680px] mx-auto px-3 sm:px-5 2xl:px-10 flex items-center justify-between gap-4 sm:gap-6 lg:gap-4">
-          
+
           {/* Brand Oficial com Logo em Adesivo */}
           <div
             className="flex items-center gap-2 sm:gap-3 cursor-pointer group shrink-0"
-            onClick={() => setCurrentTab('feed')}
+            onClick={() => go('feed')}
             title="MangaNetWorking — A Banca Digital do Mangá Independente"
           >
             <img
@@ -50,7 +112,7 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin }: HeaderProps) 
           <nav className="hidden lg:flex items-center gap-2 2xl:gap-6">
             <button
               type="button"
-              onClick={() => setCurrentTab('feed')}
+              onClick={() => go('feed')}
               className={`px-3 py-1.5 font-display text-sm lg:text-base tracking-wider uppercase transition-all ${
                 currentTab === 'feed'
                   ? 'bg-[#FFD400] text-[#0B0B0C] border-2 border-[#0B0B0C] shadow-[3px_3px_0_#0B0B0C]'
@@ -62,7 +124,7 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin }: HeaderProps) 
 
             <button
               type="button"
-              onClick={() => setCurrentTab('works')}
+              onClick={() => go('works')}
               className={`px-3 py-1.5 font-display text-sm lg:text-base tracking-wider uppercase transition-all ${
                 currentTab === 'works'
                   ? 'bg-[#FFD400] text-[#0B0B0C] border-2 border-[#0B0B0C] shadow-[3px_3px_0_#0B0B0C]'
@@ -74,7 +136,7 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin }: HeaderProps) 
 
             <button
               type="button"
-              onClick={() => setCurrentTab('about')}
+              onClick={() => go('about')}
               className={`px-3 py-1.5 font-display text-sm lg:text-base tracking-wider uppercase transition-all ${
                 currentTab === 'about'
                   ? 'bg-[#E8402F] text-[#F4EFE3] border-2 border-[#0B0B0C] shadow-[3px_3px_0_#F4EFE3]'
@@ -86,7 +148,7 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin }: HeaderProps) 
 
             <button
               type="button"
-              onClick={() => setCurrentTab('library')}
+              onClick={() => go('library')}
               aria-label={`Biblioteca (${user.favorites.length} obras)`}
               className={`px-3 py-1.5 font-display text-sm lg:text-base tracking-wider uppercase flex items-center gap-1.5 transition-all ${
                 currentTab === 'library'
@@ -102,16 +164,6 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin }: HeaderProps) 
 
           {/* Ações da Direita Dirigidas pelo Estado de Sessão */}
           <div className="flex items-center gap-2.5 lg:gap-4 shrink-0">
-            {/* Alternar Modo Criador / Leitor (Secondary button) */}
-            <button
-              type="button"
-              onClick={toggleCreatorMode}
-              className="hidden xl:inline-flex items-center px-3.5 py-1.5 border-2 border-[#34343A] bg-[#151517] text-[#F4EFE3] hover:border-[#FFD400] font-pixel text-[12px] uppercase tracking-wider transition-all whitespace-nowrap"
-              title="Alternar entre perfil de criador e leitor"
-            >
-              {user.isCreator ? 'MODO CRIADOR' : 'MODO LEITOR'}
-            </button>
-
             {/* Identidade administrativa explícita; autorização real continua no backend. */}
             {user.isOwner && (
               <div
@@ -148,7 +200,7 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin }: HeaderProps) 
             {canModerate && (
               <button
                 type="button"
-                onClick={() => setCurrentTab('moderation')}
+                onClick={() => go('moderation')}
                 className={`p-1.5 border-2 transition-all ${
                   currentTab === 'moderation'
                     ? 'bg-[#E8402F] text-[#F4EFE3] border-[#E8402F]'
@@ -161,40 +213,113 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin }: HeaderProps) 
               </button>
             )}
 
-            {isLoggedIn ? (
-              /* Usuário Autenticado: Avatar com Borda de Adesivo + Sair */
-              <div className="flex items-center gap-2">
+            {isAuthenticated ? (
+              /* Avatar redondo no canto: abre o menu da conta */
+              <div className="relative" ref={menuRef}>
                 <button
                   type="button"
-                  onClick={() => setCurrentTab(user.isCreator ? 'creator-workspace' : 'reader-profile')}
-                  className="flex items-center gap-2 p-1 bg-[#151517] border-2 border-[#34343A] hover:border-[#FFD400] shadow-[3px_3px_0_#FFD400] transition-all cursor-pointer"
-                  title={`Perfil de ${user.name}`}
+                  onClick={() => setMenuOpen((open) => !open)}
+                  className={`flex items-center gap-1.5 p-1 rounded-full border-2 transition-all ${
+                    menuOpen
+                      ? 'border-[#FFD400] shadow-[3px_3px_0_#FFD400]'
+                      : 'border-[#34343A] hover:border-[#FFD400]'
+                  }`}
+                  title="Minha conta"
+                  aria-haspopup="menu"
+                  aria-expanded={menuOpen}
                 >
                   <img
-                    src={user.avatarUrl}
+                    src={user.avatarUrl || '/avatar-placeholder.png'}
                     alt={user.name}
-                    className="w-8 h-8 object-cover border border-[#0B0B0C]"
+                    className="w-8 h-8 rounded-full object-cover bg-[#1F2833]"
                   />
-                  <span className="hidden xl:inline font-display text-sm text-[#F4EFE3] uppercase pr-1.5">
-                    {user.name.split(' ')[0]}
-                  </span>
+                  <ChevronDown size={14} className={`text-[#A9A59A] transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
                 </button>
 
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="p-2 bg-[#151517] border-2 border-[#34343A] text-[#A9A59A] hover:text-[#FFD400] hover:border-[#FFD400] transition-all cursor-pointer"
-                  title="Sair da conta"
-                  aria-label="Sair da conta"
-                >
-                  <LogOut size={14} />
-                </button>
+                {menuOpen && (
+                  <div
+                    role="menu"
+                    className="absolute right-0 mt-2 w-60 border-2 border-[#34343A] bg-[#12141A] shadow-[6px_6px_0_rgba(0,0,0,0.6)]"
+                  >
+                    <div className="border-b-2 border-[#23252C] px-4 py-3">
+                      <p className="font-display text-sm text-[#F4EFE3] uppercase truncate">{user.name}</p>
+                      <p className="font-pixel text-[11px] text-[#FFD400] mt-0.5">@{user.username || 'sem-username'}</p>
+                    </div>
+
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => go('account')}
+                      className="w-full text-left px-4 py-2.5 font-body text-sm text-[#F4EFE3] hover:bg-[#1F2833] hover:text-[#FFD400] transition-colors"
+                    >
+                      Minha conta
+                    </button>
+
+                    {publicProfileUsername && (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => go('public-profile')}
+                        className="w-full text-left px-4 py-2.5 font-body text-sm text-[#F4EFE3] hover:bg-[#1F2833] hover:text-[#FFD400] transition-colors"
+                      >
+                        Ver minha página pública
+                      </button>
+                    )}
+
+                    {user.isCreator && (
+                      <>
+                        <p className="px-4 pt-3 pb-1 font-pixel text-[11px] tracking-widest text-[#A9A59A] uppercase">
+                          Criador
+                        </p>
+                        {creatorMenu.map((item) => (
+                          <button
+                            key={item.tab}
+                            type="button"
+                            role="menuitem"
+                            onClick={() => go(item.tab)}
+                            className={`w-full text-left px-4 py-2.5 flex items-center gap-2 font-body text-sm transition-colors ${
+                              currentTab === item.tab
+                                ? 'bg-[#FFD400] text-[#0B0B0C] font-semibold'
+                                : 'text-[#F4EFE3] hover:bg-[#1F2833] hover:text-[#FFD400]'
+                            }`}
+                          >
+                            <item.icon size={14} />
+                            {item.label}
+                          </button>
+                        ))}
+                      </>
+                    )}
+
+                    {!user.isCreator && (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => go('onboarding')}
+                        className="w-full text-left px-4 py-2.5 font-body text-sm text-[#F4EFE3] hover:bg-[#1F2833] hover:text-[#FFD400] transition-colors"
+                      >
+                        Quero publicar como escritor
+                      </button>
+                    )}
+
+                    <div className="my-2 border-t-2 border-[#23252C]" />
+
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={handleLogout}
+                      className="w-full text-left px-4 py-2.5 flex items-center gap-2 font-body text-sm text-[#E8402F] hover:bg-[#1F2833] transition-colors"
+                    >
+                      <LogOut size={14} />
+                      Sair
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               /* Usuário Deslogado: Mostra o Único CTA Primário da Tela */
               <button
                 type="button"
-                onClick={onOpenLogin || (() => setCurrentTab('login'))}
+                onClick={onOpenLogin || (() => go('login'))}
                 className="px-3 sm:px-4 py-2 font-display text-sm sm:text-base tracking-wider uppercase bg-[#FFD400] text-[#0B0B0C] border-2 border-[#0B0B0C] shadow-[4px_4px_0_#0B0B0C] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_#0B0B0C] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all cursor-pointer"
               >
                 <span className="sm:hidden">ENTRAR</span>
@@ -212,7 +337,7 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin }: HeaderProps) 
       >
         <button
           type="button"
-          onClick={() => setCurrentTab('feed')}
+          onClick={() => go('feed')}
           className={`flex flex-col items-center justify-center w-14 h-14 ${
             currentTab === 'feed' ? 'text-[#FFD400]' : 'text-[#A9A59A]'
           }`}
@@ -223,7 +348,7 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin }: HeaderProps) 
 
         <button
           type="button"
-          onClick={() => setCurrentTab('works')}
+          onClick={() => go('works')}
           className={`flex flex-col items-center justify-center w-14 h-14 ${
             currentTab === 'works' ? 'text-[#FFD400]' : 'text-[#A9A59A]'
           }`}
@@ -234,7 +359,7 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin }: HeaderProps) 
 
         <button
           type="button"
-          onClick={() => setCurrentTab('library')}
+          onClick={() => go('library')}
           className={`flex flex-col items-center justify-center w-14 h-14 ${
             currentTab === 'library' ? 'text-[#FFD400]' : 'text-[#A9A59A]'
           }`}
@@ -245,7 +370,7 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin }: HeaderProps) 
 
         <button
           type="button"
-          onClick={() => setCurrentTab('about')}
+          onClick={() => go('about')}
           className={`flex flex-col items-center justify-center w-14 h-14 ${
             currentTab === 'about' ? 'text-[#FFD400]' : 'text-[#A9A59A]'
           }`}
@@ -256,11 +381,9 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin }: HeaderProps) 
 
         <button
           type="button"
-          onClick={() => setCurrentTab(user.isCreator ? 'creator-workspace' : 'reader-profile')}
+          onClick={() => (isAuthenticated ? go('account') : (onOpenLogin ? onOpenLogin() : go('login')))}
           className={`flex flex-col items-center justify-center w-14 h-14 ${
-            currentTab === 'reader-profile' || currentTab === 'creator-workspace'
-              ? 'text-[#FFD400]'
-              : 'text-[#A9A59A]'
+            currentTab === 'account' ? 'text-[#FFD400]' : 'text-[#A9A59A]'
           }`}
         >
           <UserIcon size={20} />

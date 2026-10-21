@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { UserProfile } from '../types';
-import { authApi, SessionUserDto } from '../api/authApi';
+import { authApi, SessionUserDto, userApi } from '../api/authApi';
+import { creatorApi } from '../api/creatorApi';
 import { monetizationApi } from '../api/monetizationApi';
 
 interface AuthContextType {
@@ -9,7 +10,10 @@ interface AuthContextType {
   isMemberOf: (creatorId: string) => boolean;
   subscribeToCreator: (creatorId: string, idempotencyKey: string) => Promise<{ checkoutUrl: string; amountBrl: number }>;
   createVipCheckout: () => Promise<{ checkoutUrl: string; priceBrl: number }>;
-  toggleCreatorMode: () => void;
+  /** Transição de leitor para escritor (exige vínculo social no servidor). */
+  becomeWriter: (payload: { handle?: string; instagramUrl?: string; youtubeUrl?: string; portfolioUrl?: string; cpf?: string }) => Promise<{ message: string; creatorId: string; creatorHandle: string }>;
+  /** Atualiza avatar/visibilidade do perfil e reidrata a sessão. */
+  saveProfile: (payload: { avatarUrl?: string; isProfilePublic?: boolean }) => Promise<void>;
   toggleFavorite: (workId: string) => void;
   /** Recarrega a sessão a partir de `/auth/me` (mantém o estado atual se não houver sessão). */
   refreshSession: () => Promise<void>;
@@ -23,7 +27,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const GUEST_USER: UserProfile = {
-  uid: 'guest', name: 'Visitante', email: '', avatarUrl: '', isCreator: false,
+  uid: 'guest', name: 'Visitante', email: '', username: '', avatarUrl: '', isCreator: false,
   isModerator: false, isOwner: false, isVip: false, activeMemberships: {}, favorites: [],
 };
 
@@ -34,6 +38,9 @@ function applySession(prev: UserProfile, session: SessionUserDto): UserProfile {
     uid: session.id,
     name: session.name || prev.name,
     email: session.email || prev.email,
+    username: session.username ?? prev.username,
+    sex: (session.sex as UserProfile['sex']) ?? prev.sex,
+    profilePublic: session.profilePublic ?? prev.profilePublic,
     avatarUrl: session.avatarUrl || prev.avatarUrl,
     isCreator: session.isCreator,
     creatorId: session.creatorId || undefined,
@@ -95,15 +102,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const createVipCheckout = async () => monetizationApi.createVipCheckout();
 
-  const toggleCreatorMode = () => {
-    if (!import.meta.env.DEV) return;
-    setUser(prev => ({
-      ...prev,
-      isCreator: !prev.isCreator,
-      creatorId: !prev.isCreator ? 'creator-teofilo' : undefined
-    }));
+
+  /**
+   * Transição real de leitor para escritor: o servidor exige pelo menos um vínculo social
+   * (Instagram, YouTube ou portfólio). Depois da confirmação a sessão é recarregada,
+   * porque o papel vem do servidor — nunca do cliente.
+   */
+  const becomeWriter = async (payload: {
+    handle?: string;
+    instagramUrl?: string;
+    youtubeUrl?: string;
+    portfolioUrl?: string;
+    cpf?: string;
+  }) => {
+    const result = await creatorApi.applyAsWriter(payload);
+    await refreshSession();
+    return result;
   };
 
+  /** Atualiza o perfil (avatar, visibilidade) e reidrata a sessão com o que o servidor gravou. */
+  const saveProfile = async (payload: { avatarUrl?: string; isProfilePublic?: boolean }) => {
+    await userApi.updateProfile(payload);
+    await refreshSession();
+  };
   const toggleFavorite = (workId: string) => {
     setUser(prev => {
       const exists = prev.favorites.includes(workId);
@@ -124,7 +145,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isMemberOf,
         subscribeToCreator,
         createVipCheckout,
-        toggleCreatorMode,
+        becomeWriter,
+        saveProfile,
         toggleFavorite,
         refreshSession,
         updateAvatarUrl,

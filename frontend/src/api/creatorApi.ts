@@ -40,15 +40,29 @@ export interface CreatorWorkspaceDto {
   missions: CreatorMissionDto[];
 }
 
+export interface CreatorWorkSummary {
+  id: string;
+  title: string;
+  slug: string;
+  synopsis?: string | null;
+  coverUrl?: string | null;
+  totalChapters: number;
+  totalViews: number;
+  totalLikes: number;
+}
+
 export interface CreatorPublicProfileDto {
   id: string;
   name: string;
   handle: string;
   bio?: string | null;
   avatarUrl?: string | null;
+  instagramUrl?: string | null;
+  youtubeUrl?: string | null;
+  portfolioUrl?: string | null;
   membershipPriceBrl: number;
   isMonetized: boolean;
-  [key: string]: unknown;
+  works: CreatorWorkSummary[];
 }
 
 export const creatorApi = {
@@ -91,4 +105,40 @@ export const creatorApi = {
       method: 'POST',
     });
   },
+  /**
+   * Transição de leitor para escritor: o servidor exige pelo menos um vínculo social
+   * (Instagram, YouTube ou portfólio) e cria o perfil público de escritor.
+   */
+  applyAsWriter(payload: {
+    handle?: string;
+    instagramUrl?: string;
+    youtubeUrl?: string;
+    portfolioUrl?: string;
+    cpf?: string;
+  }) {
+    return request<{ message: string; creatorId: string; creatorHandle: string }>('/creators/apply', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  /** Seguir um escritor (só escritores têm seguidores). */
+  followCreator(handle: string) {
+    return request<{ followers: number; following: boolean }>(
+      `/creators/${encodeURIComponent(handle)}/follow`,
+      { method: 'POST' }
+    );
+  },
+
+  unfollowCreator(handle: string) {
+    return request<{ followers: number; following: boolean }>(
+      `/creators/${encodeURIComponent(handle)}/follow`,
+      { method: 'DELETE' }
+    );
+  },
+
+  countFollowers(handle: string) {
+    return request<{ followers: number }>(`/creators/${encodeURIComponent(handle)}/followers`, { method: 'GET' });
+  },
 };
+

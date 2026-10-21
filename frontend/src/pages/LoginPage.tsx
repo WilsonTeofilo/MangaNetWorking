@@ -24,10 +24,10 @@ function randomOtp(): string {
 export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
   const { refreshSession } = useAuth();
   const [mode, setMode] = useState<'login' | 'register'>('login');
-  const [roleIntent, setRoleIntent] = useState<'reader' | 'creator'>('reader');
   const [step, setStep] = useState<'credentials' | 'two-factor'>('credentials');
   const [name, setName] = useState('');
-  const [handle, setHandle] = useState('');
+  const [username, setUsername] = useState('');
+  const [sex, setSex] = useState<'MASCULINO' | 'FEMININO' | 'OUTRO' | 'NAO_INFORMADO'>('NAO_INFORMADO');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -115,15 +115,16 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
         mode === 'register'
           ? await authApi.register({
               name: name.trim(),
+              username: username.trim(),
               email,
               password,
-              isCreator: roleIntent === 'creator',
-              handle: roleIntent === 'creator' ? handle.trim() || undefined : undefined,
+              isCreator: false,
+              sex,
               termsAccepted: true,
               privacyPolicyVersion,
               birthDate: birthDate ? birthDate : undefined,
             })
-          : await authApi.login({ email, password });
+            : await authApi.login({ identifier: email.trim(), password });
 
 
       const targetEmail = challenge.email || email;
@@ -162,7 +163,7 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
     setIsLoading(true);
     try {
       if (!isDemoMode) {
-        await authApi.verify2fa({ email: challengeEmail || email, code: twoFactorCode });
+        await authApi.verify2fa({ identifier: challengeEmail || email, code: twoFactorCode });
       }
       await completeLogin();
     } catch (err) {
@@ -302,35 +303,15 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
 
               {/* Botões Grandes de Seleção de Papel (apenas no cadastro) */}
               {mode === 'register' && (
-                <div className="space-y-2">
+                <div className="space-y-2 border-2 border-[#34343A] bg-[#212125] p-3">
                   <span className="font-pixel text-[12px] text-[#A9A59A] tracking-wider uppercase block">
-                    CRIAR COMO:
+                    TODAS AS CONTAS COMEÇAM COMO LEITOR
                   </span>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setRoleIntent('reader')}
-                      className={`p-3 border-2 font-display text-base tracking-wider uppercase transition-all ${
-                        roleIntent === 'reader'
-                          ? 'bg-[#FFD400] text-[#0B0B0C] border-[#0B0B0C] shadow-[3px_3px_0_#F4EFE3]'
-                          : 'bg-[#212125] text-[#A9A59A] border-[#34343A] hover:text-[#F4EFE3]'
-                      }`}
-                    >
-                      SOU LEITOR
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setRoleIntent('creator')}
-                      className={`p-3 border-2 font-display text-base tracking-wider uppercase transition-all ${
-                        roleIntent === 'creator'
-                          ? 'bg-[#FFD400] text-[#0B0B0C] border-[#0B0B0C] shadow-[3px_3px_0_#F4EFE3]'
-                          : 'bg-[#212125] text-[#A9A59A] border-[#34343A] hover:text-[#F4EFE3]'
-                      }`}
-                    >
-                      SOU CRIADOR
-                    </button>
-                  </div>
+                  <p className="font-body text-xs text-[#A9A59A] leading-relaxed">
+                    Leitor lê, curte, comenta e usa a biblioteca. Depois do 2FA você escolhe a foto, a
+                    visibilidade do perfil e, se quiser publicar, vira escritor em &quot;Minha conta&quot;
+                    (é preciso declarar um link social: Instagram, YouTube ou portfólio).
+                  </p>
                 </div>
               )}
 
@@ -345,22 +326,24 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
                   />
                 )}
 
-                {mode === 'register' && roleIntent === 'creator' && (
+                {mode === 'register' && (
                   <Field
-                    label="HANDLE PÚBLICO (@)"
-                    value={handle}
-                    onChange={(e) => setHandle(e.target.value)}
-                    placeholder="ex: seu_estudio"
-                    helperText="Identificador público do seu perfil de autor"
+                    label="USERNAME"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value.toLowerCase())}
+                    placeholder="ex.: teofilo"
+                    helperText="Identificador publico e segunda forma de login. Minusculas, numeros, ponto, hifen e underscore."
+                    required
                   />
                 )}
 
+
                 <Field
-                  label="E-MAIL"
+                  label="E-MAIL OU USERNAME"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="seu.email@exemplo.com"
+                  placeholder="seu.email@exemplo.com ou seu username"
                   required
                   childrenRight={<Mail size={16} className="text-[#A9A59A]" />}
                 />
@@ -398,6 +381,23 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
                       onChange={(e) => setBirthDate(e.target.value)}
                       helperText="Necessário para controle de maioridade e proteção legal (LGPD)"
                     />
+
+                    <div className="space-y-2">
+                      <label htmlFor="sex" className="font-pixel text-[12px] text-[#A9A59A] tracking-wider uppercase block">
+                        SEXO
+                      </label>
+                      <select
+                        id="sex"
+                        value={sex}
+                        onChange={(e) => setSex(e.target.value as typeof sex)}
+                        className="w-full bg-[#212125] border-2 border-[#34343A] px-3 py-3 font-body text-sm text-[#F4EFE3] focus:border-[#FFD400] focus:outline-none"
+                      >
+                        <option value="NAO_INFORMADO">Prefiro nao informar</option>
+                        <option value="MASCULINO">Masculino</option>
+                        <option value="FEMININO">Feminino</option>
+                        <option value="OUTRO">Outro</option>
+                      </select>
+                    </div>
 
                     <div className="flex items-start gap-2 pt-2">
                       <input

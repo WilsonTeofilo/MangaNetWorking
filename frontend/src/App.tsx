@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AuthProvider } from './context/AuthContext';
 import { ModalProvider } from './context/ModalContext';
-import { Header } from './components/layout/Header';
+import { Header, AppTab } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
 import { HomePage } from './pages/HomePage';
 import { CatalogPage } from './pages/CatalogPage';
@@ -10,7 +10,15 @@ import { WorkDetailPage } from './pages/WorkDetailPage';
 import { LoginPage } from './pages/LoginPage';
 import { PasswordResetPage } from './pages/PasswordResetPage';
 import { ReaderProfilePage } from './pages/ReaderProfilePage';
-import { CreatorWorkspacePage } from './pages/CreatorWorkspacePage';
+import { CreatorDashboardPage } from './pages/CreatorDashboardPage';
+import { CreatorMissionsPage } from './pages/CreatorMissionsPage';
+import { CreatorAnalyticsPage } from './pages/CreatorAnalyticsPage';
+import { CreatorWorksPage } from './pages/CreatorWorksPage';
+import { CreatorChaptersPage } from './pages/CreatorChaptersPage';
+import { CreatorMonetizationPage } from './pages/CreatorMonetizationPage';
+import { AccountProfilePage } from './pages/AccountProfilePage';
+import { PublicProfilePage } from './pages/PublicProfilePage';
+import { OnboardingPage } from './pages/OnboardingPage';
 import { ModerationBackofficePage } from './pages/ModerationBackofficePage';
 import { ReaderPage } from './pages/ReaderPage';
 import { SobrePage } from './pages/SobrePage';
@@ -48,16 +56,8 @@ function AppContent() {
     window.history.replaceState({}, '', '/');
   }, [refreshSession]);
 
-  const [currentTab, setCurrentTab] = useState<
-    | 'feed'
-    | 'works'
-    | 'library'
-    | 'creator-workspace'
-    | 'reader-profile'
-    | 'login'
-    | 'moderation'
-    | 'about'
-  >('feed');
+  const [currentTab, setCurrentTab] = useState<AppTab>('feed');
+  const [publicProfileUsername, setPublicProfileUsername] = useState('');
   const [selectedWork, setSelectedWork] = useState<Work | null>(null);
   const [readingChapter, setReadingChapter] = useState<Chapter | null>(null);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
@@ -102,12 +102,23 @@ function AppContent() {
       .catch(() => fallbackToMock());
   };
 
-  const handleSwitchTab = (
-    tab: 'feed' | 'works' | 'library' | 'creator-workspace' | 'reader-profile' | 'login' | 'moderation' | 'about'
-  ) => {
+  const handleSwitchTab = (tab: AppTab) => {
     setSelectedWork(null);
     setReadingChapter(null);
     setCurrentTab(tab);
+  };
+
+  /** Abre a página pública de um username (pelo próprio perfil ou pelo link de um autor). */
+  const openPublicProfile = (username: string) => {
+    setPublicProfileUsername(username);
+    handleSwitchTab('public-profile');
+  };
+
+  /** Depois do cadastro: monta o perfil (foto + visibilidade) antes de seguir. */
+  const handleLoginSuccess = () => {
+    void refreshSession().then(() => {
+      handleSwitchTab(user.avatarUrl ? 'feed' : 'onboarding');
+    });
   };
 
   if (passwordResetRoute) {
@@ -172,7 +183,7 @@ function AppContent() {
           /* 3. Tela de Login MangaTeofilo Tempestuosa */
           <LoginPage
             onBackToFeed={() => handleSwitchTab('feed')}
-            onLoginSuccess={() => handleSwitchTab('feed')}
+            onLoginSuccess={handleLoginSuccess}
           />
         ) : (
           /* 4. Telas Principais (Feed, Catálogo, Biblioteca, Workspace) */
@@ -181,6 +192,7 @@ function AppContent() {
               currentTab={currentTab}
               setCurrentTab={handleSwitchTab}
               onOpenLogin={() => handleSwitchTab('login')}
+              publicProfileUsername={publicProfileUsername}
             />
 
             <main className="flex-1 w-full">
@@ -215,8 +227,40 @@ function AppContent() {
                 <ReaderProfilePage onSelectWork={handleSelectWork} />
               )}
 
-              {currentTab === 'creator-workspace' && (
-                <CreatorWorkspacePage />
+              {currentTab === 'account' && (
+                <AccountProfilePage onOpenPublicProfile={openPublicProfile} />
+              )}
+
+              {currentTab === 'onboarding' && (
+                <OnboardingPage onOpenPublicProfile={openPublicProfile} />
+              )}
+
+              {currentTab === 'public-profile' && (
+                <PublicProfilePage username={publicProfileUsername || user.username || ''} />
+              )}
+
+              {currentTab === 'creator-dashboard' && (
+                <CreatorDashboardPage />
+              )}
+
+              {currentTab === 'creator-missions' && (
+                <CreatorMissionsPage />
+              )}
+
+              {currentTab === 'creator-analytics' && (
+                <CreatorAnalyticsPage />
+              )}
+
+              {currentTab === 'creator-works' && (
+                <CreatorWorksPage />
+              )}
+
+              {currentTab === 'creator-chapters' && (
+                <CreatorChaptersPage />
+              )}
+
+              {currentTab === 'creator-monetization' && (
+                <CreatorMonetizationPage />
               )}
 
               {currentTab === 'moderation' && (

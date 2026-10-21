@@ -57,6 +57,7 @@ class PasswordResetConcurrencyIntegrationTest {
     void twoSimultaneousConfirmationsConsumeTheTokenOnlyOnce() throws Exception {
         UserEntity user = new UserEntity();
         user.setEmail("reset-race-" + UUID.randomUUID() + "@example.test");
+        user.setUsername("resetrace" + UUID.randomUUID().toString().replace("-", "").substring(0, 12));
         user.setName("Reset Race");
         user.setPasswordHash("$2a$12$integrationOnly");
         UserEntity saved = users.save(user);

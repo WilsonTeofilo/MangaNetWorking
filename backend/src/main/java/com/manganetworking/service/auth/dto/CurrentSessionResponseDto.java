@@ -11,6 +11,7 @@ public record CurrentSessionResponseDto(
         UUID id,
         String name,
         String email,
+        String username,
         String avatarUrl,
         boolean isCreator,
         UUID creatorId,
@@ -20,5 +21,8 @@ public record CurrentSessionResponseDto(
         boolean isVip,
         LocalDateTime vipExpiresAt,
         boolean privacyConsentRequired,
-        String privacyPolicyVersion
-) {}
+        String privacyPolicyVersion,
+        String sex,
+        boolean profilePublic
+) {
+}

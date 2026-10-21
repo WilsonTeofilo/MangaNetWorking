@@ -142,6 +142,36 @@ services:
       timeout: 3s
       retries: 3
 
+  # Stack de observabilidade (profile "monitoring"): NAO sobe com `docker compose up -d`.
+  # Para subir: docker compose --profile monitoring up -d prometheus alertmanager
+  # O token de coleta vive em arquivo (fora do repositorio) e a configuracao do canal e
+  # renderizada por ops/alertmanager/apply-alert-rules.ps1.
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: manganetworking-prometheus
+    profiles: ["monitoring"]
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+    volumes:
+      - ./ops/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./ops/prometheus/manganetworking-alerts.yml:/etc/prometheus/manganetworking-alerts.yml:ro
+      - ${METRICS_SCRAPE_TOKEN_FILE:-/dev/null}:/etc/prometheus/metrics-scrape-token:ro
+    ports:
+      - "127.0.0.1:9090:9090"
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: manganetworking-alertmanager
+    profiles: ["monitoring"]
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+    volumes:
+      - ./ops/alertmanager/alertmanager.rendered.yml:/etc/alertmanager/alertmanager.yml:ro
+    ports:
+      - "127.0.0.1:9093:9093"
+
 volumes:
   manganetworking_postgres_data:
     name: manganetworking_postgres_data

@@ -101,11 +101,11 @@ class UserProfileLgpdTest {
         when(userRepository.save(any(UserEntity.class))).thenReturn(user);
         String avatarPath = "/api/storage/123e4567-e89b-12d3-a456-426614174000.jpg";
 
-        profileService.updateProfile(userId, new UpdateProfileRequestDto(null, avatarPath, null));
+        profileService.updateProfile(userId, new UpdateProfileRequestDto(null, avatarPath, null, null));
         assertEquals(avatarPath, user.getAvatarUrl());
 
         assertThrows(IllegalArgumentException.class, () -> profileService.updateProfile(
-                userId, new UpdateProfileRequestDto(null, "https://attacker.example/avatar.jpg", null)));
+                userId, new UpdateProfileRequestDto(null, "https://attacker.example/avatar.jpg", null, null)));
     }
 
     @Test

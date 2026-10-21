@@ -46,16 +46,12 @@ class AuthControllerTest {
 
     @Test
     void shouldRegisterSuccessfullyAndReturn2FaRequired() throws Exception {
-        RegisterRequestDto dto = new RegisterRequestDto(
-                "Leitor Válido",
-                "leitor@valido.com",
+        RegisterRequestDto dto = new RegisterRequestDto("Leitor Válido", "leitor", "leitor@valido.com",
                 "senhaForte99!",
                 false,
                 null,
                 null,
-                true,
-                true,
-                "2026-10-v1",
+                true, null, null, null, null, true, "2026-10-v1",
                 java.time.LocalDate.of(1990, 1, 1)
         );
 
@@ -84,6 +80,7 @@ class AuthControllerTest {
         String payload = """
                 {
                     "name": "Leitor Teste",
+                    "username": "leitor.teste",
                     "email": "  Leitor.Teste@Example.COM  ",
                     "password": "senhaForte99!",
                     "termsAccepted": true,
@@ -194,12 +191,14 @@ class AuthControllerTest {
                 UUID.randomUUID(),
                 "Leitor Teste",
                 "leitor@teste.com",
+                "leitor",
                 "",
                 false,
                 null,
                 null,
                 false,
-                false
+                false,
+                "NAO_INFORMADO"
         );
 
         when(authApplicationService.verify2Fa(any(), any())).thenReturn(sessionDto);
@@ -223,8 +222,8 @@ class AuthControllerTest {
     @Test
     void meReturnsOwnerFlagFromSessionReadModel() throws Exception {
         CurrentSessionResponseDto dto = new CurrentSessionResponseDto(
-                UUID.randomUUID(), "Dono", "dono@teste.com", "", false, null, null,
-                false, true, false, null, false, "2026-10-v1");
+                UUID.randomUUID(), "Dono", "dono@teste.com", "dono", "", false, null, null,
+                false, true, false, null, false, "2026-10-v1", "NAO_INFORMADO", true);
         when(authApplicationService.currentSession(any())).thenReturn(Optional.of(dto));
 
         mockMvc.perform(get("/api/auth/me"))

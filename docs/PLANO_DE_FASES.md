@@ -164,11 +164,18 @@ Fluxo exercitado de ponta a ponta na stack local (backend 8085, frontend 5180, P
   receber o código de 2FA pelo SMTP configurado (antes a rota respondia sem enviar nada e a pessoa ficava travada).
   Conta já confirmada não recebe e-mail no cadastro — esse caso é login.
 
-### F2 — Perfis de leitor e criador · ✅ concluída
+
 **Objetivo:** perfis público/privado, página do criador, links, avatar e biblioteca com autorização no servidor.
 
 - [x] Privacidade e ownership verificados no backend; links externos validados; bio sanitizada.
 - [x] Avatar decodificado, limitado, redimensionado/recodificado no servidor e integrado às telas; respostas privadas sem cache compartilhado.
+- [x] **Identidade separada (21/10/2026):** username único como segunda via de login e endereço público do perfil
+  (imutável depois de escolhido), cadastro exige nome + username + e-mail + senha + data de nascimento + sexo; o
+  cadastro cria **sempre** leitor e a transição para escritor exige **pelo menos um vínculo social** (Instagram, YouTube
+  ou portfólio, com allowlist de host e HTTPS obrigatório). Página pública por username respeita o privacidade: perfil
+  privado expõe só o username. Seguidores existem apenas para escritores. Comentários da obra mostram o username do
+  autor e escondem nome/avatar quando o perfil é privado. Evidência: 352 testes verdes, V17 aplicada, páginas separadas
+  no painel do criador e menu do avatar no header.
 
 ### F3 — Obras, capítulos e leitores de mangá/light novel · 🟡 parcial
 **Objetivo:** metadados no Postgres, arquivos seguros, progresso idempotente no Mongo e leitura adequada a imagem ou prosa.

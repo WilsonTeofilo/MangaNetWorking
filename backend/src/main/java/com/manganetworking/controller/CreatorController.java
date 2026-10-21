@@ -18,9 +18,12 @@ import jakarta.servlet.http.HttpServletRequest;
 public class CreatorController {
 
     private final CreatorApplicationService creatorService;
+    private final com.manganetworking.service.creator.CreatorFollowService followService;
 
-    public CreatorController(CreatorApplicationService creatorService) {
+    public CreatorController(CreatorApplicationService creatorService,
+                              com.manganetworking.service.creator.CreatorFollowService followService) {
         this.creatorService = creatorService;
+        this.followService = followService;
     }
 
     @GetMapping("/{handle}")
@@ -28,6 +31,41 @@ public class CreatorController {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
                 .body(creatorService.getPublicCreatorProfile(handle));
+    }
+
+    /**
+     * Transição de leitor para escritor: exige pelo menos um vínculo social.
+     * A conta continua sendo a mesma — só nasce o perfil público de escritor.
+     */
+    @PostMapping("/apply")
+    public ResponseEntity<Map<String, Object>> applyAsWriter(@Valid @RequestBody ApplyAsCreatorRequestDto dto) {
+        UUID userId = com.manganetworking.config.security.SecurityContextUtils.requireCurrentUserId();
+        var creator = creatorService.applyAsWriter(userId, dto);
+        return ResponseEntity.ok(Map.of(
+                "message", "Perfil de escritor criado.",
+                "creatorId", creator.getId().toString(),
+                "creatorHandle", creator.getHandle()));
+    }
+
+    /** Seguir um escritor (só escritores têm seguidores). */
+    @PostMapping("/{handle}/follow")
+    public ResponseEntity<Map<String, Object>> followCreator(@PathVariable String handle) {
+        UUID userId = com.manganetworking.config.security.SecurityContextUtils.requireCurrentUserId();
+        long followers = followService.follow(userId, handle);
+        return ResponseEntity.ok(Map.of("followers", followers, "following", true));
+    }
+
+    /** Deixar de seguir. */
+    @DeleteMapping("/{handle}/follow")
+    public ResponseEntity<Map<String, Object>> unfollowCreator(@PathVariable String handle) {
+        UUID userId = com.manganetworking.config.security.SecurityContextUtils.requireCurrentUserId();
+        long followers = followService.unfollow(userId, handle);
+        return ResponseEntity.ok(Map.of("followers", followers, "following", false));
+    }
+
+    @GetMapping("/{handle}/followers")
+    public ResponseEntity<Map<String, Object>> countFollowers(@PathVariable String handle) {
+        return ResponseEntity.ok(Map.of("followers", followService.countFollowers(handle)));
     }
 
     @GetMapping("/workspace")

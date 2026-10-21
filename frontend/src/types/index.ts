@@ -111,6 +111,12 @@ export interface MembershipSubscription {
 }
 
 export interface UserProfile {
+  /** Identificador público e segunda via de login (único e imutável). */
+  username?: string;
+  /** Sexo declarado no perfil. */
+  sex?: 'MASCULINO' | 'FEMININO' | 'OUTRO' | 'NAO_INFORMADO';
+  /** Perfil visível para outras pessoas. */
+  profilePublic?: boolean;
   uid: string;
   name: string;
   email: string;
@@ -119,6 +125,8 @@ export interface UserProfile {
   isModerator?: boolean;
   isOwner?: boolean;
   creatorId?: string;
+  /** Handle público do autor (@). */
+  creatorHandle?: string;
   isVip?: boolean;
   vipExpiresAt?: string;
   privacyConsentRequired?: boolean;

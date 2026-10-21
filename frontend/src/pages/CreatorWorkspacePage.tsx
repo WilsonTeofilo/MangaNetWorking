@@ -17,7 +17,8 @@ function formatBrl(value: number): string {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
-export function CreatorWorkspacePage() {
+export type CreatorWorkspaceSection = 'dashboard' | 'missions' | 'works';
+export function CreatorWorkspacePage({ section = 'dashboard' }: { section?: CreatorWorkspaceSection }) {
   const creator = import.meta.env.DEV ? MOCK_CREATORS['creator-teofilo'] || Object.values(MOCK_CREATORS)[0] : undefined;
 
   // Painel real do autor (`GET /api/creators/workspace`); cai na demo quando não há sessão de criador.
@@ -261,6 +262,7 @@ export function CreatorWorkspacePage() {
       )}
 
       {/* 2. Topo do Painel: Season 01, Patches e XP */}
+      {section === 'dashboard' && (
       <div className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] shadow-[6px_6px_0_var(--mn-paper)] p-6 sm:p-8 space-y-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b-2 border-[var(--mn-line)] pb-6">
           <div className="flex items-center gap-4">
@@ -308,8 +310,10 @@ export function CreatorWorkspacePage() {
             </div></div>
         </div>
       </div>
+      )}
 
       {/* 3. Grade com Janelas Retrô: Quests Semanais + Ganhos */}
+      {section === 'missions' && (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
         
         {/* Janela de Missões Semanais */}
@@ -460,8 +464,10 @@ export function CreatorWorkspacePage() {
         </Win>
 
       </div>
+      )}
 
       {/* 4. Formulário de Publicação Real de Nova Obra e Páginas (Fase 7) */}
+      {section === 'works' && (
       <section className="border-2 border-[var(--mn-yellow)] bg-[var(--mn-ink-2)] p-6 sm:p-8 space-y-6 shadow-[6px_6px_0_var(--mn-yellow)]">
         <div>
           <span className="font-pixel text-[12px] text-[var(--mn-yellow)] uppercase tracking-widest font-bold block mb-1">
@@ -643,8 +649,10 @@ export function CreatorWorkspacePage() {
           </div>
         </form>
       </section>
+      )}
 
       {/* 5. Formulário de Perfil do Autor com Declaração de Autoria */}
+      {section === 'dashboard' && (
       <form onSubmit={handleSave} className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-6 sm:p-8 space-y-6">
         <div>
           <h2 className="font-display text-2xl text-[var(--mn-paper)] uppercase">
@@ -723,6 +731,7 @@ export function CreatorWorkspacePage() {
           {saveError && <span className="font-body text-xs text-[var(--mn-red)]">{saveError}</span>}
         </div>
       </form>
+      )}
 
     </div>
   );

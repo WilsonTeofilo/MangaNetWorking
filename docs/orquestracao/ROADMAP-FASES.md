@@ -1,3 +1,14 @@
+- Identidade separada (21/10/2026): V17 adiciona `users.username` (único, imutável depois de escolhido, com
+  backfill `user_<id>`), `users.sex`, `creator_follows` e `work_comments`. Login e 2FA aceitam e-mail **ou** username.
+  Cadastro cria sempre leitor; virar escritor exige `POST /api/creators/apply` com pelo menos um vínculo social
+  (allowlist de host + HTTPS obrigatório, sem `javascript:`/`data:`/credencial/porta).
+  `GET /api/users/{username}/public-profile` respeita a privacidade (perfil privado devolve só o username). Seguidores só
+  de escritor; comentários mostram o username e escondem o resto quando o perfil é privado. Front: header sem a divisão
+  "modo criador/leitor" (menu do avatar), painel do criador em telas separadas (workspace, obras, capítulos, missões,
+  analytics, monetização), tela "Minha conta" e onboarding pós-cadastro. Bug real do stack de alerta corrigido: anotação
+  YAML com `:` não citado derrubava o Prometheus (`promtool` → 4 regras, alvo `up`); Prometheus e Alertmanager
+  passaram para o profile `monitoring` do Compose. Suíte: **352 testes, 0 falhas, 0 erros**.
+
 # ROADMAP DE FASES — MangaNetWorking
 
 > **Documento único de execução.** Substitui as pastas `backend/tasks/`, `frontend/tasks/` e os relatórios por worker.

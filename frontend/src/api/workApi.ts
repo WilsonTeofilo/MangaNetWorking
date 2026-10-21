@@ -106,6 +106,20 @@ export interface ChapterReadDto {
   authorId?: string | null;
 }
 
+/**
+ * Comentário da obra (espelha `WorkCommentResponseDto`).
+ * `displayName` e `avatarUrl` vêm nulos quando o autor mantém o perfil privado.
+ */
+export interface WorkCommentDto {
+  id: string;
+  username: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  profilePublic: boolean;
+  isCreator: boolean;
+  body: string;
+  createdAt: string | null;
+}
 export const workApi = {
   /**
    * Feed de descoberta (MongoDB): recomendado, em alta ou lançamentos recentes.
@@ -172,4 +186,22 @@ export const workApi = {
       method: 'POST',
     });
   },
+  /**
+   * Comentários da obra: leitura pública, escrita por qualquer conta autenticada.
+   * O username do autor sempre aparece; nome e avatar só são expostos quando o
+   * perfil do autor está público (regra decidida no servidor).
+   */
+  listComments(workId: string, limit = 50) {
+    return request<WorkCommentDto[]>(`/works/${encodeURIComponent(workId)}/comments?limit=${limit}`, {
+      method: 'GET',
+    });
+  },
+
+  createComment(workId: string, body: string, chapterId?: string) {
+    return request<WorkCommentDto>(`/works/${encodeURIComponent(workId)}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ body, chapterId: chapterId ?? null }),
+    });
+  },
 };
+

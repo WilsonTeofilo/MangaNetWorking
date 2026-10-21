@@ -1,5 +1,6 @@
 package com.manganetworking.domain.relational;
 
+import com.manganetworking.domain.enums.Sex;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -19,6 +20,17 @@ public class UserEntity {
 
     @Column(nullable = false, unique = true)
     private String email;
+
+    // Identificador único e imutável do usuário: segunda forma de login (além do e-mail).
+    // A unicidade sem distinção de caixa é garantida pelo índice `users_username_lower_key`.
+    @Column(nullable = false, length = 30)
+    private String username;
+
+    // Sexo declarado no perfil. Dado opcional por natureza: o titular pode deixar
+    // "nao informado" e a plataforma não presume nada.
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private Sex sex = Sex.NAO_INFORMADO;
 
     @Column(nullable = false)
     private String name;
@@ -88,6 +100,12 @@ public class UserEntity {
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
+
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
+
+    public Sex getSex() { return sex; }
+    public void setSex(Sex sex) { this.sex = sex; }
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }

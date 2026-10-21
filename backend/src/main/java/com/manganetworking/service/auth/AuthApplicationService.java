@@ -1,6 +1,7 @@
 package com.manganetworking.service.auth;
 
 import com.manganetworking.domain.enums.PixKeyType;
+import com.manganetworking.domain.enums.Sex;
 import com.manganetworking.domain.relational.CreatorEntity;
 import com.manganetworking.domain.relational.UserEntity;
 import com.manganetworking.repository.jpa.CreatorRepository;
@@ -12,6 +13,8 @@ import com.manganetworking.service.session.SessionService;
 import com.manganetworking.service.user.PrivacyComplianceService;
 import com.manganetworking.util.CpfValidator;
 import com.manganetworking.util.EmailNormalizer;
+import com.manganetworking.util.SocialLinkPolicy;
+import com.manganetworking.util.UsernamePolicy;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import com.google.api.client.http.javanet.NetHttpTransport;
@@ -86,6 +89,10 @@ public class AuthApplicationService {
     public Map<String, Object> register(RegisterRequestDto dto, HttpServletRequest request) {
         PasswordPolicy.validateNewPassword(dto.password());
         String normalizedEmail = EmailNormalizer.normalize(dto.email());
+        String normalizedUsername = UsernamePolicy.normalize(dto.username());
+        if (userRepository.existsByUsernameIgnoreCase(normalizedUsername)) {
+            throw new IllegalArgumentException("Este username já está em uso.");
+        }
         Optional<UserEntity> existingAccount = userRepository.findByEmail(normalizedEmail);
         if (existingAccount.isPresent()) {
             // Cadastro interrompido: a conta existe mas o e-mail nunca foi confirmado (a pessoa
@@ -115,7 +122,9 @@ public class AuthApplicationService {
 
         UserEntity user = new UserEntity();
         user.setEmail(normalizedEmail);
+        user.setUsername(normalizedUsername);
         user.setName(dto.name().trim());
+        user.setSex(dto.sex() != null ? dto.sex() : Sex.NAO_INFORMADO);
         user.setCreator(dto.isCreator());
         user.setProfilePublic(dto.isProfilePublic() != null ? dto.isProfilePublic() : true);
         user.setPasswordHash(passwordEncoder.encode(dto.password()));
@@ -130,12 +139,25 @@ public class AuthApplicationService {
 
 
         if (dto.isCreator()) {
+            // Escrever exige vínculo social real: é o que separa o perfil público de
+            // escritor do perfil de leitor e dá um ponto de contato verificável.
+            String instagram = SocialLinkPolicy.sanitizeOptional(dto.instagramUrl());
+            String youtube = SocialLinkPolicy.sanitizeOptional(dto.youtubeUrl());
+            String portfolio = SocialLinkPolicy.sanitizeOptional(dto.portfolioUrl());
+            if (instagram == null && youtube == null && portfolio == null) {
+                throw new IllegalArgumentException(
+                        "Para publicar como escritor, informe pelo menos um link (Instagram, YouTube ou portfólio).");
+            }
+
             CreatorEntity creator = new CreatorEntity();
             creator.setUser(user);
             creator.setHandle(dto.handle() != null && !dto.handle().isBlank()
                     ? dto.handle().replace("@", "").trim()
                     : "autor_" + UUID.randomUUID().toString().substring(0, 6));
             creator.setBio("Novo escritor na MangaNetWorking.");
+            creator.setInstagramUrl(instagram);
+            creator.setYoutubeUrl(youtube);
+            creator.setPortfolioUrl(portfolio);
             creator.setDocumentCpf(dto.cpf() == null || dto.cpf().isBlank() ? null : dto.cpf().replaceAll("\\D", ""));
             creator.setPixKey(normalizedEmail);
             creator.setPixKeyType(PixKeyType.EMAIL);
@@ -150,8 +172,12 @@ public class AuthApplicationService {
         return registrationAccepted(user.getEmail());
     }
 
-    private Map<String, Object> registrationAccepted(String email) {
-        return Map.of("status", "2FA_REQUIRED",
+    /** Identificador de login (e-mail ou username) normalizado para a busca no servidor. */
+    private String normalizeIdentifier(String identifier) {
+        return identifier == null ? "" : identifier.trim().toLowerCase(java.util.Locale.ROOT);
+    }
+
+    private Map<String, Object> registrationAccepted(String email) {        return Map.of("status", "2FA_REQUIRED",
                 "message", "Se os dados estiverem disponíveis, enviaremos instruções para o e-mail informado.",
                 "email", email);
     }
@@ -163,9 +189,8 @@ public class AuthApplicationService {
     @Transactional
     public Map<String, Object> login(LoginRequestDto dto, HttpServletRequest request) {
         PasswordPolicy.validate(dto.password());
-        String normalizedEmail = EmailNormalizer.normalize(dto.email());
-        UserEntity user = userRepository.findByEmail(normalizedEmail)
-                .orElse(null);
+        // Segunda via de login: o identificador pode ser o e-mail ou o username.
+        UserEntity user = userRepository.findByEmailOrUsername(normalizeIdentifier(dto.identifier())).orElse(null);
 
         // Executa BCrypt também para conta inexistente/sem senha, reduzindo a diferença de
         // tempo entre "e-mail desconhecido" e "senha incorreta".
@@ -187,7 +212,8 @@ public class AuthApplicationService {
         return Map.of(
                 "status", "2FA_REQUIRED",
                 "message", "Código 2FA enviado. Confirme para acessar.",
-                "email", user.getEmail()
+                "email", user.getEmail(),
+                "username", user.getUsername() != null ? user.getUsername() : ""
         );
     }
 
@@ -266,14 +292,14 @@ public class AuthApplicationService {
     }
 
     public AuthSessionResponseDto verify2Fa(Verify2FaRequestDto dto, HttpServletResponse response) {
-        String normalizedEmail = EmailNormalizer.normalize(dto.email());
-        boolean valid = twoFactorAuthService.verifyOtp(normalizedEmail, dto.code(), TwoFactorAuthService.OtpPurpose.LOGIN);
+        // O identificador pode ser e-mail ou username: o desafio é sempre do e-mail real.
+        UserEntity user = userRepository.findByEmailOrUsername(normalizeIdentifier(dto.identifier()))
+                .orElseThrow(() -> new SecurityException("Código 2FA incorreto ou expirado"));
+        String accountEmail = user.getEmail();
+        boolean valid = twoFactorAuthService.verifyOtp(accountEmail, dto.code(), TwoFactorAuthService.OtpPurpose.LOGIN);
         if (!valid) {
             throw new SecurityException("Código 2FA incorreto ou expirado");
         }
-
-        UserEntity user = userRepository.findByEmail(normalizedEmail)
-                .orElseThrow(() -> new IllegalStateException("Usuário não encontrado"));
         if (user.getEmailVerifiedAt() == null) {
             // A successful LOGIN OTP is sent to the account email and proves mailbox control.
             user.setEmailVerifiedAt(java.time.LocalDateTime.now());
@@ -289,12 +315,14 @@ public class AuthApplicationService {
                 user.getId(),
                 user.getName(),
                 user.getEmail(),
+                user.getUsername(),
                 user.getAvatarUrl() != null ? user.getAvatarUrl() : "",
                 user.isCreator(),
                 creator != null ? creator.getId() : null,
                 creator != null ? creator.getHandle() : null,
                 user.isModerator(),
-                user.isOwner()
+                user.isOwner(),
+                user.getSex() != null ? user.getSex().name() : Sex.NAO_INFORMADO.name()
         );
     }
 
@@ -320,6 +348,7 @@ public class AuthApplicationService {
                     session.userId(),
                     session.name(),
                     session.email(),
+                    user != null ? user.getUsername() : "",
                     user != null && user.getAvatarUrl() != null ? user.getAvatarUrl() : "",
                     session.isCreator(),
                     session.creatorId(),
@@ -329,7 +358,9 @@ public class AuthApplicationService {
                     user != null && user.isVipActive(),
                     user != null ? user.getVipExpiresAt() : null,
                     user == null || privacyComplianceService.consentRequired(user),
-                    policyVersion
+                    policyVersion,
+                    user != null && user.getSex() != null ? user.getSex().name() : Sex.NAO_INFORMADO.name(),
+                    user == null || user.isProfilePublic()
             );
         });
     }

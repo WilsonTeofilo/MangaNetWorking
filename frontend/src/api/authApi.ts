@@ -8,6 +8,9 @@ export interface SessionUserDto {
   id: string;
   name: string;
   email: string;
+  username?: string;
+  sex?: string;
+  profilePublic?: boolean;
   avatarUrl?: string;
   isCreator: boolean;
   creatorId?: string;
@@ -22,25 +25,30 @@ export interface SessionUserDto {
 
 export interface RegisterRequest {
   name: string;
+  username: string;
   email: string;
   password: string;
   isCreator?: boolean;
   handle?: string;
   cpf?: string;
   isProfilePublic?: boolean;
+  sex?: 'MASCULINO' | 'FEMININO' | 'OUTRO' | 'NAO_INFORMADO';
+  instagramUrl?: string;
+  youtubeUrl?: string;
+  portfolioUrl?: string;
   termsAccepted: boolean;
   privacyPolicyVersion: string;
   birthDate?: string;
 }
 
-
+/** Login aceita e-mail **ou** username — a segunda via de acesso da conta. */
 export interface LoginRequest {
-  email: string;
+  identifier: string;
   password: string;
 }
 
 export interface Verify2faRequest {
-  email: string;
+  identifier: string;
   code: string;
 }
 
@@ -119,6 +127,29 @@ export const authApi = {
     }
   },
 
+  /**
+   * Perfil público pelo username — a página que os demais visitam.
+   * Perfil privado devolve apenas o username (regra aplicada no servidor).
+   */
+  getPublicProfile(username: string) {
+    return request<{
+      username: string;
+      displayName: string | null;
+      avatarUrl: string | null;
+      isCreator: boolean;
+      profilePublic: boolean;
+      creatorHandle: string | null;
+      bio: string | null;
+      instagramUrl: string | null;
+      youtubeUrl: string | null;
+      portfolioUrl: string | null;
+      followerCount: number;
+      publicWorkCount: number;
+      likedWorkCount: number;
+      joinedAt: string | null;
+    }>(`/users/${encodeURIComponent(username)}/public-profile`, { method: 'GET' });
+  },
+
   logout() {
     // Sessão é cookie HttpOnly (ADR-002): o backend revoga e limpa o cookie.
     return request('/auth/logout', { method: 'POST' }).catch(() => ({}));
@@ -154,7 +185,7 @@ export const userApi = {
   },
 
   /** Atualiza apenas os campos permitidos do perfil da sessão corrente. */
-  updateProfile(payload: { avatarUrl?: string; isProfilePublic?: boolean }) {
+  updateProfile(payload: { avatarUrl?: string; isProfilePublic?: boolean; username?: string }) {
     return request('/users/profile', {
       method: 'PUT',
       body: JSON.stringify(payload),

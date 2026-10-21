@@ -510,6 +510,45 @@ O detalhe público da obra agora omite capítulos com `publicReleaseAt` futuro; 
 - [ ] **Continua bloqueado:** SPF/DKIM/DMARC e domínio institucional ainda dependem de DNS/provedor; a entrega real
   continua dependendo do provedor usado (Gmail pessoal com senha de app serve para desenvolvimento, não para produção).
 
+## 7.20 Identidade separada: username, leitor x escritor, perfil público, seguidores e comentários (2026-10-21)
+
+- [x] **Username único e segunda via de login (V17):** `users.username` (único sem distinção de caixa, 3–30 caracteres,
+  minúsculas, letras/números/ponto/hífen/underscore) com backfill determinístico (`user_<id>`) para as contas
+  existentes. Login e verificação de 2FA aceitam **e-mail ou username** (`identifier`, com `@JsonAlias("email")` para
+  não quebrar clientes). O username só pode ser reivindicado uma vez — enquanto a conta usa o identificador gerado —
+  e depois é imutável (`UsernameClaimTest`).
+- [x] **Leitor x escritor separados no servidor:** o cadastro cria **sempre** uma conta de leitor; virar escritor exige
+  `POST /api/creators/apply` com **pelo menos um vínculo social**. O `register` com `isCreator=true` também exige o
+  vínculo. Sem ele: **400** com mensagem explícita.
+- [x] **Vínculo social blindado:** `SocialLinkPolicy` com allowlist de host (Instagram, YouTube, TikTok, X, Behance,
+  ArtStation, DeviantArt, Medium, Linktree, Spotify, SoundCloud, Substack), **HTTPS obrigatório**, sem credencial
+  (`user@`), sem porta específica, sem caractere de controle, HTML removido e limite de 255 caracteres. `javascript:`,
+  `data:`, `http:` e domínio desconhecido são recusados com 400.
+- [x] **Perfil público com privacidade real:** `GET /api/users/{username}/public-profile`. Perfil **privado** devolve
+  apenas o username (é o que aparece nos comentários); perfil **público** devolve nome, avatar, links, contadores de
+  obras/curtidas e seguidores. `PublicProfileServiceTest` cobre os dois lados.
+- [x] **Seguidores só de escritor:** `creator_follows` + `POST/DELETE /api/creators/{handle}/follow`. Leitor não tem
+  seguidores; ninguém segue a si mesmo; seguir é idempotente.
+- [x] **Comentários com username e privacidade:** `work_comments` + `GET/POST /api/works/{workId}/comments`. O username
+  do autor sempre aparece; nome e avatar só quando o perfil do autor é público. O corpo é higienizado no servidor
+  (sem tag, sem `javascript:`) e o front renderiza como texto.
+- [x] **Segurança do fluxo:** as rotas novas foram placement antes das regras genéricas do `SecurityConfig`
+  (`POST /api/works/**` é de criador, mas comentário é de leitor; `POST /api/creators/**` é de criador, mas a
+  candidatura e o seguir são de qualquer conta autenticada).
+- [x] **Interface reorganizada:** a divisão "modo criador / modo leitor" saiu do header; o avatar redondo no canto abre o
+  menu da conta (Minha conta → Criador: Workspace, Minhas obras, Capítulos, Missões & XP, Analytics, Monetização → Sair).
+  O painel do criador deixou de ser uma página única: cada painel tem tela própria e endpoint próprio. Página pública
+  por username, tela "Minha conta" (foto, visibilidade,看成 escritor) e onboarding pós-cadastro (foto + público/privado
+  + ver a própria página).
+- [x] **Bug real encontrado no stack de alerta:** `ops/prometheus/manganetworking-alerts.yml` tinha um `:` não citado
+  dentro de uma anotação; o Prometheus recusava o arquivo de regras e o container ficava **down**. Corrigido (valor
+  entre aspas), `promtool check rules` → **SUCCESS: 4 rules found** e o alvo `manganetworking-backend` voltou a **up**.
+- [x] **Containers de observabilidade sob o Compose:** Prometheus e Alertmanager entraram no `docker-compose.yml` no
+  profile `monitoring` (não sobem em `docker compose up -d`); antes eram containers órfãos criados à mão. As portas
+  passaram a escutar só em `127.0.0.1`.
+- [x] **Suíte:** **352 testes**, 0 falhas, 0 erros (inclui `UsernamePolicyTest`, `SocialLinkPolicyTest`,
+  `PublicProfileServiceTest` e `UsernameClaimTest`); build do frontend verde; V17 aplicada em PostgreSQL real.
+
 ## 8. Ordem de correção
 
 A fila está em `docs/orquestracao/ROADMAP-FASES.md`. Resumo:

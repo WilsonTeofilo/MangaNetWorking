@@ -50,6 +50,7 @@ class CreatorPixKeyAuditIntegrationTest {
     void auditRowsAreAppendOnly() {
         UserEntity user = new UserEntity();
         user.setEmail("pix-audit-" + UUID.randomUUID() + "@example.test");
+        user.setUsername("pixaudit" + UUID.randomUUID().toString().replace("-", "").substring(0, 12));
         user.setName("PIX Audit Integration");
         user.setCreator(true);
         user.setPasswordHash("$2a$12$integrationOnly");

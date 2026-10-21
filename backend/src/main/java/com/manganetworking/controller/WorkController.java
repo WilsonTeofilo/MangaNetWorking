@@ -4,6 +4,9 @@ import com.manganetworking.config.security.SecurityContextUtils;
 import com.manganetworking.service.work.WorkApplicationService;
 import com.manganetworking.service.work.dto.ChapterReadResponseDto;
 import com.manganetworking.service.work.dto.WorkDetailsResponseDto;
+import com.manganetworking.service.work.dto.WorkCommentResponseDto;
+import com.manganetworking.service.work.dto.CreateCommentRequestDto;
+import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,9 +24,12 @@ import java.util.UUID;
 public class WorkController {
 
     private final WorkApplicationService workService;
+    private final com.manganetworking.service.work.WorkCommentService commentService;
 
-    public WorkController(WorkApplicationService workService) {
+    public WorkController(WorkApplicationService workService,
+                          com.manganetworking.service.work.WorkCommentService commentService) {
         this.workService = workService;
+        this.commentService = commentService;
     }
 
     @PostMapping
@@ -58,6 +64,26 @@ public class WorkController {
     @GetMapping("/{slug}")
     public ResponseEntity<WorkDetailsResponseDto> getWorkBySlug(@PathVariable String slug) {
         return ResponseEntity.ok(workService.getWorkBySlug(slug));
+    }
+
+    /** Comentários da obra: leitura pública, escrita por qualquer conta autenticada. */
+    @GetMapping("/{workId}/comments")
+    public ResponseEntity<java.util.List<WorkCommentResponseDto>> listComments(
+            @PathVariable UUID workId,
+            @RequestParam(defaultValue = "50") int limit
+    ) {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(commentService.listComments(workId, limit));
+    }
+
+    @PostMapping("/{workId}/comments")
+    public ResponseEntity<WorkCommentResponseDto> createComment(
+            @PathVariable UUID workId,
+            @Valid @RequestBody CreateCommentRequestDto dto
+    ) {
+        UUID userId = SecurityContextUtils.requireCurrentUserId();
+        return ResponseEntity.ok(commentService.createComment(userId, workId, dto.chapterId(), dto.body()));
     }
 
     @GetMapping("/{slug}/chapters/{chapterNumber}")

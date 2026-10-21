@@ -82,16 +82,12 @@ class AuthApplicationServiceTest {
 
     @Test
     void shouldRegisterUserWithHashedPasswordAndTrigger2Fa() {
-        RegisterRequestDto dto = new RegisterRequestDto(
-                "Teófilo",
-                "teofilo@teste.com",
+        RegisterRequestDto dto = new RegisterRequestDto("Teófilo", "teofilo", "teofilo@teste.com",
                 "senhaForte123!",
                 false,
                 null,
                 null,
-                true,
-                true,
-                "2026-10-v1",
+                true, null, null, null, null, true, "2026-10-v1",
                 java.time.LocalDate.of(1990, 1, 1)
         );
 
@@ -117,9 +113,8 @@ class AuthApplicationServiceTest {
 
     @Test
     void rejectsShortRegistrationPasswordBeforeLookingUpOrSavingAnAccount() {
-        RegisterRequestDto dto = new RegisterRequestDto(
-                "Leitor", "curto@teste.com", "1234567", false, null, null,
-                true, true, "2026-10-v1", java.time.LocalDate.of(1990, 1, 1));
+        RegisterRequestDto dto = new RegisterRequestDto("Leitor", "curto", "curto@teste.com", "1234567", false, null, null,
+                true, null, null, null, null, true, "2026-10-v1", java.time.LocalDate.of(1990, 1, 1));
 
         assertThrows(IllegalArgumentException.class, () -> authService.register(dto));
         verifyNoInteractions(userRepository);
@@ -127,9 +122,8 @@ class AuthApplicationServiceTest {
 
     @Test
     void rejectsWeakRegistrationPasswordBeforeLookingUpOrSavingAnAccount() {
-        RegisterRequestDto dto = new RegisterRequestDto(
-                "Leitor", "fraca@teste.com", "password1", false, null, null,
-                true, true, "2026-10-v1", java.time.LocalDate.of(1990, 1, 1));
+        RegisterRequestDto dto = new RegisterRequestDto("Leitor", "fraca", "fraca@teste.com", "password1", false, null, null,
+                true, null, null, null, null, true, "2026-10-v1", java.time.LocalDate.of(1990, 1, 1));
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> authService.register(dto));
 
@@ -145,9 +139,7 @@ class AuthApplicationServiceTest {
         confirmed.setEmailVerifiedAt(java.time.LocalDateTime.now());
 
         when(userRepository.findByEmail("teofilo@teste.com")).thenReturn(Optional.of(confirmed));
-        RegisterRequestDto dto = new RegisterRequestDto(
-                "Teófilo", "teofilo@teste.com", "senhaForte123!", false, null, null, true,
-                true, "2026-10-v1", java.time.LocalDate.of(1990, 1, 1));
+        RegisterRequestDto dto = new RegisterRequestDto("Teófilo", "teofilo", "teofilo@teste.com", "senhaForte123!", false, null, null, true, null, null, null, null, true, "2026-10-v1", java.time.LocalDate.of(1990, 1, 1));
 
         Map<String, Object> result = authService.register(dto);
 
@@ -160,20 +152,33 @@ class AuthApplicationServiceTest {
     @Test
     void creatorMayFinishRegistrationWithoutInventedCpfButCannotSubmitInvalidCpf() {
         when(userRepository.findByEmail("autor@teste.com")).thenReturn(Optional.empty());
-        RegisterRequestDto noCpf = new RegisterRequestDto("Autora", "autor@teste.com", "senhaForte123!",
-                true, "autora", null, true, true, "2026-10-v1", java.time.LocalDate.of(1990, 1, 1));
+        RegisterRequestDto noCpf = new RegisterRequestDto("Autora", "autor", "autor@teste.com", "senhaForte123!",
+                true, "autora", null, true, null, "https://instagram.com/autora", null, null, true, "2026-10-v1", java.time.LocalDate.of(1990, 1, 1));
 
         authService.register(noCpf);
 
         ArgumentCaptor<CreatorEntity> creatorCaptor = ArgumentCaptor.forClass(CreatorEntity.class);
         verify(creatorRepository).save(creatorCaptor.capture());
         assertNull(creatorCaptor.getValue().getDocumentCpf());
+        assertEquals("https://instagram.com/autora", creatorCaptor.getValue().getInstagramUrl());
 
-        RegisterRequestDto invalidCpf = new RegisterRequestDto("Outra", "outro@teste.com", "senhaForte123!",
-                true, "outra", "000.000.000-00", true, true, "2026-10-v1", java.time.LocalDate.of(1990, 1, 1));
+        RegisterRequestDto invalidCpf = new RegisterRequestDto("Outra", "outro", "outro@teste.com", "senhaForte123!",
+                true, "outra", "000.000.000-00", true, null, "https://instagram.com/outra", null, null, true, "2026-10-v1", java.time.LocalDate.of(1990, 1, 1));
         when(userRepository.findByEmail("outro@teste.com")).thenReturn(Optional.empty());
         assertThrows(IllegalArgumentException.class, () -> authService.register(invalidCpf));
         verify(userRepository, never()).save(argThat(user -> "outro@teste.com".equals(user.getEmail())));
+    }
+
+    @Test
+    void writerRegistrationRequiresAtLeastOneSocialLink() {
+        when(userRepository.findByEmail("semlink@teste.com")).thenReturn(Optional.empty());
+        RegisterRequestDto dto = new RegisterRequestDto("Sem Link", "semlink", "semlink@teste.com", "senhaForte123!",
+                true, "semlink", null, true, null, null, null, null, true, "2026-10-v1", java.time.LocalDate.of(1990, 1, 1));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> authService.register(dto));
+
+        assertTrue(exception.getMessage().contains("pelo menos um link"));
+        verify(creatorRepository, never()).save(any());
     }
 
     @Test
@@ -182,7 +187,7 @@ class AuthApplicationServiceTest {
         user.setEmail("leitor@teste.com");
         user.setPasswordHash(passwordEncoder.encode("senhaCorreta123"));
 
-        when(userRepository.findByEmail("leitor@teste.com")).thenReturn(Optional.of(user));
+        when(userRepository.findByEmailOrUsername("leitor@teste.com")).thenReturn(Optional.of(user));
 
         LoginRequestDto dto = new LoginRequestDto("leitor@teste.com", "senhaErrada");
 
@@ -214,7 +219,7 @@ class AuthApplicationServiceTest {
         user.setPasswordHash(passwordEncoder.encode("minhaSenha123"));
         assertNull(user.getEmailVerifiedAt(), "the account is not verified before completing its email OTP");
 
-        when(userRepository.findByEmail("will@teste.com")).thenReturn(Optional.of(user));
+        when(userRepository.findByEmailOrUsername("will@teste.com")).thenReturn(Optional.of(user));
         when(creatorRepository.findByUserId(userId)).thenReturn(Optional.empty());
 
         // 1. Inicia login
@@ -260,9 +265,7 @@ class AuthApplicationServiceTest {
     }
 
     @Test
-    void shouldCanonicalizeEmailOnRegistrationIgnoringSpacesAndCase() {        RegisterRequestDto dto = new RegisterRequestDto(
-                "Leitor", "  Leitor.Teste@Example.COM  ", "senhaForte123!", false, null, null, true,
-                true, "2026-10-v1", java.time.LocalDate.of(1990, 1, 1));
+    void shouldCanonicalizeEmailOnRegistrationIgnoringSpacesAndCase() {        RegisterRequestDto dto = new RegisterRequestDto("Leitor", "leitor.teste", "  Leitor.Teste@Example.COM  ", "senhaForte123!", false, null, null, true, null, null, null, null, true, "2026-10-v1", java.time.LocalDate.of(1990, 1, 1));
 
         when(userRepository.findByEmail("leitor.teste@example.com")).thenReturn(Optional.empty());
 
@@ -285,15 +288,17 @@ class AuthApplicationServiceTest {
         user.setEmailVerifiedAt(java.time.LocalDateTime.now());
         user.setName("Leitor");
 
-        when(userRepository.findByEmail("leitor.teste@example.com")).thenReturn(Optional.of(user));
+        when(userRepository.findByEmailOrUsername("leitor.teste@example.com")).thenReturn(Optional.of(user));
 
         Map<String, Object> result = authService.login(
                 new LoginRequestDto(" LEITOR.TESTE@Example.com ", "senhaForte123!"));
         assertEquals("2FA_REQUIRED", result.get("status"));
 
-        IllegalArgumentException invalid = assertThrows(IllegalArgumentException.class, () ->
+        // Identificador com espaço interno não casa com nenhuma conta: a resposta é a mesma
+        // de credencial inválida (não revela se a conta existe).
+        SecurityException invalid = assertThrows(SecurityException.class, () ->
                 authService.login(new LoginRequestDto("leitor teste@example.com", "senhaForte123!")));
-        assertTrue(invalid.getMessage().contains("espa"));
+        assertEquals("Credenciais inválidas", invalid.getMessage());
     }
 
     @Test
@@ -306,9 +311,7 @@ class AuthApplicationServiceTest {
 
         when(userRepository.findByEmail("pendente@teste.com")).thenReturn(Optional.of(pending));
 
-        RegisterRequestDto dto = new RegisterRequestDto(
-                "Pendente", "  PENDENTE@Teste.com ", "senhaForte123!", false, null, null, true,
-                true, "2026-10-v1", java.time.LocalDate.of(1990, 1, 1));
+        RegisterRequestDto dto = new RegisterRequestDto("Pendente", "pendente", "  PENDENTE@Teste.com ", "senhaForte123!", false, null, null, true, null, null, null, null, true, "2026-10-v1", java.time.LocalDate.of(1990, 1, 1));
 
         Map<String, Object> result = authService.register(dto);
 
@@ -330,9 +333,7 @@ class AuthApplicationServiceTest {
 
         when(userRepository.findByEmail("confirmada@teste.com")).thenReturn(Optional.of(confirmed));
 
-        RegisterRequestDto dto = new RegisterRequestDto(
-                "Confirmada", "confirmada@teste.com", "senhaForte123!", false, null, null, true,
-                true, "2026-10-v1", java.time.LocalDate.of(1990, 1, 1));
+        RegisterRequestDto dto = new RegisterRequestDto("Confirmada", "confirmada", "confirmada@teste.com", "senhaForte123!", false, null, null, true, null, null, null, null, true, "2026-10-v1", java.time.LocalDate.of(1990, 1, 1));
 
         Map<String, Object> result = authService.register(dto);
 

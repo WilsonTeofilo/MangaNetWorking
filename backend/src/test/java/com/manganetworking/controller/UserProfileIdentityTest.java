@@ -46,6 +46,9 @@ class UserProfileIdentityTest {
     @MockitoBean
     private UserProfileApplicationService profileService;
 
+    @MockitoBean
+    private com.manganetworking.service.user.PublicProfileService publicProfileService;
+
     // Bean Filter incluído no slice @WebMvcTest; depende deste serviço.
     @MockitoBean
     private SessionService sessionService;

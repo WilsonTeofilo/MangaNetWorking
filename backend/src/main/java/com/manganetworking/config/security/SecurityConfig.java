@@ -133,17 +133,27 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/feed/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/feed/sync").hasRole("MODERATOR")
                         .requestMatchers(HttpMethod.GET, "/api/works/**").permitAll()
+                        // Comentário da obra é ação de leitor: vale para qualquer conta autenticada,
+                        // então precisa vir ANTES da regra de POST de /api/works/** (só criador).
+                        .requestMatchers(HttpMethod.POST, "/api/works/*/comments").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/works/**").hasRole("CREATOR")
                         // Workspace do criador é dado privado (saldo, doações, chave PIX): exige sessão de criador.
                         // Deve vir ANTES do permitAll de /api/creators/** (primeiro match vence).
                         .requestMatchers(HttpMethod.GET, "/api/creators/workspace").hasRole("CREATOR")
                         .requestMatchers(HttpMethod.GET, "/api/creators/analytics", "/api/creators/season").hasRole("CREATOR")
+                        // Transição de leitor para escritor e seguir/seguir-fora: ação de qualquer conta
+                        // autenticada. Precisa vir ANTES da regra de POST de /api/creators/** (só criador).
+                        .requestMatchers(HttpMethod.POST, "/api/creators/apply").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/creators/*/follow").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/creators/*/follow").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/creators/**").hasRole("CREATOR")
                         .requestMatchers(HttpMethod.POST, "/api/creators/**").hasRole("CREATOR")
                         .requestMatchers(HttpMethod.GET, "/api/creators/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/profile/public/**").permitAll()
                         // O serviço ainda aplica a privacidade do perfil; identidade ausente significa visitante.
                         .requestMatchers(HttpMethod.GET, "/api/users/*/profile").permitAll()
+                        // Perfil público por username: leitura liberada, privacidade decidida no serviço.
+                        .requestMatchers(HttpMethod.GET, "/api/users/*/public-profile").permitAll()
                         // Envio de denúncia é público; fila e ações são exclusivas de moderadores
                         .requestMatchers(HttpMethod.POST, "/api/reports").permitAll()
                         .requestMatchers("/api/reports/**").hasRole("MODERATOR")
