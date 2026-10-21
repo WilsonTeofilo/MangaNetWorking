@@ -518,6 +518,17 @@ O detalhe público da obra agora omite capítulos com `publicReleaseAt` futuro; 
   não quebrar clientes). O username só pode ser reivindicado uma vez — enquanto a conta usa o identificador gerado —
   e depois é imutável (`UsernameClaimTest`).
 - [x] **Leitor x escritor separados no servidor:** o cadastro cria **sempre** uma conta de leitor; virar escritor exige
+- [x] **O username e o identificador do autor (sem segundo handle):** a candidatura **nao** pede mais um "username de
+  autor" - o handle do escritor passa a ser o **proprio username da conta de leitor** (reciclado, sem duplicidade:
+  o username ja e unico). Nome e foto sao herdados da conta de leitor; o formulario so pede o que falta (o link).
+  Quando o username e reivindicado depois, o handle do escritor passa a acompanha-lo, desde que o handle esteja
+  livre (se ja existir outro autor com aquele handle, o username e mantido e o handle antigo segue). Prova ao vivo:
+  `POST /api/creators/apply` com **um unico** link -> `200` e `creatorHandle` igual ao username da conta; sem link
+  -> `400` ("Informe pelo menos um link social").
+- [x] **Upload de foto de perfil arrumado:** a camera agora e sempre visivel no avatar (nao so no hover) e ha o botao
+  "TROCAR FOTO"; o cliente valida formato (JPG/PNG) e tamanho (10 MB) antes de enviar e mostra a mensagem real do
+  servidor. Prova ao vivo com a conta do titular: `POST /api/storage/avatar` -> `200` e `PUT /api/users/profile` ->
+  `200` (avatar gravado e visivel no perfil).
   `POST /api/creators/apply` com **pelo menos um vínculo social**. O `register` com `isCreator=true` também exige o
   vínculo. Sem ele: **400** com mensagem explícita.
 - [x] **Vínculo social blindado:** `SocialLinkPolicy` com allowlist de host (Instagram, YouTube, TikTok, X, Behance,

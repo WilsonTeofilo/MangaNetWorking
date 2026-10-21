@@ -116,7 +116,8 @@ Fluxo exercitado de ponta a ponta na stack local (backend 8085, frontend 5180, P
 | Perfil **privado** | ✅ funciona | a mesma rota devolve **só o username**; é o que aparece nos comentários |
 | **Comentar** na obra | ✅ funciona | `POST /api/works/{workId}/comments` (leitor autenticado) e `GET` público; username sempre visível, nome/avatar só com perfil público; corpo higienizado no servidor |
 | **Seguir** um escritor | ✅ funciona | `POST /api/creators/{handle}/follow` — só escritores têm seguidores; leitor não é seguido e ninguém segue a si mesmo |
-| **Virar escritor** (leitor → escritor) | ✅ funciona | `POST /api/creators/apply` exige **pelo menos um vínculo social** (Instagram/YouTube/portfólio, allowlist de host + HTTPS obrigatório); sem link: 400 |
+| **Virar escritor** (leitor → escritor) | ✅ funciona | `POST /api/creators/apply` exige **pelo menos 1** vínculo social (Instagram **ou** YouTube **ou** portfólio — os três são opcionais, um é obrigatório); sem link: 400. O identificador do autor é o **username da conta de leitor** (reciclado) e nome/foto são herdados |
+| **Trocar a foto de perfil** | ✅ funciona | `POST /api/storage/avatar` (normaliza para 512px, sem metadados) + `PUT /api/users/profile`; câmera sempre visível no avatar, botão "TROCAR FOTO" e erro real do servidor na tela |
 | Painel do criador em **telas separadas** | ✅ funciona | Workspace, Minhas obras, Capítulos, Missões & XP, Analytics (`/api/creators/analytics`) e Monetização — cada um com endpoint próprio |
 | Menu da conta no **avatar do header** | ✅ funciona | avatar redondo no canto: Minha conta → Criador (Workspace, obras, capítulos, missões, analytics, monetização) → Sair. A divisão "modo criador/leitor" saiu do header |
 | Onboarding pós-cadastro | ✅ funciona | após o 2FA: tela de foto de perfil, escolha público/privado e botão de ver a própria página pública |
