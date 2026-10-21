@@ -560,6 +560,36 @@ O detalhe público da obra agora omite capítulos com `publicReleaseAt` futuro; 
 - [x] **Suíte:** **352 testes**, 0 falhas, 0 erros (inclui `UsernamePolicyTest`, `SocialLinkPolicyTest`,
   `PublicProfileServiceTest` e `UsernameClaimTest`); build do frontend verde; V17 aplicada em PostgreSQL real.
 
+## 7.21 Revisao de arquitetura, limpeza e segunda passagem (2026-10-21)
+
+- [x] **DRY na criacao do perfil de escritor:** o bloco de cadastro de autor e o fluxo de candidatura
+  (leitor -> escritor) montavam o mesmo `CreatorEntity` em dois lugares, com handle proprio. Agora existe
+  `service/creator/CreatorProfileFactory` (fabrica) e `domain/value/SocialLinks` (value object que valida
+  os tres links e exige **pelo menos um**). O handle deixou de ser escolhido: e o **username da conta**.
+  `AuthApplicationService` caiu de 400 para 385 linhas e `CreatorApplicationService` ficou com uma regra so.
+- [x] **SRP na identidade:** a regra do username (reivindicar uma vez, imutabilidade, unicidade e handle do
+  escritor acompanhando o username) foi extraida para `service/user/AccountIdentityService`, com teste proprio
+  (`AccountIdentityServiceTest`, 6 casos). `UserProfileApplicationService` perdeu esse bloco e os helpers.
+- [x] **Numeros magicos eliminados:** o limite do corpo do comentario vive em `CreateCommentRequestDto.MAX_LENGTH`
+  (referenciado pelo servico), os limites de pagina da listagem viraram constantes nomeadas, o tamanho do
+  username reusa `UsernamePolicy.MIN_LENGTH/MAX_LENGTH` no DTO de cadastro e o limite do link social virou
+  `SocialLinkPolicy.MAX_LENGTH`.
+- [x] **Front:** o bloco de Missoes & Ganhos saiu do container do workspace para
+  `components/creator/CreatorMissionsPanel.tsx` (bloco apresentacional, sem recalcular nada);
+  `CreatorWorkspacePage.tsx` caiu de 738 para 591 linhas.
+- [x] **Seguranca conferida na segunda passagem:** `POST /api/works/*/comments` (leitor autenticado) e
+  `POST/DELETE /api/creators/*/follow` e `POST /api/creators/apply` (qualquer conta autenticada) continuam
+  ANTES das regras genericas de `/api/works/**` e `/api/creators/**` (que sao de criador);
+  `GET /api/users/*/public-profile` e publico, mas a privacidade e decidida no servico (perfil privado devolve
+  so o username); o front renderiza comentario e bio como **texto** (sem `innerHTML`); o username exibido vem
+  do servidor, nunca do cliente.
+- [x] **Pastas e arquivos:** as novas regras ficam onde pertencem (`domain/value` para value objects, `util` para
+  politicas puras, `service/<contexto>` para casos de uso, `components/<area>` no front). Nada de arquivo novo
+  na raiz do pacote.
+- [x] **Evidencia:** **358 testes**, 0 falhas, 0 erros; build do frontend verde; smoke E2E **12/12** na stack real;
+  stack local 6/6 + 2 de monitoramento healthy.
+
+## 8. Ordem de corre
 ## 8. Ordem de correção
 
 A fila está em `docs/orquestracao/ROADMAP-FASES.md`. Resumo:

@@ -13,7 +13,9 @@ public record CreateCommentRequestDto(
         java.util.UUID chapterId,
 
         @NotBlank(message = "O comentário não pode ficar em branco.")
-        @Size(max = 1000, message = "O comentário deve ter no máximo 1000 caracteres.")
+        @Size(max = MAX_LENGTH, message = "O comentário deve ter no máximo 1000 caracteres.")
         String body
 ) {
+    /** Limite canônico do corpo do comentário (mesmo valor exigido pelo serviço). */
+    public static final int MAX_LENGTH = 1000;
 }

@@ -17,7 +17,7 @@ import com.manganetworking.service.mfa.TwoFactorAuthService;
 import com.manganetworking.service.storage.ProfileAvatarUrlPolicy;
 import com.manganetworking.service.creator.dto.*;
 import com.manganetworking.util.CpfValidator;
-import com.manganetworking.util.SocialLinkPolicy;
+import com.manganetworking.domain.value.SocialLinks;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +35,7 @@ public class CreatorApplicationService {
     private final MonetizationService monetizationService;
     private final TwoFactorAuthService twoFactorAuthService;
     private final UserRepository userRepository;
+    private final CreatorProfileFactory creatorProfileFactory;
 
     public CreatorApplicationService(
             CreatorRepository creatorRepository,
@@ -43,7 +44,8 @@ public class CreatorApplicationService {
             CreatorMissionMongoRepository missionRepository,
             MonetizationService monetizationService,
             TwoFactorAuthService twoFactorAuthService,
-            UserRepository userRepository
+            UserRepository userRepository,
+            CreatorProfileFactory creatorProfileFactory
     ) {
         this.creatorRepository = creatorRepository;
         this.pixKeyAuditRepository = pixKeyAuditRepository;
@@ -52,6 +54,7 @@ public class CreatorApplicationService {
         this.monetizationService = monetizationService;
         this.twoFactorAuthService = twoFactorAuthService;
         this.userRepository = userRepository;
+        this.creatorProfileFactory = creatorProfileFactory;
     }
 
     /**
@@ -71,13 +74,8 @@ public class CreatorApplicationService {
             throw new IllegalArgumentException("Você já tem um perfil de escritor.");
         }
 
-        String instagram = SocialLinkPolicy.sanitizeOptional(dto.instagramUrl());
-        String youtube = SocialLinkPolicy.sanitizeOptional(dto.youtubeUrl());
-        String portfolio = SocialLinkPolicy.sanitizeOptional(dto.portfolioUrl());
-        if (instagram == null && youtube == null && portfolio == null) {
-            throw new IllegalArgumentException(
-                    "Informe pelo menos um link social (Instagram, YouTube ou portfólio) para criar o perfil de escritor.");
-        }
+        SocialLinks links = SocialLinks.of(dto.instagramUrl(), dto.youtubeUrl(), dto.portfolioUrl());
+
 
         String cpf = dto.cpf() == null || dto.cpf().isBlank() ? null : dto.cpf().replaceAll("\\D", "");
         if (cpf != null && !CpfValidator.isValid(cpf)) {
@@ -95,19 +93,7 @@ public class CreatorApplicationService {
             throw new IllegalArgumentException("Este username ja e o identificador de outro autor. Troque o username em Minha conta.");
         }
 
-        CreatorEntity creator = new CreatorEntity();
-        creator.setUser(user);
-        creator.setHandle(handle);
-        creator.setBio("Novo escritor na MangaNetWorking.");
-        // A foto e o nome vem da conta de leitor: nada e pedido de novo.
-        creator.setAvatarUrl(user.getAvatarUrl());
-        creator.setInstagramUrl(instagram);
-        creator.setYoutubeUrl(youtube);
-        creator.setPortfolioUrl(portfolio);
-        creator.setDocumentCpf(cpf);
-        creator.setPixKey(user.getEmail());
-        creator.setPixKeyType(PixKeyType.EMAIL);
-        creator.setMonetizationLevel(0);
+        CreatorEntity creator = creatorProfileFactory.create(user, links, cpf);
         creatorRepository.save(creator);
 
         user.setCreator(true);

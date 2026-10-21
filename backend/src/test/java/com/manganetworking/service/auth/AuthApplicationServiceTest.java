@@ -71,6 +71,7 @@ class AuthApplicationServiceTest {
         authService = new AuthApplicationService(
                 userRepository,
                 creatorRepository,
+                new com.manganetworking.service.creator.CreatorProfileFactory(),
                 twoFactorAuthService,
                 new OtpIssuanceLimiter(null, "inmemory"),
                 sessionService,

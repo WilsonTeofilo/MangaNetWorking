@@ -72,7 +72,6 @@ $regBody = @{
     username = "smoke.creator.$($timestamp.ToString().Substring($timestamp.ToString().Length - 8))"
     sex = "NAO_INFORMADO"
     isCreator = $true
-    handle = "smoke_creator_$timestamp"
     instagramUrl = "https://instagram.com/smoke.creator"
     termsAccepted = $true
     privacyPolicyVersion = $policy.version

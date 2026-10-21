@@ -57,11 +57,10 @@ class CreatorApplicationServiceTest {
     @Mock
     private TwoFactorAuthService twoFactorAuthService;
 
-    @InjectMocks
-    private CreatorApplicationService creatorService;
 
     private UUID creatorId;
     private CreatorEntity creator;
+    private CreatorApplicationService creatorService;
 
     @BeforeEach
     void setUp() {
@@ -77,6 +76,16 @@ class CreatorApplicationServiceTest {
         user.setName("Autor Teste");
         user.setBirthDate(java.time.LocalDate.now().minusYears(20));
         creator.setUser(user);
+        creatorService = new CreatorApplicationService(
+                creatorRepository,
+                pixKeyAuditRepository,
+                workRepository,
+                missionRepository,
+                monetizationService,
+                twoFactorAuthService,
+                userRepository,
+                new com.manganetworking.service.creator.CreatorProfileFactory()
+        );
     }
 
     @Test

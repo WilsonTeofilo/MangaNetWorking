@@ -42,6 +42,7 @@ public class UserProfileApplicationService {
     private final SessionService sessionService;
     private final JdbcTemplate jdbcTemplate;
     private final PrivacyComplianceService privacyComplianceService;
+    private final AccountIdentityService accountIdentityService;
 
     public UserProfileApplicationService(
             UserRepository userRepository,
@@ -53,7 +54,8 @@ public class UserProfileApplicationService {
             FileStorageService fileStorageService,
             SessionService sessionService,
             JdbcTemplate jdbcTemplate,
-            PrivacyComplianceService privacyComplianceService
+            PrivacyComplianceService privacyComplianceService,
+            AccountIdentityService accountIdentityService
     ) {
         this.userRepository = userRepository;
         this.workRepository = workRepository;
@@ -65,31 +67,9 @@ public class UserProfileApplicationService {
         this.sessionService = sessionService;
         this.jdbcTemplate = jdbcTemplate;
         this.privacyComplianceService = privacyComplianceService;
+        this.accountIdentityService = accountIdentityService;
     }
 
-    /**
-     * O identificador pÃºblico do autor Ã© o username da conta: quando o username Ã©
-     * reivindicado, o handle do escritor passa a acompanhÃ¡-lo â€” desde que o handle
-     * esteja livre. Se jÃ¡ existir um autor com aquele handle, o username Ã© mantido
-     * (a conta continua vÃ¡lida) e o handle antigo segue.
-     */
-    private void syncCreatorHandleWithUsername(UserEntity user, String username) {
-        creatorRepository.findByUserId(user.getId()).ifPresent(creator -> {
-            if (creator.getHandle() != null && creator.getHandle().equalsIgnoreCase(username)) {
-                return;
-            }
-            if (creatorRepository.findByHandle(username).isPresent()) {
-                return;
-            }
-            creator.setHandle(username);
-            creatorRepository.save(creator);
-        });
-    }
-    /** Identificador gerado automaticamente (placeholder) que ainda pode ser reivindicado. */
-    private boolean isGeneratedUsername(UserEntity user) {
-        return user.getUsername() != null
-                && user.getUsername().equals("user_" + user.getId().toString().replace("-", "").substring(0, 12));
-    }
     @Transactional(readOnly = true)
     public ReaderProfileResponseDto getReaderProfile(UUID targetUserId, UUID currentUserId) {
         UserEntity user = userRepository.findById(targetUserId)
@@ -139,20 +119,8 @@ public class UserProfileApplicationService {
             user.setAvatarUrl(ProfileAvatarUrlPolicy.validate(dto.avatarUrl()));
         }
         if (dto.username() != null && !dto.username().isBlank()) {
-        String requested = com.manganetworking.util.UsernamePolicy.normalize(dto.username());
-        if (!requested.equalsIgnoreCase(user.getUsername())) {
-          // Username é imutável depois de escolhido: só a conta que ainda usa o
-          // identificador gerado (user_<id>) pode reivindicar um username próprio.
-          if (!isGeneratedUsername(user)) {
-            throw new IllegalArgumentException("Este username já foi escolhido e não pode ser alterado.");
-          }
-          if (userRepository.existsByUsernameIgnoreCase(requested)) {
-            throw new IllegalArgumentException("Este username já está em uso.");
-          }
-          user.setUsername(requested);
-          syncCreatorHandleWithUsername(user, requested);
+            accountIdentityService.claimUsername(currentUserId, dto.username());
         }
-      }
       if (dto.isProfilePublic() != null) {
             user.setProfilePublic(dto.isProfilePublic());
         }

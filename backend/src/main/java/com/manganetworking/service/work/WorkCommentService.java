@@ -9,6 +9,7 @@ import com.manganetworking.repository.jpa.ChapterRepository;
 import com.manganetworking.repository.jpa.UserRepository;
 import com.manganetworking.repository.jpa.WorkCommentRepository;
 import com.manganetworking.repository.jpa.WorkRepository;
+import com.manganetworking.service.work.dto.CreateCommentRequestDto;
 import com.manganetworking.service.work.dto.WorkCommentResponseDto;
 import com.manganetworking.util.SanitizationUtils;
 import org.springframework.data.domain.PageRequest;
@@ -28,7 +29,10 @@ import java.util.UUID;
 @Service
 public class WorkCommentService {
 
-    private static final int MAX_BODY_LENGTH = 1000;
+    /** Quantidade maxima de comentarios devolvidos em uma pagina. */
+    private static final int MAX_PAGE_SIZE = 100;
+    /** Quantidade minima de comentarios devolvidos em uma pagina. */
+    private static final int MIN_PAGE_SIZE = 1;
 
     private final WorkCommentRepository commentRepository;
     private final WorkRepository workRepository;
@@ -49,7 +53,7 @@ public class WorkCommentService {
 
     @Transactional(readOnly = true)
     public List<WorkCommentResponseDto> listComments(UUID workId, int limit) {
-        int safeLimit = Math.min(Math.max(limit, 1), 100);
+        int safeLimit = Math.min(Math.max(limit, MIN_PAGE_SIZE), MAX_PAGE_SIZE);
         return commentRepository.findAllByWorkIdOrderByCreatedAtDesc(workId, PageRequest.of(0, safeLimit))
                 .stream()
                 .map(this::toResponse)
@@ -65,8 +69,8 @@ public class WorkCommentService {
         if (body.isBlank()) {
             throw new IllegalArgumentException("O comentário não pode ficar em branco.");
         }
-        if (body.length() > MAX_BODY_LENGTH) {
-            throw new IllegalArgumentException("O comentário deve ter no máximo " + MAX_BODY_LENGTH + " caracteres.");
+        if (body.length() > CreateCommentRequestDto.MAX_LENGTH) {
+            throw new IllegalArgumentException("O comentário deve ter no máximo " + CreateCommentRequestDto.MAX_LENGTH + " caracteres.");
         }
 
         ChapterEntity chapter = null;

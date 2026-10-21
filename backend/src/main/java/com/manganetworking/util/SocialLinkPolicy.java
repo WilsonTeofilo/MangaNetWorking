@@ -34,6 +34,9 @@ public final class SocialLinkPolicy {
             "substack.com", "www.substack.com"
     );
 
+    /** Limite maximo do link (mesmo valor aceito pelos DTOs de perfil). */
+    public static final int MAX_LENGTH = 255;
+
     private SocialLinkPolicy() {
     }
 
@@ -52,7 +55,7 @@ public final class SocialLinkPolicy {
         if (candidate.isBlank()) {
             throw new IllegalArgumentException("Informe um link social válido.");
         }
-        if (candidate.length() > 255) {
+        if (candidate.length() > MAX_LENGTH) {
             throw new IllegalArgumentException("O link social excede o limite de 255 caracteres.");
         }
         if (candidate.chars().anyMatch(Character::isISOControl)) {

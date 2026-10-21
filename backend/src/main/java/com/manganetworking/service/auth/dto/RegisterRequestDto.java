@@ -1,6 +1,7 @@
 package com.manganetworking.service.auth.dto;
 
 import com.manganetworking.domain.enums.Sex;
+import com.manganetworking.util.UsernamePolicy;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -22,7 +23,7 @@ public record RegisterRequestDto(
         String name,
 
         @NotBlank(message = "O username é obrigatório")
-        @Size(min = 3, max = 30, message = "O username deve ter entre 3 e 30 caracteres")
+        @Size(min = UsernamePolicy.MIN_LENGTH, max = UsernamePolicy.MAX_LENGTH, message = "O username deve ter entre 3 e 30 caracteres")
         String username,
 
         @NotBlank(message = "O e-mail é obrigatório")

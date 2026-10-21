@@ -65,6 +65,9 @@ class UserProfileLgpdTest {
     @Mock
     private PrivacyComplianceService privacyComplianceService;
 
+    @Mock
+    private AccountIdentityService accountIdentityService;
+
     @InjectMocks
     private UserProfileApplicationService profileService;
 

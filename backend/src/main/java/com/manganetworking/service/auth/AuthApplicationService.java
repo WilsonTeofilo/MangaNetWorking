@@ -1,6 +1,7 @@
 package com.manganetworking.service.auth;
 
-import com.manganetworking.domain.enums.PixKeyType;
+import com.manganetworking.domain.value.SocialLinks;
+import com.manganetworking.service.creator.CreatorProfileFactory;
 import com.manganetworking.domain.enums.Sex;
 import com.manganetworking.domain.relational.CreatorEntity;
 import com.manganetworking.domain.relational.UserEntity;
@@ -42,6 +43,7 @@ public class AuthApplicationService {
 
     private final UserRepository userRepository;
     private final CreatorRepository creatorRepository;
+    private final CreatorProfileFactory creatorProfileFactory;
     private final TwoFactorAuthService twoFactorAuthService;
     private final OtpIssuanceLimiter otpIssuanceLimiter;
     private final SessionService sessionService;
@@ -58,6 +60,7 @@ public class AuthApplicationService {
     public AuthApplicationService(
             UserRepository userRepository,
             CreatorRepository creatorRepository,
+            CreatorProfileFactory creatorProfileFactory,
             TwoFactorAuthService twoFactorAuthService,
             OtpIssuanceLimiter otpIssuanceLimiter,
             SessionService sessionService,
@@ -67,6 +70,7 @@ public class AuthApplicationService {
     ) {
         this.userRepository = userRepository;
         this.creatorRepository = creatorRepository;
+        this.creatorProfileFactory = creatorProfileFactory;
         this.twoFactorAuthService = twoFactorAuthService;
         this.otpIssuanceLimiter = otpIssuanceLimiter;
         this.sessionService = sessionService;
@@ -139,30 +143,11 @@ public class AuthApplicationService {
 
 
         if (dto.isCreator()) {
-            // Escrever exige vínculo social real: é o que separa o perfil público de
-            // escritor do perfil de leitor e dá um ponto de contato verificável.
-            String instagram = SocialLinkPolicy.sanitizeOptional(dto.instagramUrl());
-            String youtube = SocialLinkPolicy.sanitizeOptional(dto.youtubeUrl());
-            String portfolio = SocialLinkPolicy.sanitizeOptional(dto.portfolioUrl());
-            if (instagram == null && youtube == null && portfolio == null) {
-                throw new IllegalArgumentException(
-                        "Para publicar como escritor, informe pelo menos um link (Instagram, YouTube ou portfólio).");
-            }
-
-            CreatorEntity creator = new CreatorEntity();
-            creator.setUser(user);
-            creator.setHandle(dto.handle() != null && !dto.handle().isBlank()
-                    ? dto.handle().replace("@", "").trim()
-                    : "autor_" + UUID.randomUUID().toString().substring(0, 6));
-            creator.setBio("Novo escritor na MangaNetWorking.");
-            creator.setInstagramUrl(instagram);
-            creator.setYoutubeUrl(youtube);
-            creator.setPortfolioUrl(portfolio);
-            creator.setDocumentCpf(dto.cpf() == null || dto.cpf().isBlank() ? null : dto.cpf().replaceAll("\\D", ""));
-            creator.setPixKey(normalizedEmail);
-            creator.setPixKeyType(PixKeyType.EMAIL);
-            creator.setMonetizationLevel(0);
-            creatorRepository.save(creator);
+            // Escrever exige UM vinculo social: e o que separa o perfil publico de escritor
+            // do perfil de leitor. O identificador do autor e o username desta mesma conta.
+            SocialLinks links = SocialLinks.of(dto.instagramUrl(), dto.youtubeUrl(), dto.portfolioUrl());
+            String cpf = dto.cpf() == null || dto.cpf().isBlank() ? null : dto.cpf().replaceAll("\\D", "");
+            creatorRepository.save(creatorProfileFactory.create(user, links, cpf));
         }
 
         // Dispara desafio 2FA obrigatório
