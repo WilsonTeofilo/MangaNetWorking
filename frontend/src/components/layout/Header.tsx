@@ -229,10 +229,11 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin, publicProfileUs
                   aria-haspopup="menu"
                   aria-expanded={menuOpen}
                 >
+                  {/* Avatar do header no tamanho do MangaTeofilo (54px, borda dourada, redondo) */}
                   <img
                     src={user.avatarUrl || '/avatar-placeholder.png'}
                     alt={user.name}
-                    className="w-8 h-8 rounded-full object-cover bg-[#1F2833]"
+                    className="w-[54px] h-[54px] rounded-full object-cover bg-[#1F2833]"
                   />
                   <ChevronDown size={14} className={`text-[#A9A59A] transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
                 </button>
