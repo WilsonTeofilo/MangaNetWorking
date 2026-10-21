@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { WorkCommentsPanel } from '../components/comments/WorkCommentsPanel';
 import { 
   ArrowUpDown, 
   Heart, 
@@ -374,6 +375,9 @@ export function WorkDetailPage({
             </button>
           </div>
         </section>
+
+        {/* Comentários da obra (username do autor; perfil privado esconde o resto) */}
+        <WorkCommentsPanel workId={work.id} />
 
         {/* Sidebar: Card de Apoio ao Criador & Atualização */}
         <aside className="space-y-6">
