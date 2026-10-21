@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, ChevronLeft, ChevronRight, Crop, GripVertical, Pencil, Image as ImageIcon, Trash2, Upload, X, ZoomIn, Plus, CornerDownLeft } from 'lucide-react';
 import { workApi } from '../../api/workApi';
 import { storageApi } from '../../api/storageApi';
@@ -189,6 +189,29 @@ export function ChapterPublishWizard({
     }
     setJumpTo('');
   };
+
+  // Reidrata o capitulo em edicao: sem isso, trocar de capitulo mantem as paginas
+  // (e o titulo/capa/data) do anterior. A guarda evita apagar o trabalho em andamento.
+  const appliedDraftKey = useRef<string | null>(null);
+  useEffect(() => {
+    const key = draft ? `edicao-${draft.chapterNumber}` : 'novo';
+    if (appliedDraftKey.current === key) return;
+    appliedDraftKey.current = key;
+    setPages(
+      (draft?.pages ?? []).map((url, index) => ({
+        key: `existente-${index}-${url}`,
+        url,
+        previewUrl: url,
+      }))
+    );
+    setChapterTitle(draft?.title ?? `CapÃ­tulo ${nextChapterNumber}`);
+    setCoverFile(null);
+    setCoverUrl(draft?.coverUrl ?? null);
+    setCoverPreview(draft?.coverUrl ?? null);
+    setReleaseDate(draft?.releaseDate ?? '');
+    setProse('');
+    setError(null);
+  }, [draft, nextChapterNumber]);
 
   const pickCover = (file: File | undefined) => {
     if (!file) return;

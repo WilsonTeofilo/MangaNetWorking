@@ -243,6 +243,9 @@ export function CreatorChaptersPage() {
             </div>
           )}
           <ChapterPublishWizard
+            // A chave remonta o wizard quando o capitulo em edicao muda: sem isso o
+            // estado inicial (paginas salvas, titulo, capa) ficaria do capitulo anterior.
+            key={editing ? `edicao-${editing.chapterNumber}` : 'novo'}
             workId={selectedWork.id}
             workTitle={selectedWork.title}
             workFormat={selectedWork.format}
