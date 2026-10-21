@@ -10,6 +10,12 @@
 
     Em producao, os mesmos artefatos sao usados com SMTP institucional e enderecos reais.
 
+    NOTA (21/10/2026): Prometheus e Alertmanager também estão declarados no
+    `docker-compose.yml` no profile `monitoring`. Prefira:
+        docker compose --profile monitoring up -d prometheus alertmanager
+    (o `METRICS_SCRAPE_TOKEN_FILE` precisa apontar para o arquivo de token). Este
+    script continua disponível para subir os containers fora do Compose.
+
 .PARAMETER MetricsScrapeToken
     Token de coleta do backend (Authorization: Bearer). Deve ser o mesmo do container backend.
 
