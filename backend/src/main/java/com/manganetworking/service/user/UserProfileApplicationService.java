@@ -122,6 +122,11 @@ public class UserProfileApplicationService {
             accountIdentityService.claimUsername(currentUserId, dto.username());
         }
       if (dto.isProfilePublic() != null) {
+        // Perfil de ESCRITOR e sempre publico: quem publica precisa ser encontrado
+        // pelos leitores. A conta de leitor continua podendo ficar privada.
+        if (Boolean.FALSE.equals(dto.isProfilePublic()) && user.isCreator()) {
+          throw new IllegalArgumentException("Perfil de escritor Ã© sempre pÃºblico.");
+        }
             user.setProfilePublic(dto.isProfilePublic());
         }
 

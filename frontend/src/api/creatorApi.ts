@@ -26,7 +26,15 @@ export interface CreatorWorkspaceDto {
   id: string;
   name: string;
   avatarUrl?: string | null;
+  /** Bio do autor (preenchida no painel). */
+  bio?: string | null;
   handle: string;
+  /** Username da conta (identificador publico do autor). */
+  username?: string;
+  /** Vinculo social do autor (pelo menos um e obrigatorio). */
+  instagramUrl?: string | null;
+  youtubeUrl?: string | null;
+  portfolioUrl?: string | null;
   monetizationLevel: number;
   monetizationUnlocked: boolean;
   walletBalanceBrl: number;

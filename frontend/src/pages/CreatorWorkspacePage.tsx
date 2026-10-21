@@ -13,7 +13,7 @@ import { toBackendLocalDateTime } from '../utils/datetime';
 
 
 export type CreatorWorkspaceSection = 'dashboard' | 'missions' | 'works';
-export function CreatorWorkspacePage({ section = 'dashboard' }: { section?: CreatorWorkspaceSection }) {
+export function CreatorWorkspacePage({ section = 'dashboard', onOpenPublicProfile }: { section?: CreatorWorkspaceSection; onOpenPublicProfile?: (username: string) => void } = {}) {
   const creator = import.meta.env.DEV ? MOCK_CREATORS['creator-teofilo'] || Object.values(MOCK_CREATORS)[0] : undefined;
 
   // Painel real do autor (`GET /api/creators/workspace`); cai na demo quando não há sessão de criador.
@@ -21,9 +21,19 @@ export function CreatorWorkspacePage({ section = 'dashboard' }: { section?: Crea
   const [workspaceLoading, setWorkspaceLoading] = useState(true);
 
   const [profileName, setProfileName] = useState(creator?.name ?? '');
+  // Links sociais do autor: pelo menos um e obrigatorio (regra do servidor).
+  const [instagramUrl, setInstagramUrl] = useState<string>('');
+  const [youtubeUrl, setYoutubeUrl] = useState<string>('');
+  const [portfolioUrl, setPortfolioUrl] = useState<string>('');
   const [bio, setBio] = useState(creator?.bio ?? '');
   const [membershipPrice, setMembershipPrice] = useState<number | null>(creator?.membershipPriceBrl ?? null);
   const [avatarPreview, setAvatarPreview] = useState(creator?.avatarUrl ?? '');
+  // Pre-visualizacao local: o arquivo escolhido aparece na hora (objectURL), como no
+  // MangaTeofilo, e so depois troca pela URL definitiva do servidor.
+  const [localAvatarPreview, setLocalAvatarPreview] = useState<string | null>(null);
+  const [localCoverPreview, setLocalCoverPreview] = useState<string | null>(null);
+  const [localBannerPreview, setLocalBannerPreview] = useState<string | null>(null);
+  const displayedAvatar = localAvatarPreview ?? avatarPreview;
   const [declaredOriginal, setDeclaredOriginal] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
 
@@ -35,6 +45,8 @@ export function CreatorWorkspacePage({ section = 'dashboard' }: { section?: Crea
   const [chapterText, setChapterText] = useState('');
   const [coverUrl, setCoverUrl] = useState('');
   const [bannerUrl, setBannerUrl] = useState('');
+  const displayedCover = localCoverPreview ?? coverUrl;
+  const displayedBanner = localBannerPreview ?? bannerUrl;
   const [chapterPages, setChapterPages] = useState<string[]>([]);
   const [isUploadingCover, setIsUploadingCover] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
@@ -61,6 +73,10 @@ export function CreatorWorkspacePage({ section = 'dashboard' }: { section?: Crea
         if (data.avatarUrl) setAvatarPreview(data.avatarUrl);
         if (data.name) setProfileName(data.name);
         if (data.membershipPriceBrl != null) setMembershipPrice(Number(data.membershipPriceBrl));
+        if (data.bio != null) setBio(data.bio);
+        if (data.instagramUrl) setInstagramUrl(data.instagramUrl);
+        if (data.youtubeUrl) setYoutubeUrl(data.youtubeUrl);
+        if (data.portfolioUrl) setPortfolioUrl(data.portfolioUrl);
       })
       .catch(() => {
         if (!active) return;
@@ -86,6 +102,7 @@ export function CreatorWorkspacePage({ section = 'dashboard' }: { section?: Crea
     setIsUploadingCover(true);
     setPublishErrorMsg(null);
     try {
+      setLocalCoverPreview(URL.createObjectURL(file));
       const res = await storageApi.uploadFile(file);
       setCoverUrl(res.url);
     } catch (err: any) {
@@ -102,6 +119,7 @@ export function CreatorWorkspacePage({ section = 'dashboard' }: { section?: Crea
     setIsUploadingAvatar(true);
     setSaveError(null);
     try {
+      setLocalAvatarPreview(URL.createObjectURL(file));
       const stored = await storageApi.uploadAvatar(file);
       await creatorApi.updateProfile({ avatarUrl: stored.url });
       setAvatarPreview(stored.url);
@@ -118,6 +136,7 @@ export function CreatorWorkspacePage({ section = 'dashboard' }: { section?: Crea
     setIsUploadingBanner(true);
     setPublishErrorMsg(null);
     try {
+      setLocalBannerPreview(URL.createObjectURL(file));
       const res = await storageApi.uploadFile(file);
       setBannerUrl(res.url);
     } catch (err: any) {
@@ -217,14 +236,14 @@ export function CreatorWorkspacePage({ section = 'dashboard' }: { section?: Crea
     setIsSaving(true);
     setSaveError(null);
     try {
-      await creatorApi.updateProfile({ name: profileName, bio });
+      await creatorApi.updateProfile({ name: profileName, bio, instagramUrl, youtubeUrl, portfolioUrl });
       if (membershipPrice != null && Number.isFinite(membershipPrice)) {
         await creatorApi.updateMembershipPrice(membershipPrice);
       }
       setIsSaved(true);
       setTimeout(() => setIsSaved(false), 2500);
-    } catch {
-      setSaveError('Não foi possível salvar no servidor. Verifique a sessão e tente novamente.');
+      } catch (err: any) {
+        setSaveError(err?.message || 'NÃ£o foi possÃ­vel salvar no servidor. Verifique a sessÃ£o e tente novamente.');
     } finally {
       setIsSaving(false);
     }
@@ -263,7 +282,7 @@ export function CreatorWorkspacePage({ section = 'dashboard' }: { section?: Crea
           <div className="flex items-center gap-4">
             <div className="p-1 bg-[var(--mn-paper)] border-2 border-[var(--mn-ink)] shadow-[3px_3px_0_var(--mn-yellow)]">
               <img
-                src={avatarPreview}
+                src={displayedAvatar}
                 alt={profileName}
                 className="w-16 h-16 object-cover border border-[var(--mn-ink)]"
               />
@@ -285,7 +304,7 @@ export function CreatorWorkspacePage({ section = 'dashboard' }: { section?: Crea
                 {profileName}
               </h1>
               <span className="font-body text-xs text-[var(--mn-mute)]">
-                @{displayHandle} 
+                {`@${displayHandle?.replace(/^@/, '')}`} 
               </span>
             </div>
           </div>
@@ -410,7 +429,7 @@ export function CreatorWorkspacePage({ section = 'dashboard' }: { section?: Crea
               </span>
               {coverUrl ? (
                 <div className="flex flex-col items-center gap-2">
-                  <img src={coverUrl} alt="Preview da Capa" className="w-24 h-36 object-cover border-2 border-[var(--mn-yellow)]" />
+                  <img src={displayedCover} alt="Preview da Capa" className="w-24 h-36 object-cover border-2 border-[var(--mn-yellow)]" />
                   <span className="font-pixel text-[12px] text-[var(--mn-ok)]">CAPA PRONTA</span>
                 </div>
               ) : (
@@ -433,7 +452,7 @@ export function CreatorWorkspacePage({ section = 'dashboard' }: { section?: Crea
               </span>
               {bannerUrl ? (
                 <div className="flex flex-col items-center gap-2">
-                  <img src={bannerUrl} alt="Preview do Banner" className="w-48 h-24 object-cover border-2 border-[var(--mn-yellow)]" />
+                  <img src={displayedBanner} alt="Preview do Banner" className="w-48 h-24 object-cover border-2 border-[var(--mn-yellow)]" />
                   <span className="font-pixel text-[12px] text-[var(--mn-ok)]">BANNER PRONTO</span>
                 </div>
               ) : (
@@ -546,6 +565,38 @@ export function CreatorWorkspacePage({ section = 'dashboard' }: { section?: Crea
           />
         </div>
 
+        {/* Vínculo social: os três são opcionais, mas pelo menos UM é obrigatório
+            (regra do servidor). É o que dá identidade pública real ao escritor. */}
+        <div className="space-y-3 border-2 border-[var(--mn-teal)] p-4">
+          <div>
+            <p className="font-display text-sm text-[var(--mn-paper)] uppercase">VÍNCULO SOCIAL</p>
+            <p className="font-body text-xs text-[var(--mn-mute)]">
+              Informe <strong>pelo menos um</strong> (Instagram, YouTube ou portfólio). É o que o leitor
+              vê no seu perfil. O seu identificador público é o seu username: @{displayHandle?.replace(/^@/, '')}
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <Field
+              label="INSTAGRAM"
+              value={instagramUrl}
+              onChange={(e) => setInstagramUrl(e.target.value)}
+              placeholder="https://instagram.com/..."
+            />
+            <Field
+              label="YOUTUBE"
+              value={youtubeUrl}
+              onChange={(e) => setYoutubeUrl(e.target.value)}
+              placeholder="https://youtube.com/@..."
+            />
+            <Field
+              label="PORTFÓLIO"
+              value={portfolioUrl}
+              onChange={(e) => setPortfolioUrl(e.target.value)}
+              placeholder="https://behance.net/..."
+            />
+          </div>
+        </div>
+
         {/* Declaração de Autoria Original Obrigatória (Seção 8.9) */}
         <div className="p-4 border-2 border-[var(--mn-yellow)] bg-[var(--mn-ink)] space-y-2">
           <label className="flex items-start gap-3 cursor-pointer select-none">
@@ -576,9 +627,18 @@ export function CreatorWorkspacePage({ section = 'dashboard' }: { section?: Crea
           </Button>
 
           {isSaved && (
-            <span className="font-pixel text-[12px] text-[var(--mn-ok)] flex items-center gap-1">
-              <Check size={14} /> SALVO NO SERVIDOR
-            </span>
+            <div role="status" className="flex flex-wrap items-center gap-3 border-2 border-[var(--mn-ok)] bg-[var(--mn-ink-2)] px-4 py-3">
+              <span className="font-pixel text-[12px] text-[var(--mn-ok)] flex items-center gap-1">
+                <Check size={14} /> PERFIL ATUALIZADO NO SERVIDOR
+              </span>
+              <button
+                type="button"
+                onClick={() => onOpenPublicProfile?.(workspace?.username || '')}
+                className="font-pixel text-[11px] uppercase text-[var(--mn-yellow)] hover:underline"
+              >
+                VER MEU PERFIL PÚBLICO
+              </button>
+            </div>
           )}
 
           {saveError && <span className="font-body text-xs text-[var(--mn-red)]">{saveError}</span>}

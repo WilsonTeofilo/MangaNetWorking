@@ -240,7 +240,7 @@ function AppContent() {
               )}
 
               {currentTab === 'creator-dashboard' && (
-                <CreatorDashboardPage />
+                <CreatorDashboardPage onOpenPublicProfile={openPublicProfile} />
               )}
 
               {currentTab === 'creator-missions' && (

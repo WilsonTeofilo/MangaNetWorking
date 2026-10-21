@@ -235,19 +235,29 @@ export function AccountProfilePage({ onOpenPublicProfile, onOpenReaderPanel }: {
 
           <div className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-6 space-y-4">
             <h2 className="font-display text-xl text-[var(--mn-paper)] uppercase">Visibilidade do perfil</h2>
-            <p className="text-sm text-[var(--mn-mute)]">
-              Privado: ninguém vê seus dados além do username (é o que aparece nos comentários).
-              Público: sua página pública fica visível para qualquer pessoa.
-            </p>
-            <div className="flex flex-wrap items-center gap-3">
-              <Button onClick={toggleVisibility} disabled={saving} variant={isPublic ? 'ghost' : 'primary'}>
-                {isPublic ? <EyeOff size={14} /> : <Eye size={14} />}
-                {isPublic ? 'TORNAR PRIVADO' : 'TORNAR PÚBLICO'}
-              </Button>
-              <span className="font-pixel text-[11px] uppercase text-[var(--mn-mute)]">
-                {isPublic ? 'Perfil público' : 'Perfil privado'}
-              </span>
-            </div>
+            {user.isCreator ? (
+              <p className="text-sm text-[var(--mn-mute)] border-2 border-[var(--mn-teal)] p-3">
+                <strong className="text-[var(--mn-paper)]">Perfil de escritor é sempre público.</strong> Quem
+                publica precisa ser encontrado pelos leitores — a visibilidade privativa existe só para
+                contas de leitor. Ajustes de foto, bio e links ficam no painel do autor.
+              </p>
+            ) : (
+              <>
+                <p className="text-sm text-[var(--mn-mute)]">
+                  Privado: ninguém vê seus dados além do username (é o que aparece nos comentários).
+                  Público: sua página pública fica visível para qualquer pessoa.
+                </p>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button onClick={toggleVisibility} disabled={saving} variant={isPublic ? 'ghost' : 'primary'}>
+                    {isPublic ? <EyeOff size={14} /> : <Eye size={14} />}
+                    {isPublic ? 'TORNAR PRIVADO' : 'TORNAR PÚBLICO'}
+                  </Button>
+                  <span className="font-pixel text-[11px] uppercase text-[var(--mn-mute)]">
+                    {isPublic ? 'Perfil público' : 'Perfil privado'}
+                  </span>
+                </div>
+              </>
+            )}
             {user.username && (
               <Button variant="ghost" onClick={() => onOpenPublicProfile(user.username!)}>
                 <Eye size={14} /> VER MINHA PÁGINA PÚBLICA

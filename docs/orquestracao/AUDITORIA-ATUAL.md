@@ -608,6 +608,36 @@ O detalhe público da obra agora omite capítulos com `publicReleaseAt` futuro; 
   Cobertura automatizada: 4 casos novos em `AccountIdentityServiceTest` (10 no total).
 - [x] **Suite:** **362 testes**, 0 falhas, 0 erros; build do frontend verde.
 
+## 7.23 Foto que nao aparecia, perfil de escritor e painel do autor (2026-10-21)
+
+- [x] **BUG RAIZ do upload ( Nginx ):** o `location /api/` perdia para a regra de assets estaticos
+  (`.png/.jpg/.webp`) e o Nginx servia o index.html em vez de proxiar. Resultado: TODO arquivo em
+  `/api/storage/**` (avatar, capa, banner) devolvia **404 pelo front**, mesmo com o arquivo gravado
+  no servidor â€” por isso "nao consigo subir foto" e o icone de imagem quebrada no painel.
+  Correcao: `location ^~ /api/` (o prefixo `^~` tem prioridade sobre as regex de estatico).
+  Prova: avatar do criador via `localhost:5180` saiu de **404 para 200**; o upload sempre gravava
+  (o log do servidor mostra "arquivo armazenado com sucesso").
+- [x] **Pre-visualizacao local (padrao MangaTeofilo):** a foto escolhida aparece na hora via
+  `URL.createObjectURL` (avatar, capa e banner) e so depois troca pela URL definitiva do servidor.
+- [x] **Identificador unico (fim do "@@"):** o handle do escritor e o username da conta; a exibicao
+  nao prepende "@" quando o handle ja vem com ele. O dado legado ("@ghaitani") foi normalizado pela
+  sincronizacao de handle (hoje `haitani`), e o servidor normaliza na escrita.
+- [x] **Perfil de escritor e sempre publico:** `PUT /api/users/profile` recusa `isProfilePublic=false`
+  para quem `is_creator=true` ("Perfil de escritor e sempre publico"); a tela "Minha conta" mostra o
+  aviso no lugar do botao. Leitor continua escolhendo livremente. Cobertura: `ProfileVisibilityTest`.
+- [x] **Autor precisa de UM vinculo social (regra no servidor):** `PUT /api/creators/profile` valida os
+  tres links pela allowlist e exige pelo menos um; autor sem nenhum vinculo nao salva o perfil. O painel
+  do autor agora tem os tres campos (Instagram, YouTube, portfolio) com o aviso do requisito.
+- [x] **"Minha conta" some do menu do escritor:** a entrada deixa de aparecer para quem e escritor
+  (a pagina continua existindo para o leitor) e o util dela foi para o painel do autor: foto, bio,
+  links e o link para o perfil publico.
+- [x] **UX do painel do autor:** o formulario reidrata com o que esta no servidor (bio e links) â€”
+  antes a bio sumia ao recarregar porque o workspace nao a devolvia; o save agora mostra um aviso
+  persistente "PERFIL ATUALIZADO NO SERVIDOR" com o botao "VER MEU PERFIL PUBLICO", e o erro real
+  do servidor aparece em vez de uma mensagem generica.
+- [x] **Suite:** **366 testes**, 0 falhas, 0 erros; build do frontend verde.
+
+## 8. Ordem de corre
 ## 8. Ordem de corre
 ## 8. Ordem de corre
 ## 8. Ordem de correção

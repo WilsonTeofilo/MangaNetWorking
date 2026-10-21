@@ -150,7 +150,12 @@ public class CreatorApplicationService {
                 creator.getId(),
                 creator.getUser() != null ? creator.getUser().getName() : creator.getHandle(),
                 creator.getAvatarUrl(),
-                "@" + creator.getHandle(),
+                creator.getBio(),
+                creator.getHandle(),
+                creator.getUser() != null ? creator.getUser().getUsername() : null,
+                creator.getInstagramUrl(),
+                creator.getYoutubeUrl(),
+                creator.getPortfolioUrl(),
                 creator.getMonetizationLevel(),
                 creator.isMonetizationUnlocked(),
                 creator.getWalletBalanceBrl(),
@@ -168,15 +173,33 @@ public class CreatorApplicationService {
     @Transactional
     public void updateCreatorIdentity(UUID creatorId, UpdateCreatorIdentityRequestDto dto) {
         CreatorEntity creator = creatorRepository.findById(creatorId)
-                .orElseThrow(() -> new ResourceNotFoundException("Criador não encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Criador nÃ£o encontrado"));
 
         if (dto.name() != null && !dto.name().isBlank() && creator.getUser() != null) {
             creator.getUser().setName(com.manganetworking.util.SanitizationUtils.stripAllHtml(dto.name().trim()));
         }
         if (dto.bio() != null) creator.setBio(com.manganetworking.util.SanitizationUtils.stripAllHtml(dto.bio().trim()));
-        if (dto.instagramUrl() != null) creator.setInstagramUrl(CreatorProfileUrlPolicy.instagram(dto.instagramUrl()));
-        if (dto.youtubeUrl() != null) creator.setYoutubeUrl(CreatorProfileUrlPolicy.youtube(dto.youtubeUrl()));
-        if (dto.portfolioUrl() != null) creator.setPortfolioUrl(CreatorProfileUrlPolicy.portfolio(dto.portfolioUrl()));
+
+        // Os tres links sao validados pela allowlist (host + HTTPS) e o autor precisa
+        // manter pelo menos UM deles: e o vinculo real que o leitor ve no perfil.
+        boolean touchesLinks = dto.instagramUrl() != null
+                || dto.youtubeUrl() != null
+                || dto.portfolioUrl() != null;
+        if (touchesLinks) {
+            SocialLinks links = SocialLinks.of(
+                    dto.instagramUrl() != null ? dto.instagramUrl() : creator.getInstagramUrl(),
+                    dto.youtubeUrl() != null ? dto.youtubeUrl() : creator.getYoutubeUrl(),
+                    dto.portfolioUrl() != null ? dto.portfolioUrl() : creator.getPortfolioUrl());
+            creator.setInstagramUrl(links.instagramUrl());
+            creator.setYoutubeUrl(links.youtubeUrl());
+            creator.setPortfolioUrl(links.portfolioUrl());
+        } else if (creator.getInstagramUrl() == null
+                && creator.getYoutubeUrl() == null
+                && creator.getPortfolioUrl() == null) {
+            // Autor sem nenhum vinculo: nao pode salvar o perfil assim.
+            throw new IllegalArgumentException(SocialLinks.MISSING_LINK_MESSAGE);
+        }
+
         if (dto.avatarUrl() != null) creator.setAvatarUrl(ProfileAvatarUrlPolicy.validate(dto.avatarUrl()));
 
         creatorRepository.save(creator);

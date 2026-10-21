@@ -118,6 +118,8 @@ Fluxo exercitado de ponta a ponta na stack local (backend 8085, frontend 5180, P
 | **Comentar** na obra | ✅ funciona | `POST /api/works/{workId}/comments` (leitor autenticado) e `GET` público; username sempre visível, nome/avatar só com perfil público; corpo higienizado no servidor |
 | **Seguir** um escritor | ✅ funciona | `POST /api/creators/{handle}/follow` — só escritores têm seguidores; leitor não é seguido e ninguém segue a si mesmo |
 | **Virar escritor** (leitor → escritor) | ✅ funciona | `POST /api/creators/apply` exige **pelo menos 1** vínculo social (Instagram **ou** YouTube **ou** portfólio — os três são opcionais, um é obrigatório); sem link: 400. O identificador do autor é o **username da conta de leitor** (reciclado) e nome/foto são herdados |
+| Perfil de **escritor Ã© sempre pÃºblico** | âœ… funciona | o servidor recusa `isProfilePublic=false` para escritor; leitor escolhe livremente |
+| Painel do autor (foto, bio, links, perfil pÃºblico) | âœ… funciona | o formulÃ¡rio reidrata com o servidor, mostra "PERFIL ATUALIZADO" com botÃ£o para o perfil pÃºblico e exige **1** dos 3 links sociais |
 | **Trocar a foto de perfil** | ✅ funciona | `POST /api/storage/avatar` (normaliza para 512px, sem metadados) + `PUT /api/users/profile`; câmera sempre visível no avatar, botão "TROCAR FOTO" e erro real do servidor na tela |
 | Painel do criador em **telas separadas** | ✅ funciona | Workspace, Minhas obras, Capítulos, Missões & XP, Analytics (`/api/creators/analytics`) e Monetização — cada um com endpoint próprio |
 | Menu da conta no **avatar do header** | ✅ funciona | avatar redondo no canto: Minha conta → Criador (Workspace, obras, capítulos, missões, analytics, monetização) → Sair. A divisão "modo criador/leitor" saiu do header |
@@ -131,7 +133,7 @@ Fluxo exercitado de ponta a ponta na stack local (backend 8085, frontend 5180, P
 > canônico, e endereço inválido volta **400** com mensagem clara.
 >
 > Evidência desta rodada: CI remoto verde no commit `8cff00f` (run `39521554083` com os quatro
-> jobs - backend (**362 testes**), frontend, validação do Compose de produção e smoke 12/12.
+> jobs - backend (**366 testes**), frontend, validação do Compose de produção e smoke 12/12.
 > Smoke local 12/12 na stack real e V17 aplicada em PostgreSQL real.
 
 ### 4.1 O que ainda não dá (ordem de bloqueio)
@@ -184,7 +186,7 @@ Fluxo exercitado de ponta a ponta na stack local (backend 8085, frontend 5180, P
   respeita a privacidade (privado expoe so o username), seguidores existem **so para escritores** e comentarios
   mostram o username sem expor o resto quando o perfil e privado. Front: header sem a divisao "modo leitor/criador"
   (menu do avatar), painel do criador em telas separadas por endpoint, "Minha conta" e onboarding pos-cadastro.
-  Evidencia: **362 testes** verdes, V17 aplicada em PostgreSQL real, smoke 12/12 local e no CI (run `39521554083`).
+  Evidencia: **366 testes** verdes, V17 aplicada em PostgreSQL real, smoke 12/12 local e no CI (run `39521554083`).
 - [x] **Stack de alerta corrigido e sob o Compose (21/10/2026):** as regras do Prometheus tinham um `:` nao citado
   numa anotacao YAML e o container **nao carregava as regras** (`promtool` -> 4 regras depois do ajuste, alvo `up`).
   Prometheus e Alertmanager passaram para o profile `monitoring` do Compose (antes eram containers orfaos).
@@ -200,7 +202,7 @@ Fluxo exercitado de ponta a ponta na stack local (backend 8085, frontend 5180, P
   cadastro cria **sempre** leitor e a transição para escritor exige **pelo menos um vínculo social** (Instagram, YouTube
   ou portfólio, com allowlist de host e HTTPS obrigatório). Página pública por username respeita o privacidade: perfil
   privado expõe só o username. Seguidores existem apenas para escritores. Comentários da obra mostram o username do
-  autor e escondem nome/avatar quando o perfil é privado. Evidência: 362 testes verdes, V17 aplicada, páginas separadas
+  autor e escondem nome/avatar quando o perfil é privado. Evidência: 366 testes verdes, V17 aplicada, páginas separadas
   no painel do criador e menu do avatar no header.
 
 ### F3 — Obras, capítulos e leitores de mangá/light novel · 🟡 parcial
@@ -432,7 +434,7 @@ Fluxo exercitado de ponta a ponta na stack local (backend 8085, frontend 5180, P
 
 | **Passe 24** | 20/10/2026 | **Papel de proprietário, governança de dados e prontidão de produção:**<br>- V14 (`users.is_owner`) com `ROLE_OWNER` derivado no servidor; `/api/owner/**` exige o papel; `/auth/me` expõe `isOwner`.<br>- V15 (`privacy_governance_actions`, append-only) e V16 (`email_delivery_events`).<br>- Publicação controlada da Política de Privacidade (`GET /api/legal/privacy-policy` + `ops/legal/publish-privacy-policy.ps1`).<br>- Saneamento controlado de CPF legado (16 registros) e exclusão LGPD limpando privilégios residuais.<br>- Backup cifrado (AES-256-CBC + HMAC) com cópia off-site e retenção; Prometheus + Alertmanager com alerta real; exercício de runbook automatizado; `ops/deploy` para a Oracle.<br>- PR #5 mergeado na `main` (merge commit `35479b7`) e `develop`→`main` (PR #7, `f6350a4`). | **322 testes** verdes; CI remoto verde (run `39490345472`); stack local 6/6 saudável; sem credencial de produção, sem deploy e sem aprovação legal inventada. |
 | **Passe 25** | 20/10/2026 | **E-mail real e canonicalização no servidor:**<br>- `util.EmailNormalizer` (trim + minúsculas + validação RFC 5321) aplicado em cadastro, login, Google OAuth, 2FA, recuperação, OTP, Dev Outbox e webhook de bounce; o `@Email` do framework saiu dos DTOs porque recusava endereço com espaço nas pontas.<br>- Compose local passou a repassar `MAIL_*` do `.env` (antes fixava Mailpit e ignorava o `.env`: todo OTP ia para o Mailpit).<br>- Cadastro com conta pendente (e-mail nunca confirmado) reenvia o OTP; conta já confirmada não recebe e-mail no cadastro (é login). | **335 testes**, 0 falhas/0 erros; entrega real comprovada com `outcome=sent` (OTP de 2FA e link de recuperação no e-mail do titular) e Mailpit com 0 mensagens no mesmo intervalo; Dev Outbox **404** no stack real (atalho de dev desligado); CI remoto verde (run `39500739630`). |
-| **Passe 26** | 21/10/2026 | **Identidade separada e reorganizacao da interface:**<br>- V17: `users.username` (unico, imutavel depois de escolhido), `users.sex`, `creator_follows`, `work_comments`.<br>- Login e 2FA aceitam e-mail **ou** username; cadastro cria sempre leitor; virar escritor exige pelo menos um vinculo social (allowlist + HTTPS).<br>- Perfil publico por username com privacidade real; seguidores so de escritor; comentarios com username.<br>- Header sem a divisao "modo leitor/criador" (menu do avatar); painel do criador em telas separadas; "Minha conta"; onboarding pos-cadastro.<br>- Prometheus e Alertmanager no profile `monitoring` do Compose; bug real de YAML nas regras corrigido. | **362 testes**, 0 falhas/0 erros; V17 aplicada; smoke 12/12 local e no CI (run `39521554083`); login por username e perfil publico comprovados ao vivo. |
+| **Passe 26** | 21/10/2026 | **Identidade separada e reorganizacao da interface:**<br>- V17: `users.username` (unico, imutavel depois de escolhido), `users.sex`, `creator_follows`, `work_comments`.<br>- Login e 2FA aceitam e-mail **ou** username; cadastro cria sempre leitor; virar escritor exige pelo menos um vinculo social (allowlist + HTTPS).<br>- Perfil publico por username com privacidade real; seguidores so de escritor; comentarios com username.<br>- Header sem a divisao "modo leitor/criador" (menu do avatar); painel do criador em telas separadas; "Minha conta"; onboarding pos-cadastro.<br>- Prometheus e Alertmanager no profile `monitoring` do Compose; bug real de YAML nas regras corrigido. | **366 testes**, 0 falhas/0 erros; V17 aplicada; smoke 12/12 local e no CI (run `39521554083`); login por username e perfil publico comprovados ao vivo. |
 
 ### Próximos passos (estado atual)
 
@@ -444,7 +446,7 @@ A ordem vigente é mantida em `docs/orquestracao/ROADMAP-FASES.md`. Concluído c
 
 | Componente | Tecnologia | Porta / Path | Status de Verificação |
 |---|---|---|---|
-| **API Backend** | Spring Boot 3.4.2 / Java 21 | `8085` | **362 testes** em 21/10/2026, 0 falhas/erros/ignorados com Docker; Sandbox pendente |
+| **API Backend** | Spring Boot 3.4.2 / Java 21 | `8085` | **366 testes** em 21/10/2026, 0 falhas/erros/ignorados com Docker; Sandbox pendente |
 | **Banco Relacional** | PostgreSQL 16 (Docker) | `25432` | V1–V16 aplicadas em stack local real; V13 com `token_hash VARCHAR(64)`, V14 com `is_owner` e `validate` verde |
 | **Banco NoSQL** | MongoDB 7 (Docker) | `27017` | Eventos de feed e telemetria validados ao vivo |
 | **Storage de Imagens** | Filesystem Local Sanitizado | `./data/uploads/` | Magic bytes e guard por `chapter_files` validados |

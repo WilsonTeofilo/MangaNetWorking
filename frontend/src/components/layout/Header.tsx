@@ -246,14 +246,22 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin, publicProfileUs
                       <p className="font-pixel text-[11px] text-[#FFD400] mt-0.5">@{user.username || 'sem-username'}</p>
                     </div>
 
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => go('account')}
-                      className="w-full text-left px-4 py-2.5 font-body text-sm text-[#F4EFE3] hover:bg-[#1F2833] hover:text-[#FFD400] transition-colors"
-                    >
-                      Minha conta
-                    </button>
+                    {/*
+                      "Minha conta" é a casa do LEITOR (foto, privacidade, dados LGPD).
+                      Para o escritor, o painel do autor tem o mesmo util (foto, bio,
+                      links e perfil público), então a entrada some do menu para não
+                      duplicar a mesma tela em dois lugares.
+                    */}
+                    {!user.isCreator && (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => go('account')}
+                        className="w-full text-left px-4 py-2.5 font-body text-sm text-[#F4EFE3] hover:bg-[#1F2833] hover:text-[#FFD400] transition-colors"
+                      >
+                        Minha conta
+                      </button>
+                    )}
 
                     {publicProfileUsername && (
                       <button

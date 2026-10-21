@@ -68,6 +68,7 @@ class CreatorApplicationServiceTest {
         creator = new CreatorEntity();
         creator.setId(creatorId);
         creator.setHandle("autor");
+        creator.setInstagramUrl("https://instagram.com/autor");
         creator.setMonetizationLevel(0);
 
         UserEntity user = new UserEntity();
@@ -96,11 +97,11 @@ class CreatorApplicationServiceTest {
 
         creatorService.updateCreatorIdentity(creatorId, new UpdateCreatorIdentityRequestDto(
                 null, null, " https://www.instagram.com/autor ",
-                "https://youtu.be/video", "https://portfolio.example/autor", null));
+                "https://youtu.be/video", "https://behance.net/autor", null));
 
         assertEquals("https://www.instagram.com/autor", creator.getInstagramUrl());
         assertEquals("https://youtu.be/video", creator.getYoutubeUrl());
-        assertEquals("https://portfolio.example/autor", creator.getPortfolioUrl());
+        assertEquals("https://behance.net/autor", creator.getPortfolioUrl());
         verify(creatorRepository).save(creator);
     }
 
@@ -333,5 +334,21 @@ class CreatorApplicationServiceTest {
                         new ApplyAsCreatorRequestDto("https://instagram.com/ocupado", null, null, null)));
 
         verify(creatorRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Autor sem nenhum vinculo social nao consegue salvar o perfil")
+    void shouldRequireAtLeastOneSocialLinkToSaveCreatorProfile() {
+        creator.setInstagramUrl(null);
+        creator.setYoutubeUrl(null);
+        creator.setPortfolioUrl(null);
+        when(creatorRepository.findById(creatorId)).thenReturn(Optional.of(creator));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+                creatorService.updateCreatorIdentity(creatorId,
+                        new UpdateCreatorIdentityRequestDto(null, "Bio nova", null, null, null, null)));
+
+        assertTrue(exception.getMessage().contains("pelo menos um link social"));
+        verify(creatorRepository, never()).save(any(CreatorEntity.class));
     }
 }
