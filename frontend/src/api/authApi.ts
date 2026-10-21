@@ -131,6 +131,17 @@ export const authApi = {
    * Perfil público pelo username — a página que os demais visitam.
    * Perfil privado devolve apenas o username (regra aplicada no servidor).
    */
+  /**
+   * Disponibilidade do username: a tela verifica enquanto o titular digita e recebe uma
+   * alternativa livre quando o desejado ja existe (nunca um erro seco).
+   */
+  checkUsername(username: string) {
+    return request<{ available: boolean; suggestion: string | null; invalidReason: string | null }>(
+      `/users/username-available?username=${encodeURIComponent(username)}`,
+      { method: 'GET' }
+    );
+  },
+
   getPublicProfile(username: string) {
     return request<{
       username: string;

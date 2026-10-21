@@ -8,6 +8,7 @@ import com.manganetworking.util.UsernamePolicy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -20,12 +21,19 @@ import java.util.UUID;
  *
  * <p>Esta classe existe para isolar essa regra: o serviço de perfil cuida de avatar, visibilidade,
  * exportação e exclusão; a identidade tem dono, teste e regra próprios.</p>
+ *
+ * <p><b>Blindagem contra erro de_colisão:</b> quando o username desejado já existe, a resposta
+ * traz uma sugestão concreta e utilizável ({@link #suggestAvailableUsername}) — o titular nunca
+ * fica preso num "não pode" sem saída.</p>
  */
 @Service
 public class AccountIdentityService {
 
     /** Prefixo do identificador automático das contas que ainda não escolheram username. */
     public static final String GENERATED_USERNAME_PREFIX = "user_";
+
+    /** Quantidade de alternativas oferecidas quando o username desejado está em uso. */
+    private static final int SUGGESTION_ATTEMPTS = 20;
 
     private final UserRepository userRepository;
     private final CreatorRepository creatorRepository;
@@ -36,11 +44,52 @@ public class AccountIdentityService {
     }
 
     /**
+     * Verifica se um username pode ser usado e, quando não, devolve uma alternativa livre.
+     *
+     * @param requested username desejado (pode ser inválido: o erro é reportado, não lançado)
+     * @return disponibilidade e sugestão
+     */
+    @Transactional(readOnly = true)
+    public UsernameAvailability checkAvailability(String requested) {
+        String candidate;
+        try {
+            candidate = UsernamePolicy.normalize(requested);
+        } catch (IllegalArgumentException invalid) {
+            return new UsernameAvailability(false, null, invalid.getMessage());
+        }
+        if (userRepository.existsByUsernameIgnoreCase(candidate)) {
+            return new UsernameAvailability(false, suggestAvailableUsername(candidate), null);
+        }
+        return new UsernameAvailability(true, candidate, null);
+    }
+
+    /**
+     * Procura um username livre parecido com o desejado (sufixo numérico).
+     *
+     * @param desired username já canonicalizado e em uso
+     * @return a primeira alternativa livre, ou {@code null} se nada for encontrado
+     */
+    @Transactional(readOnly = true)
+    public String suggestAvailableUsername(String desired) {
+        for (int suffix = 2; suffix <= SUGGESTION_ATTEMPTS; suffix++) {
+            String candidate = desired + suffix;
+            if (candidate.length() > UsernamePolicy.MAX_LENGTH) {
+                candidate = desired.substring(0, UsernamePolicy.MAX_LENGTH - String.valueOf(suffix).length()) + suffix;
+            }
+            if (!userRepository.existsByUsernameIgnoreCase(candidate)) {
+                return candidate;
+            }
+        }
+        return null;
+    }
+
+    /**
      * Reivindica o username da conta, respeitando a imutabilidade e a unicidade.
      *
-     * @param userId   titular da conta
+     * @param userId    titular da conta
      * @param requested username desejado (canonicalizado pela política)
      * @throws IllegalArgumentException quando o username é inválido, já foi escolhido ou está em uso
+     *                       (a mensagem inclui uma alternativa livre quando existe)
      */
     @Transactional
     public void claimUsername(UUID userId, String requested) {
@@ -55,7 +104,10 @@ public class AccountIdentityService {
             throw new IllegalArgumentException("Este username já foi escolhido e não pode ser alterado.");
         }
         if (userRepository.existsByUsernameIgnoreCase(candidate)) {
-            throw new IllegalArgumentException("Este username já está em uso.");
+            String suggestion = suggestAvailableUsername(candidate);
+            throw new IllegalArgumentException(suggestion == null
+                    ? "Este username já está em uso."
+                    : "Este username já está em uso. Tente \"" + suggestion + "\".");
         }
 
         user.setUsername(candidate);
@@ -99,5 +151,15 @@ public class AccountIdentityService {
             creator.setHandle(username);
             creatorRepository.save(creator);
         });
+    }
+
+    /**
+     * Resultado da consulta de disponibilidade de um username.
+     *
+     * @param available   {@code true} quando o username pode ser usado
+     * @param suggestion  alternativa livre quando o desejado está em uso (pode ser nula)
+     * @param invalidReason motivo da recusa quando o formato é inválido (pode ser nulo)
+     */
+    public record UsernameAvailability(boolean available, String suggestion, String invalidReason) {
     }
 }

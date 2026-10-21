@@ -589,6 +589,26 @@ O detalhe público da obra agora omite capítulos com `publicReleaseAt` futuro; 
 - [x] **Evidencia:** **358 testes**, 0 falhas, 0 erros; build do frontend verde; smoke E2E **12/12** na stack real;
   stack local 6/6 + 2 de monitoramento healthy.
 
+## 7.22 Blindagem do username: nenhum erro seco de colisao (2026-10-21)
+
+- [x] **O que aconteceu:** o titular reivindicou `mapplestar` e recebeu "Este username ja esta em uso"
+  sem alternativa. O username e o identificador publico: um erro seco ali trava a conta sem
+  saida, e a unica forma de descobrir o conflito era adivinhar outro nome.
+- [x] **Correcao no servidor:** `AccountIdentityService` agora oferece
+  `checkAvailability` e `suggestAvailableUsername` (sufixo numerico, ate 20 tentativas).
+  A mensagem de erro da reivindicao carrega a alternativa pronta ("ja esta em uso. Tente
+  ""mapplestar2""."). `GET /api/users/username-available?username=` devolve
+  `{ available, suggestion, invalidReason }` - inclusive o motivo quando o formato e invalido.
+- [x] **Correcao na interface:** "Minha conta" e o cadastro verificam a disponibilidade enquanto o
+  titular digita (com atraso de 400 ms, cancelando a anterior) e mostram "esta livre" ou
+  "ja esta em uso - use @mapplestar2" com botao para aplicar a sugestao num clique. O campo
+  do cadastro tem o mesmo aviso, entao a colisao e detectada ANTES do envio.
+- [x] **Prova ao vivo:** `mapplestar` (em uso) -> `{"available":false,"suggestion":"mapplestar2"}`;
+  `teofilo.livre` -> `{"available":true,...}`; `wil son` (invalido) -> `invalidReason` com o motivo.
+  Cobertura automatizada: 4 casos novos em `AccountIdentityServiceTest` (10 no total).
+- [x] **Suite:** **362 testes**, 0 falhas, 0 erros; build do frontend verde.
+
+## 8. Ordem de corre
 ## 8. Ordem de corre
 ## 8. Ordem de correção
 

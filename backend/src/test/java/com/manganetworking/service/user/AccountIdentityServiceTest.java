@@ -16,6 +16,9 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -131,5 +134,53 @@ class AccountIdentityServiceTest {
         assertEquals("teofilo", user.getUsername());
         assertEquals("outro-autor", creator.getHandle());
         assertTrue(identityService.isGeneratedUsername(user) == false);
+    }
+
+    @Test
+    @DisplayName("Username em uso devolve uma alternativa livre")
+    void shouldSuggestAvailableAlternativeWhenTaken() {
+        user.setUsername(identityService.generatedUsernameFor(userId));
+        when(userRepository.existsByUsernameIgnoreCase("mapplestar")).thenReturn(true);
+        when(userRepository.existsByUsernameIgnoreCase("mapplestar2")).thenReturn(false);
+
+        AccountIdentityService.UsernameAvailability availability = identityService.checkAvailability("mapplestar");
+
+        assertFalse(availability.available());
+        assertEquals("mapplestar2", availability.suggestion());
+    }
+
+    @Test
+    @DisplayName("Username livre Ã© aprovado sem sugestÃ£o")
+    void shouldAcceptFreeUsername() {
+        when(userRepository.existsByUsernameIgnoreCase("teofilo")).thenReturn(false);
+
+        AccountIdentityService.UsernameAvailability availability = identityService.checkAvailability(" Teofilo ");
+
+        assertTrue(availability.available());
+        assertEquals("teofilo", availability.suggestion());
+        assertNull(availability.invalidReason());
+    }
+
+    @Test
+    @DisplayName("Username malformado Ã© recusado com motivo, sem exceÃ§Ã£o")
+    void shouldReportInvalidUsernameWithoutThrowing() {
+        AccountIdentityService.UsernameAvailability availability = identityService.checkAvailability("wil son");
+
+        assertFalse(availability.available());
+        assertNotNull(availability.invalidReason());
+    }
+
+    @Test
+    @DisplayName("Erro de reivindicaÃ§Ã£o carrega a alternativa sugerida")
+    void shouldIncludeSuggestionInClaimError() {
+        user.setUsername(identityService.generatedUsernameFor(userId));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(userRepository.existsByUsernameIgnoreCase("mapplestar")).thenReturn(true);
+        when(userRepository.existsByUsernameIgnoreCase("mapplestar2")).thenReturn(false);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+                identityService.claimUsername(userId, "mapplestar"));
+
+        assertTrue(exception.getMessage().contains("mapplestar2"));
     }
 }

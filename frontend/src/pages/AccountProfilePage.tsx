@@ -1,8 +1,8 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Camera, Eye, EyeOff, ShieldCheck, UserPlus, LogOut, BookOpen } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { storageApi } from '../api/storageApi';
-import { userApi } from '../api/authApi';
+import { authApi, userApi } from '../api/authApi';
 import { Button } from '../components/ui/Button';
 import { Field } from '../components/ui/Field';
 
@@ -31,9 +31,42 @@ export function AccountProfilePage({ onOpenPublicProfile, onOpenReaderPanel }: {
   const [portfolioUrl, setPortfolioUrl] = useState('');
   const [applying, setApplying] = useState(false);
   const [usernameDraft, setUsernameDraft] = useState(user.username ?? '');
+  /** Situacao do username digitado: vazio, checando, livre, em uso ou invalido. */
+  const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'free' | 'taken' | 'invalid'>('idle');
+  /** Alternativa livre oferecida pelo servidor quando o username desejado ja existe. */
+  const [usernameSuggestion, setUsernameSuggestion] = useState<string | null>(null);
 
   // Username só pode ser reivindicado uma vez, enquanto o identificador ainda é o gerado.
   const usernameIsGenerated = (user.username ?? '').startsWith('user_');
+
+  // Verificacao de disponibilidade com atraso: evita inundar a API a cada tecla e
+  // devolve uma alternativa concreta quando o nome desejado ja existe.
+  useEffect(() => {
+    const candidate = usernameDraft.trim().toLowerCase();
+    if (!usernameIsGenerated || candidate.length < 3) {
+      setUsernameStatus('idle');
+      setUsernameSuggestion(null);
+      return;
+    }
+    setUsernameStatus('checking');
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      authApi
+        .checkUsername(candidate)
+        .then((result) => {
+          if (cancelled) return;
+          setUsernameStatus(result.available ? 'free' : 'taken');
+          setUsernameSuggestion(result.suggestion ?? null);
+        })
+        .catch(() => {
+          if (!cancelled) setUsernameStatus('idle');
+        });
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [usernameDraft, usernameIsGenerated]);
 
   const claimUsername = async () => {
     setSaving(true);
@@ -170,7 +203,33 @@ export function AccountProfilePage({ onOpenPublicProfile, onOpenReaderPanel }: {
                 onChange={(e) => setUsernameDraft(e.target.value.toLowerCase())}
                 placeholder="ex.: teofilo"
               />
-              <Button onClick={claimUsername} disabled={saving}>DEFINIR USERNAME</Button>
+              <Button onClick={claimUsername} disabled={saving || usernameStatus === 'taken'}>DEFINIR USERNAME</Button>
+
+              {usernameStatus === 'checking' && (
+                <p className="font-pixel text-[11px] uppercase text-[var(--mn-mute)]">verificando disponibilidade...</p>
+              )}
+              {usernameStatus === 'free' && (
+                <p className="font-pixel text-[11px] uppercase text-[var(--mn-teal)]">@
+{usernameDraft.trim().toLowerCase()} esta livre</p>
+              )}
+              {usernameStatus === 'taken' && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-pixel text-[11px] uppercase text-[var(--mn-red)]">
+                    @
+{usernameDraft.trim().toLowerCase()} ja esta em uso
+                  </p>
+                  {usernameSuggestion && (
+                    <button
+                      type="button"
+                      onClick={() => setUsernameDraft(usernameSuggestion)}
+                      className="font-pixel text-[11px] uppercase text-[var(--mn-yellow)] hover:underline"
+                    >
+                      usar @
+{usernameSuggestion}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

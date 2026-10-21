@@ -27,6 +27,10 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
   const [step, setStep] = useState<'credentials' | 'two-factor'>('credentials');
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
+  /** Situacao do username digitado no cadastro (evita erro seco de 'ja esta em uso'). */
+  const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'free' | 'taken'>('idle');
+  /** Alternativa livre oferecida pelo servidor. */
+  const [usernameSuggestion, setUsernameSuggestion] = useState<string | null>(null);
   const [sex, setSex] = useState<'MASCULINO' | 'FEMININO' | 'OUTRO' | 'NAO_INFORMADO'>('NAO_INFORMADO');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -68,6 +72,35 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
     setMode(next);
     setErrorMessage('');
   };
+
+  // Verifica a disponibilidade do username enquanto o titular digita (com atraso) e
+  // oferece uma alternativa concreta quando o nome desejado ja existe.
+  useEffect(() => {
+    const candidate = username.trim().toLowerCase();
+    if (mode !== 'register' || candidate.length < 3) {
+      setUsernameStatus('idle');
+      setUsernameSuggestion(null);
+      return;
+    }
+    setUsernameStatus('checking');
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      authApi
+        .checkUsername(candidate)
+        .then((result) => {
+          if (cancelled) return;
+          setUsernameStatus(result.available ? 'free' : 'taken');
+          setUsernameSuggestion(result.suggestion ?? null);
+        })
+        .catch(() => {
+          if (!cancelled) setUsernameStatus('idle');
+        });
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [username, mode]);
 
   const handleCredentialsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -327,14 +360,37 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
                 )}
 
                 {mode === 'register' && (
-                  <Field
-                    label="USERNAME"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value.toLowerCase())}
-                    placeholder="ex.: teofilo"
-                    helperText="Identificador publico e segunda forma de login. Minusculas, numeros, ponto, hifen e underscore."
-                    required
-                  />
+                  <>
+                    <Field
+                      label="USERNAME"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value.toLowerCase())}
+                      placeholder="ex.: teofilo"
+                      helperText="Identificador público e segunda forma de login. Minúsculas, números, ponto, hífen e underscore."
+                      required
+                    />
+
+                    {usernameStatus !== 'idle' && (
+                      <p
+                        className={`font-pixel text-[11px] uppercase ${
+                          usernameStatus === 'free'
+                            ? 'text-[#45A29E]'
+                            : usernameStatus === 'taken'
+                              ? 'text-[#E8402F]'
+                              : 'text-[#A9A59A]'
+                        }`}
+                      >
+                        {usernameStatus === 'checking' && 'verificando...'}
+                        {usernameStatus === 'free' && `@${username.trim().toLowerCase()} está livre`}
+                        {usernameStatus === 'taken' && (
+                          <>
+                            @{username.trim().toLowerCase()} já está em uso
+                            {usernameSuggestion ? ` — use @${usernameSuggestion}` : ''}
+                          </>
+                        )}
+                      </p>
+                    )}
+                  </>
                 )}
 
 

@@ -154,6 +154,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/users/*/profile").permitAll()
                         // Perfil público por username: leitura liberada, privacidade decidida no serviço.
                         .requestMatchers(HttpMethod.GET, "/api/users/*/public-profile").permitAll()
+                        // Disponibilidade do username: informacao publica do identificador do perfil.
+                        .requestMatchers(HttpMethod.GET, "/api/users/username-available").permitAll()
                         // Envio de denúncia é público; fila e ações são exclusivas de moderadores
                         .requestMatchers(HttpMethod.POST, "/api/reports").permitAll()
                         .requestMatchers("/api/reports/**").hasRole("MODERATOR")
