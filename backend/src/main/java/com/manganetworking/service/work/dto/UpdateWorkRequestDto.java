@@ -21,7 +21,7 @@ public record UpdateWorkRequestDto(
         String title,
 
         @NotBlank(message = "A sinopse é obrigatória")
-        @Size(max = 4000, message = "A sinopse excede o limite de entrada")
+        @Size(min = 100, max = 500, message = "A sinopse deve ter entre 100 e 500 caracteres")
         String synopsis,
 
         @NotBlank(message = "A capa é obrigatória")

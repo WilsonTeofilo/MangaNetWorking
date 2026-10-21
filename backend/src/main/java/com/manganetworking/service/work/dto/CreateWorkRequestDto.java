@@ -18,6 +18,7 @@ public record CreateWorkRequestDto(
         String originalTitle,
 
         @NotBlank(message = "A sinopse é obrigatória")
+        @Size(min = 100, max = 500, message = "A sinopse deve ter entre 100 e 500 caracteres")
         String synopsis,
 
         @NotBlank(message = "A imagem de capa da obra é obrigatória")

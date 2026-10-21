@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BookMarked, Crop, Pencil, Trash2, Upload } from 'lucide-react';
+import { BookMarked, Crop, Pencil, Plus, Search, Trash2, Upload } from 'lucide-react';
 import { workApi, CreatorWorkSummaryDto } from '../api/workApi';
 import { storageApi } from '../api/storageApi';
 import { ImageCropper } from '../components/common/ImageCropper';
@@ -31,6 +31,10 @@ export function CreatorWorksPage() {
   const [status, setStatus] = useState<'ongoing' | 'draft' | 'completed'>('ongoing');
   const [declared, setDeclared] = useState(false);
   const [saving, setSaving] = useState(false);
+  /** Busca por titulo (filtragem local, normalizada e sem acento). */
+  const [query, setQuery] = useState('');
+  /** O formulario de lancamento/edicao so aparece quando pedido. */
+  const [formOpen, setFormOpen] = useState(false);
   /** Origem do recorte em andamento: capa ou banner. */
   const [cropTarget, setCropTarget] = useState<'cover' | 'banner' | null>(null);
   const [cropFile, setCropFile] = useState<File | null>(null);
@@ -44,7 +48,11 @@ export function CreatorWorksPage() {
     workApi
       .listMyWorks()
       .then((payload) => {
-        if (active) setWorks(payload);
+        if (active) {
+          setWorks(payload);
+          // Sem nenhuma obra no catalogo, o formulario de lancamento ja aparece.
+          if (payload.length === 0) setFormOpen(true);
+        }
       })
       .catch(() => {
         if (active) setError('Não foi possível carregar suas obras.');
@@ -80,10 +88,13 @@ export function CreatorWorksPage() {
   };
 
   const startEditing = (work: CreatorWorkSummaryDto) => {
+    setFormOpen(true);
     setEditingId(work.id);
     setTitle(work.title);
-    setSynopsis('');
-    setGenres([]);
+    // A sinopse e as categorias JA GRAVADAS entram no formulario: editar nao pode
+    // apagar o que o autor ja escreveu.
+    setSynopsis(work.synopsis ?? '');
+    setGenres(work.genres ?? []);
     setCover(work.coverUrl ? { url: work.coverUrl, previewUrl: work.coverUrl } : null);
     setBanner(work.bannerUrl ? { url: work.bannerUrl, previewUrl: work.bannerUrl } : null);
     setStatus((work.status as 'ongoing' | 'draft' | 'completed') || 'ongoing');
@@ -142,6 +153,7 @@ export function CreatorWorksPage() {
         setMessage('Obra publicada no catálogo.');
       }
       resetForm();
+      setFormOpen(works.length === 0);
       loadWorks();
     } catch (err: any) {
       setError(err?.message || 'Não foi possível salvar a obra.');
@@ -161,7 +173,21 @@ export function CreatorWorksPage() {
     }
   };
 
-  const list = useMemo(() => works, [works]);
+  /** Normaliza o texto da busca: minusculas e sem acento (aspx). */
+  function normalizeText(value: string): string {
+    return value
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+  }
+
+  const filteredWorks = useMemo(() => {
+    const term = normalizeText(query.trim());
+    if (!term) return works;
+    return works.filter((work) => normalizeText(work.title).includes(term));
+  }, [works, query]);
+
+  const list = filteredWorks;
 
   return (
     <section className="mn-container py-10 space-y-8">
@@ -179,11 +205,47 @@ export function CreatorWorksPage() {
 
       {/* Lista das obras */}
       <div className="space-y-3">
-        <h2 className="font-display text-xl text-[var(--mn-paper)] uppercase">Seu catálogo</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="font-display text-xl text-[var(--mn-paper)] uppercase">Seu catálogo</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            {works.length > 0 && (
+              <label className="flex items-center gap-2 border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] px-3 py-2">
+                <Search size={14} className="text-[var(--mn-mute)]" />
+                <span className="sr-only">Buscar obra pelo título</span>
+                <input
+                  type="search"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Buscar por título"
+                  className="w-48 bg-transparent font-body text-sm text-[var(--mn-paper)] placeholder:text-[var(--mn-mute)] focus:outline-none"
+                />
+              </label>
+            )}
+            {works.length > 0 && (
+              <Button
+                variant="primary"
+                onClick={() => {
+                  resetForm();
+                  setFormOpen(true);
+                }}
+                className="!px-5 !py-3 shadow-[4px_4px_0_#0B0B0C]"
+                title="Abrir o formulário para lançar uma nova obra"
+              >
+                <Plus size={15} /> LANÇAR NOVA OBRA
+              </Button>
+            )}
+          </div>
+        </div>
+
         {loading && <p className="font-pixel text-[11px] uppercase text-[var(--mn-mute)]">Carregando...</p>}
-        {!loading && list.length === 0 && (
+        {!loading && works.length === 0 && (
           <p className="font-body text-sm text-[var(--mn-mute)]">
             Nenhuma obra ainda. Use o formulário abaixo para lançar a primeira.
+          </p>
+        )}
+        {!loading && works.length > 0 && list.length === 0 && (
+          <p className="font-body text-sm text-[var(--mn-mute)]">
+            Nenhuma obra com esse título. Ajuste a busca ou lance uma nova obra.
           </p>
         )}
         <ul className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -218,17 +280,25 @@ export function CreatorWorksPage() {
         </ul>
       </div>
 
-      {/* Formulário de lançamento/configuração da obra */}
+      {/* Formulário de lançamento/configuração da obra.
+          Sem obra no catálogo ele aparece direto; com obra, só abre pelo botão "LANÇAR NOVA OBRA"
+          (o autor com muitas obras quer ver o catálogo, não um formulário Taking o olho). */}
+      {formOpen && (
       <form onSubmit={save} className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-6 space-y-5">
         <div className="flex items-center justify-between gap-3">
           <h2 className="font-display text-xl text-[var(--mn-paper)] uppercase">
             {editingId ? 'Configurar obra' : 'Lançar nova obra'}
           </h2>
-          {editingId && (
-            <Button type="button" variant="ghost" onClick={resetForm}>
-              CANCELAR EDIÇÃO
+          <div className="flex items-center gap-2">
+            {editingId && (
+              <Button type="button" variant="ghost" onClick={resetForm}>
+                CANCELAR EDIÇÃO
+              </Button>
+            )}
+            <Button type="button" variant="ghost" onClick={() => setFormOpen(false)}>
+              FECHAR
             </Button>
-          )}
+          </div>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-5">
@@ -243,8 +313,13 @@ export function CreatorWorksPage() {
                 value={synopsis}
                 onChange={(event) => setSynopsis(event.target.value)}
                 rows={4}
+                minLength={100}
+                maxLength={500}
                 className="w-full p-3 bg-[var(--mn-ink-2)] text-[var(--mn-paper)] font-body text-sm border-2 border-[var(--mn-line)] focus:border-[var(--mn-paper)] focus:shadow-[3px_3px_0_var(--mn-yellow)] outline-none"
               />
+              <p className="font-pixel text-[11px] uppercase text-[var(--mn-mute)]">
+                {synopsis.trim().length}/500 caracteres · mínimo de 100
+              </p>
             </div>
             <div className="space-y-2">
               <p className="font-body text-sm font-semibold text-[var(--mn-paper)]">CATEGORIAS</p>
@@ -429,6 +504,7 @@ export function CreatorWorksPage() {
           {saving ? 'SALVANDO...' : editingId ? 'SALVAR CONFIGURAÇÃO DA OBRA' : 'LANÇAR OBRA NO CATÁLOGO'}
         </Button>
       </form>
+      )}
 
       {(cropFile || cropUrl) && (
         <ImageCropper

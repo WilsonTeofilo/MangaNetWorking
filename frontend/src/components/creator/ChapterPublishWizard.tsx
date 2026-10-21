@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { Check, ChevronLeft, ChevronRight, Crop, GripVertical, Image as ImageIcon, Trash2, Upload, X, ZoomIn, Plus, CornerDownLeft } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Crop, GripVertical, Pencil, Image as ImageIcon, Trash2, Upload, X, ZoomIn, Plus, CornerDownLeft } from 'lucide-react';
 import { workApi } from '../../api/workApi';
 import { storageApi } from '../../api/storageApi';
 import { Button } from '../ui/Button';
@@ -112,11 +112,13 @@ export function ChapterPublishWizard({
   );
 
   const maxStep = useMemo(() => {
+    // Em EDIÇÃO nada é travado: o capítulo já existe e o autor mexe em qualquer etapa.
+    if (isEditing) return 5;
     if (!uploadReady) return 1;
     if (!organizeReady) return 2;
     if (!reviewReady) return 4;
     return 5;
-  }, [uploadReady, organizeReady, reviewReady]);
+  }, [uploadReady, organizeReady, reviewReady, isEditing]);
 
   const goToStep = (target: number) => {
     setStep(Math.min(Math.max(1, target), maxStep));
@@ -267,10 +269,16 @@ export function ChapterPublishWizard({
 
   return (
     <div className="space-y-6">
-      <p className="font-pixel text-[11px] uppercase text-[var(--mn-mute)]">
-        Publicando em <span className="text-[var(--mn-yellow)]">{workTitle}</span> · capítulo {nextChapterNumber} ·{' '}
-        {isProse ? 'light novel (prosa)' : 'mangá (páginas)'}
-      </p>
+      {isEditing ? (
+        <p className="flex flex-wrap items-center gap-2 border-2 border-[var(--mn-teal)] bg-[var(--mn-teal)]/15 px-3 py-2 font-pixel text-[11px] uppercase text-[var(--mn-teal)]">
+          <Pencil size={13} /> MODO EDIÇÃO · capítulo {draft?.chapterNumber} de “{workTitle}” — todas as etapas liberadas
+        </p>
+      ) : (
+        <p className="font-pixel text-[11px] uppercase text-[var(--mn-mute)]">
+          Publicando em <span className="text-[var(--mn-yellow)]">{workTitle}</span> · capítulo {nextChapterNumber} ·{' '}
+          {isProse ? 'light novel (prosa)' : 'mangá (páginas)'}
+        </p>
+      )}
 
       {/* Checklist de publicação (mesma ordem do MangaTeofilo) */}
       <nav aria-label="Etapas de publicação do capítulo" className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-4">
