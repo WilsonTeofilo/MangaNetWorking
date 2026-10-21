@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Camera, Eye, EyeOff, ShieldCheck, UserPlus, LogOut, BookOpen } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { storageApi } from '../api/storageApi';
@@ -44,7 +44,36 @@ export function AccountProfilePage({
   const [usernameDraft, setUsernameDraft] = useState(user.username ?? '');
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'free' | 'taken'>('idle');
   const [usernameSuggestion, setUsernameSuggestion] = useState<string | null>(null);
+  const [usernameQuery, setUsernameQuery] = useState('');
 
+
+  // Verificacao de disponibilidade com debounce: uma request por tecla inundaria a API
+  // (e o limitador de requisicoes responderia 429).
+  useEffect(() => {
+    if (usernameQuery.length < 3) {
+      setUsernameStatus('idle');
+      setUsernameSuggestion(null);
+      return;
+    }
+    setUsernameStatus('checking');
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      authApi
+        .checkUsername(usernameQuery)
+        .then((result) => {
+          if (cancelled) return;
+          setUsernameStatus(result.available ? 'free' : 'taken');
+          setUsernameSuggestion(result.suggestion ?? null);
+        })
+        .catch(() => {
+          if (!cancelled) setUsernameStatus('idle');
+        });
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [usernameQuery]);
   const claimUsername = async () => {
     setSaving(true);
     setError(null);
@@ -167,16 +196,7 @@ export function AccountProfilePage({
                 value={usernameDraft}
                 onChange={(e) => {
                   setUsernameDraft(e.target.value.toLowerCase());
-                  const candidate = e.target.value.trim().toLowerCase();
-                  if (candidate.length < 3) {
-                    setUsernameStatus('idle');
-                    return;
-                  }
-                  setUsernameStatus('checking');
-                  void authApi.checkUsername(candidate).then((result) => {
-                    setUsernameStatus(result.available ? 'free' : 'taken');
-                    setUsernameSuggestion(result.suggestion ?? null);
-                  });
+                  setUsernameQuery(e.target.value.trim().toLowerCase());
                 }}
                 placeholder="ex.: teofilo"
               />

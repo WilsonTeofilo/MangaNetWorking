@@ -139,6 +139,8 @@ public class PlatformProperties {
         private String aesSecretKey;
         private int rateLimitPerMinute = 120;
         private int authRateLimitPerMinute = 15;
+        /** Limite de escrita de conteudo do leitor (comentarios, denuncias): 20/min por IP. */
+        private int contentRateLimitPerMinute = 20;
 
         /**
          * Define o atributo {@code Secure} do cookie de sessão. Deve ser {@code true} em
@@ -162,6 +164,14 @@ public class PlatformProperties {
 
         public int getRateLimitPerMinute() { return rateLimitPerMinute; }
         public void setRateLimitPerMinute(int rateLimitPerMinute) { this.rateLimitPerMinute = rateLimitPerMinute; }
+
+        public int getContentRateLimitPerMinute() {
+            return contentRateLimitPerMinute;
+        }
+
+        public void setContentRateLimitPerMinute(int contentRateLimitPerMinute) {
+            this.contentRateLimitPerMinute = contentRateLimitPerMinute;
+        }
 
         public int getAuthRateLimitPerMinute() { return authRateLimitPerMinute; }
         public void setAuthRateLimitPerMinute(int authRateLimitPerMinute) { this.authRateLimitPerMinute = authRateLimitPerMinute; }

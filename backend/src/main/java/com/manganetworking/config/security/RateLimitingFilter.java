@@ -38,8 +38,12 @@ public class RateLimitingFilter extends OncePerRequestFilter {
     private static final String REPORTS_PATH_PREFIX = "/api/reports";
     private static final String STORAGE_PATH_PREFIX = "/api/storage/";
     private static final String UPLOADS_PATH_PREFIX = "/api/uploads/";
+    /** Prefixo dos comentarios de obra; apenas o POST conta (anti-spam). */
+    private static final String COMMENTS_PATH_PREFIX = "/api/works/";
     private static final String BUCKET_AUTH = "auth";
     private static final String BUCKET_GLOBAL = "global";
+    /** Bucket de escrita de conteudo do leitor (comentarios): teto proprio, anti-spam. */
+    private static final String BUCKET_CONTENT = "content";
     private static final Set<String> STRICT_AUTH_PATHS = Set.of(
             "/api/auth/login",
             "/api/auth/register",
@@ -86,11 +90,14 @@ public class RateLimitingFilter extends OncePerRequestFilter {
 
         String clientIp = extractClientIp(request);
         boolean isStrict = isStrictLimitPath(path, method);
+        boolean isContentWrite = isContentWritePath(path, method);
         int maxAllowed = isStrict
                 ? properties.getSecurity().getAuthRateLimitPerMinute()
-                : properties.getSecurity().getRateLimitPerMinute();
+                : isContentWrite
+                    ? properties.getSecurity().getContentRateLimitPerMinute()
+                    : properties.getSecurity().getRateLimitPerMinute();
 
-        String bucket = isStrict ? BUCKET_AUTH : BUCKET_GLOBAL;
+        String bucket = isStrict ? BUCKET_AUTH : (isContentWrite ? BUCKET_CONTENT : BUCKET_GLOBAL);
         String key = clientIp + ":" + bucket;
         long currentMinute = System.currentTimeMillis() / 60_000;
 
@@ -117,6 +124,14 @@ public class RateLimitingFilter extends OncePerRequestFilter {
             return true;
         }
         return path.startsWith(REPORTS_PATH_PREFIX) && "POST".equalsIgnoreCase(method);
+    }
+
+    /** Escrita de conteudo do leitor (comentario de obra): bucket proprio, mais apertado. */
+    private boolean isContentWritePath(String path, String method) {
+        if (!"POST".equalsIgnoreCase(method)) {
+            return false;
+        }
+        return path.startsWith(COMMENTS_PATH_PREFIX) && path.endsWith("/comments");
     }
 
     /** Preflight CORS e entrega de binários não contam contra o throttling de API. */

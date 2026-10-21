@@ -115,7 +115,7 @@ Fluxo exercitado de ponta a ponta na stack local (backend 8085, frontend 5180, P
 | Criar conta com **username** e entrar por ele | ✅ funciona | `POST /api/auth/register` com `username` + sexo → 2FA; `POST /api/auth/login` com `{identifier}` aceita e-mail **ou** username (prova ao vivo: login com `qa.leitor.92542227` devolveu a conta e o OTP para o e-mail real) |
 | Perfil **público** por username | ✅ funciona | `GET /api/users/{username}/public-profile` sem sessão: nome, avatar, links, seguidores, obras e curtidas |
 | Perfil **privado** | ✅ funciona | a mesma rota devolve **só o username**; é o que aparece nos comentários |
-| **Comentar** na obra | ✅ funciona | `POST /api/works/{workId}/comments` (leitor autenticado) e `GET` público; username sempre visível, nome/avatar só com perfil público; corpo higienizado no servidor |
+| **Comentar** na obra | OK funciona | `POST /api/works/{workId}/comments` (leitor autenticado, so obra publicada, bucket anti-spam) e `GET` publico; username sempre visivel, nome/avatar so com perfil publico; corpo higienizado |
 | **Seguir** um escritor | ✅ funciona | `POST /api/creators/{handle}/follow` — só escritores têm seguidores; leitor não é seguido e ninguém segue a si mesmo |
 | **Virar escritor** (leitor → escritor) | ✅ funciona | `POST /api/creators/apply` exige **pelo menos 1** vínculo social (Instagram **ou** YouTube **ou** portfólio — os três são opcionais, um é obrigatório); sem link: 400. O identificador do autor é o **username da conta de leitor** (reciclado) e nome/foto são herdados |
 | Perfil de **escritor Ã© sempre pÃºblico** | âœ… funciona | o servidor recusa `isProfilePublic=false` para escritor; leitor escolhe livremente |
@@ -124,7 +124,7 @@ Fluxo exercitado de ponta a ponta na stack local (backend 8085, frontend 5180, P
 | "Minha conta" enxuta (leitor) | OK funciona | identidade, visibilidade (publico/privado), ver pagina publica, painel do leitor e dados/privacidade - sem duplicar o formulario de escritor |
 | Candidatura a escritor (pagina propria) | OK funciona | 1 dos 3 links e obrigatorio, nome/foto/username herdados do leitor e perfil de escritor sempre publico; a candidatura **renova a sessao** com o papel de escritor (sem precisar deslogar) |
 | **Trocar a foto de perfil** | ✅ funciona | `POST /api/storage/avatar` (normaliza para 512px, sem metadados) + `PUT /api/users/profile`; câmera sempre visível no avatar, botão "TROCAR FOTO" e erro real do servidor na tela |
-| **Minhas obras** (lanÃ§ar/configurar a obra) | âœ… funciona | `GET /api/works/mine` lista as obras do autor; criar, configurar (capa, banner, categorias, tÃ­tulo, sinopse, estado) e remover â€” sem tocar em capÃ­tulo |
+| **Minhas obras** (lancar/configurar a obra) | OK funciona | `GET /api/works/mine` lista as obras do autor; criar, configurar (capa, banner, categorias, titulo, sinopse, estado) e remover â€” sem tocar em capitulo; a remocao limpa o feed |
 | **CapÃ­tulos** (publicar capÃ­tulo de uma obra sua) | âœ… funciona | seletor de obra + fluxo de 5 etapas (pÃ¡ginas, capa do capÃ­tulo, revisÃ£o, publicaÃ§Ã£o) â€” a obra jÃ¡ existe |
 | Publicar obra em **5 etapas** (igual MangaTeofilo) | âœ… funciona | Upload (dropzone) â†’ Organizar pÃ¡ginas (ordem, remover, ampliar) â†’ Ajustar capa â†’ Revisar metadados â†’ Publicar, com checklist e avanÃ§o travado |
 | Ferramentas de dados no painel do autor | âœ… funciona | ver perfil pÃºblico, exportar dados (LGPD) e excluir conta (com confirmaÃ§Ã£o) |

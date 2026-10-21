@@ -26,6 +26,8 @@ export interface CreatorWorkSummaryDto {
   id: string;
   title: string;
   slug: string;
+  synopsis?: string | null;
+  genres?: string[];
   coverUrl?: string | null;
   bannerUrl?: string | null;
   status: string;

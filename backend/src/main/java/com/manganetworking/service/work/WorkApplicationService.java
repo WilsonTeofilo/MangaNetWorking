@@ -20,6 +20,7 @@ import com.manganetworking.service.session.SessionService;
 import com.manganetworking.service.work.dto.*;
 import com.manganetworking.util.StorageFileNames;
 import org.springframework.context.ApplicationEventPublisher;
+import com.manganetworking.service.feed.event.WorkFeedRemovalEvent;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -191,6 +192,7 @@ public class WorkApplicationService {
                         work.getId(),
                         work.getTitle(),
                         work.getSlug(),
+                        work.getSynopsis(),
                         work.getCoverUrl(),
                         work.getBannerUrl(),
                         work.getStatus(),
@@ -225,6 +227,8 @@ public class WorkApplicationService {
             throw new AccessDeniedException("Apenas o autor da obra pode remove-la.");
         }
         workRepository.delete(work);
+        // A obra removida nao pode continuar aparecendo no feed/cache do Mongo.
+        eventPublisher.publishEvent(new WorkFeedRemovalEvent(workId));
     }
 
     public WorkEntity updateWork(UUID creatorId, UUID workId, UpdateWorkRequestDto dto) {

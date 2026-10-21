@@ -722,6 +722,32 @@ O detalhe público da obra agora omite capítulos com `publicReleaseAt` futuro; 
   transparencia (17% / 58%). O e-mail de recuperacao de senha recebeu a mesma identidade.
 - [x] **Suite:** **368 testes**, 0 falhas, 0 erros.
 
+## 7.29 Revisao geral do dia: falhas, limpo, seguranca e manutencao (2026-10-21)
+
+- [x] **Falha real 1 â€” editar obra apagava a sinopse:** o resumo da lista ("Minhas obras") nao trazia a sinopse,
+  entao o editor abria vazio e o salvamento era rejeitado (400) por campo obrigatorio. Agora o resumo traz
+  `synopsis` e `genres`, e o editor abre com os valores reais do servidor.
+- [x] **Falha real 2 â€” obra removida continuava no feed:** o `WorkFeedRemovalEvent` existia (usado pela
+  moderacao) mas a remocao da obra pelo autor nao o publicava: a obra saia do Postgres e continuava no
+  feed/cache do Mongo. A remocao agora publica o evento e o feed e limpo.
+- [x] **Seguranca 1 â€” comentario em obra nao publicada:** `POST /api/works/{id}/comments` aceitava comentario em
+  obra em rascunho (basta conhecer o id), revelando conteudo que o autor nao publicou. Agora so obra
+  publicada (`ongoing`/`completed`) recebe comentario.
+- [x] **Seguranca 2 â€” spam de comentario:** o POST de comentario caia no bucket global (120/min). Passou a ter
+  bucket proprio de conteudo (`platform.security.content-rate-limit-per-minute`, padrao 20/min por IP).
+- [x] **Manutencao 1 â€” templates de e-mail fora do adaptador SMTP:** o `SmtpMfaNotificationSender` carregava
+  o HTML da marca (293 linhas). A apresentacao foi para `MangaEmailTemplates` (tokens da identidade visual
+  em um lugar so) e o sender ficou so com o transporte: conexao, autenticacao, supressao e metricas.
+- [x] **Manutencao 2 â€” debounce na consulta de username:** a tela de "Minha conta" batia na API a cada tecla;
+  agora consulta com 400 ms de atraso, cancelando a requisicao anterior (evita 429 e desperdicio).
+- [x] **Verificacao de seguranca feita:** propriedade das obras validada no servico em PUT/DELETE (403 para
+  quem nao e autor); `GET /api/works/mine`, `PUT` e `DELETE /api/works/*` exigem papel de criador; o
+  webhook de e-mail e o de comments nao ha; o corpo do comentario e higienizado e renderizado como texto.
+- [x] **Sem hardcode ou duplicacao nos arquivos novos:** nenhuma URL de API fora do `client.ts`, nenhum numero
+  magico solto (limites nomeados), nenhuma copia da regra de username/links/social (hoje em um lugar so).
+- [x] **Suite:** **368 testes**, 0 falhas, 0 erros; build do frontend verde.
+
+## 8. Ordem de corre
 ## 8. Ordem de corre
 ## 8. Ordem de corre
 ## 8. Ordem de corre

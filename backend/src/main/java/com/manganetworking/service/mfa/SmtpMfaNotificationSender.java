@@ -70,7 +70,7 @@ public class SmtpMfaNotificationSender implements MfaNotificationSender {
             // OTP não deve aparecer em previews/notificações de e-mail.
             helper.setSubject("MangaNetWorking — Código de Segurança");
 
-            helper.setText(buildHtmlEmail(otpCode, purpose), true);
+            helper.setText(MangaEmailTemplates.otpEmail(otpCode, purposeDescription(otpCode, purpose)), true);
 
             mailSender.send(message);
             metrics.recordEmailDelivery("sent");
@@ -98,7 +98,7 @@ public class SmtpMfaNotificationSender implements MfaNotificationSender {
             helper.setFrom(properties.getMail().getFromAddress(), properties.getMail().getFromName());
             helper.setTo(destination);
             helper.setSubject("MangaNetWorking — Recuperação de senha");
-            helper.setText(buildPasswordResetEmail(resetUrl, expiresInMinutes), true);
+            helper.setText(MangaEmailTemplates.passwordResetEmail(escapeHtmlAttribute(resetUrl), expiresInMinutes), true);
 
             mailSender.send(message);
             metrics.recordEmailDelivery("sent");
@@ -115,146 +115,15 @@ public class SmtpMfaNotificationSender implements MfaNotificationSender {
         }
     }
 
-    /**
-     * E-mail de 2FA na identidade visual do MangaNetWorking ("Banca de Rua"): fundo ink, bloco
-     * amarelo com o selo MN, código em caixas quadradas e aviso de segurança.
-     */
-    private String buildHtmlEmail(String otpCode, String purpose) {
-        String purposeDescription = switch (purpose.toUpperCase()) {
+    /** Rotulo do motivo do codigo, no tom da marca. */
+    private String purposeDescription(String otpCode, String purpose) {
+        return switch (purpose == null ? "" : purpose.toUpperCase()) {
             case "AUTENTICACAO_2FA" -> "entrar na sua conta";
-            default -> "confirmar a alteração da sua chave PIX de recebimento";
+            default -> "confirmar a alteraÃ§Ã£o da sua chave PIX de recebimento";
         };
-
-        String codeBoxes = codeBoxes(otpCode);
-
-        return """
-        <!DOCTYPE html>
-        <html lang="pt-BR">
-        <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>MangaNetWorking — Código de Segurança</title>
-        <style>
-          body { margin: 0; padding: 0; background-color: #0B0B0C; color: #F4EFE3;
-                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
-          .wrap { padding: 24px 12px; }
-          .card { max-width: 520px; margin: 0 auto; background-color: #151517;
-                  border: 2px solid #34343A; border-top: 8px solid #FFD400; }
-          .head { background-color: #FFD400; color: #0B0B0C; padding: 18px 24px; display: flex; align-items: center; gap: 12px; }
-          .mark { width: 40px; height: 40px; background-color: #0B0B0C; color: #FFD400; font-weight: 900;
-                  font-size: 18px; display: flex; align-items: center; justify-content: center;
-                  border: 2px solid #0B0B0C; letter-spacing: -1px; }
-          .brand { font-weight: 900; font-size: 18px; letter-spacing: 1px; text-transform: uppercase; }
-          .body { padding: 24px; }
-          .lead { font-size: 15px; line-height: 1.6; margin: 0 0 18px; color: #F4EFE3; }
-          .boxes { display: flex; gap: 8px; margin: 0 0 18px; }
-          .box { width: 46px; height: 56px; background-color: #0B0B0C; border: 2px solid #FFD400;
-                 color: #FFD400; font-size: 30px; font-weight: 900; text-align: center; line-height: 52px; }
-          .note { font-size: 13px; line-height: 1.6; color: #A9A59A; margin: 0 0 8px; }
-          .alert { border: 2px solid #34343A; background-color: #0B0B0C; padding: 14px 16px; margin-top: 18px; }
-          .alert p { font-size: 12px; line-height: 1.6; color: #A9A59A; margin: 0; }
-          .alert strong { color: #FFD400; }
-          .foot { border-top: 2px solid #34343A; padding: 14px 24px; }
-          .foot p { font-size: 11px; line-height: 1.6; color: #6B6B6B; margin: 0; }
-        </style>
-        </head>
-        <body>
-        <div class="wrap">
-          <div class="card">
-            <div class="head">
-              <div class="mark">MN</div>
-              <div class="brand">MangaNetWorking</div>
-            </div>
-            <div class="body">
-              <p class="lead">Use este código para <strong>{{PROP}}</strong>:</p>
-              <div class="boxes">{{CODE}}</div>
-              <p class="note">O código expira em <strong style="color:#F4EFE3">5 minutos</strong> e só pode ser usado uma vez.</p>
-              <div class="alert">
-                <p><strong>NÃO COMPARTILHE ESTE CÓDIGO.</strong> Se você não solicitou o acesso, ignore este e-mail com segurança — ninguém da MangaNetWorking pede esse código por telefone, chat ou mensagem.</p>
-              </div>
-            </div>
-            <div class="foot">
-              <p>A banca digital do mangá independente · 17% de taxa sobre membros e doações · 58% dos anúncios vão para o autor · sem intermediários.</p>
-              <p>© 2026 MangaNetWorking. Obras originais protegidas.</p>
-            </div>
-          </div>
-        </div>
-        </body>
-        </html>
-        """
-        .replace("{{PROP}}", purposeDescription)
-        .replace("{{CODE}}", codeBoxes);
     }
 
-    /** Recuperação de senha com a mesma identidade visual da banca. */
-    private String buildPasswordResetEmail(String resetUrl, long expiresInMinutes) {
-        return """
-        <!DOCTYPE html>
-        <html lang="pt-BR">
-        <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>MangaNetWorking — Recuperação de senha</title>
-        <style>
-          body { margin: 0; padding: 0; background-color: #0B0B0C; color: #F4EFE3;
-                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
-          .wrap { padding: 24px 12px; }
-          .card { max-width: 520px; margin: 0 auto; background-color: #151517;
-                  border: 2px solid #34343A; border-top: 8px solid #FFD400; }
-          .head { background-color: #FFD400; color: #0B0B0C; padding: 18px 24px; display: flex; align-items: center; gap: 12px; }
-          .mark { width: 40px; height: 40px; background-color: #0B0B0C; color: #FFD400; font-weight: 900;
-                  font-size: 18px; display: flex; align-items: center; justify-content: center;
-                  border: 2px solid #0B0B0C; letter-spacing: -1px; }
-          .brand { font-weight: 900; font-size: 18px; letter-spacing: 1px; text-transform: uppercase; }
-          .body { padding: 24px; }
-          .lead { font-size: 15px; line-height: 1.6; margin: 0 0 18px; color: #F4EFE3; }
-          .cta { display: inline-block; background-color: #FFD400; color: #0B0B0C; text-decoration: none;
-                 padding: 14px 20px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase;
-                 border: 2px solid #0B0B0C; box-shadow: 4px 4px 0 #0B0B0C; }
-          .alert { border: 2px solid #34343A; background-color: #0B0B0C; padding: 14px 16px; margin-top: 20px; }
-          .alert p { font-size: 12px; line-height: 1.6; color: #A9A59A; margin: 0; }
-          .alert strong { color: #FFD400; }
-          .foot { border-top: 2px solid #34343A; padding: 14px 24px; }
-          .foot p { font-size: 11px; line-height: 1.6; color: #6B6B6B; margin: 0; }
-        </style>
-        </head>
-        <body>
-        <div class="wrap">
-          <div class="card">
-            <div class="head">
-              <div class="mark">MN</div>
-              <div class="brand">MangaNetWorking</div>
-            </div>
-            <div class="body">
-              <p class="lead">Recebemos uma solicitação para redefinir a senha da sua conta. O link abaixo expira em <strong style="color:#F4EFE3">{{MINUTES}} minutos</strong> e só pode ser usado uma vez.</p>
-              <p><a class="cta" href="{{URL}}">Criar nova senha</a></p>
-              <div class="alert">
-                <p><strong>NÃO COMPARTILHE ESTE LINK.</strong> Se você não solicitou a alteração, ignore este e-mail — sua senha atual continua valendo.</p>
-              </div>
-            </div>
-            <div class="foot">
-              <p>A banca digital do mangá independente · 17% de taxa sobre membros e doações · 58% dos anúncios vão para o autor · sem intermediários.</p>
-              <p>© 2026 MangaNetWorking. Obras originais protegidas.</p>
-            </div>
-          </div>
-        </div>
-        </body>
-        </html>
-        """
-        .replace("{{MINUTES}}", String.valueOf(expiresInMinutes))
-        .replace("{{URL}}", escapeHtmlAttribute(resetUrl));
-    }
-
-    /** O código em caixas quadradas (mesma leitura do campo OTP do site). */
-    private String codeBoxes(String otpCode) {
-        StringBuilder boxes = new StringBuilder();
-        for (char digit : otpCode.toCharArray()) {
-            boxes.append("<div class=\"box\">").append(digit).append("</div>");
-        }
-        return boxes.toString();
-    }
-
-    /** Endereço com bounce/complaint recorded: o envio é suprimido. */
+    /** Endereco com bounce/complaint registrado: o envio e suprimido. */
     private boolean isSuppressed(String destination) {
         if (suppressionService == null) {
             return false;
@@ -266,18 +135,18 @@ public class SmtpMfaNotificationSender implements MfaNotificationSender {
         } catch (RuntimeException e) {
             log.atWarn().addKeyValue("event", "email_suppression_check")
                     .addKeyValue("outcome", "failed")
-                    .log("Falha ao consultar a lista de supressão; envio prosseguido");
+                    .log("Falha ao consultar a lista de supressao; envio prosseguido");
             return false;
         }
         metrics.recordEmailDelivery("suppressed");
         log.atWarn().addKeyValue("event", "email_delivery")
                 .addKeyValue("outcome", "suppressed")
                 .addKeyValue("recipient", maskEmail(destination))
-                .log("Envio suprimido: destinatário com bounce/complaint registrado");
+                .log("Envio suprimido: destinatario com bounce/complaint registrado");
         return true;
     }
 
-    /** Escapa o valor para uso em atributo HTML do link de recuperação. */
+    /** Escapa o valor para uso em atributo HTML do link de recuperacao. */
     private String escapeHtmlAttribute(String value) {
         return value.replace("&", "&amp;").replace("\"", "&quot;").replace("<", "&lt;").replace(">", "&gt;");
     }

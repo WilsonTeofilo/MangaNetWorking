@@ -19,6 +19,7 @@ public record CreatorWorkSummaryResponseDto(
         UUID id,
         String title,
         String slug,
+        String synopsis,
         String coverUrl,
         String bannerUrl,
         String status,

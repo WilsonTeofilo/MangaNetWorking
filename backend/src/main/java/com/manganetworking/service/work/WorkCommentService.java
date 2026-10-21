@@ -65,6 +65,12 @@ public class WorkCommentService {
         WorkEntity work = workRepository.findById(workId)
                 .orElseThrow(() -> new ResourceNotFoundException("Obra não encontrada"));
 
+        // Só obra publicada recebe comentário: comentar num rascunho (ou arquivada pela LGPD)
+        // revelaria a existência de conteúdo que o autor ainda não publicou.
+        if (!"ongoing".equalsIgnoreCase(work.getStatus()) && !"completed".equalsIgnoreCase(work.getStatus())) {
+            throw new IllegalArgumentException("Esta obra ainda não está disponível para comentários.");
+        }
+
         String body = SanitizationUtils.stripAllHtml(rawBody == null ? "" : rawBody.trim());
         if (body.isBlank()) {
             throw new IllegalArgumentException("O comentário não pode ficar em branco.");
