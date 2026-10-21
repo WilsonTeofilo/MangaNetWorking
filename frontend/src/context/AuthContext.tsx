@@ -117,6 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     portfolioUrl?: string;
     cpf?: string;
   }) => {
+    // O servidor renova o cookie de sessao com o papel de escritor: nao e preciso deslogar.
     const result = await creatorApi.applyAsWriter(payload);
     await refreshSession();
     return result;

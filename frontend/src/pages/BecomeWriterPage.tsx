@@ -1,8 +1,9 @@
-import { useState } from 'react';
-import { Instagram, Youtube, Link2, UserPlus, ShieldCheck } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Instagram, Youtube, Link2, UserPlus, ShieldCheck, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/Button';
 import { Field } from '../components/ui/Field';
+import { Modal } from '../components/common/Modal';
 
 /**
  * Candidatura a escritor — página própria.
@@ -11,18 +12,35 @@ import { Field } from '../components/ui/Field';
  * telas (duplicidade confusa). Aqui a regra fica explícita: <strong>um</strong> dos três
  * vínculos é obrigatório, o nome/foto/username são herdados da conta de leitor e
  * <strong>o perfil do escritor é sempre público</strong> — não existe opção de privado.</p>
+ *
+ * <p>Ao criar o perfil, o servidor <strong>renova a sessão</strong> com o papel de escritor
+ * (não é preciso deslogar). Se a renovação não chegar no navegador, o modal de segurança
+ * avisa que a conta será desconectada em 10 segundos para as mudanças valerem.</p>
  */
 export function BecomeWriterPage({ onBackToAccount }: { onBackToAccount: () => void }) {
-  const { user, becomeWriter } = useAuth();
+  const { user, becomeWriter, refreshSession, logout } = useAuth();
   const [instagramUrl, setInstagramUrl] = useState('');
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [portfolioUrl, setPortfolioUrl] = useState('');
   const [applying, setApplying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const [needRelogin, setNeedRelogin] = useState(false);
+  const [secondsLeft, setSecondsLeft] = useState(10);
 
   const links = [instagramUrl.trim(), youtubeUrl.trim(), portfolioUrl.trim()].filter(Boolean);
   const hasAtLeastOne = links.length > 0;
+
+  // Contagem regressiva do aviso de reconexão.
+  useEffect(() => {
+    if (!needRelogin) return;
+    if (secondsLeft <= 0) {
+      void logout();
+      return;
+    }
+    const timer = setTimeout(() => setSecondsLeft((value) => value - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [needRelogin, secondsLeft, logout]);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -38,7 +56,13 @@ export function BecomeWriterPage({ onBackToAccount }: { onBackToAccount: () => v
         youtubeUrl: youtubeUrl.trim() || undefined,
         portfolioUrl: portfolioUrl.trim() || undefined,
       });
+      // A sessão foi renovada no servidor com o papel de escritor: a UI já abre o painel.
+      await refreshSession();
       setDone(true);
+      if (!user.isCreator) {
+        // O navegador não recebeu o cookie novo: pede a reconexão com aviso.
+        setNeedRelogin(true);
+      }
     } catch (err: any) {
       setError(err?.message || 'Não foi possível criar o perfil de escritor.');
     } finally {
@@ -148,6 +172,25 @@ export function BecomeWriterPage({ onBackToAccount }: { onBackToAccount: () => v
           </ul>
         </aside>
       </div>
+
+      {/* Rede de segurança: se a sessão nova não chegou, avisa e desconecta em 10 segundos. */}
+      <Modal
+        isOpen={needRelogin}
+        onClose={() => setNeedRelogin(false)}
+        title="RECONECTAR SUA CONTA"
+        maxWidth="max-w-lg"
+      >
+        <div className="space-y-4">
+          <p className="font-body text-sm text-[var(--mn-paper)]">
+            Para aplicar o perfil de escritor, sua conta precisa ser reconectada. Vou desconectar em{' '}
+            <strong style={{ color: 'var(--mn-yellow)' }}>{secondsLeft} segundos</strong> — entre novamente
+            com o mesmo e-mail (ou username) e senha.
+          </p>
+          <Button variant="ghost" onClick={() => void logout()}>
+            <LogOut size={14} /> DESLOGAR AGORA
+          </Button>
+        </div>
+      </Modal>
     </section>
   );
 }

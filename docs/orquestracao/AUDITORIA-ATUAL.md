@@ -704,6 +704,25 @@ O detalhe público da obra agora omite capítulos com `publicReleaseAt` futuro; 
   `profileOnboardingCompleted: true`; as contas com foto herdada do backfill tambem.
 - [x] **Suite:** **368 testes**, 0 falhas, 0 erros.
 
+## 7.28 A candidatura a escritor renova a sessao, e o e-mail 2FA virou a marca do site (2026-10-21)
+
+- [x] **Por que a pessoa continuava com as janelas de leitor:** a sessao era criada no login, ANTES do
+  papel de escritor existir. O `isCreator`, o `creatorId` e o `creatorHandle` ficavam congelados e os
+  endpoints de autor respondiam 403 ate deslogar e logar de novo.
+- [x] **Correcao:** `POST /api/creators/apply` agora **reemite o cookie de sessao** com o papel de
+  escritor (a sessao antiga e revogada pelo proprio emissor). O front so precisa renormalizar a sessao.
+  Prova ao vivo: apply -> `{"reissuedSession":true,...}`; o `/auth/me` com o cookie novo ja devolve
+  `isCreator: true` + `creatorId` + `creatorHandle`, e `GET /api/works/mine` responde **200** (antes 403).
+  **Nao e preciso deslogar.**
+- [x] **Rede de seguranca no front:** se o navegador nao receber o cookie novo, a tela de candidatura mostra
+  um modal "RECONECTAR SUA CONTA" com contagem de **10 segundos** e desloga (o aviso que foi pedido).
+- [x] **E-mail de 2FA na identidade visual do site:** o template antigo (azul/ciano generico, sem relacao com
+  a marca) foi trocado pelo "Banca de Rua": fundo ink (#0B0B0C), faixa amarela (#FFD400) com o selo MN,
+  cartao #151517 com borda #34343A, o codigo em **caixas quadradas** (como o campo OTP do site) e o rodape de
+  transparencia (17% / 58%). O e-mail de recuperacao de senha recebeu a mesma identidade.
+- [x] **Suite:** **368 testes**, 0 falhas, 0 erros.
+
+## 8. Ordem de corre
 ## 8. Ordem de corre
 ## 8. Ordem de corre
 ## 8. Ordem de corre

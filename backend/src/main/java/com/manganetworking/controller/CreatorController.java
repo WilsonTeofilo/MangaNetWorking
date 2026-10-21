@@ -14,17 +14,24 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 @RestController
 @RequestMapping("/api/creators")
 public class CreatorController {
 
     private final CreatorApplicationService creatorService;
+    private final com.manganetworking.repository.jpa.UserRepository userRepository;
+    private final com.manganetworking.service.session.SessionService sessionService;
     private final com.manganetworking.service.creator.CreatorFollowService followService;
 
     public CreatorController(CreatorApplicationService creatorService,
-                              com.manganetworking.service.creator.CreatorFollowService followService) {
+                              com.manganetworking.service.creator.CreatorFollowService followService,
+                              com.manganetworking.repository.jpa.UserRepository userRepository,
+                              com.manganetworking.service.session.SessionService sessionService) {
         this.creatorService = creatorService;
+        this.userRepository = userRepository;
+        this.sessionService = sessionService;
         this.followService = followService;
     }
 
@@ -40,13 +47,26 @@ public class CreatorController {
      * A conta continua sendo a mesma — só nasce o perfil público de escritor.
      */
     @PostMapping("/apply")
-    public ResponseEntity<Map<String, Object>> applyAsWriter(@Valid @RequestBody ApplyAsCreatorRequestDto dto) {
+    public ResponseEntity<Map<String, Object>> applyAsWriter(
+            @Valid @RequestBody ApplyAsCreatorRequestDto dto,
+            HttpServletResponse response
+    ) {
         UUID userId = com.manganetworking.config.security.SecurityContextUtils.requireCurrentUserId();
         var creator = creatorService.applyAsWriter(userId, dto);
+
+        // A sessao foi criada no login, antes do papel de escritor existir. Sem renovar aqui,
+        // a pessoa continuaria com as janelas de leitor e tomaria 403 nos endpoints de autor
+        // ate deslogar e logar de novo.
+        var user = userRepository.findById(userId).orElse(null);
+        if (user != null) {
+            sessionService.createSession(user, creator, response);
+        }
+
         return ResponseEntity.ok(Map.of(
                 "message", "Perfil de escritor criado.",
                 "creatorId", creator.getId().toString(),
-                "creatorHandle", creator.getHandle()));
+                "creatorHandle", creator.getHandle(),
+                "reissuedSession", true));
     }
 
     /** Seguir um escritor (só escritores têm seguidores). */

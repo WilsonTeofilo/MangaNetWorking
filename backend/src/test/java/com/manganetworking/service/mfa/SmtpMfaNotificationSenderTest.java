@@ -33,8 +33,10 @@ class SmtpMfaNotificationSenderTest {
         Object content = sent.getContent();
         assertInstanceOf(Multipart.class, content);
         String body = extractText((Multipart) content);
-        assertTrue(body.contains("123456"));
-        assertTrue(body.contains("acesso à sua conta"));
+        // O código vai no corpo em caixas quadradas (identidade do site) e nunca no assunto.
+        assertTrue(body.contains("class=\"box\""));
+        assertTrue(body.contains(">1</div>") && body.contains(">6</div>"));
+        assertTrue(body.contains("entrar na sua conta"));
     }
 
     @Test
@@ -57,7 +59,7 @@ class SmtpMfaNotificationSenderTest {
         String body = extractText((Multipart) sent.getContent());
         assertTrue(body.contains("https://app.example.invalid/reset-password#token=opaque-token"));
         assertTrue(body.contains("30 minutos"));
-        assertTrue(body.contains("ignore esta mensagem"));
+        assertTrue(body.contains("ignore este e-mail"));
     }
 
     private static String extractText(Multipart multipart) throws Exception {

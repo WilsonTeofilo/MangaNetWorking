@@ -122,7 +122,7 @@ Fluxo exercitado de ponta a ponta na stack local (backend 8085, frontend 5180, P
 | Painel do autor (foto, bio, links, perfil pÃºblico) | âœ… funciona | o formulÃ¡rio reidrata com o servidor, mostra "PERFIL ATUALIZADO" com botÃ£o para o perfil pÃºblico e exige **1** dos 3 links sociais |
 | Recortar a foto (arraste + zoom) | OK funciona | recorte quadrado gerado no navegador (canvas 512px, sem metadados), com arraste por mouse/toque, setas do teclado e slider de zoom, no mesmo padrao do MangaTeofilo |
 | "Minha conta" enxuta (leitor) | OK funciona | identidade, visibilidade (publico/privado), ver pagina publica, painel do leitor e dados/privacidade - sem duplicar o formulario de escritor |
-| Candidatura a escritor (pagina propria) | OK funciona | 1 dos 3 links e obrigatorio, nome/foto/username herdados do leitor e perfil de escritor sempre publico |
+| Candidatura a escritor (pagina propria) | OK funciona | 1 dos 3 links e obrigatorio, nome/foto/username herdados do leitor e perfil de escritor sempre publico; a candidatura **renova a sessao** com o papel de escritor (sem precisar deslogar) |
 | **Trocar a foto de perfil** | ✅ funciona | `POST /api/storage/avatar` (normaliza para 512px, sem metadados) + `PUT /api/users/profile`; câmera sempre visível no avatar, botão "TROCAR FOTO" e erro real do servidor na tela |
 | **Minhas obras** (lanÃ§ar/configurar a obra) | âœ… funciona | `GET /api/works/mine` lista as obras do autor; criar, configurar (capa, banner, categorias, tÃ­tulo, sinopse, estado) e remover â€” sem tocar em capÃ­tulo |
 | **CapÃ­tulos** (publicar capÃ­tulo de uma obra sua) | âœ… funciona | seletor de obra + fluxo de 5 etapas (pÃ¡ginas, capa do capÃ­tulo, revisÃ£o, publicaÃ§Ã£o) â€” a obra jÃ¡ existe |
