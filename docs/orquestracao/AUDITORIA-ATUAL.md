@@ -763,6 +763,30 @@ O detalhe público da obra agora omite capítulos com `publicReleaseAt` futuro; 
   no servico).
 - [x] **Suite:** **368 testes**, 0 falhas, 0 erros; build do frontend verde.
 
+## 7.31 Recorte de imagem, edicao de capitulo e lancamento (2026-10-21)
+
+- [x] **Recorte reescrito com a matematica do MangaTeofilo:** o ajuste anterior usava `transform` com
+  `width: 100%` e o canvas calculava o retangulo de outro jeito â€” por isso a imagem nao aparecia inteira, o
+  arrasto travava em um eixo e o arquivo salvo era diferente do preview. Agora `utils/responsiveCrop.ts` traz o
+  modelo da referencia (`zoom` + `x`/`y` em percentual, limites por eixo, imagem em modo "cover") e o
+  `ImageCropper` usa a MESMA geometria no CSS e no canvas: o preview ao lado do quadro **e** o arquivo gravado.
+  Arrastar funciona nos quatro eixos e o teclado move com as setas.
+- [x] **Reajustar sem subir arquivo novo:** avatar, capa e banner aceitam a imagem **que ja esta** no perfil como
+  origem do recorte (botao "REAJUSTAR FOTO"), economizando upload e bytes no storage.
+- [x] **Capa e banner da obra tambem tem recorte:** lancamento/edicao de obra abre o editor 2:3 (900x1200) e 16:9
+  (1600x900).
+- [x] **Organizar paginas no padrao do MangaTeofilo:** avanco automatico para "Organizar paginas" depois do upload,
+  arrastar e soltar para reordenar (alÃ©m das setas), campo "ir para a pagina N" e botao "ADICIONAR MAIS IMAGENS"
+  dentro da propria etapa (sem voltar ao upload). As paginas ficaram com o tamanho do modelo de referencia.
+- [x] **Escritor edita capitulo:** `PUT /api/works/{workId}/chapters/{number}` (sÃ³ o autor) edita paginas em nova
+  ordem, capa, titulo, texto e data de lancamento. Bug encontrado no caminho: a edicao quebrava no indice unico
+  de `chapter_files.filename` (a pagina ja registrada) â€” a vinculo agora e substituido, nao acrescido.
+- [x] **Lancamento sem data por padrao:** a data de liberacao virou OPCIONAL no cadastro do capitulo; sem data o
+  capitulo entra no ar imediatamente, e a data (quando o autor quiser agendar) fica visivel e editavel na etapa
+  "Revisar".
+- [x] **Suite:** **368 testes**, 0 falhas, 0 erros; build do frontend verde.
+
+## 8. Ordem de corre
 ## 8. Ordem de corre
 ## 8. Ordem de corre
 ## 8. Ordem de corre

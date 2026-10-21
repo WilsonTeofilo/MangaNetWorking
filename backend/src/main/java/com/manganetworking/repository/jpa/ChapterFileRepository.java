@@ -15,4 +15,7 @@ public interface ChapterFileRepository extends JpaRepository<ChapterFileEntity, 
      * É o valor recebido em {@code GET /api/storage/{filename}}, logo não há token/LIKE envolvido.
      */
     Optional<ChapterFileEntity> findByFilename(String filename);
+
+    /** Remove os vinculos de pagina do capitulo (usado na edicao, que reseta a ordem). */
+    void deleteByChapterId(UUID chapterId);
 }

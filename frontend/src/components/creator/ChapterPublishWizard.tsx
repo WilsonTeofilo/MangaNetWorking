@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { Check, ChevronLeft, ChevronRight, GripVertical, Image as ImageIcon, Trash2, Upload, X, ZoomIn } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, GripVertical, Image as ImageIcon, Trash2, Upload, X, ZoomIn, Plus, CornerDownLeft } from 'lucide-react';
 import { workApi } from '../../api/workApi';
 import { storageApi } from '../../api/storageApi';
 import { Button } from '../ui/Button';
@@ -16,7 +16,9 @@ import { Field } from '../ui/Field';
  * "Minhas obras"). Aqui não se cria nem se configura obra — só o capítulo.
  *
  * O formato da obra manda: MANGA publica páginas, LIGHT_NOVEL publica texto de prosa.
- * Publicar com o formato errado é recusado pelo servidor, então a tela se adapta.
+ *
+ * Organizar páginas: arrastar para reordenar (além das setas), ir direto para a página N
+ * digitando o número, e adicionar mais imagens sem voltar para a etapa de upload.
  */
 
 const STEPS = [
@@ -29,8 +31,21 @@ const STEPS = [
 
 interface PageItem {
   key: string;
-  file: File;
+  /** Arquivo novo (ainda nÃ£o enviado). Ausente em pÃ¡gina jÃ¡ publicada. */
+  file?: File;
+  /** URL definitiva da pÃ¡gina (no modo de ediÃ§Ã£o, a pÃ¡gina jÃ¡ estÃ¡ no storage). */
+  url?: string;
   previewUrl: string;
+}
+
+export interface ChapterDraft {
+  /** NÃºmero do capÃ­tulo (ediÃ§Ã£o). */
+  chapterNumber?: number;
+  title?: string;
+  /** PÃ¡ginas jÃ¡ publicadas (URLs do storage). */
+  pages?: string[];
+  coverUrl?: string | null;
+  releaseDate?: string | null;
 }
 
 export function ChapterPublishWizard({
@@ -38,27 +53,42 @@ export function ChapterPublishWizard({
   workTitle,
   workFormat,
   nextChapterNumber,
+  draft,
 }: {
   workId: string;
   workTitle: string;
   workFormat?: 'MANGA' | 'LIGHT_NOVEL' | null;
   nextChapterNumber: number;
+  /** CapÃ­tulo em ediÃ§Ã£o (pÃ¡ginas e metadados jÃ¡ gravados). */
+  draft?: ChapterDraft | null;
 }) {
+  const isEditing = Boolean(draft);
   const isProse = workFormat === 'LIGHT_NOVEL';
 
   const [step, setStep] = useState<number>(1);
-  const [pages, setPages] = useState<PageItem[]>([]);
+  const [pages, setPages] = useState<PageItem[]>(() =>
+    (draft?.pages ?? []).map((url, index) => ({
+      key: `existente-${index}-${url}`,
+      url,
+      previewUrl: url,
+    }))
+  );
   const [prose, setProse] = useState('');
   const [dragging, setDragging] = useState(false);
   const [preview, setPreview] = useState<PageItem | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [chapterTitle, setChapterTitle] = useState(`Capítulo ${nextChapterNumber}`);
+  const [releaseDate, setReleaseDate] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [jumpTo, setJumpTo] = useState('');
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [overIndex, setOverIndex] = useState<number | null>(null);
   const pagesInputRef = useRef<HTMLInputElement | null>(null);
   const coverInputRef = useRef<HTMLInputElement | null>(null);
+  const pageRefs = useRef<Record<string, HTMLLIElement | null>>({});
 
   const uploadReady = isProse ? prose.trim().length > 0 : pages.length > 0;
   const organizeReady = uploadReady;
@@ -88,7 +118,7 @@ export function ChapterPublishWizard({
     setError(null);
   };
 
-  const addPages = (files: FileList | File[]) => {
+  const addPages = (files: FileList | File[], advance = false) => {
     const selected = Array.from(files).filter((file) => file.type.startsWith('image/'));
     if (selected.length === 0) {
       setError('Selecione arquivos de imagem (JPG, PNG ou WebP).');
@@ -103,6 +133,10 @@ export function ChapterPublishWizard({
         previewUrl: URL.createObjectURL(file),
       })),
     ]);
+    // Upload feito: vai direto para organizar (é onde a pessoa mexe na ordem).
+    if (advance) {
+      setStep(2);
+    }
   };
 
   const removePage = (key: string) => {
@@ -121,6 +155,32 @@ export function ChapterPublishWizard({
       [next[index], next[target]] = [next[target], next[index]];
       return next;
     });
+  };
+
+  /** Arrastar e soltar: move a página para a posição alvo. */
+  const reorderByDrag = (from: number, to: number) => {
+    setPages((current) => {
+      if (from === to || from < 0 || to < 0 || from >= current.length || to >= current.length) return current;
+      const next = [...current];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  };
+
+  /** Vai direto para a página digitada (como no MangaTeofilo). */
+  const jumpToPage = () => {
+    const target = Number(jumpTo);
+    if (!Number.isInteger(target) || target < 1 || target > pages.length) {
+      setError('Digite um número de página existente.');
+      return;
+    }
+    setError(null);
+    const key = pages[target - 1]?.key;
+    if (key && pageRefs.current[key]) {
+      pageRefs.current[key]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    setJumpTo('');
   };
 
   const pickCover = (file: File | undefined) => {
@@ -143,6 +203,12 @@ export function ChapterPublishWizard({
       const uploaded: string[] = [];
       if (!isProse) {
         for (const page of pages) {
+          if (page.url) {
+            // PÃ¡gina jÃ¡ publicada: mantÃ©m a URL (nÃ£o reenvia o arquivo).
+            uploaded.push(page.url);
+            continue;
+          }
+          if (!page.file) continue;
           const stored = await storageApi.uploadFile(page.file);
           uploaded.push(stored.url);
         }
@@ -155,17 +221,34 @@ export function ChapterPublishWizard({
 
       // O capítulo NASCE dentro de uma obra já existente (escolhida em "Capítulos"),
       // e no formato da obra: páginas (MANGA) ou prosa (LIGHT_NOVEL).
-      await workApi.createChapter(workId, {
-        chapterNumber: nextChapterNumber,
-        title: chapterTitle.trim(),
-        coverUrl,
-        pages: isProse ? undefined : uploaded,
-        content: isProse ? prose.trim() : undefined,
-        format: isProse ? 'PROSE' : 'IMAGE_PAGES',
-        publicReleaseAt: new Date().toISOString(),
-      });
+      // Sem data, o capítulo entra no ar imediatamente; com data, fica agendado.
+      const chapterNumber = draft?.chapterNumber ?? nextChapterNumber;
+      if (isEditing) {
+        await workApi.updateChapter(workId, chapterNumber, {
+          title: chapterTitle.trim(),
+          coverUrl,
+          pages: isProse ? undefined : uploaded,
+          content: isProse ? prose.trim() : undefined,
+          format: isProse ? 'PROSE' : 'IMAGE_PAGES',
+          publicReleaseAt: releaseDate ? new Date(releaseDate).toISOString() : new Date().toISOString(),
+        });
+      } else {
+        await workApi.createChapter(workId, {
+          chapterNumber,
+          title: chapterTitle.trim(),
+          coverUrl,
+          pages: isProse ? undefined : uploaded,
+          content: isProse ? prose.trim() : undefined,
+          format: isProse ? 'PROSE' : 'IMAGE_PAGES',
+          publicReleaseAt: releaseDate ? new Date(releaseDate).toISOString() : new Date().toISOString(),
+        });
+      }
 
-      setSuccess(`Capítulo publicado em "${workTitle}".`);
+      setSuccess(
+        releaseDate
+          ? `Capítulo agendado para ${new Date(releaseDate).toLocaleDateString('pt-BR')} em "${workTitle}".`
+          : `Capítulo publicado em "${workTitle}".`
+      );
       setPages([]);
       setProse('');
     } catch (err: any) {
@@ -251,7 +334,7 @@ export function ChapterPublishWizard({
                 onDrop={(event) => {
                   event.preventDefault();
                   setDragging(false);
-                  addPages(event.dataTransfer.files);
+                  addPages(event.dataTransfer.files, true);
                 }}
                 className={`border-2 border-dashed p-8 text-center transition-colors ${
                   dragging ? 'border-[var(--mn-yellow)] bg-[var(--mn-ink)]' : 'border-[var(--mn-line)]'
@@ -270,7 +353,7 @@ export function ChapterPublishWizard({
                   multiple
                   className="hidden"
                   onChange={(event) => {
-                    if (event.target.files) addPages(event.target.files);
+                    if (event.target.files) addPages(event.target.files, true);
                     event.target.value = '';
                   }}
                 />
@@ -288,59 +371,134 @@ export function ChapterPublishWizard({
       {/* ETAPA 2 — Organizar páginas */}
       {step === 2 && (
         <section className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-5 space-y-4">
-          <h3 className="font-display text-xl text-[var(--mn-paper)] uppercase">Organize as páginas</h3>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h3 className="font-display text-xl text-[var(--mn-paper)] uppercase">Organize as páginas</h3>
+            <Button type="button" variant="ghost" onClick={() => pagesInputRef.current?.click()}>
+              <Plus size={14} /> ADICIONAR MAIS IMAGENS
+            </Button>
+          </div>
+          <input
+            ref={pagesInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            multiple
+            className="hidden"
+            onChange={(event) => {
+              if (event.target.files) addPages(event.target.files, false);
+              event.target.value = '';
+            }}
+          />
+
           {isProse ? (
             <p className="font-body text-xs text-[var(--mn-mute)]">
               Light novel é texto: não há páginas para organizar. Acompanhe o texto na etapa de revisão.
             </p>
           ) : (
             <>
+              <div className="flex flex-wrap items-center gap-2">
+                <label htmlFor="jump-page" className="font-pixel text-[11px] uppercase text-[var(--mn-mute)]">
+                  IR PARA A PÁGINA
+                </label>
+                <input
+                  id="jump-page"
+                  type="number"
+                  min={1}
+                  max={pages.length}
+                  value={jumpTo}
+                  onChange={(event) => setJumpTo(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault();
+                      jumpToPage();
+                    }
+                  }}
+                  className="w-20 bg-[var(--mn-ink)] border-2 border-[var(--mn-line)] px-2 py-1 font-pixel text-[12px] text-[var(--mn-paper)] focus:border-[var(--mn-yellow)] outline-none"
+                />
+                <Button type="button" variant="ghost" onClick={jumpToPage}>
+                  <CornerDownLeft size={13} /> IR
+                </Button>
+                <span className="font-pixel text-[11px] uppercase text-[var(--mn-mute)]">
+                  de {pages.length} página(s)
+                </span>
+              </div>
+
               <p className="font-body text-xs text-[var(--mn-mute)]">
-                A ordem das páginas é a ordem de leitura. Use as setas para mover, o ícone de lixeira para
-                remover e o zoom para conferir antes de publicar.
+                Arraste uma página para cima de outra para reordenar, ou use as setas. A ordem das páginas é a
+                ordem de leitura.
               </p>
-              <ul className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+
+              <ul className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                 {pages.map((page, index) => (
-                  <li key={page.key} className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink)] p-2 space-y-2">
+                  <li
+                    key={page.key}
+                    ref={(element) => {
+                      pageRefs.current[page.key] = element;
+                    }}
+                    draggable
+                    onDragStart={() => setDragIndex(index)}
+                    onDragOver={(event) => {
+                      event.preventDefault();
+                      setOverIndex(index);
+                    }}
+                    onDragEnd={() => {
+                      setDragIndex(null);
+                      setOverIndex(null);
+                    }}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      if (dragIndex !== null) reorderByDrag(dragIndex, index);
+                      setDragIndex(null);
+                      setOverIndex(null);
+                    }}
+                    className={`border-2 bg-[var(--mn-ink)] p-2 space-y-2 cursor-grab active:cursor-grabbing ${
+                      overIndex === index && dragIndex !== null && dragIndex !== index
+                        ? 'border-[var(--mn-yellow)]'
+                        : 'border-[var(--mn-line)]'
+                    }`}
+                  >
                     <button
                       type="button"
                       onClick={() => setPreview(page)}
                       className="block w-full focus-visible:outline"
                       title="Ampliar"
                     >
-                      <img src={page.previewUrl} alt={`Página ${index + 1}`} className="w-full h-28 object-cover" />
+                      <img src={page.previewUrl} alt={`Página ${index + 1}`} className="w-full h-44 object-cover" />
                     </button>
-                    <span className="font-pixel text-[10px] uppercase text-[var(--mn-yellow)]">Pág {index + 1}</span>
+                    <div className="flex items-center justify-between">
+                      <span className="font-pixel text-[11px] uppercase text-[var(--mn-yellow)]">
+                        Pág {index + 1}
+                      </span>
+                      <GripVertical size={14} className="text-[var(--mn-mute)]" aria-hidden="true" />
+                    </div>
                     <div className="flex items-center justify-between gap-1">
                       <button
                         type="button"
                         onClick={() => movePage(index, -1)}
                         disabled={index === 0}
-                        className="p-1 border border-[var(--mn-line)] text-[var(--mn-paper)] disabled:opacity-40 hover:border-[var(--mn-yellow)]"
+                        className="p-1.5 border border-[var(--mn-line)] text-[var(--mn-paper)] disabled:opacity-40 hover:border-[var(--mn-yellow)]"
                         title="Mover para cima"
                         aria-label={`Mover a página ${index + 1} para cima`}
                       >
-                        <ChevronLeft size={12} />
+                        <ChevronLeft size={14} />
                       </button>
-                      <GripVertical size={12} className="text-[var(--mn-mute)]" />
                       <button
                         type="button"
                         onClick={() => movePage(index, 1)}
                         disabled={index === pages.length - 1}
-                        className="p-1 border border-[var(--mn-line)] text-[var(--mn-paper)] disabled:opacity-40 hover:border-[var(--mn-yellow)]"
+                        className="p-1.5 border border-[var(--mn-line)] text-[var(--mn-paper)] disabled:opacity-40 hover:border-[var(--mn-yellow)]"
                         title="Mover para baixo"
                         aria-label={`Mover a página ${index + 1} para baixo`}
                       >
-                        <ChevronRight size={12} />
+                        <ChevronRight size={14} />
                       </button>
                       <button
                         type="button"
                         onClick={() => removePage(page.key)}
-                        className="p-1 border border-[var(--mn-line)] text-[var(--mn-red)] hover:border-[var(--mn-red)]"
+                        className="p-1.5 border border-[var(--mn-line)] text-[var(--mn-red)] hover:border-[var(--mn-red)]"
                         title="Remover página"
                         aria-label={`Remover a página ${index + 1}`}
                       >
-                        <Trash2 size={12} />
+                        <Trash2 size={14} />
                       </button>
                     </div>
                   </li>
@@ -384,6 +542,21 @@ export function ChapterPublishWizard({
         <section className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-5 space-y-4">
           <h3 className="font-display text-xl text-[var(--mn-paper)] uppercase">Revise antes de publicar</h3>
           <Field label="TÍTULO DO CAPÍTULO" value={chapterTitle} onChange={(event) => setChapterTitle(event.target.value)} />
+          <div className="space-y-1.5">
+            <label htmlFor="release-date" className="font-body text-sm font-semibold text-[var(--mn-paper)] block">
+              DATA DE LANÇAMENTO (opcional)
+            </label>
+            <input
+              id="release-date"
+              type="datetime-local"
+              value={releaseDate}
+              onChange={(event) => setReleaseDate(event.target.value)}
+              className="w-full bg-[var(--mn-ink-2)] border-2 border-[var(--mn-line)] px-3 py-2 font-body text-sm text-[var(--mn-paper)] focus:border-[var(--mn-paper)] focus:shadow-[3px_3px_0_var(--mn-yellow)] outline-none"
+            />
+            <p className="font-pixel text-[11px] uppercase text-[var(--mn-mute)]">
+              Sem data: publica agora. Com data: fica agendado (e o autor pode mudar depois).
+            </p>
+          </div>
           <dl className="grid sm:grid-cols-2 gap-2 font-body text-sm">
             <div className="flex justify-between border-b border-[var(--mn-line)] py-1">
               <dt className="text-[var(--mn-mute)]">Obra</dt>
@@ -404,6 +577,12 @@ export function ChapterPublishWizard({
               </dd>
             </div>
             <div className="flex justify-between border-b border-[var(--mn-line)] py-1">
+              <dt className="text-[var(--mn-mute)]">Lançamento</dt>
+              <dd className="text-[var(--mn-paper)]">
+                {releaseDate ? new Date(releaseDate).toLocaleString('pt-BR') : 'imediato'}
+              </dd>
+            </div>
+            <div className="flex justify-between border-b border-[var(--mn-line)] py-1">
               <dt className="text-[var(--mn-mute)]">Capa própria</dt>
               <dd className="text-[var(--mn-paper)]">{coverFile ? 'sim' : 'usa a capa da obra'}</dd>
             </div>
@@ -417,10 +596,11 @@ export function ChapterPublishWizard({
           <h3 className="font-display text-xl text-[var(--mn-paper)] uppercase">Publicar capítulo</h3>
           <p className="font-body text-xs text-[var(--mn-mute)]">
             O capítulo entra na obra <strong className="text-[var(--mn-paper)]">{workTitle}</strong> e fica
-            disponível no catálogo.
+            disponível no catálogo
+            {releaseDate ? ' na data escolhida.' : ' imediatamente.'}
           </p>
           <Button onClick={publish} disabled={busy} variant="primary" className="!px-6">
-            {busy ? 'PUBLICANDO...' : 'PUBLICAR CAPÍTULO'}
+            {busy ? 'PUBLICANDO...' : releaseDate ? 'AGENDAR CAPÍTULO' : 'PUBLICAR CAPÍTULO'}
           </Button>
         </section>
       )}

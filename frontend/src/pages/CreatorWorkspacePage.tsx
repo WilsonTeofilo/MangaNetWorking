@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { ShieldAlert, Check, Upload } from 'lucide-react';
+import { ShieldAlert, Check, Upload, Crop } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Field } from '../components/ui/Field';
 import { CreatorMissionsPanel } from '../components/creator/CreatorMissionsPanel';
-import { AvatarCropper } from '../components/common/AvatarCropper';
+import { ImageCropper } from '../components/common/ImageCropper';
 import { LevelPatch } from '../components/ui/LevelPatch';
 import { Sticker } from '../components/ui/Sticker';
 import { MOCK_CREATORS } from '../data/mockData';
@@ -39,7 +39,8 @@ export function CreatorWorkspacePage({ section = 'dashboard', onOpenPublicProfil
 
   // Estados para Publicação Real de Nova Obra e Capítulo
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
-  const [avatarCropFile, setAvatarCropFile] = useState<File | null>(null);
+  /** Origem do recorte do avatar: arquivo novo ou a foto atual. */
+  const [avatarCropSource, setAvatarCropSource] = useState<{ file?: File; url?: string } | null>(null);
 
   // Estado explícito quando não há sessão de criador.
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
@@ -95,7 +96,7 @@ export function CreatorWorkspacePage({ section = 'dashboard', onOpenPublicProfil
       return;
     }
     setSaveError(null);
-    setAvatarCropFile(file);
+    setAvatarCropSource({ file });
   };
 
   /** Grava o recorte final como avatar do AUTOR e da CONTA (o header usa o da conta). */
@@ -109,7 +110,7 @@ export function CreatorWorkspacePage({ section = 'dashboard', onOpenPublicProfil
       await creatorApi.updateProfile({ avatarUrl: stored.url });
       await userApi.updateProfile({ avatarUrl: stored.url });
       await refreshSession();
-      setAvatarCropFile(null);
+      setAvatarCropSource(null);
       setSaveError(null);
     } catch (err: any) {
       setSaveError(err?.message || 'NÃ£o foi possÃ­vel salvar o avatar.');
@@ -214,11 +215,25 @@ export function CreatorWorkspacePage({ section = 'dashboard', onOpenPublicProfil
             </div>
 
             {workspace && (
-              <label className={`inline-flex cursor-pointer items-center gap-2 border border-[var(--mn-line)] px-3 py-2 font-pixel text-[10px] text-[var(--mn-paper)] ${isUploadingAvatar ? 'opacity-50' : ''}`}>
-                <Upload size={12} />
-                {isUploadingAvatar ? 'ENVIANDO…' : 'TROCAR AVATAR'}
-                <input type="file" accept="image/jpeg,image/png" disabled={isUploadingAvatar} onChange={handleAvatarUpload} className="sr-only" />
-              </label>
+              <div className="flex flex-wrap items-center gap-2">
+                <label className={`inline-flex cursor-pointer items-center gap-2 border border-[var(--mn-line)] px-3 py-2 font-pixel text-[10px] text-[var(--mn-paper)] ${isUploadingAvatar ? 'opacity-50' : ''}`}>
+                  <Upload size={12} />
+                  {isUploadingAvatar ? 'ENVIANDO…' : 'TROCAR AVATAR'}
+                  <input type="file" accept="image/jpeg,image/png" disabled={isUploadingAvatar} onChange={handleAvatarUpload} className="sr-only" />
+                </label>
+                {avatarPreview && (
+                  <button
+                    type="button"
+                    onClick={() => setAvatarCropSource({ url: avatarPreview })}
+                    disabled={isUploadingAvatar}
+                    className="inline-flex items-center gap-2 border border-[var(--mn-line)] px-3 py-2 font-pixel text-[10px] text-[var(--mn-paper)] hover:border-[var(--mn-yellow)] disabled:opacity-50"
+                    title="Reajusta a foto atual, sem subir um arquivo novo"
+                  >
+                    <Crop size={12} />
+                    REAJUSTAR FOTO
+                  </button>
+                )}
+              </div>
             )}
 
             <div>
@@ -265,12 +280,15 @@ export function CreatorWorkspacePage({ section = 'dashboard', onOpenPublicProfil
 
 
       {/* Recortador de avatar: arraste + zoom antes de gravar (padrao MangaTeofilo) */}
-      {avatarCropFile && (
-        <AvatarCropper
-          file={avatarCropFile}
+      {avatarCropSource && (
+        <ImageCropper
+          file={avatarCropSource.file ?? null}
+          sourceUrl={avatarCropSource.url ?? null}
+          outputWidth={512}
+          outputHeight={512}
           busy={isUploadingAvatar}
           error={saveError}
-          onCancel={() => setAvatarCropFile(null)}
+          onCancel={() => setAvatarCropSource(null)}
           onConfirm={saveCroppedAvatar}
         />
       )}

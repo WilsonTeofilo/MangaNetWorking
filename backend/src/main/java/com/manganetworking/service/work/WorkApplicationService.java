@@ -370,10 +370,11 @@ public class WorkApplicationService {
         chapter.setPagesJson(pagesJson);
         chapter.setFormat(format);
         chapter.setContentText(format == ChapterFormat.PROSE ? content : null);
-        chapter.setPublicReleaseAt(dto.publicReleaseAt());
+        // Sem data informada, o capitulo entra no ar imediatamente (padrao do produto).
+        chapter.setPublicReleaseAt(dto.publicReleaseAt() != null ? dto.publicReleaseAt() : LocalDateTime.now());
 
         ChapterEntity saved = chapterRepository.save(chapter);
-        if (format == ChapterFormat.IMAGE_PAGES) registerChapterFiles(saved.getId(), pages);
+        replaceChapterFiles(saved.getId(), pages);
 
         // Atualiza contadores na obra
         work.setTotalChapters(work.getTotalChapters() + 1);
@@ -381,6 +382,85 @@ public class WorkApplicationService {
 
         publishFeedSync(updatedWork.getId(), "publicação de capítulo");
 
+        return saved;
+    }
+
+    /**
+     * Edicao de um capitulo pelo proprio autor: paginas (em nova ordem), capa, titulo,
+     * texto de prosa e data de lancamento. O numero do capitulo nao muda (a ordem de
+     * leitura fica com o autor, via reorder das paginas ou remocao e recriacao).
+     *
+     * @param creatorId autor da sessao
+     * @param workId    obra do capitulo
+     * @param number    numero do capitulo
+     * @param dto       novos dados
+     * @return o capitulo atualizado
+     */
+    @Transactional
+    /** Serializa a lista de paginas do capitulo. */
+    private String writePagesJson(List<String> pages) {
+        try {
+            return objectMapper.writeValueAsString(pages);
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException("Erro ao serializar as paginas do capitulo: " + e.getMessage());
+        }
+    }
+
+    /** Le as paginas ja gravadas do capitulo (edicao). */
+    private List<String> readPages(ChapterEntity chapter) {
+        if (chapter.getPagesJson() == null || chapter.getPagesJson().isBlank()) {
+            return List.of();
+        }
+        try {
+            return objectMapper.readValue(chapter.getPagesJson(),
+                    new com.fasterxml.jackson.core.type.TypeReference<List<String>>() {});
+        } catch (JsonProcessingException e) {
+            return List.of();
+        }
+    }
+
+    @Transactional
+    public ChapterEntity updateChapter(UUID creatorId, UUID workId, Integer number, UpdateChapterRequestDto dto) {
+        WorkEntity work = workRepository.findById(workId)
+                .orElseThrow(() -> new ResourceNotFoundException("Obra nÃ£o encontrada: " + workId));
+        if (work.getAuthor() == null || !creatorId.equals(work.getAuthor().getId())) {
+            throw new AccessDeniedException("Apenas o autor pode editar capÃ­tulos desta obra.");
+        }
+
+        ChapterEntity chapter = chapterRepository.findByWorkIdAndChapterNumber(workId, number)
+                .orElseThrow(() -> new ResourceNotFoundException("CapÃ­tulo #" + number + " nÃ£o encontrado"));
+
+        ChapterFormat format = dto.format() != null ? dto.format() : chapter.getFormat();
+        List<String> pages = dto.pages() != null ? dto.pages() : readPages(chapter);
+        String content = dto.content() != null
+                ? com.manganetworking.util.SanitizationUtils.stripAllHtml(dto.content()).trim()
+                : chapter.getContentText();
+
+        if (format == ChapterFormat.IMAGE_PAGES && pages.isEmpty()) {
+            throw new IllegalArgumentException("CapÃ­tulos de mangÃ¡ precisam de pelo menos uma pÃ¡gina.");
+        }
+        if (format == ChapterFormat.PROSE && (content == null || content.isBlank())) {
+            throw new IllegalArgumentException("CapÃ­tulos em prosa precisam de texto.");
+        }
+        if (format == ChapterFormat.IMAGE_PAGES && pages.size() > MAX_CHAPTER_PAGES) {
+            throw new IllegalArgumentException("O capÃ­tulo excede o limite de " + MAX_CHAPTER_PAGES + " pÃ¡ginas.");
+        }
+
+        chapter.setTitle(com.manganetworking.util.SanitizationUtils.stripAllHtml(dto.title().trim()));
+        if (dto.coverUrl() != null) {
+            chapter.setCoverUrl(WorkImageUrlPolicy.cover(dto.coverUrl()));
+        }
+        chapter.setFormat(format);
+        chapter.setContentText(format == ChapterFormat.PROSE ? content : null);
+        if (format == ChapterFormat.IMAGE_PAGES) {
+            chapter.setPagesJson(writePagesJson(pages));
+        }
+        // Sem data informada, o capitulo volta a ficar publicado imediatamente.
+        chapter.setPublicReleaseAt(dto.publicReleaseAt() != null ? dto.publicReleaseAt() : LocalDateTime.now());
+
+        ChapterEntity saved = chapterRepository.save(chapter);
+        replaceChapterFiles(saved.getId(), pages);
+        publishFeedSync(work.getId(), "ediÃ§Ã£o de capÃ­tulo");
         return saved;
     }
 
@@ -413,6 +493,20 @@ public class WorkApplicationService {
         if (!files.isEmpty()) {
             chapterFileRepository.saveAll(files);
         }
+    }
+
+    /**
+     * Reordena/substitui as paginas do capitulo: remove o vinculo anterior e grava a nova
+     * ordem. Sem isso, a edicao quebrava no indice unico de chapter_files.filename (a mesma
+     * pagina ja registrada).
+     */
+    private void replaceChapterFiles(UUID chapterId, List<String> pages) {
+        if (chapterId == null) {
+            return;
+        }
+        chapterFileRepository.deleteByChapterId(chapterId);
+        chapterFileRepository.flush();
+        registerChapterFiles(chapterId, pages);
     }
 
     /**

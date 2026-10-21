@@ -139,6 +139,7 @@ public class SecurityConfig {
                         // então precisa vir ANTES da regra de POST de /api/works/** (só criador).
                         // Configuracao da obra (capa, banner, categorias) e do autor.
                         .requestMatchers(HttpMethod.PUT, "/api/works/*").hasRole("CREATOR")
+                        .requestMatchers(HttpMethod.PUT, "/api/works/*/chapters/*").hasRole("CREATOR")
                         .requestMatchers(HttpMethod.DELETE, "/api/works/*").hasRole("CREATOR")
                         .requestMatchers(HttpMethod.POST, "/api/works/*/comments").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/works/**").hasRole("CREATOR")

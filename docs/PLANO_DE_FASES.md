@@ -126,6 +126,8 @@ Fluxo exercitado de ponta a ponta na stack local (backend 8085, frontend 5180, P
 | **Trocar a foto de perfil** | ✅ funciona | `POST /api/storage/avatar` (normaliza para 512px, sem metadados) + `PUT /api/users/profile`; câmera sempre visível no avatar, botão "TROCAR FOTO" e erro real do servidor na tela |
 | **Minhas obras** (lancar/configurar a obra) | OK funciona | `GET /api/works/mine` lista as obras do autor; criar, configurar (capa, banner, categorias, titulo, sinopse, estado) e remover â€” sem tocar em capitulo; a remocao limpa o feed |
 | **CapÃ­tulos** (publicar capitulo de uma obra sua) | OK funciona | seletor de obra + fluxo de 5 etapas; a tela se adapta ao formato da obra (paginas no mangÃ¡, texto na light novel) |
+| Recortar foto (avatar, capa e banner) | OK funciona | arraste nos quatro eixos + zoom, preview igual ao arquivo salvo e "reajustar" a foto atual sem subir arquivo novo |
+| **Editar capÃ­tulo** (autor) | OK funciona | `PUT /api/works/{workId}/chapters/{n}`: pÃ¡ginas em nova ordem, capa, tÃ­tulo, texto e data de lanÃ§amento |
 | Publicar obra em **5 etapas** (igual MangaTeofilo) | âœ… funciona | Upload (dropzone) â†’ Organizar pÃ¡ginas (ordem, remover, ampliar) â†’ Ajustar capa â†’ Revisar metadados â†’ Publicar, com checklist e avanÃ§o travado |
 | Ferramentas de dados no painel do autor | âœ… funciona | ver perfil pÃºblico, exportar dados (LGPD) e excluir conta (com confirmaÃ§Ã£o) |
 | Painel do criador em **telas separadas** | ✅ funciona | Workspace, Minhas obras, Capítulos, Missões & XP, Analytics (`/api/creators/analytics`) e Monetização — cada um com endpoint próprio |

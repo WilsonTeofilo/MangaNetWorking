@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { BookMarked, Pencil, Trash2, Upload } from 'lucide-react';
 import { workApi, CreatorWorkSummaryDto } from '../api/workApi';
 import { storageApi } from '../api/storageApi';
+import { ImageCropper } from '../components/common/ImageCropper';
 import { Button } from '../components/ui/Button';
 import { Field } from '../components/ui/Field';
-import { AvatarCropper } from '../components/common/AvatarCropper';
 
 const GENRES = ['ACAO', 'AVENTURA', 'ROMANCE', 'FANTASIA', 'SCI_FI', 'SHONEN', 'DRAMA', 'TERROR'];
 
@@ -31,6 +31,8 @@ export function CreatorWorksPage() {
   const [status, setStatus] = useState<'ongoing' | 'draft' | 'completed'>('ongoing');
   const [declared, setDeclared] = useState(false);
   const [saving, setSaving] = useState(false);
+  /** Origem do recorte em andamento: capa ou banner. */
+  const [cropTarget, setCropTarget] = useState<'cover' | 'banner' | null>(null);
   const [cropFile, setCropFile] = useState<File | null>(null);
 
   // Efeito com a carga embutida: evita depender de uma funcao recriada a cada render.
@@ -334,7 +336,10 @@ export function CreatorWorksPage() {
                   onChange={(event) => {
                     const file = event.target.files?.[0];
                     event.target.value = '';
-                    if (file) setCropFile(file);
+                    if (file) {
+                      setCropTarget('cover');
+                      setCropFile(file);
+                    }
                   }}
                 />
               </label>
@@ -354,7 +359,10 @@ export function CreatorWorksPage() {
                   onChange={(event) => {
                     const file = event.target.files?.[0];
                     event.target.value = '';
-                    if (file) void uploadBanner(file);
+                    if (file) {
+                      setCropTarget('banner');
+                      setCropFile(file);
+                    }
                   }}
                 />
               </label>
@@ -391,15 +399,26 @@ export function CreatorWorksPage() {
       </form>
 
       {cropFile && (
-        <AvatarCropper
+        <ImageCropper
           file={cropFile}
+          outputWidth={cropTarget === 'banner' ? 1600 : 900}
+          outputHeight={cropTarget === 'banner' ? 900 : 1200}
+          confirmLabel={cropTarget === 'banner' ? 'USAR ESTE BANNER' : 'USAR ESTA CAPA'}
           busy={saving}
           error={error}
-          onCancel={() => setCropFile(null)}
-          onConfirm={async (blob) => {
-            const file = new File([blob], 'cover.png', { type: 'image/png' });
-            await uploadCover(file);
+          onCancel={() => {
             setCropFile(null);
+            setCropTarget(null);
+          }}
+          onConfirm={async (blob) => {
+            const file = new File([blob], cropTarget === 'banner' ? 'banner.jpg' : 'cover.jpg', { type: 'image/jpeg' });
+            if (cropTarget === 'banner') {
+              await uploadBanner(file);
+            } else {
+              await uploadCover(file);
+            }
+            setCropFile(null);
+            setCropTarget(null);
           }}
         />
       )}

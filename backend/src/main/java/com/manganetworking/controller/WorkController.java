@@ -15,6 +15,7 @@ import com.manganetworking.domain.relational.WorkEntity;
 import com.manganetworking.service.work.dto.CreateChapterRequestDto;
 import com.manganetworking.service.work.dto.CreateWorkRequestDto;
 import com.manganetworking.service.work.dto.UpdateWorkRequestDto;
+import com.manganetworking.service.work.dto.UpdateChapterRequestDto;
 import com.manganetworking.service.work.dto.CreatorWorkSummaryResponseDto;
 import jakarta.validation.Valid;
 
@@ -94,6 +95,24 @@ public class WorkController {
         UUID creatorId = SecurityContextUtils.requireCurrentCreatorId();
         workService.deleteWork(creatorId, workId);
         return ResponseEntity.ok(Map.of("message", "Obra removida do catÃ¡logo."));
+    }
+
+    /**
+     * Edicao de um capitulo pelo autor: paginas (nova ordem), capa, titulo, texto e data.
+     */
+    @PutMapping("/{workId}/chapters/{chapterNumber}")
+    public ResponseEntity<Map<String, Object>> updateChapter(
+            @PathVariable UUID workId,
+            @PathVariable Integer chapterNumber,
+            @Valid @RequestBody UpdateChapterRequestDto dto
+    ) {
+        UUID creatorId = SecurityContextUtils.requireCurrentCreatorId();
+        ChapterEntity chapter = workService.updateChapter(creatorId, workId, chapterNumber, dto);
+        return ResponseEntity.ok(Map.of(
+                "chapterId", chapter.getId(),
+                "chapterNumber", chapter.getChapterNumber(),
+                "message", "CapÃ­tulo atualizado com sucesso."
+        ));
     }
 
     @GetMapping("/mine")

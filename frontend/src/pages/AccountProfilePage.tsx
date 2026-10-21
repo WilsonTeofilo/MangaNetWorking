@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { Camera, Eye, EyeOff, ShieldCheck, UserPlus, LogOut, BookOpen } from 'lucide-react';
+import { Camera, Crop, Eye, EyeOff, ShieldCheck, UserPlus, LogOut, BookOpen } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { storageApi } from '../api/storageApi';
 import { userApi, authApi } from '../api/authApi';
 import { Button } from '../components/ui/Button';
 import { Field } from '../components/ui/Field';
-import { AvatarCropper } from '../components/common/AvatarCropper';
+import { ImageCropper } from '../components/common/ImageCropper';
 import { Modal } from '../components/common/Modal';
 
 /**
@@ -36,7 +36,8 @@ export function AccountProfilePage({
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [cropFile, setCropFile] = useState<File | null>(null);
+  /** Origem do recorte: arquivo novo ou a foto atual (para reajustar sem subir arquivo). */
+  const [cropSource, setCropSource] = useState<{ file?: File; url?: string } | null>(null);
   const [showDelete, setShowDelete] = useState(false);
 
   // Username só pode ser reivindicado uma vez, enquanto o identificador ainda é o gerado.
@@ -97,7 +98,7 @@ export function AccountProfilePage({
       const stored = await storageApi.uploadAvatar(file);
       setAvatarUrl(stored.url);
       await saveProfile({ avatarUrl: stored.url });
-      setCropFile(null);
+      setCropSource(null);
       setMessage('Foto de perfil atualizada.');
       onSaved?.();
     } catch (err: any) {
@@ -120,7 +121,7 @@ export function AccountProfilePage({
       return;
     }
     setError(null);
-    setCropFile(file);
+    setCropSource({ file });
   };
 
   const toggleVisibility = async () => {
@@ -169,9 +170,22 @@ export function AccountProfilePage({
             </button>
           </div>
           <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatarPicked} />
-          <Button onClick={() => fileRef.current?.click()} disabled={uploading} variant="ghost" className="w-full">
-            <Camera size={14} /> {uploading ? 'ENVIANDO...' : 'TROCAR FOTO'}
-          </Button>
+          <div className="flex flex-col gap-2">
+            <Button onClick={() => fileRef.current?.click()} disabled={uploading} variant="ghost" className="w-full">
+              <Camera size={14} /> {uploading ? 'ENVIANDO...' : 'TROCAR FOTO'}
+            </Button>
+            {avatarUrl && (
+              <Button
+                onClick={() => setCropSource({ url: avatarUrl })}
+                disabled={uploading}
+                variant="ghost"
+                className="w-full"
+                title="Reajusta a foto que já está no seu perfil, sem subir um arquivo novo"
+              >
+                <Crop size={14} /> REAJUSTAR FOTO ATUAL
+              </Button>
+            )}
+          </div>
 
           <p className="font-display text-xl text-[var(--mn-paper)] uppercase">{user.name}</p>
           <p className="font-pixel text-xs text-[var(--mn-yellow)]">@{user.username || 'sem-username'}</p>
@@ -277,12 +291,15 @@ export function AccountProfilePage({
         </div>
       </div>
 
-      {cropFile && (
-        <AvatarCropper
-          file={cropFile}
+      {cropSource && (
+        <ImageCropper
+          file={cropSource.file ?? null}
+          sourceUrl={cropSource.url ?? null}
+          outputWidth={512}
+          outputHeight={512}
           busy={uploading}
           error={error}
-          onCancel={() => setCropFile(null)}
+          onCancel={() => setCropSource(null)}
           onConfirm={uploadCroppedAvatar}
         />
       )}

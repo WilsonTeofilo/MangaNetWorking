@@ -23,7 +23,7 @@ public record CreateChapterRequestDto(
 
         List<String> pages,
 
-        @NotNull(message = "A data de liberação pública é obrigatória")
+        // Data de lançamento OPCIONAL: vazio = publica imediatamente (padrão do produto).
         LocalDateTime publicReleaseAt,
 
         ChapterFormat format,

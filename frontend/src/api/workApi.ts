@@ -202,6 +202,24 @@ export const workApi = {
     });
   },
 
+  /**
+   * EdiÃ§Ã£o de um capÃ­tulo pelo autor: pÃ¡ginas (nova ordem), capa, tÃ­tulo, texto e
+   * data de lanÃ§amento.
+   */
+  updateChapter(workId: string, chapterNumber: number, payload: {
+    title: string;
+    coverUrl?: string;
+    pages?: string[];
+    content?: string;
+    format?: 'IMAGE_PAGES' | 'PROSE';
+    publicReleaseAt?: string;
+  }) {
+    return request(`/works/${encodeURIComponent(workId)}/chapters/${chapterNumber}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  },
+
   /** Remove a obra do autor. */
   deleteWork(workId: string) {
     return request(`/works/${encodeURIComponent(workId)}`, { method: 'DELETE' });
