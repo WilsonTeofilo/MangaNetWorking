@@ -1,9 +1,10 @@
 import { useMemo, useRef, useState } from 'react';
-import { Check, ChevronLeft, ChevronRight, GripVertical, Image as ImageIcon, Trash2, Upload, X, ZoomIn, Plus, CornerDownLeft } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Crop, GripVertical, Image as ImageIcon, Trash2, Upload, X, ZoomIn, Plus, CornerDownLeft } from 'lucide-react';
 import { workApi } from '../../api/workApi';
 import { storageApi } from '../../api/storageApi';
 import { Button } from '../ui/Button';
 import { Field } from '../ui/Field';
+import { ImageCropper } from '../common/ImageCropper';
 
 /**
  * Publicação de um CAPÍTULO em 5 etapas, na mesma ordem e com as mesmas regras do
@@ -77,9 +78,13 @@ export function ChapterPublishWizard({
   const [dragging, setDragging] = useState(false);
   const [preview, setPreview] = useState<PageItem | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
-  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  /** URL da capa atual (edicao): permite reajustar sem subir arquivo. */
+  const [coverUrl, setCoverUrl] = useState<string | null>(draft?.coverUrl ?? null);
+  // a URL definitiva da capa (o arquivo local so vale enquanto a tela estiver aberta)
+  const [coverPreview, setCoverPreview] = useState<string | null>(draft?.coverUrl ?? null);
   const [chapterTitle, setChapterTitle] = useState(`Capítulo ${nextChapterNumber}`);
   const [releaseDate, setReleaseDate] = useState('');
+  const [chapterCoverCropOpen, setChapterCoverCropOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -213,10 +218,12 @@ export function ChapterPublishWizard({
           uploaded.push(stored.url);
         }
       }
-      let coverUrl: string | undefined;
-      if (coverFile) {
+      // A capa definitiva: a que ja estava gravada (ou o recorte novo) tem prioridade
+      // sobre o arquivo local recem-escolhido.
+      let chapterCoverUrl: string | undefined = coverUrl ?? undefined;
+      if (!chapterCoverUrl && coverFile) {
         const storedCover = await storageApi.uploadFile(coverFile);
-        coverUrl = storedCover.url;
+        chapterCoverUrl = storedCover.url;
       }
 
       // O capítulo NASCE dentro de uma obra já existente (escolhida em "Capítulos"),
@@ -226,7 +233,7 @@ export function ChapterPublishWizard({
       if (isEditing) {
         await workApi.updateChapter(workId, chapterNumber, {
           title: chapterTitle.trim(),
-          coverUrl,
+          coverUrl: chapterCoverUrl,
           pages: isProse ? undefined : uploaded,
           content: isProse ? prose.trim() : undefined,
           format: isProse ? 'PROSE' : 'IMAGE_PAGES',
@@ -236,7 +243,7 @@ export function ChapterPublishWizard({
         await workApi.createChapter(workId, {
           chapterNumber,
           title: chapterTitle.trim(),
-          coverUrl,
+          coverUrl: chapterCoverUrl,
           pages: isProse ? undefined : uploaded,
           content: isProse ? prose.trim() : undefined,
           format: isProse ? 'PROSE' : 'IMAGE_PAGES',
@@ -520,9 +527,21 @@ export function ChapterPublishWizard({
             {coverPreview && (
               <img src={coverPreview} alt="Capa do capítulo" className="w-28 h-40 object-cover border-2 border-[var(--mn-yellow)]" />
             )}
-            <Button type="button" variant="ghost" onClick={() => coverInputRef.current?.click()}>
-              {coverFile ? 'TROCAR ARQUIVO' : 'ESCOLHER CAPA DO CAPÍTULO'}
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button type="button" variant="ghost" onClick={() => coverInputRef.current?.click()}>
+                {coverFile ? 'TROCAR ARQUIVO' : 'ESCOLHER CAPA DO CAPÍTULO'}
+              </Button>
+              {coverPreview && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setChapterCoverCropOpen(true)}
+                  title="Reenquadra a capa atual arrastando, sem subir um arquivo novo"
+                >
+                  <Crop size={14} /> AJUSTAR CAPA
+                </Button>
+              )}
+            </div>
             <input
               ref={coverInputRef}
               type="file"
@@ -625,6 +644,27 @@ export function ChapterPublishWizard({
         <p role="status" className="border-2 border-[var(--mn-teal)] bg-[var(--mn-ink-2)] p-3 font-body text-sm text-[var(--mn-paper)]">
           {success}
         </p>
+      )}
+
+      {/* Recorte da capa do capitulo (arrastar + zoom) */}
+      {chapterCoverCropOpen && coverPreview && (
+        <ImageCropper
+          sourceUrl={coverPreview}
+          outputWidth={900}
+          outputHeight={1200}
+          confirmLabel="USAR ESTA CAPA"
+          busy={busy}
+          error={error}
+          onCancel={() => setChapterCoverCropOpen(false)}
+          onConfirm={async (blob) => {
+            const file = new File([blob], 'chapter-cover.jpg', { type: 'image/jpeg' });
+            const stored = await storageApi.uploadFile(file);
+            setCoverFile(null);
+            setCoverUrl(stored.url);
+            setCoverPreview(stored.url);
+            setChapterCoverCropOpen(false);
+          }}
+        />
       )}
 
       {/* Preview ampliada da pagina */}

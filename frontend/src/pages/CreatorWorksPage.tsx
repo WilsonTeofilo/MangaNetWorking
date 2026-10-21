@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BookMarked, Pencil, Trash2, Upload } from 'lucide-react';
+import { BookMarked, Crop, Pencil, Trash2, Upload } from 'lucide-react';
 import { workApi, CreatorWorkSummaryDto } from '../api/workApi';
 import { storageApi } from '../api/storageApi';
 import { ImageCropper } from '../components/common/ImageCropper';
@@ -34,6 +34,8 @@ export function CreatorWorksPage() {
   /** Origem do recorte em andamento: capa ou banner. */
   const [cropTarget, setCropTarget] = useState<'cover' | 'banner' | null>(null);
   const [cropFile, setCropFile] = useState<File | null>(null);
+  /** URL da imagem atual, usada como origem do recorte (reajustar). */
+  const [cropUrl, setCropUrl] = useState<string | null>(null);
 
   // Efeito com a carga embutida: evita depender de uma funcao recriada a cada render.
   useEffect(() => {
@@ -339,10 +341,25 @@ export function CreatorWorksPage() {
                     if (file) {
                       setCropTarget('cover');
                       setCropFile(file);
+                      setCropUrl(null);
                     }
                   }}
                 />
               </label>
+              {cover && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCropTarget('cover');
+                    setCropFile(null);
+                    setCropUrl(cover.url);
+                  }}
+                  className="inline-flex items-center gap-2 border-2 border-[var(--mn-line)] px-3 py-2 font-pixel text-[11px] uppercase text-[var(--mn-paper)] hover:border-[var(--mn-yellow)]"
+                  title="Reenquadra a capa atual arrastando, sem subir um arquivo novo"
+                >
+                  <Crop size={13} /> AJUSTAR CAPA
+                </button>
+              )}
             </div>
 
             <div className="border-2 border-[var(--mn-line)] p-4 space-y-2">
@@ -362,10 +379,25 @@ export function CreatorWorksPage() {
                     if (file) {
                       setCropTarget('banner');
                       setCropFile(file);
+                      setCropUrl(null);
                     }
                   }}
                 />
               </label>
+              {banner && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCropTarget('banner');
+                    setCropFile(null);
+                    setCropUrl(banner.url);
+                  }}
+                  className="inline-flex items-center gap-2 border-2 border-[var(--mn-line)] px-3 py-2 font-pixel text-[11px] uppercase text-[var(--mn-paper)] hover:border-[var(--mn-yellow)]"
+                  title="Reenquadra o banner atual arrastando, sem subir um arquivo novo"
+                >
+                  <Crop size={13} /> AJUSTAR BANNER
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -398,9 +430,10 @@ export function CreatorWorksPage() {
         </Button>
       </form>
 
-      {cropFile && (
+      {(cropFile || cropUrl) && (
         <ImageCropper
           file={cropFile}
+          sourceUrl={cropUrl}
           outputWidth={cropTarget === 'banner' ? 1600 : 900}
           outputHeight={cropTarget === 'banner' ? 900 : 1200}
           confirmLabel={cropTarget === 'banner' ? 'USAR ESTE BANNER' : 'USAR ESTA CAPA'}
@@ -408,6 +441,7 @@ export function CreatorWorksPage() {
           error={error}
           onCancel={() => {
             setCropFile(null);
+            setCropUrl(null);
             setCropTarget(null);
           }}
           onConfirm={async (blob) => {
@@ -418,6 +452,7 @@ export function CreatorWorksPage() {
               await uploadCover(file);
             }
             setCropFile(null);
+            setCropUrl(null);
             setCropTarget(null);
           }}
         />

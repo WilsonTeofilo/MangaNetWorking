@@ -190,7 +190,8 @@ export function CreatorChaptersPage() {
           </div>
           {chapters.length === 0 && !chaptersLoading && (
             <p className="font-body text-sm text-[var(--mn-mute)]">
-              Nenhum capítulo publicado nesta obra ainda.
+              Nenhum capítulo publicado nesta obra ainda. Publique o primeiro no fluxo abaixo (Upload →
+              Organizar páginas → Capa → Revisar → Publicar): ele aparece aqui com o botão <strong>EDITAR</strong>.
             </p>
           )}
           <ul className="space-y-2">
