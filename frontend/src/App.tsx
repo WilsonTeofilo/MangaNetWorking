@@ -17,6 +17,7 @@ import { CreatorWorksPage } from './pages/CreatorWorksPage';
 import { CreatorChaptersPage } from './pages/CreatorChaptersPage';
 import { CreatorMonetizationPage } from './pages/CreatorMonetizationPage';
 import { AccountProfilePage } from './pages/AccountProfilePage';
+import { BecomeWriterPage } from './pages/BecomeWriterPage';
 import { PublicProfilePage } from './pages/PublicProfilePage';
 import { OnboardingPage } from './pages/OnboardingPage';
 import { ModerationBackofficePage } from './pages/ModerationBackofficePage';
@@ -228,7 +229,15 @@ function AppContent() {
               )}
 
               {currentTab === 'account' && (
-                <AccountProfilePage onOpenPublicProfile={openPublicProfile} />
+                <AccountProfilePage
+                  onOpenPublicProfile={openPublicProfile}
+                  onOpenReaderPanel={() => handleSwitchTab('reader-profile')}
+                  onBecomeWriter={() => handleSwitchTab('become-writer')}
+                />
+              )}
+
+              {currentTab === 'become-writer' && (
+                <BecomeWriterPage onBackToAccount={() => handleSwitchTab('account')} />
               )}
 
               {currentTab === 'onboarding' && (

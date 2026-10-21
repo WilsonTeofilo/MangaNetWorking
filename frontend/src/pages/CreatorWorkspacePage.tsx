@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button';
 import { Field } from '../components/ui/Field';
 import { CreatorMissionsPanel } from '../components/creator/CreatorMissionsPanel';
 import { ChapterPublishWizard } from '../components/creator/ChapterPublishWizard';
+import { AvatarCropper } from '../components/common/AvatarCropper';
 import { LevelPatch } from '../components/ui/LevelPatch';
 import { Sticker } from '../components/ui/Sticker';
 import { MOCK_CREATORS } from '../data/mockData';
@@ -32,13 +33,14 @@ export function CreatorWorkspacePage({ section = 'dashboard', onOpenPublicProfil
   const [avatarPreview, setAvatarPreview] = useState(creator?.avatarUrl ?? '');
   // Pre-visualizacao local: o arquivo escolhido aparece na hora (objectURL), como no
   // MangaTeofilo, e so depois troca pela URL definitiva do servidor.
-  const [localAvatarPreview, setLocalAvatarPreview] = useState<string | null>(null);
+  const [localAvatarPreview] = useState<string | null>(null);
   const displayedAvatar = localAvatarPreview ?? avatarPreview;
   const [declaredOriginal, setDeclaredOriginal] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
 
   // Estados para Publicação Real de Nova Obra e Capítulo
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [avatarCropFile, setAvatarCropFile] = useState<File | null>(null);
 
   // Estado explícito quando não há sessão de criador.
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
@@ -80,22 +82,38 @@ export function CreatorWorkspacePage({ section = 'dashboard', onOpenPublicProfil
 
 
 
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
+  // O upload do avatar passa pelo recortador: arraste e zoom (padrao MangaTeofilo).
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
     if (!file || isUploadingAvatar) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setSaveError('Formato nÃ£o suportado. Envie JPG, PNG ou WebP.');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setSaveError('A foto passa de 10 MB. Envie uma imagem menor.');
+      return;
+    }
+    setSaveError(null);
+    setAvatarCropFile(file);
+  };
+
+  /** Grava o recorte final como avatar do AUTOR e da CONTA (o header usa o da conta). */
+  const saveCroppedAvatar = async (blob: Blob) => {
     setIsUploadingAvatar(true);
     setSaveError(null);
     try {
-      setLocalAvatarPreview(URL.createObjectURL(file));
+      const file = new File([blob], 'avatar.png', { type: 'image/png' });
       const stored = await storageApi.uploadAvatar(file);
-      await creatorApi.updateProfile({ avatarUrl: stored.url });
-        // A foto do autor e a foto da conta: sem isso o header continuaria com a imagem antiga.
-        await userApi.updateProfile({ avatarUrl: stored.url });
-        await refreshSession();
       setAvatarPreview(stored.url);
-    } catch {
-      setSaveError('Não foi possível salvar o avatar no servidor. Use JPEG ou PNG e tente novamente.');
+      await creatorApi.updateProfile({ avatarUrl: stored.url });
+      await userApi.updateProfile({ avatarUrl: stored.url });
+      await refreshSession();
+      setAvatarCropFile(null);
+      setSaveError(null);
+    } catch (err: any) {
+      setSaveError(err?.message || 'NÃ£o foi possÃ­vel salvar o avatar.');
     } finally {
       setIsUploadingAvatar(false);
     }
@@ -192,7 +210,7 @@ export function CreatorWorkspacePage({ section = 'dashboard', onOpenPublicProfil
               <img
                 src={displayedAvatar}
                 alt={profileName}
-                className="w-32 h-32 rounded-full object-cover border-2 border-[var(--mn-yellow)] bg-[#1F2833]"
+                className="w-[148px] h-[148px] rounded-full object-cover border-2 border-[var(--mn-yellow)] bg-[#1F2833]"
               />
             </div>
 
@@ -258,6 +276,17 @@ export function CreatorWorkspacePage({ section = 'dashboard', onOpenPublicProfil
         </div>
         <ChapterPublishWizard />
       </section>
+      )}
+
+      {/* Recortador de avatar: arraste + zoom antes de gravar (padrao MangaTeofilo) */}
+      {avatarCropFile && (
+        <AvatarCropper
+          file={avatarCropFile}
+          busy={isUploadingAvatar}
+          error={saveError}
+          onCancel={() => setAvatarCropFile(null)}
+          onConfirm={saveCroppedAvatar}
+        />
       )}
 
       {/* 5. Formulário de Perfil do Autor com Declaração de Autoria */}

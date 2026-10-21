@@ -14,6 +14,7 @@ export type AppTab =
   | 'account'
   | 'reader-profile'
   | 'onboarding'
+  | 'become-writer'
   | 'public-profile'
   | 'creator-dashboard'
   | 'creator-missions'
@@ -302,14 +303,12 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin, publicProfileUs
                       <button
                         type="button"
                         role="menuitem"
-                        onClick={() => go('onboarding')}
+                        onClick={() => go('become-writer')}
                         className="w-full text-left px-4 py-2.5 font-body text-sm text-[#F4EFE3] hover:bg-[#1F2833] hover:text-[#FFD400] transition-colors"
                       >
                         Quero publicar como escritor
                       </button>
                     )}
-
-                    <div className="my-2 border-t-2 border-[#23252C]" />
 
                     <button
                       type="button"

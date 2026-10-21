@@ -655,6 +655,27 @@ O detalhe público da obra agora omite capítulos com `publicReleaseAt` futuro; 
   fica travado enquanto a etapa atual estiver incompleta. O formulario unico antigo saiu do painel.
 - [x] **Suite:** **366 testes**, 0 falhas, 0 erros; build do frontend verde.
 
+## 7.25 Perfil do leitor enxuto, candidatura a escritor separada e recorte de foto (2026-10-21)
+
+- [x] **Duplicidade removida:** "Minha conta" carregava o bloco "Quero publicar como escritor" com os
+  mesmos tres campos de link que ja existem na candidatura â€” duas telas quase iguais. Agora "Minha conta"
+  tem so o que a identidade visual 9.6 pede: identidade (nome, @username, e-mail, Leitor/Escritor),
+  visibilidade do perfil, ver a pagina publica, painel do leitor e dados/privacidade.
+- [x] **Candidatura a escritor virou pagina propria** (`/become-writer`, no menu do avatar): deixa claro que
+  **um dos tres links e obrigatorio** (os tres sao opcionais, um e obrigatorio), que nome/foto/username sao
+  herdados da conta de leitor e que **o perfil do escritor e sempre publico** (o servidor recusa o privado).
+- [x] **Recorte de foto com arraste e zoom** (`components/common/AvatarCropper.tsx`): o recorte quadrado e
+  gerado no navegador (canvas 512x512, sem metadados) com arraste por mouse/toque, **setas do teclado** e
+  slider de zoom, no mesmo padrao do `CreatorApplicationModal` do MangaTeofilo. Vale para o leitor (Minha conta)
+  e para o autor (painel).
+- [x] **Avatar do painel do autor maior (148px, +20) e sincronizado com o header:** o upload grava o avatar
+  do AUTOR e da CONTA (o header usa o da conta) e reidrata a sessao.
+- [x] **Identidade visual relida** (`docs/IDENTIDADE_VISUAL.md`): switch `PERFIL PUBLICO`/`PERFIL PRIVADO` com
+  texto de apoio, secao propria para "BAIXAR MEUS DADOS" e "EXCLUIR CONTA" com `danger` so na exclusao e
+  confirmacao em **modal**, foco visivel, alvos >= 44px e informacao nunca so por cor.
+- [x] **Suite:** **366 testes**, 0 falhas, 0 erros; build do frontend verde.
+
+## 8. Ordem de corre
 ## 8. Ordem de corre
 ## 8. Ordem de corre
 ## 8. Ordem de corre

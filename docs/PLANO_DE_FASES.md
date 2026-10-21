@@ -120,6 +120,9 @@ Fluxo exercitado de ponta a ponta na stack local (backend 8085, frontend 5180, P
 | **Virar escritor** (leitor → escritor) | ✅ funciona | `POST /api/creators/apply` exige **pelo menos 1** vínculo social (Instagram **ou** YouTube **ou** portfólio — os três são opcionais, um é obrigatório); sem link: 400. O identificador do autor é o **username da conta de leitor** (reciclado) e nome/foto são herdados |
 | Perfil de **escritor Ã© sempre pÃºblico** | âœ… funciona | o servidor recusa `isProfilePublic=false` para escritor; leitor escolhe livremente |
 | Painel do autor (foto, bio, links, perfil pÃºblico) | âœ… funciona | o formulÃ¡rio reidrata com o servidor, mostra "PERFIL ATUALIZADO" com botÃ£o para o perfil pÃºblico e exige **1** dos 3 links sociais |
+| Recortar a foto (arraste + zoom) | OK funciona | recorte quadrado gerado no navegador (canvas 512px, sem metadados), com arraste por mouse/toque, setas do teclado e slider de zoom, no mesmo padrao do MangaTeofilo |
+| "Minha conta" enxuta (leitor) | OK funciona | identidade, visibilidade (publico/privado), ver pagina publica, painel do leitor e dados/privacidade - sem duplicar o formulario de escritor |
+| Candidatura a escritor (pagina propria) | OK funciona | 1 dos 3 links e obrigatorio, nome/foto/username herdados do leitor e perfil de escritor sempre publico |
 | **Trocar a foto de perfil** | ✅ funciona | `POST /api/storage/avatar` (normaliza para 512px, sem metadados) + `PUT /api/users/profile`; câmera sempre visível no avatar, botão "TROCAR FOTO" e erro real do servidor na tela |
 | Publicar obra em **5 etapas** (igual MangaTeofilo) | âœ… funciona | Upload (dropzone) â†’ Organizar pÃ¡ginas (ordem, remover, ampliar) â†’ Ajustar capa â†’ Revisar metadados â†’ Publicar, com checklist e avanÃ§o travado |
 | Ferramentas de dados no painel do autor | âœ… funciona | ver perfil pÃºblico, exportar dados (LGPD) e excluir conta (com confirmaÃ§Ã£o) |

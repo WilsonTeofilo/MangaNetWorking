@@ -1,21 +1,31 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Camera, Eye, EyeOff, ShieldCheck, UserPlus, LogOut, BookOpen } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { storageApi } from '../api/storageApi';
-import { authApi, userApi } from '../api/authApi';
+import { userApi, authApi } from '../api/authApi';
 import { Button } from '../components/ui/Button';
 import { Field } from '../components/ui/Field';
-
-/** Formatos aceitos pelo normalizador de avatar do servidor (JPEG e PNG). */
-const AVATAR_TYPES = ['image/jpeg', 'image/png'];
+import { AvatarCropper } from '../components/common/AvatarCropper';
+import { Modal } from '../components/common/Modal';
 
 /**
- * "Minha conta": o perfil do titular — foto, nome, username, sexo e a decisão de
- * ficar público ou privado. É a página de perfil por dentro (o painel do criador tem
- * telas próprias).
+ * "Minha conta" — o perfil do LEITOR.
+ *
+ * <p>Escopo deliberado (identidade visual 9.6): identidade, visibilidade do perfil, o link
+ * para a página pública e os dados/privacidade. A candidatura a escritor é uma página
+ * própria ("Quero publicar como escritor"), para não duplicar os mesmos campos em dois
+ * lugares.</p>
  */
-export function AccountProfilePage({ onOpenPublicProfile, onOpenReaderPanel }: { onOpenPublicProfile: (username: string) => void; onOpenReaderPanel?: () => void }) {
-  const { user, saveProfile, becomeWriter, logout, refreshSession } = useAuth();
+export function AccountProfilePage({
+  onOpenPublicProfile,
+  onOpenReaderPanel,
+  onBecomeWriter,
+}: {
+  onOpenPublicProfile: (username: string) => void;
+  onOpenReaderPanel?: () => void;
+  onBecomeWriter?: () => void;
+}) {
+  const { user, saveProfile, logout, refreshSession } = useAuth();
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl);
   const [isPublic, setIsPublic] = useState(user.profilePublic ?? true);
@@ -23,50 +33,14 @@ export function AccountProfilePage({ onOpenPublicProfile, onOpenReaderPanel }: {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  // Formulário de candidatura a escritor (basta UM vínculo social).
-  const [showWriterForm, setShowWriterForm] = useState(!user.isCreator);
-  const [instagramUrl, setInstagramUrl] = useState('');
-  const [youtubeUrl, setYoutubeUrl] = useState('');
-  const [portfolioUrl, setPortfolioUrl] = useState('');
-  const [applying, setApplying] = useState(false);
-  const [usernameDraft, setUsernameDraft] = useState(user.username ?? '');
-  /** Situacao do username digitado: vazio, checando, livre, em uso ou invalido. */
-  const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'free' | 'taken' | 'invalid'>('idle');
-  /** Alternativa livre oferecida pelo servidor quando o username desejado ja existe. */
-  const [usernameSuggestion, setUsernameSuggestion] = useState<string | null>(null);
+  const [cropFile, setCropFile] = useState<File | null>(null);
+  const [showDelete, setShowDelete] = useState(false);
 
   // Username só pode ser reivindicado uma vez, enquanto o identificador ainda é o gerado.
   const usernameIsGenerated = (user.username ?? '').startsWith('user_');
-
-  // Verificacao de disponibilidade com atraso: evita inundar a API a cada tecla e
-  // devolve uma alternativa concreta quando o nome desejado ja existe.
-  useEffect(() => {
-    const candidate = usernameDraft.trim().toLowerCase();
-    if (!usernameIsGenerated || candidate.length < 3) {
-      setUsernameStatus('idle');
-      setUsernameSuggestion(null);
-      return;
-    }
-    setUsernameStatus('checking');
-    let cancelled = false;
-    const timer = setTimeout(() => {
-      authApi
-        .checkUsername(candidate)
-        .then((result) => {
-          if (cancelled) return;
-          setUsernameStatus(result.available ? 'free' : 'taken');
-          setUsernameSuggestion(result.suggestion ?? null);
-        })
-        .catch(() => {
-          if (!cancelled) setUsernameStatus('idle');
-        });
-    }, 400);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [usernameDraft, usernameIsGenerated]);
+  const [usernameDraft, setUsernameDraft] = useState(user.username ?? '');
+  const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'free' | 'taken'>('idle');
+  const [usernameSuggestion, setUsernameSuggestion] = useState<string | null>(null);
 
   const claimUsername = async () => {
     setSaving(true);
@@ -82,33 +56,38 @@ export function AccountProfilePage({ onOpenPublicProfile, onOpenReaderPanel }: {
     }
   };
 
-  const handleAvatar = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  /** Recebe o recorte final (quadrado) e grava como avatar. */
+  const uploadCroppedAvatar = async (blob: Blob) => {
+    setUploading(true);
+    setError(null);
+    try {
+      const file = new File([blob], 'avatar.png', { type: 'image/png' });
+      const stored = await storageApi.uploadAvatar(file);
+      setAvatarUrl(stored.url);
+      await saveProfile({ avatarUrl: stored.url });
+      setCropFile(null);
+      setMessage('Foto de perfil atualizada.');
+    } catch (err: any) {
+      setError(err?.message || 'Não foi possível enviar a foto. Tente outra imagem.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleAvatarPicked = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
-    setError(null);
-    setMessage(null);
-
-    if (!AVATAR_TYPES.includes(file.type)) {
-      setError('Formato não suportado. Envie uma foto JPG ou PNG (a imagem é convertida pelo servidor).');
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setError('Formato não suportado. Envie JPG, PNG ou WebP.');
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
       setError('A foto passa de 10 MB. Envie uma imagem menor.');
       return;
     }
-
-    setUploading(true);
-    try {
-      const stored = await storageApi.uploadAvatar(file);
-      setAvatarUrl(stored.url);
-      await saveProfile({ avatarUrl: stored.url });
-      setMessage('Foto de perfil atualizada.');
-    } catch (err: any) {
-      setError(err?.message || 'Não foi possível enviar a foto. Use JPEG ou PNG e tente novamente.');
-    } finally {
-      setUploading(false);
-    }
+    setError(null);
+    setCropFile(file);
   };
 
   const toggleVisibility = async () => {
@@ -125,27 +104,8 @@ export function AccountProfilePage({ onOpenPublicProfile, onOpenReaderPanel }: {
     }
   };
 
-  const applyAsWriter = async (event: React.FormEvent) => {
-    event.preventDefault();
-    setApplying(true);
-    setError(null);
-    try {
-      await becomeWriter({
-        instagramUrl: instagramUrl || undefined,
-        youtubeUrl: youtubeUrl || undefined,
-        portfolioUrl: portfolioUrl || undefined,
-      });
-      setMessage('Perfil de escritor criado. Já pode publicar.');
-      setShowWriterForm(false);
-    } catch (err: any) {
-      setError(err?.message || 'Não foi possível criar o perfil de escritor.');
-    } finally {
-      setApplying(false);
-    }
-  };
-
   return (
-    <section className="mn-container py-10 space-y-8">
+    <section className="mn-container py-10 space-y-6">
       <header className="border-2 border-[var(--mn-yellow)] bg-[var(--mn-ink-2)] p-6 shadow-[6px_6px_0_var(--mn-yellow)]">
         <p className="font-pixel text-[11px] tracking-widest text-[var(--mn-mute)] uppercase">Conta</p>
         <h1 className="font-display text-3xl sm:text-4xl text-[var(--mn-paper)] uppercase mt-1">Minha conta</h1>
@@ -155,8 +115,8 @@ export function AccountProfilePage({ onOpenPublicProfile, onOpenReaderPanel }: {
       </header>
 
       <div className="grid lg:grid-cols-[320px_1fr] gap-6 items-start">
-        {/* Cartão de identidade */}
-        <div className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-6 space-y-4 text-center">
+        {/* Identidade */}
+        <div className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-6 space-y-3 text-center">
           <div className="relative mx-auto w-32 h-32">
             <img
               src={avatarUrl || '/avatar-placeholder.png'}
@@ -174,7 +134,7 @@ export function AccountProfilePage({ onOpenPublicProfile, onOpenReaderPanel }: {
               <Camera size={18} />
             </button>
           </div>
-          <input ref={fileRef} type="file" accept="image/jpeg,image/png" className="hidden" onChange={handleAvatar} />
+          <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatarPicked} />
           <Button onClick={() => fileRef.current?.click()} disabled={uploading} variant="ghost" className="w-full">
             <Camera size={14} /> {uploading ? 'ENVIANDO...' : 'TROCAR FOTO'}
           </Button>
@@ -188,7 +148,7 @@ export function AccountProfilePage({ onOpenPublicProfile, onOpenReaderPanel }: {
           </p>
         </div>
 
-        {/* Configurações */}
+        {/* Visibilidade, conta e dados */}
         <div className="space-y-6">
           {usernameIsGenerated && (
             <div className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-6 space-y-3">
@@ -200,36 +160,31 @@ export function AccountProfilePage({ onOpenPublicProfile, onOpenReaderPanel }: {
               <Field
                 label="USERNAME"
                 value={usernameDraft}
-                onChange={(e) => setUsernameDraft(e.target.value.toLowerCase())}
+                onChange={(e) => {
+                  setUsernameDraft(e.target.value.toLowerCase());
+                  const candidate = e.target.value.trim().toLowerCase();
+                  if (candidate.length < 3) {
+                    setUsernameStatus('idle');
+                    return;
+                  }
+                  setUsernameStatus('checking');
+                  void authApi.checkUsername(candidate).then((result) => {
+                    setUsernameStatus(result.available ? 'free' : 'taken');
+                    setUsernameSuggestion(result.suggestion ?? null);
+                  });
+                }}
                 placeholder="ex.: teofilo"
               />
+              {usernameStatus === 'taken' && usernameSuggestion && (
+                <button
+                  type="button"
+                  onClick={() => setUsernameDraft(usernameSuggestion)}
+                  className="font-pixel text-[11px] uppercase text-[var(--mn-yellow)] hover:underline"
+                >
+                  usar @{usernameSuggestion}
+                </button>
+              )}
               <Button onClick={claimUsername} disabled={saving || usernameStatus === 'taken'}>DEFINIR USERNAME</Button>
-
-              {usernameStatus === 'checking' && (
-                <p className="font-pixel text-[11px] uppercase text-[var(--mn-mute)]">verificando disponibilidade...</p>
-              )}
-              {usernameStatus === 'free' && (
-                <p className="font-pixel text-[11px] uppercase text-[var(--mn-teal)]">@
-{usernameDraft.trim().toLowerCase()} esta livre</p>
-              )}
-              {usernameStatus === 'taken' && (
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="font-pixel text-[11px] uppercase text-[var(--mn-red)]">
-                    @
-{usernameDraft.trim().toLowerCase()} ja esta em uso
-                  </p>
-                  {usernameSuggestion && (
-                    <button
-                      type="button"
-                      onClick={() => setUsernameDraft(usernameSuggestion)}
-                      className="font-pixel text-[11px] uppercase text-[var(--mn-yellow)] hover:underline"
-                    >
-                      usar @
-{usernameSuggestion}
-                    </button>
-                  )}
-                </div>
-              )}
             </div>
           )}
 
@@ -238,8 +193,8 @@ export function AccountProfilePage({ onOpenPublicProfile, onOpenReaderPanel }: {
             {user.isCreator ? (
               <p className="text-sm text-[var(--mn-mute)] border-2 border-[var(--mn-teal)] p-3">
                 <strong className="text-[var(--mn-paper)]">Perfil de escritor é sempre público.</strong> Quem
-                publica precisa ser encontrado pelos leitores — a visibilidade privativa existe só para
-                contas de leitor. Ajustes de foto, bio e links ficam no painel do autor.
+                publica precisa ser encontrado pelos leitores — a visibilidade privativa é só para
+                conta de leitor. Os ajustes de foto, bio e links ficam no painel do autor.
               </p>
             ) : (
               <>
@@ -253,64 +208,86 @@ export function AccountProfilePage({ onOpenPublicProfile, onOpenReaderPanel }: {
                     {isPublic ? 'TORNAR PRIVADO' : 'TORNAR PÚBLICO'}
                   </Button>
                   <span className="font-pixel text-[11px] uppercase text-[var(--mn-mute)]">
-                    {isPublic ? 'Perfil público' : 'Perfil privado'}
+                    {isPublic ? 'PERFIL PÚBLICO' : 'PERFIL PRIVADO'}
                   </span>
                 </div>
               </>
             )}
-            {user.username && (
-              <Button variant="ghost" onClick={() => onOpenPublicProfile(user.username!)}>
-                <Eye size={14} /> VER MINHA PÁGINA PÚBLICA
-              </Button>
-            )}
-            {onOpenReaderPanel && (
-              <Button variant="ghost" onClick={onOpenReaderPanel}>
-                <BookOpen size={14} /> MEU PAINEL DE LEITOR
-              </Button>
-            )}
-          </div>
-
-          {/* Candidatura a escritor: os dados de leitor são herdados; falta só UM link. */}
-          {!user.isCreator && (
-            <div className="border-2 border-[var(--mn-teal)] bg-[var(--mn-ink-2)] p-6 space-y-4">
-              <h2 className="font-display text-xl text-[var(--mn-paper)] uppercase flex items-center gap-2">
-                <UserPlus size={18} className="text-[var(--mn-teal)]" /> Quero publicar como escritor
-              </h2>
-              <p className="text-sm text-[var(--mn-mute)]">
-                Leitor lê, curte, comenta e usa a biblioteca. Para publicar, informe <strong>um</strong> vínculo
-                social (Instagram, YouTube ou portfólio) — os links são opcionais, mas <strong>um é obrigatório</strong>.
-                Seu nome, foto e username são herdados da conta de leitor: não precisa repetir nada.
-              </p>
-              {!showWriterForm ? (
-                <Button onClick={() => setShowWriterForm(true)}>PREENCHER DADOS</Button>
-              ) : (
-                <form className="space-y-4" onSubmit={applyAsWriter}>
-                  <Field label="LINK DO INSTAGRAM (opcional)" value={instagramUrl} onChange={(e) => setInstagramUrl(e.target.value)} placeholder="https://instagram.com/seuperfil" />
-                  <Field label="LINK DO YOUTUBE (opcional)" value={youtubeUrl} onChange={(e) => setYoutubeUrl(e.target.value)} placeholder="https://youtube.com/@seucanal" />
-                  <Field label="LINK DE PORTFÓLIO (opcional)" value={portfolioUrl} onChange={(e) => setPortfolioUrl(e.target.value)} placeholder="https://behance.net/seuportfolio" />
-                  <div className="flex flex-wrap gap-3">
-                    <Button type="submit" disabled={applying}>CRIAR PERFIL DE ESCRITOR</Button>
-                    <Button type="button" variant="ghost" onClick={() => setShowWriterForm(false)}>CANCELAR</Button>
-                  </div>
-                </form>
+            <div className="flex flex-wrap gap-3">
+              {user.username && (
+                <Button variant="ghost" onClick={() => onOpenPublicProfile(user.username!)}>
+                  <Eye size={14} /> VER MINHA PÁGINA PÚBLICA
+                </Button>
+              )}
+              {onOpenReaderPanel && (
+                <Button variant="ghost" onClick={onOpenReaderPanel}>
+                  <BookOpen size={14} /> MEU PAINEL DE LEITOR
+                </Button>
+              )}
+              {onBecomeWriter && !user.isCreator && (
+                <Button variant="ghost" onClick={onBecomeWriter}>
+                  <UserPlus size={14} /> QUERO PUBLICAR COMO ESCRITOR
+                </Button>
               )}
             </div>
-          )}
+          </div>
 
           {message && <p role="status" className="font-pixel text-xs text-[var(--mn-teal)] uppercase">{message}</p>}
           {error && <p role="alert" className="font-pixel text-xs text-[var(--mn-red)] uppercase">{error}</p>}
 
           <div className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-6 space-y-3">
             <h2 className="font-display text-xl text-[var(--mn-paper)] uppercase">Dados e privacidade</h2>
-            <Button variant="ghost" onClick={() => void userApi.exportMyData()}>
-              <ShieldCheck size={14} /> EXPORTAR MEUS DADOS (LGPD)
-            </Button>
-            <Button variant="ghost" onClick={() => void logout()}>
-              <LogOut size={14} /> SAIR DA CONTA
-            </Button>
+            <div className="flex flex-wrap gap-3">
+              <Button variant="ghost" onClick={() => void userApi.exportMyData()}>
+                <ShieldCheck size={14} /> BAIXAR MEUS DADOS
+              </Button>
+              <Button variant="ghost" onClick={() => void logout()}>
+                <LogOut size={14} /> SAIR DA CONTA
+              </Button>
+              <Button variant="danger" onClick={() => setShowDelete(true)}>
+                EXCLUIR CONTA
+              </Button>
+            </div>
           </div>
         </div>
       </div>
+
+      {cropFile && (
+        <AvatarCropper
+          file={cropFile}
+          busy={uploading}
+          error={error}
+          onCancel={() => setCropFile(null)}
+          onConfirm={uploadCroppedAvatar}
+        />
+      )}
+
+      {/* Exclusão: confirmação em modal (identidade visual 9.6) */}
+      <Modal
+        isOpen={showDelete}
+        onClose={() => setShowDelete(false)}
+        title="EXCLUIR CONTA"
+        maxWidth="max-w-lg"
+      >
+        <p className="font-body text-sm text-[var(--mn-paper)]">
+          Isso apaga permanentemente seus dados, revoga todas as sessões e despublica as obras
+          (Art. 18, VI da LGPD). Não dá para desfazer.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <Button variant="ghost" onClick={() => setShowDelete(false)}>
+            CANCELAR
+          </Button>
+          <Button
+            variant="danger"
+            onClick={() => {
+              setShowDelete(false);
+              void userApi.deleteMyAccount();
+            }}
+          >
+            EXCLUIR DEFINITIVAMENTE
+          </Button>
+        </div>
+      </Modal>
     </section>
   );
 }
