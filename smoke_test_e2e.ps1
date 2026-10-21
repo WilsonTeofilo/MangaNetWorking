@@ -184,7 +184,8 @@ Write-Host " SUCESSO (Cover URL: $coverUrl)" -ForegroundColor Green
 Write-Host "[8/12] Criando nova obra com autoria original declarada..." -NoNewline
 $workBody = @{
     title = "Smoke E2E Obra $timestamp"
-    synopsis = "Sinopse gerada pelo script de validação de ponta a ponta."
+    # A sinopse tem 100-500 caracteres (regra do produto).
+    synopsis = "Sinopse gerada pelo script de validacao de ponta a ponta do MangaNetWorking: obra de teste criada automaticamente para validar cadastro, capa, capitulo com paginas, publicacao e exclusao LGPD no catalogo oficial da plataforma."
     coverUrl = $coverUrl
     genres = @("ACAO", "SCI_FI")
     originalAuthorDeclaration = $true
