@@ -41,6 +41,7 @@ function applySession(prev: UserProfile, session: SessionUserDto): UserProfile {
     username: session.username ?? prev.username,
     sex: (session.sex as UserProfile['sex']) ?? prev.sex,
     profilePublic: session.profilePublic ?? prev.profilePublic,
+    profileOnboardingCompleted: session.profileOnboardingCompleted ?? prev.profileOnboardingCompleted,
     avatarUrl: session.avatarUrl || prev.avatarUrl,
     isCreator: session.isCreator,
     creatorId: session.creatorId || undefined,

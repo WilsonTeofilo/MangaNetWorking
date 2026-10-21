@@ -23,6 +23,7 @@ public record CurrentSessionResponseDto(
         boolean privacyConsentRequired,
         String privacyPolicyVersion,
         String sex,
-        boolean profilePublic
+        boolean profilePublic,
+        boolean profileOnboardingCompleted
 ) {
 }

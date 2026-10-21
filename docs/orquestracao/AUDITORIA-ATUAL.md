@@ -688,6 +688,23 @@ O detalhe público da obra agora omite capítulos com `publicReleaseAt` futuro; 
   `DELETE /api/works/{workId}` (sÃ³ o autor) e `GET /api/works/mine` (a lista do painel).
 - [x] **Suite:** **366 testes**, 0 falhas, 0 erros; build do frontend verde.
 
+## 7.27 Primeiro acesso nao se repete para quem ja configurou o perfil (2026-10-21)
+
+- [x] **Causa:** o login lia o `user` ANTIGO da closure (`user.avatarUrl` ? feed : onboarding) antes do
+  `refreshSession()` resolver, e como o `user` era o de visitante, **todo login caia em "Vamos montar seu
+  perfil"** â€” mesmo com o perfil completo.
+- [x] **Correcao em duas frentes:**
+  - servidor: `V18` cria `users.profile_onboarding_completed_at` (marcado quando o titular salva o perfil:
+    foto, nome ou visibilidade). O backfill marca como prontas as contas que ja tinham foto, para ninguem
+    voltar ao primeiro acesso. A sessao (`/api/auth/me`) expoe `profileOnboardingCompleted`.
+  - front: o login agora le a sessao RECEM-ADQUIRIDA (`authApi.me()`) e so abre o onboarding quando o
+    servidor diz que falta configurar o perfil. Ao salvar o perfil na tela de primeiro acesso, o app vai
+    para o feed.
+- [x] **Prova ao vivo:** `GET /api/auth/me` da conta com foto e perfil prontos devolve
+  `profileOnboardingCompleted: true`; as contas com foto herdada do backfill tambem.
+- [x] **Suite:** **368 testes**, 0 falhas, 0 erros.
+
+## 8. Ordem de corre
 ## 8. Ordem de corre
 ## 8. Ordem de corre
 ## 8. Ordem de corre

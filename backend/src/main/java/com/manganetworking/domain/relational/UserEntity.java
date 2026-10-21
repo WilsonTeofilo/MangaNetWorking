@@ -77,6 +77,10 @@ public class UserEntity {
     // Data de nascimento para controle de maioridade (Art. 14 da LGPD)
     private java.time.LocalDate birthDate;
 
+    // Instante em que o titular configurou o perfil (foto/visibilidade).
+    // Ã‰ o sinal de que o primeiro acesso (montar o perfil) ja aconteceu.
+    private java.time.LocalDateTime profileOnboardingCompletedAt;
+
     // Obras curtidas pelo usuário (Biblioteca de favoritos)
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
@@ -157,6 +161,9 @@ public class UserEntity {
     public void setPrivacyPolicyVersion(String privacyPolicyVersion) { this.privacyPolicyVersion = privacyPolicyVersion; }
 
     public java.time.LocalDate getBirthDate() { return birthDate; }
+
+    public java.time.LocalDateTime getProfileOnboardingCompletedAt() { return profileOnboardingCompletedAt; }
+    public void setProfileOnboardingCompletedAt(java.time.LocalDateTime value) { this.profileOnboardingCompletedAt = value; }
     public void setBirthDate(java.time.LocalDate birthDate) { this.birthDate = birthDate; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }

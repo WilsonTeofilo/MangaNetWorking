@@ -4,7 +4,13 @@ import { AccountProfilePage } from './AccountProfilePage';
  * Primeira tela depois do cadastro: foto de perfil, escolha de visibilidade (público ou
  * privado) e o botão de ver a própria página pública como os outros veem.
  */
-export function OnboardingPage({ onOpenPublicProfile }: { onOpenPublicProfile: (username: string) => void }) {
+export function OnboardingPage({
+  onOpenPublicProfile,
+  onProfileSaved,
+}: {
+  onOpenPublicProfile: (username: string) => void;
+  onProfileSaved?: () => void;
+}) {
   return (
     <>
       <section className="mn-container pt-10">
@@ -19,7 +25,7 @@ export function OnboardingPage({ onOpenPublicProfile }: { onOpenPublicProfile: (
           </p>
         </div>
       </section>
-      <AccountProfilePage onOpenPublicProfile={onOpenPublicProfile} />
+      <AccountProfilePage onOpenPublicProfile={onOpenPublicProfile} onSaved={onProfileSaved} />
     </>
   );
 }

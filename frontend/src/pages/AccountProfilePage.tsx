@@ -20,10 +20,13 @@ export function AccountProfilePage({
   onOpenPublicProfile,
   onOpenReaderPanel,
   onBecomeWriter,
+  onSaved,
 }: {
   onOpenPublicProfile: (username: string) => void;
   onOpenReaderPanel?: () => void;
   onBecomeWriter?: () => void;
+  /** Chamado depois que o perfil e salvo (o primeiro acesso termina aqui). */
+  onSaved?: () => void;
 }) {
   const { user, saveProfile, logout, refreshSession } = useAuth();
   const fileRef = useRef<HTMLInputElement | null>(null);
@@ -67,6 +70,7 @@ export function AccountProfilePage({
       await saveProfile({ avatarUrl: stored.url });
       setCropFile(null);
       setMessage('Foto de perfil atualizada.');
+      onSaved?.();
     } catch (err: any) {
       setError(err?.message || 'Não foi possível enviar a foto. Tente outra imagem.');
     } finally {
@@ -97,6 +101,7 @@ export function AccountProfilePage({
       await saveProfile({ isProfilePublic: !isPublic });
       setIsPublic(!isPublic);
       setMessage(!isPublic ? 'Seu perfil agora é público.' : 'Seu perfil agora é privado.');
+      onSaved?.();
     } catch {
       setError('Não foi possível alterar a visibilidade.');
     } finally {

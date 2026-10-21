@@ -223,7 +223,7 @@ class AuthControllerTest {
     void meReturnsOwnerFlagFromSessionReadModel() throws Exception {
         CurrentSessionResponseDto dto = new CurrentSessionResponseDto(
                 UUID.randomUUID(), "Dono", "dono@teste.com", "dono", "", false, null, null,
-                false, true, false, null, false, "2026-10-v1", "NAO_INFORMADO", true);
+                false, true, false, null, false, "2026-10-v1", "NAO_INFORMADO", true, true);
         when(authApplicationService.currentSession(any())).thenReturn(Optional.of(dto));
 
         mockMvc.perform(get("/api/auth/me"))

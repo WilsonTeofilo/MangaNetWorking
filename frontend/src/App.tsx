@@ -31,6 +31,7 @@ import { ReportModal } from './components/modals/ReportModal';
 import { Work, Chapter } from './types';
 import { MOCK_CHAPTERS } from './data/mockData';
 import { workApi } from './api/workApi';
+import { authApi } from './api/authApi';
 import { mapChapterSummary } from './utils/apiMappers';
 import { useAuth } from './context/AuthContext';
 
@@ -115,11 +116,16 @@ function AppContent() {
     handleSwitchTab('public-profile');
   };
 
-  /** Depois do cadastro: monta o perfil (foto + visibilidade) antes de seguir. */
-  const handleLoginSuccess = () => {
-    void refreshSession().then(() => {
-      handleSwitchTab(user.avatarUrl ? 'feed' : 'onboarding');
-    });
+  /**
+   * Depois do login: o servidor decide se ainda falta montar o perfil.
+   * Lemos a sessão RECÉM-ADQUIRIDA (não o `user` antigo da closure, que era a causa
+   * de todo login cair no onboarding mesmo com o perfil pronto).
+   */
+  const handleLoginSuccess = async () => {
+    const session = await authApi.me().catch(() => null);
+    await refreshSession();
+    const needsOnboarding = session ? !session.profileOnboardingCompleted : false;
+    handleSwitchTab(needsOnboarding ? 'onboarding' : 'feed');
   };
 
   if (passwordResetRoute) {
@@ -241,7 +247,10 @@ function AppContent() {
               )}
 
               {currentTab === 'onboarding' && (
-                <OnboardingPage onOpenPublicProfile={openPublicProfile} />
+                <OnboardingPage
+                  onOpenPublicProfile={openPublicProfile}
+                  onProfileSaved={() => handleSwitchTab('feed')}
+                />
               )}
 
               {currentTab === 'public-profile' && (

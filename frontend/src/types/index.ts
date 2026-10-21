@@ -117,6 +117,8 @@ export interface UserProfile {
   sex?: 'MASCULINO' | 'FEMININO' | 'OUTRO' | 'NAO_INFORMADO';
   /** Perfil visível para outras pessoas. */
   profilePublic?: boolean;
+  /** O titular ja configurou o perfil (foto/visibilidade): o primeiro acesso nao repete. */
+  profileOnboardingCompleted?: boolean;
   uid: string;
   name: string;
   email: string;

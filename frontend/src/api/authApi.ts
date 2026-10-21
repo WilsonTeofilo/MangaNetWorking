@@ -11,6 +11,8 @@ export interface SessionUserDto {
   username?: string;
   sex?: string;
   profilePublic?: boolean;
+  /** Verdadeiro quando o titular ja configurou o perfil (foto/visibilidade). */
+  profileOnboardingCompleted?: boolean;
   avatarUrl?: string;
   isCreator: boolean;
   creatorId?: string;

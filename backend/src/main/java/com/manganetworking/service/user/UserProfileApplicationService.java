@@ -130,7 +130,11 @@ public class UserProfileApplicationService {
             user.setProfilePublic(dto.isProfilePublic());
         }
 
-        userRepository.save(user);
+        // Salvar o perfil (foto, nome ou visibilidade) encerra o primeiro acesso.
+      if (user.getProfileOnboardingCompletedAt() == null) {
+        user.setProfileOnboardingCompletedAt(java.time.LocalDateTime.now());
+      }
+      userRepository.save(user);
     }
 
     @Transactional

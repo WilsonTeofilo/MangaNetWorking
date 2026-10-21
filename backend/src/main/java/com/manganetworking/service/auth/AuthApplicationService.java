@@ -345,7 +345,8 @@ public class AuthApplicationService {
                     user == null || privacyComplianceService.consentRequired(user),
                     policyVersion,
                     user != null && user.getSex() != null ? user.getSex().name() : Sex.NAO_INFORMADO.name(),
-                    user == null || user.isProfilePublic()
+                    user == null || user.isProfilePublic(),
+                    user != null && user.getProfileOnboardingCompletedAt() != null
             );
         });
     }
