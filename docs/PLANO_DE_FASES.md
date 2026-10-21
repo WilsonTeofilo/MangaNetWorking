@@ -130,6 +130,7 @@ Fluxo exercitado de ponta a ponta na stack local (backend 8085, frontend 5180, P
 | Ferramentas de dados no painel do autor | âœ… funciona | ver perfil pÃºblico, exportar dados (LGPD) e excluir conta (com confirmaÃ§Ã£o) |
 | Painel do criador em **telas separadas** | ✅ funciona | Workspace, Minhas obras, Capítulos, Missões & XP, Analytics (`/api/creators/analytics`) e Monetização — cada um com endpoint próprio |
 | Menu da conta no **avatar do header** | ✅ funciona | avatar redondo no canto: Minha conta → Criador (Workspace, obras, capítulos, missões, analytics, monetização) → Sair. A divisão "modo criador/leitor" saiu do header |
+| Primeiro acesso so quando falta configurar | OK funciona | o servidor marca `profile_onboarding_completed_at` ao salvar o perfil e expoe o sinal na sessao; o login so abre o onboarding quando o perfil ainda nao foi configurado |
 | Onboarding pós-cadastro | ✅ funciona | após o 2FA: tela de foto de perfil, escolha público/privado e botão de ver a própria página pública |
 
 > Observação operacional: o cadastro tem limite de 3 OTPs por IP a cada 10 minutos e cooldown de 60 s.
