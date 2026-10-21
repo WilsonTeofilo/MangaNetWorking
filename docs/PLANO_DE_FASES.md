@@ -121,6 +121,8 @@ Fluxo exercitado de ponta a ponta na stack local (backend 8085, frontend 5180, P
 | Perfil de **escritor Ã© sempre pÃºblico** | âœ… funciona | o servidor recusa `isProfilePublic=false` para escritor; leitor escolhe livremente |
 | Painel do autor (foto, bio, links, perfil pÃºblico) | âœ… funciona | o formulÃ¡rio reidrata com o servidor, mostra "PERFIL ATUALIZADO" com botÃ£o para o perfil pÃºblico e exige **1** dos 3 links sociais |
 | **Trocar a foto de perfil** | ✅ funciona | `POST /api/storage/avatar` (normaliza para 512px, sem metadados) + `PUT /api/users/profile`; câmera sempre visível no avatar, botão "TROCAR FOTO" e erro real do servidor na tela |
+| Publicar obra em **5 etapas** (igual MangaTeofilo) | âœ… funciona | Upload (dropzone) â†’ Organizar pÃ¡ginas (ordem, remover, ampliar) â†’ Ajustar capa â†’ Revisar metadados â†’ Publicar, com checklist e avanÃ§o travado |
+| Ferramentas de dados no painel do autor | âœ… funciona | ver perfil pÃºblico, exportar dados (LGPD) e excluir conta (com confirmaÃ§Ã£o) |
 | Painel do criador em **telas separadas** | ✅ funciona | Workspace, Minhas obras, Capítulos, Missões & XP, Analytics (`/api/creators/analytics`) e Monetização — cada um com endpoint próprio |
 | Menu da conta no **avatar do header** | ✅ funciona | avatar redondo no canto: Minha conta → Criador (Workspace, obras, capítulos, missões, analytics, monetização) → Sair. A divisão "modo criador/leitor" saiu do header |
 | Onboarding pós-cadastro | ✅ funciona | após o 2FA: tela de foto de perfil, escolha público/privado e botão de ver a própria página pública |

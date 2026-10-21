@@ -1,19 +1,21 @@
 import { useState, useEffect } from 'react';
-import { ShieldAlert, Check, Upload, Image, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { ShieldAlert, Check, Upload } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Field } from '../components/ui/Field';
 import { CreatorMissionsPanel } from '../components/creator/CreatorMissionsPanel';
+import { ChapterPublishWizard } from '../components/creator/ChapterPublishWizard';
 import { LevelPatch } from '../components/ui/LevelPatch';
 import { Sticker } from '../components/ui/Sticker';
 import { MOCK_CREATORS } from '../data/mockData';
 import { storageApi } from '../api/storageApi';
-import { workApi } from '../api/workApi';
+import { userApi } from '../api/authApi';
 import { creatorApi, CreatorWorkspaceDto } from '../api/creatorApi';
-import { toBackendLocalDateTime } from '../utils/datetime';
 
 
 export type CreatorWorkspaceSection = 'dashboard' | 'missions' | 'works';
 export function CreatorWorkspacePage({ section = 'dashboard', onOpenPublicProfile }: { section?: CreatorWorkspaceSection; onOpenPublicProfile?: (username: string) => void } = {}) {
+  const { refreshSession } = useAuth();
   const creator = import.meta.env.DEV ? MOCK_CREATORS['creator-teofilo'] || Object.values(MOCK_CREATORS)[0] : undefined;
 
   // Painel real do autor (`GET /api/creators/workspace`); cai na demo quando não há sessão de criador.
@@ -31,31 +33,12 @@ export function CreatorWorkspacePage({ section = 'dashboard', onOpenPublicProfil
   // Pre-visualizacao local: o arquivo escolhido aparece na hora (objectURL), como no
   // MangaTeofilo, e so depois troca pela URL definitiva do servidor.
   const [localAvatarPreview, setLocalAvatarPreview] = useState<string | null>(null);
-  const [localCoverPreview, setLocalCoverPreview] = useState<string | null>(null);
-  const [localBannerPreview, setLocalBannerPreview] = useState<string | null>(null);
   const displayedAvatar = localAvatarPreview ?? avatarPreview;
   const [declaredOriginal, setDeclaredOriginal] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
 
   // Estados para Publicação Real de Nova Obra e Capítulo
-  const [newWorkTitle, setNewWorkTitle] = useState('');
-  const [newWorkSynopsis, setNewWorkSynopsis] = useState('');
-  const [newWorkGenres, setNewWorkGenres] = useState<string[]>(['ACAO', 'SHONEN']);
-  const [newWorkFormat, setNewWorkFormat] = useState<'MANGA' | 'LIGHT_NOVEL'>('MANGA');
-  const [chapterText, setChapterText] = useState('');
-  const [coverUrl, setCoverUrl] = useState('');
-  const [bannerUrl, setBannerUrl] = useState('');
-  const displayedCover = localCoverPreview ?? coverUrl;
-  const displayedBanner = localBannerPreview ?? bannerUrl;
-  const [chapterPages, setChapterPages] = useState<string[]>([]);
-  const [isUploadingCover, setIsUploadingCover] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
-  const [isUploadingBanner, setIsUploadingBanner] = useState(false);
-  const [isUploadingPages, setIsUploadingPages] = useState(false);
-  const [isPublishingWork, setIsPublishingWork] = useState(false);
-  const [draftWorkId, setDraftWorkId] = useState<string | null>(null);
-  const [publishSuccessMsg, setPublishSuccessMsg] = useState<string | null>(null);
-  const [publishErrorMsg, setPublishErrorMsg] = useState<string | null>(null);
 
   // Estado explícito quando não há sessão de criador.
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
@@ -96,21 +79,6 @@ export function CreatorWorkspacePage({ section = 'dashboard', onOpenPublicProfil
   const activeMissions = workspace?.missions ?? [];
 
 
-  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIsUploadingCover(true);
-    setPublishErrorMsg(null);
-    try {
-      setLocalCoverPreview(URL.createObjectURL(file));
-      const res = await storageApi.uploadFile(file);
-      setCoverUrl(res.url);
-    } catch (err: any) {
-      setPublishErrorMsg(err.message || 'Erro no upload da capa.');
-    } finally {
-      setIsUploadingCover(false);
-    }
-  };
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -122,6 +90,9 @@ export function CreatorWorkspacePage({ section = 'dashboard', onOpenPublicProfil
       setLocalAvatarPreview(URL.createObjectURL(file));
       const stored = await storageApi.uploadAvatar(file);
       await creatorApi.updateProfile({ avatarUrl: stored.url });
+        // A foto do autor e a foto da conta: sem isso o header continuaria com a imagem antiga.
+        await userApi.updateProfile({ avatarUrl: stored.url });
+        await refreshSession();
       setAvatarPreview(stored.url);
     } catch {
       setSaveError('Não foi possível salvar o avatar no servidor. Use JPEG ou PNG e tente novamente.');
@@ -130,106 +101,8 @@ export function CreatorWorkspacePage({ section = 'dashboard', onOpenPublicProfil
     }
   };
 
-  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIsUploadingBanner(true);
-    setPublishErrorMsg(null);
-    try {
-      setLocalBannerPreview(URL.createObjectURL(file));
-      const res = await storageApi.uploadFile(file);
-      setBannerUrl(res.url);
-    } catch (err: any) {
-      setPublishErrorMsg(err.message || 'Erro no upload do banner.');
-    } finally {
-      setIsUploadingBanner(false);
-    }
-  };
 
-  const handlePagesUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files ? Array.from(e.target.files) : [];
-    if (files.length === 0) return;
-    setIsUploadingPages(true);
-    setPublishErrorMsg(null);
-    try {
-      const orderedFiles = [...files].sort((a, b) =>
-        a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
-      );
-      const results = await storageApi.uploadBatch(orderedFiles);
-      setChapterPages(results.map(r => r.url));
-    } catch (err: any) {
-      setPublishErrorMsg(err.message || 'Erro no upload das páginas.');
-    } finally {
-      setIsUploadingPages(false);
-    }
-  };
 
-  const handlePublishWork = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newWorkTitle.trim() || !newWorkSynopsis.trim()) {
-      setPublishErrorMsg('Título e sinopse são obrigatórios.');
-      return;
-    }
-    if (!coverUrl) {
-      setPublishErrorMsg('Por favor, faça o upload da capa 2:3 da obra.');
-      return;
-    }
-    if (!declaredOriginal) {
-      setPublishErrorMsg('A declaração de autoria original é mandatória para publicação.');
-      return;
-    }
-
-    setIsPublishingWork(true);
-    setPublishErrorMsg(null);
-    setPublishSuccessMsg(null);
-
-    try {
-      // Reaproveita a obra já criada se a publicação do capítulo anterior falhou.
-      let workId = draftWorkId;
-      if (!workId) {
-        const workRes = await workApi.createWork({
-          title: newWorkTitle.trim(),
-          synopsis: newWorkSynopsis.trim(),
-          coverUrl,
-          bannerUrl: bannerUrl || undefined,
-          genres: newWorkGenres,
-          originalAuthorDeclaration: true,
-          format: newWorkFormat,
-        });
-        workId = workRes.workId;
-        if (!workId) {
-          throw new Error('O servidor não retornou o identificador da obra criada.');
-        }
-        setDraftWorkId(workId);
-      }
-
-      // 2. Se houver páginas enviadas, publicar capítulo 1 imediatamente
-      if (chapterPages.length > 0 || (newWorkFormat === 'LIGHT_NOVEL' && chapterText.trim())) {
-        await workApi.createChapter(workId, {
-          chapterNumber: 1,
-          title: 'Capítulo 1: O Começo',
-          ...(newWorkFormat === 'LIGHT_NOVEL'
-            ? { format: 'PROSE' as const, content: chapterText.trim() }
-            : { format: 'IMAGE_PAGES' as const, pages: chapterPages }),
-          publicReleaseAt: toBackendLocalDateTime(),
-        });
-      }
-
-      setPublishSuccessMsg(`Obra "${newWorkTitle}" criada com sucesso.`);
-      setNewWorkTitle('');
-      setNewWorkSynopsis('');
-      setCoverUrl('');
-      setBannerUrl('');
-      setChapterPages([]);
-      setChapterText('');
-      setNewWorkFormat('MANGA');
-      setDraftWorkId(null);
-    } catch (err: any) {
-      setPublishErrorMsg(err.message || 'Erro ao publicar obra no servidor.');
-    } finally {
-      setIsPublishingWork(false);
-    }
-  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -256,7 +129,42 @@ export function CreatorWorkspacePage({ section = 'dashboard', onOpenPublicProfil
   return (
     <div className="mn-container py-8 space-y-10 select-none pb-24">
       
-      {/* 1. Aviso Mandatório Anti-Pirataria em Caixa de Carimbo */}
+        {/* Ferramentas que o leitor tem em "Minha conta" e que o escritor tambem precisa:
+            ver o proprio perfil publico, exportar os dados (LGPD) e excluir a conta. */}
+        <div className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-6 sm:p-8 space-y-4">
+          <h2 className="font-display text-2xl text-[var(--mn-paper)] uppercase">MEU PERFIL E MEUS DADOS</h2>
+          <p className="font-body text-xs text-[var(--mn-mute)]">
+            Seu perfil de escritor é <strong className="text-[var(--mn-paper)]">sempre público</strong>: é assim
+            que os leitores te encontram. O identificador público é o seu username
+            (@{displayHandle?.replace(/^@/, '')}).
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => onOpenPublicProfile?.(workspace?.username || displayHandle || '')}
+            >
+              VER MEU PERFIL PÚBLICO
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => void userApi.exportMyData()}>
+              EXPORTAR MEUS DADOS (LGPD)
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                const confirmado = window.confirm(
+                  'Excluir a conta apaga permanentemente seus dados, revoga as sessões e despublica as obras (Art. 18, VI da LGPD). Continuar?'
+                );
+                if (confirmado) void userApi.deleteMyAccount();
+              }}
+            >
+              EXCLUIR MINHA CONTA
+            </Button>
+          </div>
+        </div>
+
+        {/* Aviso Mandat��rio Anti-Pirataria em Caixa de Carimbo */}
       <div className="border-2 border-[var(--mn-red)] mn-red-subtle p-5 space-y-2">
         <div className="flex items-center gap-2">
           <ShieldAlert size={18} className="text-[var(--mn-red)]" />
@@ -280,11 +188,11 @@ export function CreatorWorkspacePage({ section = 'dashboard', onOpenPublicProfil
       <div className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] shadow-[6px_6px_0_var(--mn-paper)] p-6 sm:p-8 space-y-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b-2 border-[var(--mn-line)] pb-6">
           <div className="flex items-center gap-4">
-            <div className="p-1 bg-[var(--mn-paper)] border-2 border-[var(--mn-ink)] shadow-[3px_3px_0_var(--mn-yellow)]">
+            <div className="p-1 bg-[var(--mn-paper)] border-2 border-[var(--mn-ink)] shadow-[3px_3px_0_var(--mn-yellow)] rounded-full">
               <img
                 src={displayedAvatar}
                 alt={profileName}
-                className="w-16 h-16 object-cover border border-[var(--mn-ink)]"
+                className="w-32 h-32 rounded-full object-cover border-2 border-[var(--mn-yellow)] bg-[#1F2833]"
               />
             </div>
 
@@ -338,188 +246,17 @@ export function CreatorWorkspacePage({ section = 'dashboard', onOpenPublicProfil
         />
       )}
 
-      {/* 4. Formulário de Publicação Real de Nova Obra e Páginas (Fase 7) */}
+      {/* 4. Publicacao em 5 etapas (mesma ordem e regras do MangaTeofilo) */}
       {section === 'works' && (
       <section className="border-2 border-[var(--mn-yellow)] bg-[var(--mn-ink-2)] p-6 sm:p-8 space-y-6 shadow-[6px_6px_0_var(--mn-yellow)]">
         <div>
-          <span className="font-pixel text-[12px] text-[var(--mn-yellow)] uppercase tracking-widest font-bold block mb-1">
-            ESTÚDIO EDITORIAL DO AUTOR
-          </span>
-          <h2 className="font-display text-3xl text-[var(--mn-paper)] uppercase">
-            PUBLICAR NOVA OBRA ORIGINAL
-          </h2>
+          <h2 className="font-display text-3xl text-[var(--mn-paper)] uppercase">PUBLICAR OBRA</h2>
           <p className="font-body text-xs text-[var(--mn-mute)] mt-0.5">
-            Cadastre seu mangá no catálogo e alimente o feed de recomendações instantaneamente.
+            Upload, organizaÃ§Ã£o das pÃ¡ginas, capa, metadados e publicaÃ§Ã£o â€” nesta ordem,
+            com o checklist e o travamento de etapa do MangaTeofilo.
           </p>
         </div>
-
-        {publishSuccessMsg && (
-          <div className="p-4 bg-[var(--mn-ok)] text-[var(--mn-ink)] border-2 border-[var(--mn-ink)] font-display text-sm uppercase flex items-center gap-2">
-            <CheckCircle2 size={18} />
-            <span>{publishSuccessMsg}</span>
-          </div>
-        )}
-
-        {publishErrorMsg && (
-          <div className="p-4 bg-[var(--mn-red)] text-[var(--mn-paper)] border-2 border-[var(--mn-ink)] font-body text-xs flex items-center gap-2">
-            <AlertCircle size={18} />
-            <span>{publishErrorMsg}</span>
-          </div>
-        )}
-
-        <form onSubmit={handlePublishWork} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Field
-              label="TÍTULO DA OBRA"
-              placeholder="Ex: Guerreiros do Sertão"
-              value={newWorkTitle}
-              onChange={(e) => setNewWorkTitle(e.target.value)}
-            />
-
-            <div>
-              <label htmlFor="work-format" className="font-body text-sm font-semibold text-[var(--mn-paper)] block mb-1.5">FORMATO DA OBRA</label>
-              <select id="work-format" value={newWorkFormat} onChange={(e) => setNewWorkFormat(e.target.value as 'MANGA' | 'LIGHT_NOVEL')} className="w-full p-2.5 bg-[var(--mn-ink)] text-[var(--mn-paper)] border-2 border-[var(--mn-line)] font-body text-xs focus:border-[var(--mn-yellow)] outline-none">
-                <option value="MANGA">Mangá — páginas ilustradas</option>
-                <option value="LIGHT_NOVEL">Light novel — capítulos em prosa</option>
-              </select>
-            </div>
-
-            <div>
-              <label htmlFor="work-genre" className="font-body text-sm font-semibold text-[var(--mn-paper)] block mb-1.5">
-                GÊNERO PRINCIPAL
-              </label>
-              <select
-                id="work-genre"
-                value={newWorkGenres[0] || 'ACAO'}
-                onChange={(e) => setNewWorkGenres([e.target.value])}
-                className="w-full p-2.5 bg-[var(--mn-ink)] text-[var(--mn-paper)] border-2 border-[var(--mn-line)] font-body text-xs focus:border-[var(--mn-yellow)] outline-none"
-              >
-                <option value="ACAO">Ação (Shonen/Seinen)</option>
-                <option value="AVENTURA">Aventura</option>
-                <option value="FANTASIA">Fantasia Medieval / Regional</option>
-                <option value="SCI_FI">Ficção Científica (Sci-Fi)</option>
-                <option value="SOBRENATURAL">Sobrenatural / Horror</option>
-                <option value="MISTERIO">Mistério / Investigação</option>
-                <option value="DRAMA">Drama / Cotidiano</option>
-                <option value="COMEDIA">Comédia</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label htmlFor="work-synopsis" className="font-body text-sm font-semibold text-[var(--mn-paper)] block">
-              SINOPSE EDITORIAL
-            </label>
-            <textarea
-              id="work-synopsis"
-              placeholder="Descreva o enredo da sua obra para atrair novos leitores..."
-              value={newWorkSynopsis}
-              onChange={(e) => setNewWorkSynopsis(e.target.value)}
-              rows={3}
-              className="w-full p-3 bg-[var(--mn-ink)] text-[var(--mn-paper)] font-body text-sm border-2 border-[var(--mn-line)] focus:border-[var(--mn-yellow)] outline-none resize-none"
-            />
-          </div>
-
-          {/* Uploads de Capa e Banner */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Capa 2:3 */}
-            <div className="p-4 border-2 border-dashed border-[var(--mn-line)] bg-[var(--mn-ink)] space-y-3 text-center">
-              <span className="font-pixel text-[12px] text-[var(--mn-yellow)] uppercase block">
-                CAPA VERTICAL (PROPORÇÃO 2:3)
-              </span>
-              {coverUrl ? (
-                <div className="flex flex-col items-center gap-2">
-                  <img src={displayedCover} alt="Preview da Capa" className="w-24 h-36 object-cover border-2 border-[var(--mn-yellow)]" />
-                  <span className="font-pixel text-[12px] text-[var(--mn-ok)]">CAPA PRONTA</span>
-                </div>
-              ) : (
-                <div className="py-4 space-y-2">
-                  <Image size={28} className="mx-auto text-[var(--mn-mute)]" />
-                  <p className="font-body text-xs text-[var(--mn-mute)]">JPEG, PNG ou WebP (Máx 15MB)</p>
-                </div>
-              )}
-              <label className="inline-block px-4 py-2 bg-[var(--mn-ink-2)] border-2 border-[var(--mn-line)] hover:border-[var(--mn-yellow)] text-[var(--mn-paper)] font-pixel text-[12px] uppercase cursor-pointer transition-colors">
-                <Upload size={14} className="inline mr-1.5" />
-                {isUploadingCover ? 'ENVIANDO...' : 'SELECIONAR CAPA'}
-                <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleCoverUpload} className="hidden" />
-              </label>
-            </div>
-
-            {/* Banner 16:9 */}
-            <div className="p-4 border-2 border-dashed border-[var(--mn-line)] bg-[var(--mn-ink)] space-y-3 text-center">
-              <span className="font-pixel text-[12px] text-[var(--mn-yellow)] uppercase block">
-                BANNER ILUSTRADO (16:9 - OPCIONAL)
-              </span>
-              {bannerUrl ? (
-                <div className="flex flex-col items-center gap-2">
-                  <img src={displayedBanner} alt="Preview do Banner" className="w-48 h-24 object-cover border-2 border-[var(--mn-yellow)]" />
-                  <span className="font-pixel text-[12px] text-[var(--mn-ok)]">BANNER PRONTO</span>
-                </div>
-              ) : (
-                <div className="py-4 space-y-2">
-                  <Image size={28} className="mx-auto text-[var(--mn-mute)]" />
-                  <p className="font-body text-xs text-[var(--mn-mute)]">Arte horizontal para fundo da obra</p>
-                </div>
-              )}
-              <label className="inline-block px-4 py-2 bg-[var(--mn-ink-2)] border-2 border-[var(--mn-line)] hover:border-[var(--mn-yellow)] text-[var(--mn-paper)] font-pixel text-[12px] uppercase cursor-pointer transition-colors">
-                <Upload size={14} className="inline mr-1.5" />
-                {isUploadingBanner ? 'ENVIANDO...' : 'SELECIONAR BANNER'}
-                <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleBannerUpload} className="hidden" />
-              </label>
-            </div>
-          </div>
-
-          {newWorkFormat === 'LIGHT_NOVEL' ? (
-            <div className="p-4 border-2 border-[var(--mn-line)] bg-[var(--mn-ink)] space-y-3">
-              <label htmlFor="chapter-prose" className="font-pixel text-[12px] text-[var(--mn-yellow)] uppercase block">TEXTO DO CAPÍTULO 1</label>
-              <textarea id="chapter-prose" value={chapterText} onChange={(event) => setChapterText(event.target.value)} maxLength={2_000_000} rows={18} className="w-full p-4 bg-[var(--mn-ink-2)] text-[var(--mn-paper)] font-body text-base leading-relaxed border-2 border-[var(--mn-line)] focus:border-[var(--mn-yellow)] outline-none" placeholder="Escreva ou cole aqui o primeiro capítulo…" />
-              <p className="font-body text-xs text-[var(--mn-mute)]">Texto puro, até 2 MB. HTML é removido no servidor.</p>
-            </div>
-          ) : (
-          /* Upload de Páginas do Capítulo 1 */
-          <div className="p-4 border-2 border-[var(--mn-line)] bg-[var(--mn-ink)] space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div>
-                <span className="font-pixel text-[12px] text-[var(--mn-yellow)] uppercase block">
-                  PÁGINAS DO CAPÍTULO 1 (UPLOAD EM LOTE)
-                </span>
-                <span className="font-body text-xs text-[var(--mn-mute)]">
-                  Selecione os arquivos de imagem ordenados das páginas do mangá.
-                </span>
-              </div>
-              <label className="px-4 py-2 bg-[var(--mn-yellow)] text-[var(--mn-ink)] border-2 border-[var(--mn-ink)] font-pixel text-[12px] uppercase cursor-pointer hover:bg-[var(--mn-yellow-press)] transition-colors shrink-0">
-                <FileText size={14} className="inline mr-1.5" />
-                {isUploadingPages ? 'ENVIANDO PÁGINAS...' : `UPAR PÁGINAS (${chapterPages.length})`}
-                <input type="file" multiple accept="image/jpeg,image/png" onChange={handlePagesUpload} className="hidden" />
-              </label>
-            </div>
-
-            {chapterPages.length > 0 && (
-              <div className="flex flex-wrap gap-2 pt-2 border-t border-[var(--mn-line)]">
-                {chapterPages.map((page, idx) => (
-                  <div key={idx} className="relative p-1 bg-[var(--mn-ink-2)] border border-[var(--mn-line)] text-center">
-                    <span className="font-pixel text-[12px] text-[var(--mn-yellow)] block mb-1">PÁG. {idx + 1}</span>
-                    <img src={page} alt={`Página ${idx + 1}`} className="w-12 h-16 object-cover" />
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          )}
-
-          {/* Botão de Publicação */}
-          <div className="pt-2">
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={isPublishingWork || !coverUrl || !declaredOriginal}
-              className="w-full !py-3 !text-base flex items-center justify-center gap-2"
-            >
-              <CheckCircle2 size={18} />
-              <span>{isPublishingWork ? 'PUBLICANDO NO CATÁLOGO...' : 'PUBLICAR OBRA NO CATÁLOGO OFICIAL'}</span>
-            </Button>
-          </div>
-        </form>
+        <ChapterPublishWizard />
       </section>
       )}
 

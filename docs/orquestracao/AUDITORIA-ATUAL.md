@@ -637,6 +637,25 @@ O detalhe público da obra agora omite capítulos com `publicReleaseAt` futuro; 
   do servidor aparece em vez de uma mensagem generica.
 - [x] **Suite:** **366 testes**, 0 falhas, 0 erros; build do frontend verde.
 
+## 7.24 Ferramentas que faltavam no painel do autor e publicacao em 5 etapas (2026-10-21)
+
+- [x] **"Excluir conta / Exportar dados" e "Ver perfil publico" no painel do autor:** esconder
+  "Minha conta" para o escritor sem mover essas ferramentas deixou o autor sem acesso a elas. Agora o
+  painel do autor tem o bloco "MEU PERFIL E MEUS DADOS" (ver perfil publico, exportar dados LGPD e
+  excluir conta, com confirmacao antes de apagar) e o aviso de que o perfil de escritor e sempre
+  publico, com o username como identificador.
+- [x] **Avatar do painel no tamanho do MangaTeofilo (128px, redondo) e header sincronizado:** o upload no
+  painel atualizava so o perfil do AUTOR, enquanto o header mostra o avatar da CONTA â€” por isso a foto
+  salva nao aparecia no icone do header. Agora o upload atualiza os dois e reidrata a sessao.
+- [x] **Publicacao em 5 etapas (clone do MangaTeofilo):** `components/creator/ChapterPublishWizard.tsx`
+  reproduz o `useChapterWizard` + `ChapterStepUpload/Organize/Cover/Review/Publish`: (1) Upload com
+  dropzone de arraste e arquivos de capa e paginas, (2) Organizar paginas com grade numerada, mover,
+  remover e ampliar, (3) Ajustar capa, (4) Revisar metadados (titulo, sinopse, generos, formato e a
+  declaracao de autoria original) e (5) Publicar. O checklist mostra o estado de cada etapa e o avanco
+  fica travado enquanto a etapa atual estiver incompleta. O formulario unico antigo saiu do painel.
+- [x] **Suite:** **366 testes**, 0 falhas, 0 erros; build do frontend verde.
+
+## 8. Ordem de corre
 ## 8. Ordem de corre
 ## 8. Ordem de corre
 ## 8. Ordem de corre
