@@ -8,6 +8,8 @@ import com.manganetworking.domain.relational.CreatorPixKeyAuditEntity;
 import com.manganetworking.domain.relational.UserEntity;
 import com.manganetworking.domain.enums.PixKeyType;
 import com.manganetworking.repository.jpa.CreatorRepository;
+import com.manganetworking.repository.jpa.UserRepository;
+import com.manganetworking.service.creator.dto.ApplyAsCreatorRequestDto;
 import com.manganetworking.repository.jpa.CreatorPixKeyAuditRepository;
 import com.manganetworking.repository.jpa.WorkRepository;
 import com.manganetworking.repository.mongo.CreatorMissionMongoRepository;
@@ -33,6 +35,9 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class CreatorApplicationServiceTest {
+
+    @Mock
+    private UserRepository userRepository;
 
     @Mock
     private CreatorRepository creatorRepository;
@@ -257,5 +262,67 @@ class CreatorApplicationServiceTest {
                 com.manganetworking.config.exception.AccessDeniedException.class,
                 () -> creatorService.claimMissionReward(creatorId, "m3")
         );
+    }
+
+    @Test
+    @DisplayName("Virar escritor recicla o username da conta de leitor e herda a foto")
+    void shouldReuseReaderUsernameAndAvatarWhenBecomingWriter() {
+        UserEntity reader = new UserEntity();
+        reader.setId(UUID.randomUUID());
+        reader.setEmail("leitor@teste.com");
+        reader.setName("Leitor Que Virou Autor");
+        reader.setUsername("teofilo");
+        reader.setAvatarUrl("/api/storage/avatar-uuid.jpg");
+
+        when(userRepository.findById(reader.getId())).thenReturn(Optional.of(reader));
+        when(creatorRepository.findByUserId(reader.getId())).thenReturn(Optional.empty());
+        when(creatorRepository.findByHandle("teofilo")).thenReturn(Optional.empty());
+
+        CreatorEntity created = creatorService.applyAsWriter(reader.getId(),
+                new ApplyAsCreatorRequestDto("https://instagram.com/teofilo", null, null, null));
+
+        assertEquals("teofilo", created.getHandle());
+        assertEquals("/api/storage/avatar-uuid.jpg", created.getAvatarUrl());
+        assertEquals("https://instagram.com/teofilo", created.getInstagramUrl());
+        assertTrue(reader.isCreator());
+        verify(userRepository).save(reader);
+    }
+
+    @Test
+    @DisplayName("Vira escritor exige pelo menos um vinculo social")
+    void shouldRequireAtLeastOneSocialLink() {
+        UserEntity reader = new UserEntity();
+        reader.setId(UUID.randomUUID());
+        reader.setEmail("leitor@teste.com");
+        reader.setUsername("semlink");
+
+        when(userRepository.findById(reader.getId())).thenReturn(Optional.of(reader));
+        when(creatorRepository.findByUserId(reader.getId())).thenReturn(Optional.empty());
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () ->
+                creatorService.applyAsWriter(reader.getId(),
+                        new ApplyAsCreatorRequestDto(null, null, null, null)));
+
+        assertTrue(exception.getMessage().contains("pelo menos um link social"));
+        verify(creatorRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Username que ja e handle de outro autor e recusado")
+    void shouldRejectUsernameAlreadyUsedAsAnotherAuthorHandle() {
+        UserEntity reader = new UserEntity();
+        reader.setId(UUID.randomUUID());
+        reader.setEmail("leitor@teste.com");
+        reader.setUsername("ocupado");
+
+        when(userRepository.findById(reader.getId())).thenReturn(Optional.of(reader));
+        when(creatorRepository.findByUserId(reader.getId())).thenReturn(Optional.empty());
+        when(creatorRepository.findByHandle("ocupado")).thenReturn(Optional.of(creator));
+
+        assertThrows(IllegalArgumentException.class, () ->
+                creatorService.applyAsWriter(reader.getId(),
+                        new ApplyAsCreatorRequestDto("https://instagram.com/ocupado", null, null, null)));
+
+        verify(creatorRepository, never()).save(any());
     }
 }

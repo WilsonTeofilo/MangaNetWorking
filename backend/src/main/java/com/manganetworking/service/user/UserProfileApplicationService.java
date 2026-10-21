@@ -67,6 +67,24 @@ public class UserProfileApplicationService {
         this.privacyComplianceService = privacyComplianceService;
     }
 
+    /**
+     * O identificador pÃºblico do autor Ã© o username da conta: quando o username Ã©
+     * reivindicado, o handle do escritor passa a acompanhÃ¡-lo â€” desde que o handle
+     * esteja livre. Se jÃ¡ existir um autor com aquele handle, o username Ã© mantido
+     * (a conta continua vÃ¡lida) e o handle antigo segue.
+     */
+    private void syncCreatorHandleWithUsername(UserEntity user, String username) {
+        creatorRepository.findByUserId(user.getId()).ifPresent(creator -> {
+            if (creator.getHandle() != null && creator.getHandle().equalsIgnoreCase(username)) {
+                return;
+            }
+            if (creatorRepository.findByHandle(username).isPresent()) {
+                return;
+            }
+            creator.setHandle(username);
+            creatorRepository.save(creator);
+        });
+    }
     /** Identificador gerado automaticamente (placeholder) que ainda pode ser reivindicado. */
     private boolean isGeneratedUsername(UserEntity user) {
         return user.getUsername() != null
@@ -132,6 +150,7 @@ public class UserProfileApplicationService {
             throw new IllegalArgumentException("Este username já está em uso.");
           }
           user.setUsername(requested);
+          syncCreatorHandleWithUsername(user, requested);
         }
       }
       if (dto.isProfilePublic() != null) {

@@ -84,12 +84,23 @@ public class CreatorApplicationService {
             throw new IllegalArgumentException("O CPF informado é inválido.");
         }
 
+        // O identificador publico do autor e o username da propria conta de leitor
+        // (reciclado): nao existe segundo handle para o usuario escolher, e o username
+        // ja e unico - logo nao nasce duplicidade.
+        String handle = user.getUsername() == null ? null : user.getUsername().trim().replace("@", "");
+        if (handle == null || handle.isBlank()) {
+            throw new IllegalArgumentException("Defina um username em Minha conta antes de criar o perfil de escritor.");
+        }
+        if (creatorRepository.findByHandle(handle).isPresent()) {
+            throw new IllegalArgumentException("Este username ja e o identificador de outro autor. Troque o username em Minha conta.");
+        }
+
         CreatorEntity creator = new CreatorEntity();
         creator.setUser(user);
-        creator.setHandle(dto.handle() != null && !dto.handle().isBlank()
-                ? dto.handle().replace("@", "").trim()
-                : "autor_" + UUID.randomUUID().toString().substring(0, 6));
+        creator.setHandle(handle);
         creator.setBio("Novo escritor na MangaNetWorking.");
+        // A foto e o nome vem da conta de leitor: nada e pedido de novo.
+        creator.setAvatarUrl(user.getAvatarUrl());
         creator.setInstagramUrl(instagram);
         creator.setYoutubeUrl(youtube);
         creator.setPortfolioUrl(portfolio);

@@ -1,10 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Camera, Eye, EyeOff, ShieldCheck, UserPlus, LogOut, BookOpen } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { storageApi } from '../api/storageApi';
 import { userApi } from '../api/authApi';
 import { Button } from '../components/ui/Button';
 import { Field } from '../components/ui/Field';
+
+/** Formatos aceitos pelo normalizador de avatar do servidor (JPEG e PNG). */
+const AVATAR_TYPES = ['image/jpeg', 'image/png'];
 
 /**
  * "Minha conta": o perfil do titular — foto, nome, username, sexo e a decisão de
@@ -21,14 +24,13 @@ export function AccountProfilePage({ onOpenPublicProfile, onOpenReaderPanel }: {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Formulário de candidatura a escritor (exige vínculo social).
+  // Formulário de candidatura a escritor (basta UM vínculo social).
   const [showWriterForm, setShowWriterForm] = useState(!user.isCreator);
-  const [usernameDraft, setUsernameDraft] = useState(user.username ?? '');
   const [instagramUrl, setInstagramUrl] = useState('');
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [portfolioUrl, setPortfolioUrl] = useState('');
-  const [handle, setHandle] = useState('');
   const [applying, setApplying] = useState(false);
+  const [usernameDraft, setUsernameDraft] = useState(user.username ?? '');
 
   // Username só pode ser reivindicado uma vez, enquanto o identificador ainda é o gerado.
   const usernameIsGenerated = (user.username ?? '').startsWith('user_');
@@ -47,24 +49,30 @@ export function AccountProfilePage({ onOpenPublicProfile, onOpenReaderPanel }: {
     }
   };
 
-  useEffect(() => {
-    setAvatarUrl(user.avatarUrl);
-    setIsPublic(user.profilePublic ?? true);
-  }, [user.avatarUrl, user.profilePublic]);
-
   const handleAvatar = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
-    setUploading(true);
     setError(null);
+    setMessage(null);
+
+    if (!AVATAR_TYPES.includes(file.type)) {
+      setError('Formato não suportado. Envie uma foto JPG ou PNG (a imagem é convertida pelo servidor).');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setError('A foto passa de 10 MB. Envie uma imagem menor.');
+      return;
+    }
+
+    setUploading(true);
     try {
       const stored = await storageApi.uploadAvatar(file);
       setAvatarUrl(stored.url);
       await saveProfile({ avatarUrl: stored.url });
       setMessage('Foto de perfil atualizada.');
-    } catch {
-      setError('Não foi possível enviar a foto. Use JPEG ou PNG.');
+    } catch (err: any) {
+      setError(err?.message || 'Não foi possível enviar a foto. Use JPEG ou PNG e tente novamente.');
     } finally {
       setUploading(false);
     }
@@ -90,7 +98,6 @@ export function AccountProfilePage({ onOpenPublicProfile, onOpenReaderPanel }: {
     setError(null);
     try {
       await becomeWriter({
-        handle: handle || undefined,
         instagramUrl: instagramUrl || undefined,
         youtubeUrl: youtubeUrl || undefined,
         portfolioUrl: portfolioUrl || undefined,
@@ -117,22 +124,27 @@ export function AccountProfilePage({ onOpenPublicProfile, onOpenReaderPanel }: {
       <div className="grid lg:grid-cols-[320px_1fr] gap-6 items-start">
         {/* Cartão de identidade */}
         <div className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-6 space-y-4 text-center">
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            className="relative mx-auto block w-32 h-32 rounded-full overflow-hidden border-2 border-[var(--mn-yellow)] focus-visible:outline"
-            title="Trocar foto de perfil"
-          >
+          <div className="relative mx-auto w-32 h-32">
             <img
               src={avatarUrl || '/avatar-placeholder.png'}
               alt="Foto de perfil"
-              className="w-full h-full object-cover bg-[#1F2833]"
+              className="w-32 h-32 rounded-full object-cover bg-[#1F2833] border-2 border-[var(--mn-yellow)]"
             />
-            <span className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 hover:opacity-100 focus-within:opacity-100 transition-opacity">
-              <Camera size={22} className="text-[var(--mn-paper)]" />
-            </span>
-          </button>
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              className="absolute bottom-0 right-0 w-10 h-10 rounded-full bg-[var(--mn-yellow)] text-[var(--mn-ink)] border-2 border-[var(--mn-ink)] flex items-center justify-center hover:scale-105 transition-transform disabled:opacity-60"
+              title="Trocar foto de perfil"
+              aria-label="Trocar foto de perfil"
+            >
+              <Camera size={18} />
+            </button>
+          </div>
           <input ref={fileRef} type="file" accept="image/jpeg,image/png" className="hidden" onChange={handleAvatar} />
+          <Button onClick={() => fileRef.current?.click()} disabled={uploading} variant="ghost" className="w-full">
+            <Camera size={14} /> {uploading ? 'ENVIANDO...' : 'TROCAR FOTO'}
+          </Button>
 
           <p className="font-display text-xl text-[var(--mn-paper)] uppercase">{user.name}</p>
           <p className="font-pixel text-xs text-[var(--mn-yellow)]">@{user.username || 'sem-username'}</p>
@@ -141,7 +153,6 @@ export function AccountProfilePage({ onOpenPublicProfile, onOpenReaderPanel }: {
             {user.isCreator ? 'Escritor' : 'Leitor'}
             {user.sex && user.sex !== 'NAO_INFORMADO' ? ` · ${user.sex}` : ''}
           </p>
-          {uploading && <p className="font-pixel text-[11px] text-[var(--mn-mute)] uppercase">Enviando foto...</p>}
         </div>
 
         {/* Configurações */}
@@ -190,24 +201,24 @@ export function AccountProfilePage({ onOpenPublicProfile, onOpenReaderPanel }: {
             )}
           </div>
 
-          {/* Candidatura a escritor */}
+          {/* Candidatura a escritor: os dados de leitor são herdados; falta só UM link. */}
           {!user.isCreator && (
             <div className="border-2 border-[var(--mn-teal)] bg-[var(--mn-ink-2)] p-6 space-y-4">
               <h2 className="font-display text-xl text-[var(--mn-paper)] uppercase flex items-center gap-2">
                 <UserPlus size={18} className="text-[var(--mn-teal)]" /> Quero publicar como escritor
               </h2>
               <p className="text-sm text-[var(--mn-mute)]">
-                Leitor lê, curte, comenta e usa a biblioteca. Para publicar, informe pelo menos um
-                vínculo social (Instagram, YouTube ou portfólio).
+                Leitor lê, curte, comenta e usa a biblioteca. Para publicar, informe <strong>um</strong> vínculo
+                social (Instagram, YouTube ou portfólio) — os links são opcionais, mas <strong>um é obrigatório</strong>.
+                Seu nome, foto e username são herdados da conta de leitor: não precisa repetir nada.
               </p>
               {!showWriterForm ? (
                 <Button onClick={() => setShowWriterForm(true)}>PREENCHER DADOS</Button>
               ) : (
                 <form className="space-y-4" onSubmit={applyAsWriter}>
-                  <Field label="USERNAME / @ DO AUTOR" value={handle} onChange={(e) => setHandle(e.target.value)} placeholder="ex.: teofilo" />
-                  <Field label="LINK DO INSTAGRAM" value={instagramUrl} onChange={(e) => setInstagramUrl(e.target.value)} placeholder="https://instagram.com/seuperfil" />
-                  <Field label="LINK DO YOUTUBE" value={youtubeUrl} onChange={(e) => setYoutubeUrl(e.target.value)} placeholder="https://youtube.com/@seucanal" />
-                  <Field label="LINK DE PORTFÓLIO" value={portfolioUrl} onChange={(e) => setPortfolioUrl(e.target.value)} placeholder="https://behance.net/seuportfolio" />
+                  <Field label="LINK DO INSTAGRAM (opcional)" value={instagramUrl} onChange={(e) => setInstagramUrl(e.target.value)} placeholder="https://instagram.com/seuperfil" />
+                  <Field label="LINK DO YOUTUBE (opcional)" value={youtubeUrl} onChange={(e) => setYoutubeUrl(e.target.value)} placeholder="https://youtube.com/@seucanal" />
+                  <Field label="LINK DE PORTFÓLIO (opcional)" value={portfolioUrl} onChange={(e) => setPortfolioUrl(e.target.value)} placeholder="https://behance.net/seuportfolio" />
                   <div className="flex flex-wrap gap-3">
                     <Button type="submit" disabled={applying}>CRIAR PERFIL DE ESCRITOR</Button>
                     <Button type="button" variant="ghost" onClick={() => setShowWriterForm(false)}>CANCELAR</Button>
