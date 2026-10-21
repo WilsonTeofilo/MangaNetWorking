@@ -31,6 +31,8 @@ export interface CreatorWorkSummaryDto {
   coverUrl?: string | null;
   bannerUrl?: string | null;
   status: string;
+  /** Formato da obra: MANGA (paginas) ou LIGHT_NOVEL (prosa). */
+  format?: 'MANGA' | 'LIGHT_NOVEL' | null;
   totalChapters: number;
   totalViews: number;
   totalLikes: number;

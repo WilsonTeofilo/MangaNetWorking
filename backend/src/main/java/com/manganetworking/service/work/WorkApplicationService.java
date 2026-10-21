@@ -196,6 +196,7 @@ public class WorkApplicationService {
                         work.getCoverUrl(),
                         work.getBannerUrl(),
                         work.getStatus(),
+                        work.getFormat() != null ? work.getFormat().name() : null,
                         work.getTotalChapters(),
                         work.getTotalViews(),
                         work.getTotalLikes()))

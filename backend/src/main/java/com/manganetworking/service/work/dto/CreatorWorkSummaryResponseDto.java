@@ -23,6 +23,8 @@ public record CreatorWorkSummaryResponseDto(
         String coverUrl,
         String bannerUrl,
         String status,
+        /** Formato da obra: MANGA (paginas) ou LIGHT_NOVEL (prosa). */
+        String format,
         int totalChapters,
         long totalViews,
         long totalLikes

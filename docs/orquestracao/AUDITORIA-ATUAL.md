@@ -747,6 +747,23 @@ O detalhe público da obra agora omite capítulos com `publicReleaseAt` futuro; 
   magico solto (limites nomeados), nenhuma copia da regra de username/links/social (hoje em um lugar so).
 - [x] **Suite:** **368 testes**, 0 falhas, 0 erros; build do frontend verde.
 
+## 7.30 Segunda revisao: light novel sem caminho e ajustes de reacao (2026-10-21)
+
+- [x] **Falha real 3 â€” light novel nao tinha como publicar capitulo:** o fluxo de capitulo so sabia enviar
+  PAGINAS e mandava `IMAGE_PAGES` sempre. Em obra `LIGHT_NOVEL` o servidor recusa ("o formato do capitulo
+  deve corresponder ao formato da obra"), ou seja, **nenhuma obra de prosa publicava capitulo**. Agora:
+  o resumo da obra traz o formato, a tela "CapÃ­tulos" repassa para o fluxo e o wizard se adapta â€”
+  paginas (MANGA) ou texto de prosa (LIGHT_NOVEL), com o payload correto (`pages` x `content`).
+- [x] **Ajuste de reacao:** a lista de "Minhas obras" recriava a funcao de carga a cada render (warning do
+  React no `useEffect`); o efeito agora tem a carga embutida e cancela o resultado se a tela desmontar.
+- [x] **Varredura de seguranca refeita:** `GET /api/works/mine` (CREATOR), `PUT`/`DELETE /api/works/*` (CREATOR +
+  propriedade no servico), `POST /api/works/*/comments` (autenticado, so obra publicada, bucket proprio),
+  `POST /api/creators/apply` e `POST/DELETE /api/creators/*/follow` (autenticado),
+  `GET /api/users/*/public-profile` e `GET /api/users/username-available` (publicas, com a privacidade decidida
+  no servico).
+- [x] **Suite:** **368 testes**, 0 falhas, 0 erros; build do frontend verde.
+
+## 8. Ordem de corre
 ## 8. Ordem de corre
 ## 8. Ordem de corre
 ## 8. Ordem de corre

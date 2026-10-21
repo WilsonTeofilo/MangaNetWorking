@@ -119,6 +119,7 @@ export function CreatorChaptersPage() {
           workId={selectedWork.id}
           workTitle={selectedWork.title}
           nextChapterNumber={selectedWork.totalChapters + 1}
+          workFormat={selectedWork.format}
         />
       )}
     </section>

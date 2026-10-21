@@ -33,6 +33,26 @@ export function CreatorWorksPage() {
   const [saving, setSaving] = useState(false);
   const [cropFile, setCropFile] = useState<File | null>(null);
 
+  // Efeito com a carga embutida: evita depender de uma funcao recriada a cada render.
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    workApi
+      .listMyWorks()
+      .then((payload) => {
+        if (active) setWorks(payload);
+      })
+      .catch(() => {
+        if (active) setError('Não foi possível carregar suas obras.');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const loadWorks = () => {
     setLoading(true);
     workApi
@@ -42,7 +62,6 @@ export function CreatorWorksPage() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(loadWorks, []);
 
   const resetForm = () => {
     setEditingId(null);
