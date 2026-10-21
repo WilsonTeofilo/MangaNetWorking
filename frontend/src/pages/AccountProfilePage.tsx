@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Camera, Eye, EyeOff, ShieldCheck, UserPlus, LogOut } from 'lucide-react';
+import { Camera, Eye, EyeOff, ShieldCheck, UserPlus, LogOut, BookOpen } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { storageApi } from '../api/storageApi';
 import { userApi } from '../api/authApi';
@@ -11,7 +11,7 @@ import { Field } from '../components/ui/Field';
  * ficar público ou privado. É a página de perfil por dentro (o painel do criador tem
  * telas próprias).
  */
-export function AccountProfilePage({ onOpenPublicProfile }: { onOpenPublicProfile: (username: string) => void }) {
+export function AccountProfilePage({ onOpenPublicProfile, onOpenReaderPanel }: { onOpenPublicProfile: (username: string) => void; onOpenReaderPanel?: () => void }) {
   const { user, saveProfile, becomeWriter, logout, refreshSession } = useAuth();
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl);
@@ -37,7 +37,7 @@ export function AccountProfilePage({ onOpenPublicProfile }: { onOpenPublicProfil
     setSaving(true);
     setError(null);
     try {
-      await userApi.updateProfile({ username: usernameDraft } as { username?: string });
+      await userApi.updateProfile({ username: usernameDraft });
       await refreshSession();
       setMessage('Username definido. Ele não muda mais.');
     } catch (err: any) {
@@ -181,6 +181,11 @@ export function AccountProfilePage({ onOpenPublicProfile }: { onOpenPublicProfil
             {user.username && (
               <Button variant="ghost" onClick={() => onOpenPublicProfile(user.username!)}>
                 <Eye size={14} /> VER MINHA PÁGINA PÚBLICA
+              </Button>
+            )}
+            {onOpenReaderPanel && (
+              <Button variant="ghost" onClick={onOpenReaderPanel}>
+                <BookOpen size={14} /> MEU PAINEL DE LEITOR
               </Button>
             )}
           </div>

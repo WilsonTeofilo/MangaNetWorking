@@ -339,11 +339,14 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
 
 
                 <Field
-                  label="E-MAIL OU USERNAME"
-                  type="email"
+                  label={mode === 'register' ? 'E-MAIL' : 'E-MAIL OU USERNAME'}
+                  type={mode === 'register' ? 'email' : 'text'}
+                  inputMode={mode === 'register' ? 'email' : 'text'}
+                  autoComplete={mode === 'register' ? 'email' : 'username'}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="seu.email@exemplo.com ou seu username"
+                  placeholder={mode === 'register' ? 'seu.email@exemplo.com' : 'seu.email@exemplo.com ou seu username'}
+                  helperText={mode === 'register' ? undefined : 'Entre com o e-mail ou com o username que você criou.'}
                   required
                   childrenRight={<Mail size={16} className="text-[#A9A59A]" />}
                 />

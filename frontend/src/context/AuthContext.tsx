@@ -44,6 +44,7 @@ function applySession(prev: UserProfile, session: SessionUserDto): UserProfile {
     avatarUrl: session.avatarUrl || prev.avatarUrl,
     isCreator: session.isCreator,
     creatorId: session.creatorId || undefined,
+    creatorHandle: session.creatorHandle || undefined,
     isModerator: Boolean(session.isModerator),
     isOwner: Boolean(session.isOwner),
     privacyConsentRequired: Boolean(session.privacyConsentRequired),

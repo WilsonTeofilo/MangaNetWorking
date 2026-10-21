@@ -111,6 +111,15 @@ Fluxo exercitado de ponta a ponta na stack local (backend 8085, frontend 5180, P
 | Doação, membresia e VIP | ❌ bloqueado | checkout Mercado Pago exige credenciais Sandbox/webhook público; a rota legada devolve `410` (nenhum crédito fictício) |
 | Login social (Google) | ❌ bloqueado | exige ID token real e domínio/DNS (#44) |
 | E-mail para destinatário real | ⚠️ parcial | **entrega real comprovada em desenvolvimento** (SMTP do `.env`: OTP e link de recuperação com `outcome=sent` no e-mail do titular). Para produção falta **domínio autenticado com SPF/DKIM/DMARC** e provedor institucional (#46) — conta pessoal não serve como remetente de produção |
+| Criar conta com **username** e entrar por ele | ✅ funciona | `POST /api/auth/register` com `username` + sexo → 2FA; `POST /api/auth/login` com `{identifier}` aceita e-mail **ou** username (prova ao vivo: login com `qa.leitor.92542227` devolveu a conta e o OTP para o e-mail real) |
+| Perfil **público** por username | ✅ funciona | `GET /api/users/{username}/public-profile` sem sessão: nome, avatar, links, seguidores, obras e curtidas |
+| Perfil **privado** | ✅ funciona | a mesma rota devolve **só o username**; é o que aparece nos comentários |
+| **Comentar** na obra | ✅ funciona | `POST /api/works/{workId}/comments` (leitor autenticado) e `GET` público; username sempre visível, nome/avatar só com perfil público; corpo higienizado no servidor |
+| **Seguir** um escritor | ✅ funciona | `POST /api/creators/{handle}/follow` — só escritores têm seguidores; leitor não é seguido e ninguém segue a si mesmo |
+| **Virar escritor** (leitor → escritor) | ✅ funciona | `POST /api/creators/apply` exige **pelo menos um vínculo social** (Instagram/YouTube/portfólio, allowlist de host + HTTPS obrigatório); sem link: 400 |
+| Painel do criador em **telas separadas** | ✅ funciona | Workspace, Minhas obras, Capítulos, Missões & XP, Analytics (`/api/creators/analytics`) e Monetização — cada um com endpoint próprio |
+| Menu da conta no **avatar do header** | ✅ funciona | avatar redondo no canto: Minha conta → Criador (Workspace, obras, capítulos, missões, analytics, monetização) → Sair. A divisão "modo criador/leitor" saiu do header |
+| Onboarding pós-cadastro | ✅ funciona | após o 2FA: tela de foto de perfil, escolha público/privado e botão de ver a própria página pública |
 
 > Observação operacional: o cadastro tem limite de 3 OTPs por IP a cada 10 minutos e cooldown de 60 s.
 > Em testes seguidos, o `429` é o limitador de emissão de OTP, não um defeito.
@@ -119,8 +128,9 @@ Fluxo exercitado de ponta a ponta na stack local (backend 8085, frontend 5180, P
 > 2FA, recuperação e webhook de bounce; endereço com espaço nas pontas ou em maiúsculas é aceito e gravado
 > canônico, e endereço inválido volta **400** com mensagem clara.
 >
-> Evidência desta rodada: CI remoto verde no commit `345c7a7` (run `39500739630`) com os quatro
-> jobs — backend (**335 testes**), frontend, validação do Compose de produção e smoke 12/12.
+> Evidência desta rodada: CI remoto verde no commit `8cff00f` (run `39521554083` com os quatro
+> jobs - backend (**352 testes**), frontend, validação do Compose de produção e smoke 12/12.
+> Smoke local 12/12 na stack real e V17 aplicada em PostgreSQL real.
 
 ### 4.1 O que ainda não dá (ordem de bloqueio)
 
@@ -164,6 +174,20 @@ Fluxo exercitado de ponta a ponta na stack local (backend 8085, frontend 5180, P
   receber o código de 2FA pelo SMTP configurado (antes a rota respondia sem enviar nada e a pessoa ficava travada).
   Conta já confirmada não recebe e-mail no cadastro — esse caso é login.
 
+
+- [x] **Identidade separada, leitor x escritor e perfil publico (21/10/2026):** `V17` cria `users.username` (unico,
+  imutavel depois de escolhido), `users.sex`, `creator_follows` e `work_comments`. Login e 2FA aceitam **e-mail ou
+  username**; o cadastro cria **sempre leitor** e a transicao para escritor exige **pelo menos um vinculo social**
+  (allowlist de host, HTTPS obrigatorio, sem `javascript:`/`data:`/credencial/porta). Pagina publica por username
+  respeita a privacidade (privado expoe so o username), seguidores existem **so para escritores** e comentarios
+  mostram o username sem expor o resto quando o perfil e privado. Front: header sem a divisao "modo leitor/criador"
+  (menu do avatar), painel do criador em telas separadas por endpoint, "Minha conta" e onboarding pos-cadastro.
+  Evidencia: **352 testes** verdes, V17 aplicada em PostgreSQL real, smoke 12/12 local e no CI (run `39521554083`).
+- [x] **Stack de alerta corrigido e sob o Compose (21/10/2026):** as regras do Prometheus tinham um `:` nao citado
+  numa anotacao YAML e o container **nao carregava as regras** (`promtool` -> 4 regras depois do ajuste, alvo `up`).
+  Prometheus e Alertmanager passaram para o profile `monitoring` do Compose (antes eram containers orfaos).
+
+### F2 - Perfis de leitor e criador · 🟡 parcial
 
 **Objetivo:** perfis público/privado, página do criador, links, avatar e biblioteca com autorização no servidor.
 
@@ -406,10 +430,11 @@ Fluxo exercitado de ponta a ponta na stack local (backend 8085, frontend 5180, P
 
 | **Passe 24** | 20/10/2026 | **Papel de proprietário, governança de dados e prontidão de produção:**<br>- V14 (`users.is_owner`) com `ROLE_OWNER` derivado no servidor; `/api/owner/**` exige o papel; `/auth/me` expõe `isOwner`.<br>- V15 (`privacy_governance_actions`, append-only) e V16 (`email_delivery_events`).<br>- Publicação controlada da Política de Privacidade (`GET /api/legal/privacy-policy` + `ops/legal/publish-privacy-policy.ps1`).<br>- Saneamento controlado de CPF legado (16 registros) e exclusão LGPD limpando privilégios residuais.<br>- Backup cifrado (AES-256-CBC + HMAC) com cópia off-site e retenção; Prometheus + Alertmanager com alerta real; exercício de runbook automatizado; `ops/deploy` para a Oracle.<br>- PR #5 mergeado na `main` (merge commit `35479b7`) e `develop`→`main` (PR #7, `f6350a4`). | **322 testes** verdes; CI remoto verde (run `39490345472`); stack local 6/6 saudável; sem credencial de produção, sem deploy e sem aprovação legal inventada. |
 | **Passe 25** | 20/10/2026 | **E-mail real e canonicalização no servidor:**<br>- `util.EmailNormalizer` (trim + minúsculas + validação RFC 5321) aplicado em cadastro, login, Google OAuth, 2FA, recuperação, OTP, Dev Outbox e webhook de bounce; o `@Email` do framework saiu dos DTOs porque recusava endereço com espaço nas pontas.<br>- Compose local passou a repassar `MAIL_*` do `.env` (antes fixava Mailpit e ignorava o `.env`: todo OTP ia para o Mailpit).<br>- Cadastro com conta pendente (e-mail nunca confirmado) reenvia o OTP; conta já confirmada não recebe e-mail no cadastro (é login). | **335 testes**, 0 falhas/0 erros; entrega real comprovada com `outcome=sent` (OTP de 2FA e link de recuperação no e-mail do titular) e Mailpit com 0 mensagens no mesmo intervalo; Dev Outbox **404** no stack real (atalho de dev desligado); CI remoto verde (run `39500739630`). |
+| **Passe 26** | 21/10/2026 | **Identidade separada e reorganizacao da interface:**<br>- V17: `users.username` (unico, imutavel depois de escolhido), `users.sex`, `creator_follows`, `work_comments`.<br>- Login e 2FA aceitam e-mail **ou** username; cadastro cria sempre leitor; virar escritor exige pelo menos um vinculo social (allowlist + HTTPS).<br>- Perfil publico por username com privacidade real; seguidores so de escritor; comentarios com username.<br>- Header sem a divisao "modo leitor/criador" (menu do avatar); painel do criador em telas separadas; "Minha conta"; onboarding pos-cadastro.<br>- Prometheus e Alertmanager no profile `monitoring` do Compose; bug real de YAML nas regras corrigido. | **352 testes**, 0 falhas/0 erros; V17 aplicada; smoke 12/12 local e no CI (run `39521554083`); login por username e perfil publico comprovados ao vivo. |
 
 ### Próximos passos (estado atual)
 
-A ordem vigente é mantida em `docs/orquestracao/ROADMAP-FASES.md`. Concluído com evidência: o passe autenticado/teclado (#40), o run remoto verde (#43), a retenção/cifra/off-site do backup no ambiente local (#42 — falta o destino externo e a aprovação), a governança de dados do proprietário e a entrega de e-mail em caixa real (OTP e recuperação) em desenvolvimento. Restam, marcados como dependências externas sem simulação: boot `prod` entre réplicas (#41), domínio autenticado com SPF/DKIM/DMARC e provedor institucional de e-mail, credenciais Sandbox do Mercado Pago com webhook HTTPS público, ID token Google, texto oficial da Política de Privacidade e nomeação do encarregado, prazos de retenção aprovados, destino off-site e KMS, e acesso Oracle (região/shape/chave SSH). Nenhuma compra real, mudança de DNS ou infraestrutura externa foi criada. A suíte backend passou **335/0/0** com Docker; o restore foi verificado em bancos isolados; o CI remoto está verde na `main` (run `39500739630`).
+A ordem vigente é mantida em `docs/orquestracao/ROADMAP-FASES.md`. Concluído com evidência: o passe autenticado/teclado (#40), o run remoto verde (#43), a retenção/cifra/off-site do backup no ambiente local (#42 — falta o destino externo e a aprovação), a governança de dados do proprietário e a entrega de e-mail em caixa real (OTP e recuperação) em desenvolvimento. Restam, marcados como dependências externas sem simulação: boot `prod` entre réplicas (#41), domínio autenticado com SPF/DKIM/DMARC e provedor institucional de e-mail, credenciais Sandbox do Mercado Pago com webhook HTTPS público, ID token Google, texto oficial da Política de Privacidade e nomeação do encarregado, prazos de retenção aprovados, destino off-site e KMS, e acesso Oracle (região/shape/chave SSH). Nenhuma compra real, mudança de DNS ou infraestrutura externa foi criada. A suíte backend passou **352/0/0** com Docker; o restore foi verificado em bancos isolados; o CI remoto está verde na `main` (run `39521554083`) e o smoke local fez 12/12. A identidade (username, leitor x escritor, perfil público, seguidores e comentários) entrou no servidor com a V17 e o painel do criador foi quebrado em telas separadas por endpoint.
 
 ---
 
@@ -417,9 +442,9 @@ A ordem vigente é mantida em `docs/orquestracao/ROADMAP-FASES.md`. Concluído c
 
 | Componente | Tecnologia | Porta / Path | Status de Verificação |
 |---|---|---|---|
-| **API Backend** | Spring Boot 3.4.2 / Java 21 | `8085` | **335 testes** em 20/10/2026, 0 falhas/erros/ignorados com Docker; Sandbox pendente |
+| **API Backend** | Spring Boot 3.4.2 / Java 21 | `8085` | **352 testes** em 21/10/2026, 0 falhas/erros/ignorados com Docker; Sandbox pendente |
 | **Banco Relacional** | PostgreSQL 16 (Docker) | `25432` | V1–V16 aplicadas em stack local real; V13 com `token_hash VARCHAR(64)`, V14 com `is_owner` e `validate` verde |
 | **Banco NoSQL** | MongoDB 7 (Docker) | `27017` | Eventos de feed e telemetria validados ao vivo |
 | **Storage de Imagens** | Filesystem Local Sanitizado | `./data/uploads/` | Magic bytes e guard por `chapter_files` validados |
-| **Frontend Web** | React 19 / TypeScript / Vite | `5180` | Build limpo em 20/10/2026 (1649 módulos) |
+| **Frontend Web** | React 19 / TypeScript / Vite | `5180` | Build limpo em 21/10/2026 (1649 módulos) |
 | **E-mail (SMTP)** | `SmtpMfaNotificationSender` | — | Entrega real de OTP e de link de recuperação comprovada em 20/10/2026 (`outcome=sent`); produção exige domínio autenticado com SPF/DKIM/DMARC |
