@@ -3,6 +3,7 @@ package com.manganetworking.service.mfa;
 import com.manganetworking.config.properties.PlatformProperties;
 import com.manganetworking.config.observability.SecurityObservabilityMetrics;
 import com.manganetworking.service.email.EmailSuppressionService;
+import com.manganetworking.util.ReservedTestDomainPolicy;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
@@ -58,6 +59,9 @@ public class SmtpMfaNotificationSender implements MfaNotificationSender {
         if (isSuppressed(destination)) {
             return;
         }
+        if (isReservedTestDestination(destination)) {
+            return;
+        }
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
@@ -90,6 +94,9 @@ public class SmtpMfaNotificationSender implements MfaNotificationSender {
     @Override
     public void sendPasswordResetLink(String destination, String resetUrl, long expiresInMinutes) {
         if (isSuppressed(destination)) {
+            return;
+        }
+        if (isReservedTestDestination(destination)) {
             return;
         }
         try {
@@ -143,6 +150,22 @@ public class SmtpMfaNotificationSender implements MfaNotificationSender {
                 .addKeyValue("outcome", "suppressed")
                 .addKeyValue("recipient", maskEmail(destination))
                 .log("Envio suprimido: destinatario com bounce/complaint registrado");
+        return true;
+    }
+
+    /**
+     * Destinatario em dominio reservado para teste (RFC 2606/6761, {@code test.com}):
+     * nao existe caixa postal, o envio so geraria bounce ("Address not found").
+     */
+    private boolean isReservedTestDestination(String destination) {
+        if (!ReservedTestDomainPolicy.isReservedTestDomain(destination)) {
+            return false;
+        }
+        metrics.recordEmailDelivery("suppressed_reserved_domain");
+        log.atWarn().addKeyValue("event", "email_delivery")
+                .addKeyValue("outcome", "suppressed_reserved_domain")
+                .addKeyValue("recipient", maskEmail(destination))
+                .log("Envio suprimido: destinatario em dominio reservado para teste");
         return true;
     }
 

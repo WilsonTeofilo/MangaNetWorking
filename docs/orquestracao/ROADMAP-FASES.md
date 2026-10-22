@@ -237,7 +237,7 @@ Legenda: ✅ pronto · 🟡 parcial · 🔴 bloqueado/pendente · ⏸️ fora do
 **Estado real**
 - Última suíte em 20/10/2026: **322 testes, 0 falhas/erros, 0 ignorados**; Docker/Testcontainers disponíveis.
 - Testes de integração reais verdes nesta rodada: V13/V14 aplicadas, recuperação concorrente, rotação de token, `ROLE_OWNER` e contexto Hibernate `validate`.
-- Smoke E2E executado em stack real: 12/12 etapas passaram. Também exercitou consentimento, sessão Redis, step-up PIX, upload, obra/capítulo, rota financeira 410, exportação e exclusão. O script consulta o Dev Outbox quando o mail está desabilitado e, no stack atual com Mailpit, faz fallback para a API do Mailpit.
+- Smoke E2E executado em stack real: 12/12 etapas passaram. Também exercitou consentimento, sessão Redis, step-up PIX, upload, obra/capítulo, rota financeira 410, exportação e exclusão. O script consulta o Dev Outbox quando o mail está desabilitado e, no stack atual com Mailpit, faz fallback para a API do Mailpit. **O smoke nunca dispara e-mail real:** se o backend estiver com SMTP de verdade, o próprio script troca para o Dev Outbox (`PLATFORM_MAIL_ENABLED=false`) e devolve o modo original no fim (também em caso de erro inesperado).
 - Workflow em `.github/workflows/ci.yml` mantém gatilho `pull_request` e executa smoke em stack Docker. A execução `39364042018` (PR #4) falhou por tipo V13; após a correção e o ajuste da senha do smoke, o run `39448285071` do PR #5 ficou **verde nos quatro jobs**: backend, frontend, Docker e Smoke 12/12.
 
 **Aceite**

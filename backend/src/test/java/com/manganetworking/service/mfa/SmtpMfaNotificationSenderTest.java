@@ -3,6 +3,7 @@ package com.manganetworking.service.mfa;
 import com.manganetworking.config.properties.PlatformProperties;
 import jakarta.mail.Multipart;
 import jakarta.mail.internet.MimeMessage;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
@@ -22,14 +23,14 @@ class SmtpMfaNotificationSenderTest {
         properties.getMail().setFromName("MangaNetWorking");
         SmtpMfaNotificationSender sender = new SmtpMfaNotificationSender(mailSender, properties);
 
-        sender.sendOtp("reader@example.com", "123456", "AUTENTICACAO_2FA");
+        sender.sendOtp("leitor@manganetworking.com.br", "123456", "AUTENTICACAO_2FA");
 
         var captor = org.mockito.ArgumentCaptor.forClass(MimeMessage.class);
         verify(mailSender).send(captor.capture());
         MimeMessage sent = captor.getValue();
         assertEquals("MangaNetWorking — Código de Segurança", sent.getSubject());
         assertFalse(sent.getSubject().contains("123456"));
-        assertEquals("reader@example.com", sent.getAllRecipients()[0].toString());
+        assertEquals("leitor@manganetworking.com.br", sent.getAllRecipients()[0].toString());
         Object content = sent.getContent();
         assertInstanceOf(Multipart.class, content);
         String body = extractText((Multipart) content);
@@ -49,17 +50,32 @@ class SmtpMfaNotificationSenderTest {
         properties.getMail().setFromName("MangaNetWorking");
         SmtpMfaNotificationSender sender = new SmtpMfaNotificationSender(mailSender, properties);
 
-        sender.sendPasswordResetLink("reader@example.com", "https://app.example.invalid/reset-password#token=opaque-token", 30);
+        sender.sendPasswordResetLink("leitor@manganetworking.com.br", "https://app.example.invalid/reset-password#token=opaque-token", 30);
 
         var captor = org.mockito.ArgumentCaptor.forClass(MimeMessage.class);
         verify(mailSender).send(captor.capture());
         MimeMessage sent = captor.getValue();
         assertEquals("MangaNetWorking — Recuperação de senha", sent.getSubject());
-        assertEquals("reader@example.com", sent.getAllRecipients()[0].toString());
+        assertEquals("leitor@manganetworking.com.br", sent.getAllRecipients()[0].toString());
         String body = extractText((Multipart) sent.getContent());
         assertTrue(body.contains("https://app.example.invalid/reset-password#token=opaque-token"));
         assertTrue(body.contains("30 minutos"));
         assertTrue(body.contains("ignore este e-mail"));
+    }
+
+    @Test
+    @DisplayName("Destinatário em domínio reservado para teste não gera e-mail (evita bounce)")
+    void shouldNotSendToReservedTestDomain() {
+        JavaMailSender mailSender = mock(JavaMailSender.class);
+        PlatformProperties properties = new PlatformProperties();
+        properties.getMail().setFromAddress("nao-responda@manganetworking.com.br");
+        properties.getMail().setFromName("MangaNetWorking");
+        SmtpMfaNotificationSender sender = new SmtpMfaNotificationSender(mailSender, properties);
+
+        sender.sendOtp("smoke_creator_1@test.com", "123456", "AUTENTICACAO_2FA");
+        sender.sendPasswordResetLink("qa.leitor@example.invalid", "https://app.example.invalid/reset#t=1", 30);
+
+        verify(mailSender, never()).send(any(MimeMessage.class));
     }
 
     private static String extractText(Multipart multipart) throws Exception {

@@ -6,9 +6,106 @@ Write-Host "==========================================================" -Foregro
 Write-Host "       SMOKE TEST E2E COMPLETO - MANGANETWORKING          " -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 $timestamp = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
-$testEmail = "smoke_creator_$timestamp@test.com"
+# `example.invalid` e um dominio reservado (RFC 2606): existe para nunca ser usado.
+# Mesmo que um e-mail de teste escape para um SMTP real, ele nao volta como
+# "Address not found" para ninguem.
+$testEmail = "smoke_creator_$timestamp@example.invalid"
 $testPassword = "Smoke safe phrase 2026!"
 $policy = Invoke-RestMethod -Uri "$baseUrl/api/auth/policy" -Method Get
+
+# ---------------------------------------------------------------------------
+# MODO DE E-MAIL: o smoke NUNCA pode disparar mensagem real.
+# O OTP do smoke e lido do Dev Outbox (backend com PLATFORM_MAIL_ENABLED=false)
+# ou do Mailpit local. Se o backend estiver apontando para um SMTP de verdade
+# (ex.: smtp.gmail.com), o proprio script troca o backend para o Dev Outbox e
+# devolve o modo original no fim — sem isso o e-mail de teste volta como
+# "Address not found" na caixa de quem cadastrou.
+# ---------------------------------------------------------------------------
+$script:mailModeSwitched = $false
+$script:originalMailEnabled = $null
+
+function Get-BackendEnv([string]$name) {
+    # Chamadas nativas (docker) escrevem avisos em stderr: com ErrorActionPreference=Stop
+    # isso viraria erro fatal. Aqui o preference e relaxado e restaurado em seguida.
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $container = (docker compose ps -q backend 2>$null | Select-Object -First 1)
+        if (-not $container) { return $null }
+        $value = (docker exec $container printenv $name 2>$null | Select-Object -First 1)
+        if ($null -eq $value) { return $null }
+        return "$value".Trim()
+    } catch {
+        return $null
+    } finally {
+        $ErrorActionPreference = $previous
+    }
+}
+
+function Wait-BackendReady([int]$timeoutSeconds = 180) {
+    $deadline = (Get-Date).AddSeconds($timeoutSeconds)
+    while ((Get-Date) -lt $deadline) {
+        try {
+            Invoke-RestMethod -Uri "$baseUrl/api/auth/policy" -Method Get -ErrorAction Stop | Out-Null
+            return $true
+        } catch {
+            Start-Sleep -Seconds 3
+        }
+    }
+    return $false
+}
+
+function Set-BackendMailEnabled([bool]$enabled) {
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $env:PLATFORM_MAIL_ENABLED = if ($enabled) { 'true' } else { 'false' }
+        docker compose up -d --force-recreate backend 2>&1 | Out-Null
+        Wait-BackendReady | Out-Null
+    } finally {
+        $ErrorActionPreference = $previous
+    }
+}
+
+function Restore-MailMode {
+    if (-not $script:mailModeSwitched) { return }
+    Write-Host "`n[mail] Devolvendo o backend ao modo de e-mail original..." -NoNewline
+    Set-BackendMailEnabled ($script:originalMailEnabled -ne 'false')
+    $script:mailModeSwitched = $false
+    Write-Host " OK" -ForegroundColor Green
+}
+
+# Falha padronizada: devolve o modo de e-mail antes de sair.
+function Fail([string]$message) {
+    Restore-MailMode
+    Write-Host " FALHA ($message)" -ForegroundColor Red
+    exit 1
+}
+
+# Qualquer erro inesperado (inclusive de uma chamada HTTP que estoura o limite)
+# tambem precisa devolver o modo de e-mail original antes de encerrar.
+trap {
+    Restore-MailMode
+    Write-Host " ERRO NAO TRATADO: $($_.Exception.Message)" -ForegroundColor Red
+    exit 1
+}
+
+$mailHost = Get-BackendEnv 'MAIL_HOST'
+$mailEnabled = Get-BackendEnv 'PLATFORM_MAIL_ENABLED'
+$script:originalMailEnabled = $mailEnabled
+$usesRealSmtp = ($mailEnabled -ne 'false') `
+    -and [bool]$mailHost `
+    -and ($mailHost -ne 'mailpit') `
+    -and ($mailHost -notlike '*localhost*') `
+    -and ($mailHost -notlike '127.0.0.1*') `
+    -and ($mailHost -notlike '*.invalid')
+
+if ($usesRealSmtp) {
+    Write-Host "[mail] SMTP real detectado ($mailHost): o smoke roda com o Dev Outbox para nao enviar e-mail de verdade." -ForegroundColor Yellow
+    Set-BackendMailEnabled $false
+    $script:mailModeSwitched = $true
+    Write-Host "[mail] Dev Outbox ativo (PLATFORM_MAIL_ENABLED=false)." -ForegroundColor Green
+}
 
 # OTP local pode estar no Dev Outbox (mail desabilitado) ou no Mailpit (mail habilitado).
 function Get-LatestOtp([string]$Email) {
@@ -25,7 +122,7 @@ function Get-LatestOtp([string]$Email) {
         $_.To | Where-Object { $_.Address -eq $Email }
     } | Select-Object -First 1
     if (-not $target) {
-        throw "OTP não encontrado para $Email no Dev Outbox nem no Mailpit. Se o .env aponta para um SMTP real (MAIL_HOST), o código foi enviado para a caixa de e-mail de verdade: rode o smoke com PLATFORM_MAIL_ENABLED=false (Dev Outbox) ou MAIL_HOST=mailpit."
+        throw "OTP não encontrado para $Email no Dev Outbox nem no Mailpit. O smoke roda com PLATFORM_MAIL_ENABLED=false (Dev Outbox) ou MAIL_HOST=mailpit; com SMTP real o script troca o backend para o Dev Outbox automaticamente."
     }
 
     $message = Invoke-RestMethod -Uri "$mailpitBase/message/$($target.ID)" -Method Get
@@ -42,7 +139,7 @@ $webSession = New-Object Microsoft.PowerShell.Commands.WebRequestSession
 Write-Host "`n[1/12] Validando rejeição de cadastro sem consentimento LGPD..." -NoNewline
 try {
     $bodyNoConsent = @{
-        email = "noconsent_$timestamp@test.com"
+        email = "noconsent_$timestamp@example.invalid"
         password = $testPassword
         name = "No Consent"
     username = "noconsent"
@@ -53,12 +150,10 @@ try {
         birthDate = "2000-01-01"
     } | ConvertTo-Json
     Invoke-RestMethod -Uri "$baseUrl/api/auth/register" -Method Post -Body $bodyNoConsent -ContentType "application/json"
-    Write-Host " FALHA (Deveria rejeitar sem aceite dos termos!)" -ForegroundColor Red
-    exit 1
+    Fail "Deveria rejeitar sem aceite dos termos!"
 } catch {
     if ([int]$_.Exception.Response.StatusCode -ne 400) {
-        Write-Host " FALHA (Esperado HTTP 400; recebido: $([int]$_.Exception.Response.StatusCode))" -ForegroundColor Red
-        exit 1
+    Fail "Esperado HTTP 400; recebido: $([int]$_.Exception.Response.StatusCode)"
     }
     Write-Host " SUCESSO (400 Bad Request recebido corretamente)" -ForegroundColor Green
 }
@@ -80,8 +175,7 @@ $regBody = @{
 
 $regResp = Invoke-RestMethod -Uri "$baseUrl/api/auth/register" -Method Post -Body $regBody -ContentType "application/json"
 if ($regResp.status -ne "2FA_REQUIRED") {
-    Write-Host " FALHA (Esperado status 2FA_REQUIRED, recebido: $($regResp.status))" -ForegroundColor Red
-    exit 1
+    Fail "Esperado status 2FA_REQUIRED, recebido: $($regResp.status)"
 }
 Write-Host " SUCESSO (Status: 2FA_REQUIRED)" -ForegroundColor Green
 
@@ -89,8 +183,7 @@ Write-Host " SUCESSO (Status: 2FA_REQUIRED)" -ForegroundColor Green
 Write-Host "[3/12] Consultando adaptador local seguro para resgate do código OTP..." -NoNewline
 $otpCode = Get-LatestOtp $testEmail
 if (-not $otpCode) {
-    Write-Host " FALHA (Código OTP não encontrado no adaptador local)" -ForegroundColor Red
-    exit 1
+    Fail "Código OTP não encontrado no adaptador local"
 }
 Write-Host " SUCESSO (OTP obtido)" -ForegroundColor Green
 
@@ -103,8 +196,7 @@ $verifyBody = @{
 
 $authResp = Invoke-RestMethod -Uri "$baseUrl/api/auth/2fa/verify" -Method Post -Body $verifyBody -ContentType "application/json" -WebSession $webSession
 if ($authResp.status -ne "AUTHENTICATED") {
-    Write-Host " FALHA (Status esperado AUTHENTICATED, recebido: $($authResp.status))" -ForegroundColor Red
-    exit 1
+    Fail "Status esperado AUTHENTICATED, recebido: $($authResp.status)"
 }
 $creatorId = $authResp.user.creatorId
 Write-Host " SUCESSO (Usuário: $($authResp.user.name), Creator ID: $creatorId)" -ForegroundColor Green
@@ -113,12 +205,10 @@ Write-Host " SUCESSO (Usuário: $($authResp.user.name), Creator ID: $creatorId)"
 Write-Host "[5/12] Verificando sessão autenticada em /api/auth/me..." -NoNewline
 $meResp = Invoke-RestMethod -Uri "$baseUrl/api/auth/me" -Method Get -WebSession $webSession
 if ($meResp.email -ne $testEmail) {
-    Write-Host " FALHA (E-mail não bate com a sessão)" -ForegroundColor Red
-    exit 1
+    Fail "E-mail não bate com a sessão"
 }
 if (-not $meResp.isCreator) {
-    Write-Host " FALHA (Esperado isCreator: true)" -ForegroundColor Red
-    exit 1
+    Fail "Esperado isCreator: true"
 }
 Write-Host " SUCESSO (isCreator: $($meResp.isCreator), Handle: $($meResp.creatorHandle))" -ForegroundColor Green
 
@@ -213,12 +303,10 @@ Write-Host "[10/12] Confirmando que o endpoint legado não credita doação fict
 $donateBody = @{ creatorId = $creatorId; amountBrl = 100.00; paymentExternalId = "PAY-SMOKE-$timestamp" } | ConvertTo-Json
 try {
     Invoke-RestMethod -Uri "$baseUrl/api/monetization/donate" -Method Post -Body $donateBody -ContentType "application/json" -WebSession $webSession
-    Write-Host " FALHA (Endpoint legado não deveria processar pagamento!)" -ForegroundColor Red
-    exit 1
+    Fail "Endpoint legado não deveria processar pagamento!"
 } catch {
     if ($_.Exception.Response.StatusCode.value__ -ne 410) {
-        Write-Host " FALHA (Esperado HTTP 410, recebido: $($_.Exception.Response.StatusCode.value__))" -ForegroundColor Red
-        exit 1
+    Fail "Esperado HTTP 410, recebido: $($_.Exception.Response.StatusCode.value__)"
     }
 }
 Write-Host " SUCESSO (HTTP 410, nenhum crédito fictício processado)" -ForegroundColor Green
@@ -227,12 +315,10 @@ Write-Host " SUCESSO (HTTP 410, nenhum crédito fictício processado)" -Foregrou
 Write-Host "[11/12] Testando portabilidade de dados do titular (LGPD)..." -NoNewline
 $exportResp = Invoke-RestMethod -Uri "$baseUrl/api/users/me/export" -Method Get -WebSession $webSession
 if (-not $exportResp.email -or $exportResp.email -ne $testEmail) {
-    Write-Host " FALHA (Dados exportados incompletos)" -ForegroundColor Red
-    exit 1
+    Fail "Dados exportados incompletos"
 }
 if (-not ($exportResp.PSObject.Properties.Name -contains "financialHistory") -or -not ($exportResp.PSObject.Properties.Name -contains "privacyConsentHistory")) {
-    Write-Host " FALHA (Históricos financeiros/consentimento ausentes na exportação)" -ForegroundColor Red
-    exit 1
+    Fail "Históricos financeiros/consentimento ausentes na exportação"
 }
 Write-Host " SUCESSO (JSON estruturado exportado: $($exportResp.email))" -ForegroundColor Green
 
@@ -243,15 +329,15 @@ Invoke-RestMethod -Uri "$baseUrl/api/users/me" -Method Delete -WebSession $webSe
 # Verificar se a sessão foi revogada imediatamente
 try {
     Invoke-RestMethod -Uri "$baseUrl/api/auth/me" -Method Get -WebSession $webSession
-    Write-Host " FALHA (Cookie ainda autentica após delete!)" -ForegroundColor Red
-    exit 1
+    Fail "Cookie ainda autentica após delete!"
 } catch {
     if ([int]$_.Exception.Response.StatusCode -ne 401) {
-        Write-Host " FALHA (Esperado HTTP 401 após exclusão; recebido: $([int]$_.Exception.Response.StatusCode))" -ForegroundColor Red
-        exit 1
+    Fail "Esperado HTTP 401 após exclusão; recebido: $([int]$_.Exception.Response.StatusCode)"
     }
     Write-Host " SUCESSO (Sessão revogada imediatamente, HTTP 401 retornado)" -ForegroundColor Green
 }
+
+Restore-MailMode
 
 Write-Host "`n==========================================================" -ForegroundColor Green
 Write-Host " SMOKE TEST E2E: 12/12 ETAPAS APROVADAS COM SUCESSO TOTAL! " -ForegroundColor Green

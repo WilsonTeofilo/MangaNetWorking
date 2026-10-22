@@ -838,6 +838,34 @@ O detalhe público da obra agora omite capítulos com `publicReleaseAt` futuro; 
 - [x] **Suite:** **371 testes**, 0 falhas, 0 erros (3 novos: autor le o proprio capitulo programado,
   exclusao ajusta o contador, exclusao por terceiro e negada); build do frontend verde.
 
+## 7.34 E-mail de teste voltando como "Address not found" (2026-10-22)
+
+- [x] **Sintoma:** o usuario recebia no e-mail real a mensagem de erro do servidor de e-mail
+  ("Address not found ... o dominio test.com nao existe") para as contas de smoke/QA
+  (`smoke_creator_*@test.com`, `qa.leitor.*@test.com`).
+- [x] **Causa raiz 1 - o smoke usava o SMTP de verdade:** `smoke_test_e2e.ps1` lia o OTP do Dev Outbox
+  ou do Mailpit, mas **nao mudava o modo de e-mail do backend**: com `PLATFORM_MAIL_ENABLED=true` e
+  `MAIL_HOST=smtp.gmail.com` (configuracao real do `.env`), o OTP saia para o SMTP de verdade e o
+  servidor de e-mail devolvia bounce. Agora o proprio script detecta o SMTP real, **troca o backend para
+  o Dev Outbox** (`PLATFORM_MAIL_ENABLED=false`), roda o smoke e **devolve o modo original no fim**
+  (inclusive em caso de erro inesperado, via `trap`).
+- [x] **Causa raiz 2 - o backend aceitava qualquer dominio:** nao havia trava para dominio reservado
+  para teste, entao qualquer cadastro de QA com `@test.com` gerava e-mail real e bounce. Nova politica
+  pura `util.ReservedTestDomainPolicy` (RFC 2606/6761 + `test.com` reservado pelo IANA) e o
+  `SmtpMfaNotificationSender` **nao despacha** para esses dominios (`outcome=suppressed_reserved_domain`).
+  Isso protege a reputacao do dominio de envio e encerra a origem dos bounces.
+- [x] **Higiene:** o smoke passou a usar `@example.invalid` (dominio reservado que nunca vira caixa
+  postal) e as chamadas nativas (docker) foram blindadas contra `ErrorActionPreference=Stop`.
+- [x] **Limpeza dos dados de teste que sobraram no banco:** 13 contas de smoke/QA anonimizadas
+  (mesmo padrao do fluxo LGPD do produto: `anon-<uuid>@deleted.manganetworking`, sem nome, sem hash,
+  sem segredo 2FA), 22 obras de teste removidas (com capitulos e paginas em cascata) e o feed do
+  MongoDB limpo (so a obra real do autor permanece).
+- [x] **Prova ao vivo:** cadastro com `qa.leitor.<ts>@test.com` com o SMTP real ligado ->
+  `200 2FA_REQUIRED` e no log `Envio suprimido: destinatario em dominio reservado para teste`
+  (`outcome=suppressed_reserved_domain`) — **nenhum e-mail saiu**. Smoke E2E 12/12 com o ciclo completo
+  (detecta SMTP real -> Dev Outbox -> 12/12 -> devolve `PLATFORM_MAIL_ENABLED=true`).
+- [x] **Suite:** **376 testes**, 0 falhas, 0 erros (5 novos da politica de dominio reservado).
+
 ## 8. Ordem de correção
 
 A fila está em `docs/orquestracao/ROADMAP-FASES.md`. Resumo:
