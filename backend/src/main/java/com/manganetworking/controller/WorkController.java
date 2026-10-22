@@ -125,7 +125,9 @@ public class WorkController {
 
     @GetMapping("/{slug}")
     public ResponseEntity<WorkDetailsResponseDto> getWorkBySlug(@PathVariable String slug) {
-        return ResponseEntity.ok(workService.getWorkBySlug(slug));
+        // O autor (e a moderacao) ve os capitulos ainda nao liberados; o leitor, so os publicados.
+        UUID currentUserId = SecurityContextUtils.resolveCurrentUserId(null);
+        return ResponseEntity.ok(workService.getWorkBySlug(slug, currentUserId));
     }
 
     /** Comentários da obra: leitura pública, escrita por qualquer conta autenticada. */

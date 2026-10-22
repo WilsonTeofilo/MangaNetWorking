@@ -786,6 +786,24 @@ O detalhe público da obra agora omite capítulos com `publicReleaseAt` futuro; 
   "Revisar".
 - [x] **Suite:** **368 testes**, 0 falhas, 0 erros; build do frontend verde.
 
+## 7.32 Capitulo agendado que sumia e edicao que nao reaparecia (2026-10-21)
+
+- [x] **Causa raiz 1 - a data de lancamento viajava em UTC:** o front enviava `new Date(...).toISOString()`
+  (com "Z") para um campo `LocalDateTime` do servidor. O valor gravado saia deslocado e o capitulo
+  acabava agendado para **um mes a frente**: o leitor nao o via, a ficha da obra nao o listava e a lista de
+  edicao do autor (que le os capitulos pela ficha) ficava vazia â€” parecia que a edicao havia apagado o
+  capitulo. Agora o front envia no formato local (`toBackendLocalDateTime`), que e o que o backend le.
+- [x] **Causa raiz 2 - o autor nao via o proprio capitulo ainda nao liberado:** a ficha da obra e a leitura do
+  capitulo filtravam por data de liberacao para todo mundo. Agora o **autor (e a moderacao) ve o conteudo
+  ainda nao liberado** â€” como no MangaTeofilo. O leitor comum continua vendo so o que foi publicado.
+- [x] **Padrao de lancamento:** o campo de data ja vem preenchido com **a data e a hora atuais** (o autor pode
+  mudar para agendar) e o texto deixa claro: sem data = publica agora.
+- [x] **Prova ao vivo:** edicao do capitulo 1 da obra "teste miomya" (5 paginas reordenadas, titulo novo) ->
+  `200 "CapÃ­tulo atualizado com sucesso."`, com a data gravada exatamente como enviada (2026-10-21 12:00:00) e
+  as 5 paginas intactas em `chapter_files`.
+- [x] **Suite:** **368 testes**, 0 falhas, 0 erros; build do frontend verde.
+
+## 8. Ordem de corre
 ## 8. Ordem de corre
 ## 8. Ordem de corre
 ## 8. Ordem de corre

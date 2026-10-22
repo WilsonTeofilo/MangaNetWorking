@@ -68,8 +68,21 @@ public class WorkApplicationService {
         this.eventPublisher = eventPublisher;
     }
 
+    /** O usuario atual e o autor da obra ou um moderador: ve o conteudo ainda nao liberado. */
+    private boolean isAuthorOrModerator(WorkEntity work, UUID currentUserId) {
+        if (currentUserId == null || work == null) {
+            return false;
+        }
+        if (work.getAuthor() != null && currentUserId.equals(work.getAuthor().getId())) {
+            return true;
+        }
+        return SecurityContextUtils.getCurrentSession()
+                .map(session -> session.isModerator())
+                .orElse(false);
+    }
+
     @Transactional(readOnly = true)
-    public WorkDetailsResponseDto getWorkBySlug(String slug) {
+    public WorkDetailsResponseDto getWorkBySlug(String slug, UUID currentUserId) {
         WorkEntity work = workRepository.findBySlug(slug)
                 .orElseThrow(() -> new ResourceNotFoundException("Obra não encontrada: " + slug));
 
@@ -77,11 +90,15 @@ public class WorkApplicationService {
 
         List<ChapterEntity> chapters = chapterRepository.findAllByWorkIdOrderByChapterNumberDesc(work.getId());
         CreatorEntity author = work.getAuthor();
-
         LocalDateTime now = LocalDateTime.now();
+
+        // O AUTOR (e a moderacao) ve os capitulos que ainda nao foram liberados: sem isso,
+        // um capitulo agendado sumia da ficha da obra e o autor nao conseguia edita-lo.
+        boolean privilegedViewer = isAuthorOrModerator(work, currentUserId);
         List<ChapterSummaryDto> chaptersDto = chapters.stream()
-                .filter(chapter -> chapter.getPublicReleaseAt() != null
-                        && !chapter.getPublicReleaseAt().isAfter(now))
+                .filter(chapter -> privilegedViewer
+                        || (chapter.getPublicReleaseAt() != null
+                        && !chapter.getPublicReleaseAt().isAfter(now)))
                 .map(cap -> new ChapterSummaryDto(
                         cap.getId(),
                         cap.getChapterNumber(),
@@ -134,7 +151,6 @@ public class WorkApplicationService {
         ChapterEntity chapter = chapterRepository.findByWorkIdAndChapterNumber(work.getId(), chapterNumber)
                 .orElseThrow(() -> new ResourceNotFoundException("Capítulo #" + chapterNumber + " não encontrado na obra " + slug));
 
-        assertWorkVisible(work);
 
         CreatorEntity author = work.getAuthor();
         boolean isEarlyAccess = chapter.isEarlyAccessForMembers();
@@ -153,6 +169,14 @@ public class WorkApplicationService {
                                 (author != null ? author.getHandle() : "")
                 );
             }
+        }
+
+        // O autor (e a moderacao) le o capitulo mesmo antes da liberacao programada:
+        // sem isso, um capitulo agendado some da tela do autor e parece apagado.
+        boolean privilegedViewer = isAuthorOrModerator(work, currentUserId);
+        if (!privilegedViewer && chapter.getPublicReleaseAt() != null
+                && chapter.getPublicReleaseAt().isAfter(LocalDateTime.now())) {
+            throw new ResourceNotFoundException("Capitulo #" + chapterNumber + " ainda nao foi liberado.");
         }
 
         // Capítulo Liberado: Incrementa métricas de visualização

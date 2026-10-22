@@ -4,6 +4,7 @@ import { workApi } from '../../api/workApi';
 import { storageApi } from '../../api/storageApi';
 import { Button } from '../ui/Button';
 import { Field } from '../ui/Field';
+import { toBackendLocalDateTime } from '../../utils/datetime';
 import { ImageCropper } from '../common/ImageCropper';
 
 /**
@@ -83,7 +84,8 @@ export function ChapterPublishWizard({
   // a URL definitiva da capa (o arquivo local so vale enquanto a tela estiver aberta)
   const [coverPreview, setCoverPreview] = useState<string | null>(draft?.coverUrl ?? null);
   const [chapterTitle, setChapterTitle] = useState(`Capítulo ${nextChapterNumber}`);
-  const [releaseDate, setReleaseDate] = useState('');
+  // Padrao: agora. O campo ja vem preenchido com a data/hora atual (o autor pode mudar).
+  const [releaseDate, setReleaseDate] = useState(() => toBackendLocalDateTime(new Date()));
   const [chapterCoverCropOpen, setChapterCoverCropOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -208,7 +210,7 @@ export function ChapterPublishWizard({
     setCoverFile(null);
     setCoverUrl(draft?.coverUrl ?? null);
     setCoverPreview(draft?.coverUrl ?? null);
-    setReleaseDate(draft?.releaseDate ?? '');
+    setReleaseDate(draft?.releaseDate || toBackendLocalDateTime(new Date()));
     setProse('');
     setError(null);
   }, [draft, nextChapterNumber]);
@@ -262,7 +264,7 @@ export function ChapterPublishWizard({
           pages: isProse ? undefined : uploaded,
           content: isProse ? prose.trim() : undefined,
           format: isProse ? 'PROSE' : 'IMAGE_PAGES',
-          publicReleaseAt: releaseDate ? new Date(releaseDate).toISOString() : new Date().toISOString(),
+          publicReleaseAt: releaseDate ? toBackendLocalDateTime(new Date(releaseDate)) : toBackendLocalDateTime(new Date()),
         });
       } else {
         await workApi.createChapter(workId, {
@@ -272,7 +274,7 @@ export function ChapterPublishWizard({
           pages: isProse ? undefined : uploaded,
           content: isProse ? prose.trim() : undefined,
           format: isProse ? 'PROSE' : 'IMAGE_PAGES',
-          publicReleaseAt: releaseDate ? new Date(releaseDate).toISOString() : new Date().toISOString(),
+          publicReleaseAt: releaseDate ? toBackendLocalDateTime(new Date(releaseDate)) : toBackendLocalDateTime(new Date()),
         });
       }
 

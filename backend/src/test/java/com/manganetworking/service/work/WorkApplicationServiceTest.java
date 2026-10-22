@@ -264,7 +264,7 @@ class WorkApplicationServiceTest {
         when(workRepository.findBySlug("cronicas-de-cyberpunk")).thenReturn(Optional.of(work));
 
         assertThrows(AccessDeniedException.class, () ->
-                workService.getWorkBySlug("cronicas-de-cyberpunk"));
+                workService.getWorkBySlug("cronicas-de-cyberpunk", null));
     }
 
     @Test
@@ -276,7 +276,7 @@ class WorkApplicationServiceTest {
         when(chapterRepository.findAllByWorkIdOrderByChapterNumberDesc(workId))
                 .thenReturn(List.of(scheduled, released));
 
-        WorkDetailsResponseDto response = workService.getWorkBySlug("cronicas-de-cyberpunk");
+        WorkDetailsResponseDto response = workService.getWorkBySlug("cronicas-de-cyberpunk", null);
 
         assertEquals(List.of(1), response.chapters().stream().map(chapter -> chapter.chapterNumber()).toList());
     }
@@ -288,7 +288,7 @@ class WorkApplicationServiceTest {
         when(workRepository.findBySlug("cronicas-de-cyberpunk")).thenReturn(Optional.of(work));
 
         assertThrows(ResourceNotFoundException.class, () ->
-                workService.getWorkBySlug("cronicas-de-cyberpunk"));
+                workService.getWorkBySlug("cronicas-de-cyberpunk", null));
         verifyNoInteractions(chapterRepository);
     }
 
