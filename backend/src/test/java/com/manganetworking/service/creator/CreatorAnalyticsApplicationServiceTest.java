@@ -6,6 +6,7 @@ import com.manganetworking.domain.relational.CreatorEntity;
 import com.manganetworking.domain.relational.FinancialLedgerEntity;
 import com.manganetworking.domain.relational.WorkEntity;
 import com.manganetworking.repository.jpa.CreatorRepository;
+import com.manganetworking.repository.jpa.ChapterRepository;
 import com.manganetworking.repository.jpa.FinancialLedgerRepository;
 import com.manganetworking.repository.jpa.WorkRepository;
 import com.manganetworking.repository.mongo.EngagementEventMongoRepository;
@@ -41,6 +42,9 @@ class CreatorAnalyticsApplicationServiceTest {
 
     @Mock
     private WorkRepository workRepository;
+
+    @Mock
+    private ChapterRepository chapterRepository;
 
     @Mock
     private EngagementEventMongoRepository engagementEventRepository;
@@ -128,6 +132,16 @@ class CreatorAnalyticsApplicationServiceTest {
         assertThat(response.netEarningsBrl()).isEqualByComparingTo("30.00");
         assertThat(response.walletBalanceBrl()).isEqualByComparingTo("100.00");
         assertThat(response.monthlyMembersCount()).isEqualTo(3);
+
+        // Visão geral: 4 page reads e 2 leitores únicos distintos na janela (não a soma dos dias).
+        assertThat(response.totals().reads()).isEqualTo(4);
+        assertThat(response.totals().uniqueReaders()).isEqualTo(2);
+
+        // Subdivisão por obra: o conteúdo principal aparece com o total da janela.
+        assertThat(response.works()).hasSize(1);
+        assertThat(response.works().get(0).reads()).isEqualTo(4);
+        assertThat(response.works().get(0).uniqueReaders()).isEqualTo(2);
+        assertThat(response.works().get(0).workId()).isEqualTo(work.getId().toString());
     }
 
     @Test
@@ -153,7 +167,7 @@ class CreatorAnalyticsApplicationServiceTest {
     }
 
     @Test
-    @DisplayName("windowDays fora da faixa é fixado entre 1 e 90")
+    @DisplayName("windowDays fora da faixa é fixado entre 1 e 180")
     void shouldClampWindowDays() {
         when(creatorRepository.findById(creatorId)).thenReturn(Optional.of(creator));
         when(workRepository.findAllByAuthorId(creatorId)).thenReturn(List.of());
@@ -162,7 +176,7 @@ class CreatorAnalyticsApplicationServiceTest {
                 .thenReturn(List.of());
 
         assertThat(analyticsService.getAnalytics(creatorId, 0).windowDays()).isEqualTo(1);
-        assertThat(analyticsService.getAnalytics(creatorId, 5_000).windowDays()).isEqualTo(90);
+        assertThat(analyticsService.getAnalytics(creatorId, 5_000).windowDays()).isEqualTo(180);
         assertThat(analyticsService.getAnalytics(creatorId, 90).to()).isEqualTo(LocalDate.now(ZoneOffset.UTC));
     }
 }

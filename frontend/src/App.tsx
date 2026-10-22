@@ -36,7 +36,7 @@ import { mapChapterSummary } from './utils/apiMappers';
 import { useAuth } from './context/AuthContext';
 
 function AppContent() {
-  const { refreshSession, user, isAuthenticated, acceptCurrentPrivacyPolicy, logout } = useAuth();
+  const { refreshSession, user, isAuthenticated, acceptCurrentPrivacyPolicy, logout, favoriteNotice, dismissFavoriteNotice } = useAuth();
   const [paymentReturnStatus, setPaymentReturnStatus] = useState<string | null>(null);
   const [passwordResetRoute, setPasswordResetRoute] = useState(() => window.location.pathname === '/reset-password');
   const [passwordResetToken, setPasswordResetToken] = useState('');
@@ -62,6 +62,8 @@ function AppContent() {
   const [publicProfileUsername, setPublicProfileUsername] = useState('');
   const [selectedWork, setSelectedWork] = useState<Work | null>(null);
   const [readingChapter, setReadingChapter] = useState<Chapter | null>(null);
+  /** Página em que o leitor deve abrir o capítulo (continuar de onde parou). */
+  const [readingStartPage, setReadingStartPage] = useState<number | undefined>(undefined);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [privacyError, setPrivacyError] = useState('');
 
@@ -69,16 +71,20 @@ function AppContent() {
   const handleSelectWork = (work: Work) => {
     setSelectedWork(work);
     setReadingChapter(null);
+    setReadingStartPage(undefined);
   };
 
-  // Ao selecionar um capítulo específico, abre o leitor (ReaderPage)
-  const handleOpenChapter = (work: Work, chapter: Chapter) => {
+  // Ao selecionar um capítulo específico, abre o leitor (ReaderPage).
+  // `page` opcional retoma a leitura exatamente onde o leitor parou.
+  const handleOpenChapter = (work: Work, chapter: Chapter, page?: number) => {
     setSelectedWork(work);
     setReadingChapter(chapter);
+    setReadingStartPage(page);
   };
 
   const handleNavigateChapter = (nextNumber: number) => {
     if (!selectedWork) return;
+    setReadingStartPage(undefined);
 
     const fallbackToMock = () => {
       if (!import.meta.env.DEV) return;
@@ -166,7 +172,11 @@ function AppContent() {
           <ReaderPage
             work={selectedWork}
             chapter={readingChapter}
-            onBack={() => setReadingChapter(null)}
+            initialPage={readingStartPage}
+            onBack={() => {
+              setReadingChapter(null);
+              setReadingStartPage(undefined);
+            }}
             onNavigateChapter={handleNavigateChapter}
           />
         ) : selectedWork ? (
@@ -287,6 +297,14 @@ function AppContent() {
             </main>
 
             <Footer />
+          </div>
+        )}
+
+        {favoriteNotice && (
+          <div role="status" className="fixed inset-x-4 top-20 z-[100] mx-auto max-w-lg border-2 border-[var(--mn-yellow)] bg-[var(--mn-ink)] p-4 text-[var(--mn-paper)] shadow-[4px_4px_0_var(--mn-yellow)]">
+            <p className="font-display text-lg uppercase">Biblioteca</p>
+            <p className="mt-1 text-sm">{favoriteNotice}</p>
+            <button className="mt-3 underline focus-visible:outline" onClick={dismissFavoriteNotice}>Fechar aviso</button>
           </div>
         )}
 

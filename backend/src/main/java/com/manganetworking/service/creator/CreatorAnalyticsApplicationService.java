@@ -2,9 +2,11 @@ package com.manganetworking.service.creator;
 
 import com.manganetworking.config.exception.ResourceNotFoundException;
 import com.manganetworking.domain.nosql.EngagementEventDocument;
+import com.manganetworking.domain.relational.ChapterEntity;
 import com.manganetworking.domain.relational.CreatorEntity;
 import com.manganetworking.domain.relational.FinancialLedgerEntity;
 import com.manganetworking.domain.relational.WorkEntity;
+import com.manganetworking.repository.jpa.ChapterRepository;
 import com.manganetworking.repository.jpa.CreatorRepository;
 import com.manganetworking.repository.jpa.FinancialLedgerRepository;
 import com.manganetworking.repository.jpa.WorkRepository;
@@ -20,7 +22,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,28 +40,35 @@ import java.util.stream.Collectors;
  *
  * <p><b>Limite conhecido:</b> o evento é gravado por página lida ({@code trackPageRead});
  * a série diária conta page reads, não sessões — o campo {@code uniqueReaders} diferencia.</p>
+ *
+ * <p><b>Janela:</b> limitada a 180 dias porque a coleção tem TTL de 180 dias; pedir mais
+ * devolveria dias vazios e daria a impressão de queda de audiência.</p>
  */
 @Service
 public class CreatorAnalyticsApplicationService {
 
     private static final int MIN_WINDOW_DAYS = 1;
-    private static final int MAX_WINDOW_DAYS = 90;
+    private static final int MAX_WINDOW_DAYS = 180;
     private static final int MAX_RETENTION_PAGES = 200;
+    private static final int REALTIME_HOURS = 48;
     private static final String READ_EVENT = "READ";
 
     private final CreatorRepository creatorRepository;
     private final WorkRepository workRepository;
+    private final ChapterRepository chapterRepository;
     private final EngagementEventMongoRepository engagementEventRepository;
     private final FinancialLedgerRepository financialLedgerRepository;
 
     public CreatorAnalyticsApplicationService(
             CreatorRepository creatorRepository,
             WorkRepository workRepository,
+            ChapterRepository chapterRepository,
             EngagementEventMongoRepository engagementEventRepository,
             FinancialLedgerRepository financialLedgerRepository
     ) {
         this.creatorRepository = creatorRepository;
         this.workRepository = workRepository;
+        this.chapterRepository = chapterRepository;
         this.engagementEventRepository = engagementEventRepository;
         this.financialLedgerRepository = financialLedgerRepository;
     }
@@ -72,8 +83,10 @@ public class CreatorAnalyticsApplicationService {
         LocalDate today = LocalDate.now(ZoneOffset.UTC);
         LocalDate from = today.minusDays(windowDays - 1L);
         Instant windowStart = from.atStartOfDay(ZoneOffset.UTC).toInstant();
+        Instant windowEnd = today.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
 
-        List<String> workIds = workRepository.findAllByAuthorId(creatorId).stream()
+        List<WorkEntity> creatorWorks = workRepository.findAllByAuthorId(creatorId);
+        List<String> workIds = creatorWorks.stream()
                 .map(WorkEntity::getId)
                 .filter(Objects::nonNull)
                 .map(UUID::toString)
@@ -82,12 +95,25 @@ public class CreatorAnalyticsApplicationService {
         List<EngagementEventDocument> events = workIds.isEmpty()
                 ? List.of()
                 : engagementEventRepository.findByWorkIdInAndEventTypeAndTimestampBetween(
-                        workIds, READ_EVENT, windowStart, today.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant());
+                        workIds, READ_EVENT, windowStart, windowEnd);
 
         List<CreatorAnalyticsResponseDto.DailyReadsDto> readsPerDay = buildDailySeries(events, from, today);
         List<CreatorAnalyticsResponseDto.PageRetentionDto> retention = buildPageRetention(events);
+        CreatorAnalyticsResponseDto.TotalsDto totals = buildTotals(events);
 
-        FinancialTotals totals = sumLedger(creatorId, windowStart);
+        Instant now = Instant.now();
+        List<CreatorAnalyticsResponseDto.HourlyReadsDto> realtime = workIds.isEmpty()
+                ? List.of()
+                : buildHourlySeries(
+                        engagementEventRepository.findByWorkIdInAndEventTypeAndTimestampBetween(
+                                workIds, READ_EVENT,
+                                now.minus(REALTIME_HOURS, ChronoUnit.HOURS),
+                                now.plusSeconds(1)),
+                        now);
+
+        List<CreatorAnalyticsResponseDto.WorkAnalyticsDto> works = buildWorkBreakdown(creatorWorks, events);
+
+        FinancialTotals financial = sumLedger(creatorId, windowStart);
 
         return new CreatorAnalyticsResponseDto(
                 windowDays,
@@ -95,13 +121,25 @@ public class CreatorAnalyticsApplicationService {
                 today,
                 readsPerDay,
                 retention,
-                totals.donations(),
-                totals.memberships(),
-                totals.withdrawals(),
-                totals.donations().add(totals.memberships()),
+                financial.donations(),
+                financial.memberships(),
+                financial.withdrawals(),
+                financial.donations().add(financial.memberships()),
                 creator.getWalletBalanceBrl() == null ? BigDecimal.ZERO : creator.getWalletBalanceBrl(),
-                creator.getMonthlyMembersCount() == null ? 0 : creator.getMonthlyMembersCount()
+                creator.getMonthlyMembersCount() == null ? 0 : creator.getMonthlyMembersCount(),
+                totals,
+                realtime,
+                works
         );
+    }
+
+    private CreatorAnalyticsResponseDto.TotalsDto buildTotals(List<EngagementEventDocument> events) {
+        long uniqueReaders = events.stream()
+                .map(EngagementEventDocument::getUserId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .count();
+        return new CreatorAnalyticsResponseDto.TotalsDto(events.size(), uniqueReaders);
     }
 
     private List<CreatorAnalyticsResponseDto.DailyReadsDto> buildDailySeries(
@@ -123,6 +161,29 @@ public class CreatorAnalyticsApplicationService {
                     .distinct()
                     .count();
             series.add(new CreatorAnalyticsResponseDto.DailyReadsDto(day, dayEvents.size(), uniqueReaders));
+        }
+        return series;
+    }
+
+    /**
+     * Série horária das últimas 48h. Horas sem leitura entram com zero para o gráfico
+     * em tempo real não "pular" buracos.
+     */
+    private List<CreatorAnalyticsResponseDto.HourlyReadsDto> buildHourlySeries(
+            List<EngagementEventDocument> events,
+            Instant now
+    ) {
+        Instant firstHour = now.minus(REALTIME_HOURS, ChronoUnit.HOURS).truncatedTo(ChronoUnit.HOURS);
+        Map<Instant, Long> byHour = events.stream()
+                .filter(e -> e.getTimestamp() != null)
+                .collect(Collectors.groupingBy(
+                        e -> e.getTimestamp().truncatedTo(ChronoUnit.HOURS),
+                        Collectors.counting()));
+
+        List<CreatorAnalyticsResponseDto.HourlyReadsDto> series = new ArrayList<>(REALTIME_HOURS);
+        for (int i = 0; i < REALTIME_HOURS; i++) {
+            Instant hour = firstHour.plus(i, ChronoUnit.HOURS);
+            series.add(new CreatorAnalyticsResponseDto.HourlyReadsDto(hour, byHour.getOrDefault(hour, 0L)));
         }
         return series;
     }
@@ -171,6 +232,85 @@ public class CreatorAnalyticsApplicationService {
             ));
         }
         return retention;
+    }
+
+    /**
+     * Recorte por obra e capítulo. Obras sem leitura aparecem com zero (o criador vê o
+     * catálogo inteiro), e o capítulo mantém o número/título reais do PostgreSQL.
+     */
+    private List<CreatorAnalyticsResponseDto.WorkAnalyticsDto> buildWorkBreakdown(
+            List<WorkEntity> creatorWorks,
+            List<EngagementEventDocument> events
+    ) {
+        Map<String, List<EngagementEventDocument>> byWork = events.stream()
+                .filter(e -> e.getWorkId() != null)
+                .collect(Collectors.groupingBy(EngagementEventDocument::getWorkId));
+
+        List<CreatorAnalyticsResponseDto.WorkAnalyticsDto> works = new ArrayList<>();
+        for (WorkEntity work : creatorWorks) {
+            if (work.getId() == null) {
+                continue;
+            }
+            String workId = work.getId().toString();
+            List<EngagementEventDocument> workEvents = byWork.getOrDefault(workId, List.of());
+            long uniqueReaders = workEvents.stream()
+                    .map(EngagementEventDocument::getUserId)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .count();
+
+            works.add(new CreatorAnalyticsResponseDto.WorkAnalyticsDto(
+                    workId,
+                    work.getTitle(),
+                    work.getSlug(),
+                    work.getCoverUrl(),
+                    work.getStatus(),
+                    workEvents.size(),
+                    uniqueReaders,
+                    buildChapterBreakdown(work.getId(), workEvents)
+            ));
+        }
+
+        works.sort(Comparator
+                .comparingLong(CreatorAnalyticsResponseDto.WorkAnalyticsDto::reads).reversed()
+                .thenComparing(CreatorAnalyticsResponseDto.WorkAnalyticsDto::title,
+                        Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)));
+        return works;
+    }
+
+    private List<CreatorAnalyticsResponseDto.ChapterAnalyticsDto> buildChapterBreakdown(
+            UUID workId,
+            List<EngagementEventDocument> workEvents
+    ) {
+        Map<String, List<EngagementEventDocument>> byChapter = workEvents.stream()
+                .filter(e -> e.getChapterId() != null)
+                .collect(Collectors.groupingBy(EngagementEventDocument::getChapterId));
+
+        List<ChapterEntity> chapters = chapterRepository.findAllByWorkIdOrderByChapterNumberDesc(workId);
+
+        // Ordem de leitura (capítulo 1 primeiro) para a tabela ficar previsível no painel.
+        List<ChapterEntity> ascending = new ArrayList<>(chapters);
+        ascending.sort(Comparator.comparing(ChapterEntity::getChapterNumber,
+                Comparator.nullsLast(Comparator.naturalOrder())));
+
+        List<CreatorAnalyticsResponseDto.ChapterAnalyticsDto> breakdown = new ArrayList<>(ascending.size());
+        for (ChapterEntity chapter : ascending) {
+            List<EngagementEventDocument> chapterEvents =
+                    byChapter.getOrDefault(chapter.getId().toString(), List.of());
+            long uniqueReaders = chapterEvents.stream()
+                    .map(EngagementEventDocument::getUserId)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .count();
+            breakdown.add(new CreatorAnalyticsResponseDto.ChapterAnalyticsDto(
+                    chapter.getId().toString(),
+                    chapter.getChapterNumber() == null ? 0 : chapter.getChapterNumber(),
+                    chapter.getTitle(),
+                    chapterEvents.size(),
+                    uniqueReaders
+            ));
+        }
+        return breakdown;
     }
 
     private FinancialTotals sumLedger(UUID creatorId, Instant windowStart) {

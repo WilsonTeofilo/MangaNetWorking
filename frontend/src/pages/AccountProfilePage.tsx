@@ -7,6 +7,7 @@ import { Button } from '../components/ui/Button';
 import { Field } from '../components/ui/Field';
 import { ImageCropper } from '../components/common/ImageCropper';
 import { Modal } from '../components/common/Modal';
+import { sanitizeUsernameInput, validateUsername } from '../utils/usernameRules';
 
 /**
  * "Minha conta" — o perfil do LEITOR.
@@ -46,6 +47,7 @@ export function AccountProfilePage({
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'free' | 'taken'>('idle');
   const [usernameSuggestion, setUsernameSuggestion] = useState<string | null>(null);
   const [usernameQuery, setUsernameQuery] = useState('');
+  const usernameValidation = validateUsername(usernameDraft);
 
 
   // Verificacao de disponibilidade com debounce: uma request por tecla inundaria a API
@@ -78,8 +80,14 @@ export function AccountProfilePage({
   const claimUsername = async () => {
     setSaving(true);
     setError(null);
+    const check = validateUsername(usernameDraft);
+    if (!check.valid) {
+      setError(check.message);
+      setSaving(false);
+      return;
+    }
     try {
-      await userApi.updateProfile({ username: usernameDraft });
+      await userApi.updateProfile({ username: check.value });
       await refreshSession();
       setMessage('Username definido. Ele não muda mais.');
     } catch (err: any) {
@@ -209,11 +217,17 @@ export function AccountProfilePage({
                 label="USERNAME"
                 value={usernameDraft}
                 onChange={(e) => {
-                  setUsernameDraft(e.target.value.toLowerCase());
-                  setUsernameQuery(e.target.value.trim().toLowerCase());
+                  const value = sanitizeUsernameInput(e.target.value);
+                  setUsernameDraft(value);
+                  setUsernameQuery(value);
                 }}
                 placeholder="ex.: teofilo"
               />
+              {usernameDraft.length > 0 && !usernameValidation.valid && (
+                <p className="text-xs text-[var(--mn-red)]" role="alert">
+                  {usernameValidation.message}
+                </p>
+              )}
               {usernameStatus === 'taken' && usernameSuggestion && (
                 <button
                   type="button"
@@ -223,7 +237,12 @@ export function AccountProfilePage({
                   usar @{usernameSuggestion}
                 </button>
               )}
-              <Button onClick={claimUsername} disabled={saving || usernameStatus === 'taken'}>DEFINIR USERNAME</Button>
+              <Button
+                onClick={claimUsername}
+                disabled={saving || usernameStatus === 'taken' || !usernameValidation.valid}
+              >
+                DEFINIR USERNAME
+              </Button>
             </div>
           )}
 

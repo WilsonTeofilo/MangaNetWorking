@@ -49,6 +49,32 @@ export interface LoginRequest {
   password: string;
 }
 
+/** Item da biblioteca (`GET /api/users/me/library`). */
+export interface LibraryWorkDto {
+  id: string;
+  title: string;
+  slug: string;
+  coverUrl?: string | null;
+  authorName: string;
+  authorHandle: string;
+  totalChapters: number;
+  status?: string | null;
+}
+
+/** Progresso de leitura por obra (`GET /api/users/reading-progress`). */
+export interface ReadingProgressDto {
+  id: string;
+  workId: string;
+  workTitle?: string | null;
+  workCoverUrl?: string | null;
+  chapterId?: string | null;
+  chapterNumber?: number | null;
+  chapterTitle?: string | null;
+  page?: number | null;
+  totalPages?: number | null;
+  updatedAt?: string | null;
+}
+
 export interface Verify2faRequest {
   identifier: string;
   code: string;
@@ -227,9 +253,25 @@ export const userApi = {
    * Alternar favorito/biblioteca no PostgreSQL.
    */
   toggleLibrary(workId: string) {
-    return request(`/users/library/${workId}/toggle`, {
+    return request<{ liked: boolean; totalLikes: number }>(`/users/library/${workId}/toggle`, {
       method: 'POST',
     });
+  },
+
+  /**
+   * Biblioteca real do leitor: obras favoritadas com o resumo do card.
+   * É daqui que a sessão hidrata os corações — o estado local não é fonte da verdade.
+   */
+  getLibrary() {
+    return request<LibraryWorkDto[]>('/users/me/library', { method: 'GET' });
+  },
+
+  /**
+   * Histórico de leitura: em qual capítulo/página o titular parou em cada obra.
+   * Alimenta o "continuar de onde parou" e o "ler novamente" da biblioteca.
+   */
+  getReadingProgress() {
+    return request<ReadingProgressDto[]>('/users/reading-progress', { method: 'GET' });
   },
 
   /**

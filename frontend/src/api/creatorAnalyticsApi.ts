@@ -1,4 +1,3 @@
-
 /**
  * Analytics do criador (espelha `CreatorAnalyticsResponseDto`).
  * Dados reais: eventos de leitura no Mongo e lançamentos no ledger financeiro.
@@ -15,6 +14,24 @@ export interface CreatorAnalyticsDto {
   netEarningsBrl: number;
   walletBalanceBrl: number;
   monthlyMembersCount: number;
+  totals?: { reads: number; uniqueReaders: number };
+  readsLast48Hours?: { hour: string; reads: number }[];
+  works?: {
+    workId: string;
+    title: string;
+    slug: string;
+    coverUrl?: string | null;
+    status?: string | null;
+    reads: number;
+    uniqueReaders: number;
+    chapters: {
+      chapterId: string;
+      chapterNumber: number;
+      title: string;
+      reads: number;
+      uniqueReaders: number;
+    }[];
+  }[];
 }
 
 export interface SeasonStatusDto {

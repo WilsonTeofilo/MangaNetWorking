@@ -14,7 +14,12 @@ interface AuthContextType {
   becomeWriter: (payload: { handle?: string; instagramUrl?: string; youtubeUrl?: string; portfolioUrl?: string; cpf?: string }) => Promise<{ message: string; creatorId: string; creatorHandle: string }>;
   /** Atualiza avatar/visibilidade do perfil e reidrata a sessão. */
   saveProfile: (payload: { avatarUrl?: string; isProfilePublic?: boolean }) => Promise<void>;
-  toggleFavorite: (workId: string) => void;
+  toggleFavorite: (workId: string) => Promise<void>;
+  /** Aviso amigável quando o favorito não pôde ser gravado (visitante ou falha de rede). */
+  favoriteNotice: string | null;
+  dismissFavoriteNotice: () => void;
+  /** Incrementa quando a biblioteca muda no servidor (a página recarrega a lista). */
+  libraryVersion: number;
   /** Recarrega a sessão a partir de `/auth/me` (mantém o estado atual se não houver sessão). */
   refreshSession: () => Promise<void>;
   /** Atualiza a apresentação local depois que o servidor confirmou a gravação do avatar. */
@@ -55,6 +60,8 @@ function applySession(prev: UserProfile, session: SessionUserDto): UserProfile {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile>(GUEST_USER);
+  const [favoriteNotice, setFavoriteNotice] = useState<string | null>(null);
+  const [libraryVersion, setLibraryVersion] = useState(0);
 
   const isAuthenticated = Boolean(user.uid && user.uid !== 'guest');
 
@@ -72,6 +79,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       setUser((prev) => ({ ...applySession(prev, session), isVip: session.isVip, vipExpiresAt: session.vipExpiresAt ?? undefined }));
+      // A biblioteca é a fonte da verdade dos favoritos: sem isso o coração "esquece"
+      // a obra a cada recarregamento da página (o estado local não é persistência).
+      try {
+        const library = await userApi.getLibrary();
+        setUser((prev) => ({ ...prev, favorites: library.map((work) => work.id) }));
+      } catch {
+        // Biblioteca indisponível: mantém o estado atual em vez de apagar os favoritos.
+      }
     } catch {
       setUser(GUEST_USER);
     }
@@ -128,17 +143,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await userApi.updateProfile(payload);
     await refreshSession();
   };
-  const toggleFavorite = (workId: string) => {
-    setUser(prev => {
-      const exists = prev.favorites.includes(workId);
-      return {
-        ...prev,
-        favorites: exists 
-          ? prev.favorites.filter(id => id !== workId)
-          : [...prev.favorites, workId]
-      };
-    });
+  /**
+   * Alterna o favorito no servidor (tabela user_liked_works) e reflete no estado.
+   * A atualização é otimista: o coração responde na hora e volta atrás se a gravação falhar.
+   */
+  const toggleFavorite = async (workId: string) => {
+    if (!isAuthenticated) {
+      setFavoriteNotice('Entre na sua conta para salvar obras na biblioteca.');
+      return;
+    }
+    const previous = user.favorites;
+    const wasFavorite = previous.includes(workId);
+    const next = wasFavorite
+      ? previous.filter((id) => id !== workId)
+      : [...previous, workId];
+
+    setUser((prev) => ({ ...prev, favorites: next }));
+
+    try {
+      await userApi.toggleLibrary(workId);
+      // Só depois da confirmação do servidor a lista da biblioteca é recarregada.
+      setLibraryVersion((version) => version + 1);
+    } catch {
+      setUser((prev) => ({ ...prev, favorites: previous }));
+      setFavoriteNotice('Não foi possível salvar na biblioteca agora. Tente novamente.');
+    }
   };
+
+  const dismissFavoriteNotice = () => setFavoriteNotice(null);
 
   return (
     <AuthContext.Provider
@@ -151,6 +183,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         becomeWriter,
         saveProfile,
         toggleFavorite,
+        favoriteNotice,
+        dismissFavoriteNotice,
+        libraryVersion,
         refreshSession,
         updateAvatarUrl,
         logout,

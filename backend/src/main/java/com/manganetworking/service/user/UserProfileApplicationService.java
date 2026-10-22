@@ -23,6 +23,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -158,6 +159,33 @@ public class UserProfileApplicationService {
         workRepository.save(work);
 
         return new ToggleLikeResponseDto(!alreadyLiked, work.getTotalLikes());
+    }
+
+    /**
+     * Biblioteca do leitor: as obras favoritadas, com o resumo que o card precisa.
+     * A identidade vem sempre da sessão; nenhum id de usuário é aceito do cliente.
+     */
+    @Transactional(readOnly = true)
+    public List<LibraryWorkDto> getLibrary(UUID currentUserId) {
+        UserEntity user = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado: " + currentUserId));
+
+        return user.getLikedWorks().stream()
+                .filter(work -> work != null && work.getId() != null)
+                .map(work -> new LibraryWorkDto(
+                        work.getId(),
+                        work.getTitle(),
+                        work.getSlug(),
+                        work.getCoverUrl(),
+                        work.getAuthor() != null && work.getAuthor().getUser() != null
+                                ? work.getAuthor().getUser().getName()
+                                : "",
+                        work.getAuthor() != null ? work.getAuthor().getHandle() : "",
+                        work.getTotalChapters() == null ? 0 : work.getTotalChapters(),
+                        work.getStatus()
+                ))
+                .sorted(Comparator.comparing(LibraryWorkDto::title, String.CASE_INSENSITIVE_ORDER))
+                .toList();
     }
 
     public List<ReadingProgressResponseDto> getReadingHistory(String currentUserId) {

@@ -8,6 +8,7 @@ import { Win } from '../components/ui/Win';
 import { ApiError } from '../api/client';
 import { authApi } from '../api/authApi';
 import { useAuth } from '../context/AuthContext';
+import { sanitizeUsernameInput, validateUsername } from '../utils/usernameRules';
 import mascotSvg from '../assets/brand/mascot-placeholder.svg';
 import logoWordmark from '../assets/brand/logo-wordmark.svg';
 
@@ -27,6 +28,7 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
   const [step, setStep] = useState<'credentials' | 'two-factor'>('credentials');
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
+  const usernameValidation = validateUsername(username);
   /** Situacao do username digitado no cadastro (evita erro seco de 'ja esta em uso'). */
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'free' | 'taken'>('idle');
   /** Alternativa livre oferecida pelo servidor. */
@@ -109,6 +111,11 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
     if (mode === 'register') {
       if (!name.trim()) {
         setErrorMessage('Informe seu nome para criar a conta.');
+        return;
+      }
+      const usernameCheck = validateUsername(username);
+      if (!usernameCheck.valid) {
+        setErrorMessage(usernameCheck.message);
         return;
       }
       if (Array.from(password).length < 8 || Array.from(password).length > 64) {
@@ -364,11 +371,17 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
                     <Field
                       label="USERNAME"
                       value={username}
-                      onChange={(e) => setUsername(e.target.value.toLowerCase())}
+                      onChange={(e) => setUsername(sanitizeUsernameInput(e.target.value))}
                       placeholder="ex.: teofilo"
-                      helperText="Identificador público e segunda forma de login. Minúsculas, números, ponto, hífen e underscore."
+                      helperText="Minúsculas, números, ponto e sublinhado. Não pode ter espaço, acento, símbolo no início/fim nem termo reservado."
                       required
                     />
+
+                    {username.length > 0 && !usernameValidation.valid && (
+                      <p className="font-body text-xs text-[#E8402F]" role="alert">
+                        {usernameValidation.message}
+                      </p>
+                    )}
 
                     {usernameStatus !== 'idle' && (
                       <p

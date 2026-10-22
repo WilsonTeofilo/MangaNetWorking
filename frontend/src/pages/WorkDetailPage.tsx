@@ -13,6 +13,7 @@ import {
 import { Work, Chapter, Creator } from '../types';
 import { MOCK_CHAPTERS, MOCK_CREATORS } from '../data/mockData';
 import { workApi, AuthorSummaryDto } from '../api/workApi';
+import { userApi, ReadingProgressDto } from '../api/authApi';
 import { mapChapterSummary } from '../utils/apiMappers';
 import { useAuth } from '../context/AuthContext';
 import { useModals } from '../context/ModalContext';
@@ -25,7 +26,7 @@ import { offlineStorage } from '../services/offlineStorage';
 interface WorkDetailPageProps {
   work: Work;
   onBackToCatalog: () => void;
-  onOpenChapter: (work: Work, chapter: Chapter) => void;
+  onOpenChapter: (work: Work, chapter: Chapter, page?: number) => void;
 }
 
 export function WorkDetailPage({
@@ -37,6 +38,7 @@ export function WorkDetailPage({
   const { openEarlyAccess, openDonate, openMembership, openReport, openVip } = useModals();
 
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [readingProgress, setReadingProgress] = useState<ReadingProgressDto | null>(null);
   const [downloadingChapterId, setDownloadingChapterId] = useState<string | null>(null);
   const [offlineChapterIds, setOfflineChapterIds] = useState<Set<string>>(() =>
     new Set(offlineStorage.getOfflineChapters().map((c) => c.chapterId))
@@ -131,7 +133,35 @@ export function WorkDetailPage({
 
   const firstChapter = chapters[0];
 
-  const handleChapterClick = (chapter: Chapter) => {
+  // Onde o leitor parou nesta obra (MongoDB). A biblioteca e a ficha usam o mesmo dado.
+  useEffect(() => {
+    if (!user.uid || user.uid === 'guest') {
+      setReadingProgress(null);
+      return;
+    }
+    let active = true;
+    userApi
+      .getReadingProgress()
+      .then((history) => {
+        if (active) setReadingProgress(history.find((item) => item.workId === work.id) ?? null);
+      })
+      .catch(() => {
+        if (active) setReadingProgress(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [user.uid, work.id]);
+
+  const resumeChapter = readingProgress?.chapterId
+    ? chapters.find((chapter) => chapter.id === readingProgress.chapterId)
+    : undefined;
+  const resumePage = Math.max(1, readingProgress?.page ?? 1);
+  const chapterFinished = Boolean(
+    readingProgress?.page && readingProgress?.totalPages && readingProgress.page >= readingProgress.totalPages
+  );
+
+  const handleOpenWithProgress = (chapter: Chapter, page?: number) => {
     const isLocked = isChapterEarlyAccess(chapter) && !isMemberOf(work.authorId);
     if (isLocked) {
       if (creator) {
@@ -139,8 +169,10 @@ export function WorkDetailPage({
         return;
       }
     }
-    onOpenChapter(work, chapter);
+    onOpenChapter(work, chapter, page);
   };
+
+  const handleChapterClick = (chapter: Chapter) => handleOpenWithProgress(chapter);
 
   return (
     <div className="mn-container py-6 space-y-8 select-none">
@@ -235,13 +267,25 @@ export function WorkDetailPage({
 
             {/* Botões de Ação */}
             <div className="flex flex-wrap items-center gap-3 pt-4">
-              <Button
-                variant="primary"
-                onClick={() => firstChapter && handleChapterClick(firstChapter)}
-                className="!text-lg !px-6"
-              >
-                LER DO COMEÇO
-              </Button>
+              {resumeChapter ? (
+                <Button
+                  variant="primary"
+                  onClick={() => handleOpenWithProgress(resumeChapter, chapterFinished ? 1 : resumePage)}
+                  className="!text-lg !px-6"
+                >
+                  {chapterFinished
+                    ? `LER NOVAMENTE · CAP. ${resumeChapter.number}`
+                    : `CONTINUAR DE ONDE PAROU · CAP. ${resumeChapter.number} · PÁG. ${resumePage}`}
+                </Button>
+              ) : (
+                <Button
+                  variant="primary"
+                  onClick={() => firstChapter && handleChapterClick(firstChapter)}
+                  className="!text-lg !px-6"
+                >
+                  LER DO COMEÇO
+                </Button>
+              )}
 
               <button
                 type="button"
@@ -265,6 +309,13 @@ export function WorkDetailPage({
                   APOIAR AUTOR
                 </Button>
               )}
+
+              {resumeChapter && !chapterFinished && readingProgress?.totalPages ? (
+                <p className="w-full font-body text-xs text-[#A9A59A]">
+                  Você parou na página {resumePage} de {readingProgress.totalPages} do capítulo{' '}
+                  {resumeChapter.number}.
+                </p>
+              ) : null}
             </div>
 
           </div>

@@ -15,6 +15,8 @@ import { offlineStorage } from '../services/offlineStorage';
 interface ReaderPageProps {
   work: Work;
   chapter: Chapter;
+  /** Página inicial (retomar a leitura). Ausente = começa na primeira. */
+  initialPage?: number;
   onBack: () => void;
   onNavigateChapter: (nextNumber: number) => void;
 }
@@ -24,7 +26,7 @@ interface ReaderPageProps {
 const AD_SECONDS = 15;
 const AD_EVERY_PAGES = 30;
 
-export function ReaderPage({ work, chapter, onBack, onNavigateChapter }: ReaderPageProps) {
+export function ReaderPage({ work, chapter, initialPage, onBack, onNavigateChapter }: ReaderPageProps) {
   const { user, toggleFavorite } = useAuth();
   const { openDonate, openReport } = useModals();
 
@@ -51,6 +53,7 @@ export function ReaderPage({ work, chapter, onBack, onNavigateChapter }: ReaderP
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const lastCountedPageRef = useRef(1);
   const endTriggeredRef = useRef(false);
+  const initialPageAppliedRef = useRef<string | null>(null);
 
   const changeReadingMode = (mode: 'paginated' | 'vertical') => {
     setReadingMode(mode);
@@ -97,6 +100,7 @@ export function ReaderPage({ work, chapter, onBack, onNavigateChapter }: ReaderP
     setCumulativePages(0);
     lastCountedPageRef.current = 1;
     endTriggeredRef.current = false;
+    initialPageAppliedRef.current = null;
     // Anúncio de abertura do capítulo (15s).
     setAdSlot('start');
 
@@ -141,6 +145,24 @@ export function ReaderPage({ work, chapter, onBack, onNavigateChapter }: ReaderP
       active = false;
     };
   }, [work.slug, chapter.number, chapter.pages, chapter.format, chapter.content]);
+
+  // Retoma a leitura na página salva (biblioteca / ficha da obra), depois que as
+  // páginas reais chegam da API. Aplica uma vez por capítulo para não "puxar" o
+  // leitor de volta toda vez que ele avança.
+  useEffect(() => {
+    if (!initialPage || initialPage < 1 || chapterFormat === 'PROSE') {
+      return;
+    }
+    if (initialPageAppliedRef.current === chapter.id) {
+      return;
+    }
+    const limit = pages.length || chapter.pages?.length || 0;
+    if (limit <= 0) {
+      return;
+    }
+    setCurrentPage(Math.min(initialPage, limit));
+    initialPageAppliedRef.current = chapter.id;
+  }, [initialPage, pages.length, chapter.id, chapter.pages, chapterFormat]);
 
   // Ao trocar de capítulo, volta ao topo — essencial no modo de rolagem contínua.
   useEffect(() => {

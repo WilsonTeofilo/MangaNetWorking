@@ -409,3 +409,12 @@ Depois de provisionar: instalar Docker/Compose, criar `.env` fora do Git com cha
 ## Regra de atualização
 
 Ao concluir um item, atualize **esta tabela** e `AUDITORIA-ATUAL.md` no mesmo commit. Não crie relatório paralelo.
+
+
+### Rodada 2026-10-22 — experiência do leitor e analytics
+
+| # | Fase | Entrega |
+|---|---|---|
+| 59 | F1/F2 | ✅ `UsernamePolicy` estrita (sem espaço/acento/hífen, sem símbolo repetido, reservados) + espelho no formulário; 377 testes verdes |
+| 60 | F2/F3 | ✅ Biblioteca real (`GET /users/me/library`) com favorito persistido, "continuar de onde parou" na página exata e "ler novamente" ao concluir o capítulo |
+| 61 | F9 | ✅ Analytics estilo Studio: período 7/28/90/180, visão geral + conteúdo por obra/capítulo, 48 h em tempo real e retenção real |

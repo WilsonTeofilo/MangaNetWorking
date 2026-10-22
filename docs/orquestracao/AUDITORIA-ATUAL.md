@@ -871,3 +871,35 @@ O detalhe público da obra agora omite capítulos com `publicReleaseAt` futuro; 
 A fila está em `docs/orquestracao/ROADMAP-FASES.md`. Resumo:
 
 1. ~~C5 (compose)~~ ✅ → 2. C3 (cooldown/limites OTP) ✅ → 3. F3 (restaurar/verificar storage órfão e medir carga) → 4. C4 (domínio autenticado) → 5. C2 (idade) → 6. A2 (CPF) → 7. A1/M2/M3 (consentimento) → 8. F4 (checkout doações/membros e Sandbox) → 9. M4–M6 (mocks) → 10. F7 (provas E2E).
+
+## 7.35 Username, favoritos, retomada de leitura e analytics (2026-10-22)
+
+- [x] **Username com regra única no servidor e espelho no cliente:** `UsernamePolicy` agora exige
+  minúsculas, 3–30 caracteres, apenas `a-z`, `0-9`, `.` e `_`, sem espaço (o valor é aparado),
+  sem acento, sem `.`/`_` no início/fim e sem símbolo repetido; hífen deixou de ser aceito.
+  Lista de termos reservados (sistema, marca e redes sociais) bloqueada por igualdade, e o teste
+  cobre cada regra. O front espelha a mesma regra em `utils/usernameRules.ts`, remove espaço
+  enquanto o titular digita e mostra a mensagem antes do envio.
+- [x] **Favorito deixou de ser só memória:** a biblioteca vivia apenas no estado React e a página
+  usava `MOCK_WORKS` (vazia em produção). Novo `GET /api/users/me/library` devolve as obras de
+  `user_liked_works`; `AuthContext.refreshSession` hidrata os favoritos do servidor e
+  `toggleFavorite` grava no endpoint existente de forma otimista (reverte e avisa se falhar).
+  Prova no navegador: coração → `GET /api/users/me/library` devolve a obra; recarregar a página
+  mantém o coração; lixeira da biblioteca remove e a lista zera sem recarregar.
+- [x] **Continuar de onde parou / ler novamente:** a ficha da obra e a biblioteca leem
+  `GET /api/users/reading-progress`; capítulo inacabado abre no capítulo e na página exatos
+  (`initialPage` no leitor) e capítulo concluído (`page >= totalPages`) mostra **LER NOVAMENTE**
+  começando da página 1. Prova no navegador: página 3/8 → botão "CONTINUAR DE ONDE PAROU · CAP. 1
+  · PÁG. 3" → leitor abre em "3 DE 8"; 8/8 → "LER NOVAMENTE".
+- [x] **Analytics no padrão Studio com a identidade Banca de Rua:** `GET /api/creators/analytics`
+  passou a devolver totais distintos da janela, série horária das últimas 48 h, recorte por obra
+  e por capítulo e janela de até 180 dias (TTL dos eventos). A tela tem período selecionável
+  (7/28/90/180), abas **VISÃO GERAL** e **CONTEÚDO**, gráfico de área, cartões de leitura/leitores/
+  membros/receita, tabela expansível por capítulo, retenção por página, financeiro e painel
+  em tempo real. Nenhum número mock: obra sem evento aparece com zero.
+- [x] **Higiene:** `getLibrary` deriva a identidade da sessão; nenhum id de usuário vem do cliente.
+  O service de analytics não inventa dado e mantém a janela financeira com o fuso do `@CreationTimestamp`.
+- [x] **Prova:** **377 testes**, 0 falhas, 0 erros; build do frontend verde; smoke E2E **12/12**
+  (com Dev Outbox e retorno a `PLATFORM_MAIL_ENABLED=true`); verificação manual no navegador dos
+  quatro fluxos. Limpeza: página de leitura restaurada em 8/8, favorito removido e sessão de QA
+  apagada do Redis.

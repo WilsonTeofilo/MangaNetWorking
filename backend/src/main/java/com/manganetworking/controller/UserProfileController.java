@@ -60,6 +60,15 @@ public class UserProfileController {
         return ResponseEntity.ok(profileService.toggleLikeWork(SecurityContextUtils.requireCurrentUserId(), workId));
     }
 
+    /**
+     * Biblioteca do leitor (obras favoritadas). A lista é a mesma que alimenta os corações
+     * do catálogo: por isso a sessão é obrigatória e o cliente nunca informa o usuário.
+     */
+    @GetMapping("/me/library")
+    public ResponseEntity<List<LibraryWorkDto>> getLibrary() {
+        return ResponseEntity.ok(profileService.getLibrary(SecurityContextUtils.requireCurrentUserId()));
+    }
+
     @GetMapping("/reading-progress")
     public ResponseEntity<List<ReadingProgressResponseDto>> getReadingHistory() {
         // Identidade apenas pela sessão (a rota exige autenticação): sem fallback de header.
