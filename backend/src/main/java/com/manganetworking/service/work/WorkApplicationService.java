@@ -73,7 +73,9 @@ public class WorkApplicationService {
         if (currentUserId == null || work == null) {
             return false;
         }
-        if (work.getAuthor() != null && currentUserId.equals(work.getAuthor().getId())) {
+        if (work.getAuthor() != null
+                && work.getAuthor().getUser() != null
+                && currentUserId.equals(work.getAuthor().getUser().getId())) {
             return true;
         }
         return SecurityContextUtils.getCurrentSession()
@@ -95,8 +97,12 @@ public class WorkApplicationService {
         // O AUTOR (e a moderacao) ve os capitulos que ainda nao foram liberados: sem isso,
         // um capitulo agendado sumia da ficha da obra e o autor nao conseguia edita-lo.
         boolean privilegedViewer = isAuthorOrModerator(work, currentUserId);
+        // Obra publicada: o leitor ve que ha capitulo PROGRAMADO (e quer assinar para ler antes).
+        boolean workIsPublic = "ongoing".equalsIgnoreCase(work.getStatus())
+                || "completed".equalsIgnoreCase(work.getStatus());
         List<ChapterSummaryDto> chaptersDto = chapters.stream()
                 .filter(chapter -> privilegedViewer
+                        || workIsPublic
                         || (chapter.getPublicReleaseAt() != null
                         && !chapter.getPublicReleaseAt().isAfter(now)))
                 .map(cap -> new ChapterSummaryDto(
@@ -155,7 +161,11 @@ public class WorkApplicationService {
         CreatorEntity author = work.getAuthor();
         boolean isEarlyAccess = chapter.isEarlyAccessForMembers();
 
-        if (isEarlyAccess) {
+        // O autor (e a moderacao) ve o capitulo mesmo antes da liberacao programada:
+        // sem isso, um capitulo agendado some da tela do autor e parece apagado.
+        boolean privilegedViewer = isAuthorOrModerator(work, currentUserId);
+
+        if (isEarlyAccess && !privilegedViewer) {
             boolean isMember = false;
             if (currentUserId != null && author != null) {
                 isMember = membershipRepository.existsBySubscriberIdAndCreatorIdAndStatusAndExpiresAtAfter(
@@ -171,12 +181,9 @@ public class WorkApplicationService {
             }
         }
 
-        // O autor (e a moderacao) le o capitulo mesmo antes da liberacao programada:
-        // sem isso, um capitulo agendado some da tela do autor e parece apagado.
-        boolean privilegedViewer = isAuthorOrModerator(work, currentUserId);
         if (!privilegedViewer && chapter.getPublicReleaseAt() != null
                 && chapter.getPublicReleaseAt().isAfter(LocalDateTime.now())) {
-            throw new ResourceNotFoundException("Capitulo #" + chapterNumber + " ainda nao foi liberado.");
+            throw new ResourceNotFoundException("Capítulo #" + chapterNumber + " ainda não foi liberado.");
         }
 
         // Capítulo Liberado: Incrementa métricas de visualização
@@ -258,9 +265,9 @@ public class WorkApplicationService {
 
     public WorkEntity updateWork(UUID creatorId, UUID workId, UpdateWorkRequestDto dto) {
         WorkEntity work = workRepository.findById(workId)
-                .orElseThrow(() -> new ResourceNotFoundException("Obra nÃ£o encontrada"));
+                .orElseThrow(() -> new ResourceNotFoundException("Obra não encontrada"));
         if (work.getAuthor() == null || !creatorId.equals(work.getAuthor().getId())) {
-            throw new AccessDeniedException("Apenas o autor da obra pode alterÃ¡-la.");
+            throw new AccessDeniedException("Apenas o autor da obra pode alterá-la.");
         }
 
         work.setTitle(com.manganetworking.util.SanitizationUtils.stripAllHtml(dto.title().trim()));
@@ -443,16 +450,43 @@ public class WorkApplicationService {
         }
     }
 
+    /**
+     * Exclui um capitulo do proprio autor (com as paginas vinculadas em cascata).
+     *
+     * @param creatorId autor da sessao
+     * @param workId    obra do capitulo
+     * @param number    numero do capitulo
+     */
     @Transactional
-    public ChapterEntity updateChapter(UUID creatorId, UUID workId, Integer number, UpdateChapterRequestDto dto) {
+    public void deleteChapter(UUID creatorId, UUID workId, Integer number) {
         WorkEntity work = workRepository.findById(workId)
-                .orElseThrow(() -> new ResourceNotFoundException("Obra nÃ£o encontrada: " + workId));
+                .orElseThrow(() -> new ResourceNotFoundException("Obra não encontrada: " + workId));
         if (work.getAuthor() == null || !creatorId.equals(work.getAuthor().getId())) {
-            throw new AccessDeniedException("Apenas o autor pode editar capÃ­tulos desta obra.");
+            throw new AccessDeniedException("Apenas o autor pode excluir capítulos desta obra.");
         }
 
         ChapterEntity chapter = chapterRepository.findByWorkIdAndChapterNumber(workId, number)
-                .orElseThrow(() -> new ResourceNotFoundException("CapÃ­tulo #" + number + " nÃ£o encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Capítulo #" + number + " não encontrado"));
+
+        chapterRepository.delete(chapter);
+        chapterRepository.flush();
+
+        // A contagem de capitulos da obra precisa acompanhar a exclusao.
+        work.setTotalChapters(Math.max(0, work.getTotalChapters() - 1));
+        workRepository.save(work);
+        publishFeedSync(work.getId(), "exclusão de capítulo");
+    }
+
+    @Transactional
+    public ChapterEntity updateChapter(UUID creatorId, UUID workId, Integer number, UpdateChapterRequestDto dto) {
+        WorkEntity work = workRepository.findById(workId)
+                .orElseThrow(() -> new ResourceNotFoundException("Obra não encontrada: " + workId));
+        if (work.getAuthor() == null || !creatorId.equals(work.getAuthor().getId())) {
+            throw new AccessDeniedException("Apenas o autor pode editar capítulos desta obra.");
+        }
+
+        ChapterEntity chapter = chapterRepository.findByWorkIdAndChapterNumber(workId, number)
+                .orElseThrow(() -> new ResourceNotFoundException("Capítulo #" + number + " não encontrado"));
 
         ChapterFormat format = dto.format() != null ? dto.format() : chapter.getFormat();
         List<String> pages = dto.pages() != null ? dto.pages() : readPages(chapter);
@@ -461,13 +495,13 @@ public class WorkApplicationService {
                 : chapter.getContentText();
 
         if (format == ChapterFormat.IMAGE_PAGES && pages.isEmpty()) {
-            throw new IllegalArgumentException("CapÃ­tulos de mangÃ¡ precisam de pelo menos uma pÃ¡gina.");
+            throw new IllegalArgumentException("Capítulos de mangá precisam de pelo menos uma página.");
         }
         if (format == ChapterFormat.PROSE && (content == null || content.isBlank())) {
-            throw new IllegalArgumentException("CapÃ­tulos em prosa precisam de texto.");
+            throw new IllegalArgumentException("Capítulos em prosa precisam de texto.");
         }
         if (format == ChapterFormat.IMAGE_PAGES && pages.size() > MAX_CHAPTER_PAGES) {
-            throw new IllegalArgumentException("O capÃ­tulo excede o limite de " + MAX_CHAPTER_PAGES + " pÃ¡ginas.");
+            throw new IllegalArgumentException("O capítulo excede o limite de " + MAX_CHAPTER_PAGES + " páginas.");
         }
 
         chapter.setTitle(com.manganetworking.util.SanitizationUtils.stripAllHtml(dto.title().trim()));
@@ -484,7 +518,7 @@ public class WorkApplicationService {
 
         ChapterEntity saved = chapterRepository.save(chapter);
         replaceChapterFiles(saved.getId(), pages);
-        publishFeedSync(work.getId(), "ediÃ§Ã£o de capÃ­tulo");
+        publishFeedSync(work.getId(), "edição de capítulo");
         return saved;
     }
 

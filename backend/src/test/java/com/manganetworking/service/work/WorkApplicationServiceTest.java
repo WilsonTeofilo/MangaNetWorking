@@ -9,6 +9,7 @@ import com.manganetworking.domain.enums.WorkFormat;
 import com.manganetworking.domain.relational.ChapterEntity;
 import com.manganetworking.domain.relational.ChapterFileEntity;
 import com.manganetworking.domain.relational.CreatorEntity;
+import com.manganetworking.domain.relational.UserEntity;
 import com.manganetworking.domain.relational.WorkEntity;
 import com.manganetworking.repository.jpa.ChapterFileRepository;
 import com.manganetworking.repository.jpa.ChapterRepository;
@@ -268,8 +269,8 @@ class WorkApplicationServiceTest {
     }
 
     @Test
-    @DisplayName("Detalhe público lista apenas capítulos já liberados")
-    void shouldListOnlyReleasedChapters() {
+    @DisplayName("Detalhe público lista o capítulo PROGRAMADO (o leitor vê que vem mais)")
+    void shouldListScheduledChapterForPublicViewer() {
         ChapterEntity released = chapter(1, LocalDateTime.now().minusMinutes(1));
         ChapterEntity scheduled = chapter(2, LocalDateTime.now().plusDays(1));
         when(workRepository.findBySlug("cronicas-de-cyberpunk")).thenReturn(Optional.of(work));
@@ -278,7 +279,12 @@ class WorkApplicationServiceTest {
 
         WorkDetailsResponseDto response = workService.getWorkBySlug("cronicas-de-cyberpunk", null);
 
-        assertEquals(List.of(1), response.chapters().stream().map(chapter -> chapter.chapterNumber()).toList());
+        // O capitulo programado aparece (para o leitor querer assinar e ler antes),
+        // marcado como acesso antecipado; o conteudo so e liberado conforme as regras.
+        assertEquals(List.of(2, 1), response.chapters().stream().map(chapter -> chapter.chapterNumber()).toList());
+        assertTrue(response.chapters().stream()
+                .filter(chapter -> chapter.chapterNumber() == 2)
+                .allMatch(chapter -> chapter.isEarlyAccess()));
     }
 
     @Test
@@ -344,5 +350,49 @@ class WorkApplicationServiceTest {
         assertThrows(AccessDeniedException.class, () ->
                 workService.readChapter("cronicas-de-cyberpunk", 5, nonMemberUserId)
         );
+    }
+
+    @Test
+    @DisplayName("O autor lê o próprio capítulo PROGRAMADO (sem trava de acesso antecipado)")
+    void shouldAllowAuthorToReadOwnScheduledChapter() {
+        UserEntity owner = new UserEntity();
+        owner.setId(UUID.randomUUID());
+        author.setUser(owner);
+
+        ChapterEntity scheduled = chapter(7, LocalDateTime.now().plusDays(3));
+        when(workRepository.findBySlug("cronicas-de-cyberpunk")).thenReturn(Optional.of(work));
+        when(chapterRepository.findByWorkIdAndChapterNumber(workId, 7)).thenReturn(Optional.of(scheduled));
+
+        var response = workService.readChapter("cronicas-de-cyberpunk", 7, owner.getId());
+
+        assertEquals(7, response.chapterNumber());
+        verify(membershipRepository, never()).existsBySubscriberIdAndCreatorIdAndStatusAndExpiresAtAfter(
+                any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Autor exclui o próprio capítulo e a contagem da obra acompanha")
+    void shouldDeleteChapterAndUpdateWorkCounter() {
+        ChapterEntity scheduled = chapter(3, LocalDateTime.now().plusDays(2));
+        work.setTotalChapters(4);
+        when(workRepository.findById(workId)).thenReturn(Optional.of(work));
+        when(chapterRepository.findByWorkIdAndChapterNumber(workId, 3)).thenReturn(Optional.of(scheduled));
+
+        workService.deleteChapter(creatorId, workId, 3);
+
+        verify(chapterRepository).delete(scheduled);
+        assertEquals(3, work.getTotalChapters());
+        verify(workRepository).save(work);
+    }
+
+    @Test
+    @DisplayName("Capitulo de outro autor não pode ser excluído")
+    void shouldDenyChapterDeletionByNonAuthor() {
+        when(workRepository.findById(workId)).thenReturn(Optional.of(work));
+
+        assertThrows(AccessDeniedException.class, () ->
+                workService.deleteChapter(UUID.randomUUID(), workId, 1)
+        );
+        verify(chapterRepository, never()).delete(any());
     }
 }

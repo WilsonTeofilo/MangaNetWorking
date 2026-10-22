@@ -19,6 +19,8 @@ export interface Chapter {
   pages: string[];
   createdAt: string; // ISO
   publicReleaseAt: string; // ISO when free users unlock it
+  /** Verdadeiro enquanto o capitulo esta PROGRAMADO: so membros leem antes da data. */
+  isEarlyAccess?: boolean;
   views: number;
   likes: number;
   commentsCount: number;

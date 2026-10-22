@@ -1,8 +1,8 @@
 import { CreatorWorkspacePage } from './CreatorWorkspacePage';
 
 /**
- * Workspace do criador â€” visÃ£o geral (Season, nÃ­vel, XP e identidade do autor).
- * Cada painel tem a prÃ³pria tela: obras, capÃ­tulos, missÃµes, analytics e monetizaÃ§Ã£o.
+ * Workspace do criador — visão geral (Season, nível, XP e identidade do autor).
+ * Cada painel tem a própria tela: obras, capítulos, missões, analytics e monetização.
  */
 export function CreatorDashboardPage({
   onOpenPublicProfile,

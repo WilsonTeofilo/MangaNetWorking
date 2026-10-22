@@ -94,7 +94,20 @@ public class WorkController {
     public ResponseEntity<Map<String, Object>> deleteWork(@PathVariable UUID workId) {
         UUID creatorId = SecurityContextUtils.requireCurrentCreatorId();
         workService.deleteWork(creatorId, workId);
-        return ResponseEntity.ok(Map.of("message", "Obra removida do catÃ¡logo."));
+        return ResponseEntity.ok(Map.of("message", "Obra removida do catálogo."));
+    }
+
+    /**
+     * Exclui um capitulo do proprio autor (com as paginas vinculadas em cascata).
+     */
+    @DeleteMapping("/{workId}/chapters/{chapterNumber}")
+    public ResponseEntity<Map<String, Object>> deleteChapter(
+            @PathVariable UUID workId,
+            @PathVariable Integer chapterNumber
+    ) {
+        UUID creatorId = SecurityContextUtils.requireCurrentCreatorId();
+        workService.deleteChapter(creatorId, workId, chapterNumber);
+        return ResponseEntity.ok(Map.of("message", "Capítulo excluído."));
     }
 
     /**
@@ -111,7 +124,7 @@ public class WorkController {
         return ResponseEntity.ok(Map.of(
                 "chapterId", chapter.getId(),
                 "chapterNumber", chapter.getChapterNumber(),
-                "message", "CapÃ­tulo atualizado com sucesso."
+                "message", "Capítulo atualizado com sucesso."
         ));
     }
 

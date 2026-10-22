@@ -111,25 +111,25 @@ Fluxo exercitado de ponta a ponta na stack local (backend 8085, frontend 5180, P
 | Doação, membresia e VIP | ❌ bloqueado | checkout Mercado Pago exige credenciais Sandbox/webhook público; a rota legada devolve `410` (nenhum crédito fictício) |
 | Login social (Google) | ❌ bloqueado | exige ID token real e domínio/DNS (#44) |
 | E-mail para destinatário real | ⚠️ parcial | **entrega real comprovada em desenvolvimento** (SMTP do `.env`: OTP e link de recuperação com `outcome=sent` no e-mail do titular). Para produção falta **domínio autenticado com SPF/DKIM/DMARC** e provedor institucional (#46) — conta pessoal não serve como remetente de produção |
-| Username **disponÃ­vel em tempo real** | âœ… funciona | `GET /api/users/username-available` devolve `{available, suggestion, invalidReason}`; a tela verifica com atraso de 400 ms e oferece alternativa livre ("use @mapplestar2") em vez de erro seco |
+| Username **disponível em tempo real** | ✅ funciona | `GET /api/users/username-available` devolve `{available, suggestion, invalidReason}`; a tela verifica com atraso de 400 ms e oferece alternativa livre ("use @mapplestar2") em vez de erro seco |
 | Criar conta com **username** e entrar por ele | ✅ funciona | `POST /api/auth/register` com `username` + sexo → 2FA; `POST /api/auth/login` com `{identifier}` aceita e-mail **ou** username (prova ao vivo: login com `qa.leitor.92542227` devolveu a conta e o OTP para o e-mail real) |
 | Perfil **público** por username | ✅ funciona | `GET /api/users/{username}/public-profile` sem sessão: nome, avatar, links, seguidores, obras e curtidas |
 | Perfil **privado** | ✅ funciona | a mesma rota devolve **só o username**; é o que aparece nos comentários |
 | **Comentar** na obra | OK funciona | `POST /api/works/{workId}/comments` (leitor autenticado, so obra publicada, bucket anti-spam) e `GET` publico; username sempre visivel, nome/avatar so com perfil publico; corpo higienizado |
 | **Seguir** um escritor | ✅ funciona | `POST /api/creators/{handle}/follow` — só escritores têm seguidores; leitor não é seguido e ninguém segue a si mesmo |
 | **Virar escritor** (leitor → escritor) | ✅ funciona | `POST /api/creators/apply` exige **pelo menos 1** vínculo social (Instagram **ou** YouTube **ou** portfólio — os três são opcionais, um é obrigatório); sem link: 400. O identificador do autor é o **username da conta de leitor** (reciclado) e nome/foto são herdados |
-| Perfil de **escritor Ã© sempre pÃºblico** | âœ… funciona | o servidor recusa `isProfilePublic=false` para escritor; leitor escolhe livremente |
-| Painel do autor (foto, bio, links, perfil pÃºblico) | âœ… funciona | o formulÃ¡rio reidrata com o servidor, mostra "PERFIL ATUALIZADO" com botÃ£o para o perfil pÃºblico e exige **1** dos 3 links sociais |
+| Perfil de **escritor é sempre público** | ✅ funciona | o servidor recusa `isProfilePublic=false` para escritor; leitor escolhe livremente |
+| Painel do autor (foto, bio, links, perfil público) | ✅ funciona | o formulário reidrata com o servidor, mostra "PERFIL ATUALIZADO" com botão para o perfil público e exige **1** dos 3 links sociais |
 | Recortar a foto (arraste + zoom) | OK funciona | recorte quadrado gerado no navegador (canvas 512px, sem metadados), com arraste por mouse/toque, setas do teclado e slider de zoom, no mesmo padrao do MangaTeofilo |
 | "Minha conta" enxuta (leitor) | OK funciona | identidade, visibilidade (publico/privado), ver pagina publica, painel do leitor e dados/privacidade - sem duplicar o formulario de escritor |
 | Candidatura a escritor (pagina propria) | OK funciona | 1 dos 3 links e obrigatorio, nome/foto/username herdados do leitor e perfil de escritor sempre publico; a candidatura **renova a sessao** com o papel de escritor (sem precisar deslogar) |
 | **Trocar a foto de perfil** | ✅ funciona | `POST /api/storage/avatar` (normaliza para 512px, sem metadados) + `PUT /api/users/profile`; câmera sempre visível no avatar, botão "TROCAR FOTO" e erro real do servidor na tela |
-| **Minhas obras** (lancar/configurar a obra) | OK funciona | `GET /api/works/mine` lista as obras do autor; criar, configurar (capa, banner, categorias, titulo, sinopse, estado) e remover â€” sem tocar em capitulo; a remocao limpa o feed |
-| **CapÃ­tulos** (publicar capitulo de uma obra sua) | OK funciona | seletor de obra + fluxo de 5 etapas; a tela se adapta ao formato da obra (paginas no mangÃ¡, texto na light novel) |
+| **Minhas obras** (lancar/configurar a obra) | OK funciona | `GET /api/works/mine` lista as obras do autor; criar, configurar (capa, banner, categorias, titulo, sinopse, estado) e remover — sem tocar em capitulo; a remocao limpa o feed |
+| **Capítulos** (publicar capitulo de uma obra sua) | OK funciona | seletor de obra + fluxo de 5 etapas; a tela se adapta ao formato da obra (paginas no mangá, texto na light novel) |
 | Recortar foto (avatar, capa e banner) | OK funciona | arraste nos quatro eixos + zoom, preview igual ao arquivo salvo e "reajustar" a foto atual sem subir arquivo novo |
-| **Editar capÃ­tulo** (autor) | OK funciona | `PUT /api/works/{workId}/chapters/{n}`: pÃ¡ginas em nova ordem, capa, tÃ­tulo, texto e data de lanÃ§amento |
-| Publicar obra em **5 etapas** (igual MangaTeofilo) | âœ… funciona | Upload (dropzone) â†’ Organizar pÃ¡ginas (ordem, remover, ampliar) â†’ Ajustar capa â†’ Revisar metadados â†’ Publicar, com checklist e avanÃ§o travado |
-| Ferramentas de dados no painel do autor | âœ… funciona | ver perfil pÃºblico, exportar dados (LGPD) e excluir conta (com confirmaÃ§Ã£o) |
+| **Editar capítulo** (autor) | OK funciona | `PUT /api/works/{workId}/chapters/{n}`: páginas em nova ordem, capa, título, texto e data de lançamento |
+| Publicar obra em **5 etapas** (igual MangaTeofilo) | ✅ funciona | Upload (dropzone) → Organizar páginas (ordem, remover, ampliar) → Ajustar capa → Revisar metadados → Publicar, com checklist e avanço travado |
+| Ferramentas de dados no painel do autor | ✅ funciona | ver perfil público, exportar dados (LGPD) e excluir conta (com confirmação) |
 | Painel do criador em **telas separadas** | ✅ funciona | Workspace, Minhas obras, Capítulos, Missões & XP, Analytics (`/api/creators/analytics`) e Monetização — cada um com endpoint próprio |
 | Menu da conta no **avatar do header** | ✅ funciona | avatar redondo no canto: Minha conta → Criador (Workspace, obras, capítulos, missões, analytics, monetização) → Sair. A divisão "modo criador/leitor" saiu do header |
 | Primeiro acesso so quando falta configurar | OK funciona | o servidor marca `profile_onboarding_completed_at` ao salvar o perfil e expoe o sinal na sessao; o login so abre o onboarding quando o perfil ainda nao foi configurado |

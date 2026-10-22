@@ -120,6 +120,7 @@ export function mapChapterSummary(dto: ChapterSummaryDto, workId: string): Chapt
     pages: [],
     createdAt: dto.publicReleaseAt ?? '',
     publicReleaseAt: dto.publicReleaseAt ?? '',
+    isEarlyAccess: dto.isEarlyAccess ?? false,
     views: dto.views ?? 0,
     likes: dto.likes ?? 0,
     commentsCount: 0,

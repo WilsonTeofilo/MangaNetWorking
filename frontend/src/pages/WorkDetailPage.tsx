@@ -314,6 +314,13 @@ export function WorkDetailPage({
                       <p className="font-body text-xs text-[#A9A59A] tabular-nums">
                         {chap.format === 'PROSE' ? 'Light novel · prosa' : 'Mangá · páginas ilustradas'}
                       </p>
+                      {chap.isEarlyAccess && (
+                        <p className="font-pixel text-[10px] uppercase text-[#45A29E]">
+                          {isLocked
+                            ? `LANÇAMENTO EM ${new Date(chap.publicReleaseAt).toLocaleDateString('pt-BR')} · ANTECIPADO PARA MEMBROS`
+                            : `LANÇAMENTO EM ${new Date(chap.publicReleaseAt).toLocaleDateString('pt-BR')}`}
+                        </p>
+                      )}
                     </div>
                   </div>
 

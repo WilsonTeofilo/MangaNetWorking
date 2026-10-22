@@ -3,11 +3,11 @@ import { Win } from '../ui/Win';
 import { CreatorMissionDto } from '../../api/creatorApi';
 
 /**
- * Painel de MissÃµes & Ganhos do criador (bloco apresentacional).
+ * Painel de Missões & Ganhos do criador (bloco apresentacional).
  *
- * Recebe os dados jÃ¡ calculados pelo servidor e nÃ£o recalcula progresso, recompensa nem
- * saldo. ExtraÃ­do do container do workspace para que cada arquivo tenha uma
- * responsabilidade sÃ³.
+ * Recebe os dados já calculados pelo servidor e não recalcula progresso, recompensa nem
+ * saldo. Extraído do container do workspace para que cada arquivo tenha uma
+ * responsabilidade só.
  */
 export interface CreatorMissionsPanelProps {
   missions: CreatorMissionDto[];
@@ -18,9 +18,9 @@ export interface CreatorMissionsPanelProps {
   membershipPriceBrl: number;
 }
 
-/** Formata valores monetÃ¡rios em reais (pt-BR). */
+/** Formata valores monetários em reais (pt-BR). */
 function formatBrl(value: number): string {
-  if (!Number.isFinite(value)) return 'R$ â€”';
+  if (!Number.isFinite(value)) return 'R$ —';
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 

@@ -119,7 +119,7 @@ public class SmtpMfaNotificationSender implements MfaNotificationSender {
     private String purposeDescription(String otpCode, String purpose) {
         return switch (purpose == null ? "" : purpose.toUpperCase()) {
             case "AUTENTICACAO_2FA" -> "entrar na sua conta";
-            default -> "confirmar a alteraÃ§Ã£o da sua chave PIX de recebimento";
+            default -> "confirmar a alteração da sua chave PIX de recebimento";
         };
     }
 

@@ -133,7 +133,7 @@ Legenda: ✅ pronto · 🟡 parcial · 🔴 bloqueado/pendente · ⏸️ fora do
 - `chapter_files` (V4) e guard de acesso existem.
 - Upload com MIME + magic bytes.
 - `reading_progress` tem índice composto `userId + workId` e índices auxiliares.
-- Detalhe público oculta capítulos com `publicReleaseAt` futuro; obra `archived_lgpd` não aparece no detalhe e suas URLs antigas de página são bloqueadas pelo guard.
+- Detalhe público de obra publicada **mostra o capítulo programado** (com data e selo de acesso antecipado) para o leitor querer assinar e ler antes; a **leitura** continua bloqueada para quem não é membro. Obra `archived_lgpd` não aparece no detalhe e suas URLs antigas de página são bloqueadas pelo guard.
 - Páginas são servidas por extensão MIME correta, `X-Content-Type-Options: nosniff` e conteúdo de capítulo sem cache público. GET de storage não consome o bucket de rate limit.
 - Progresso não regride em requests fora de ordem e repetições da mesma página não incrementam o contador; índice composto único mantém um documento por `userId + workId`.
 - Upload em lote limita 300 páginas; antes de persistir, o backend verifica dimensões (máximo 8192 px por lado e 16 MP) por metadata do decoder. Formatos sem leitor ImageIO configurado (incluindo WebP neste runtime) são rejeitados no lote.
@@ -141,7 +141,7 @@ Legenda: ✅ pronto · 🟡 parcial · 🔴 bloqueado/pendente · ⏸️ fora do
 - `ChapterFileAccessIntegrationTest` criou um capítulo publicado em PostgreSQL efêmero, gravou um JPEG real do projeto (`shito.jpg`, 1.060.446 bytes) no storage e serviu 100 GETs HTTP com concorrência 10: 100×200, MIME `image/jpeg`, bytes idênticos; medição final: duração total 723 ms, p50 46 ms, p95 190 ms, máximo 191 ms. O volume legado ainda contém referências órfãs; esse problema de dados não invalida a medição controlada.
 
 **Aceite**
-- [x] Capítulo publicado só aparece se `publicReleaseAt <= now` e a obra não estiver suspensa/arquivada.
+- [x] Capítulo publicado aparece para todos; capítulo **programado** aparece na ficha (marcado como antecipado para membros) e só é lido por membro, autor ou moderação — `publicReleaseAt` nunca vaza o conteúdo para quem não é membro.
 - [x] Páginas servidas com `Content-Type` correto, `nosniff` e sem cache compartilhado para páginas de capítulo.
 - [x] Progresso idempotente por `userId + workId`.
 - [x] Leitor não toma 429 ao virar capítulo (GET de storage fora do bucket; coberto por teste do filtro).
@@ -364,7 +364,7 @@ Depois de provisionar: instalar Docker/Compose, criar `.env` fora do Git com cha
 | 19 | Redimensionar e recodificar avatar no servidor | F2 | storage/avatar pipeline | ✅ endpoint autenticado; limite/dimensões impostos; JPEG 512×512 e imagem inválida cobertos por teste |
 | 20 | Vincular OTP ao purpose e armazenar HMAC | F1/F4 | MFA, Auth, PIX | ✅ consolidado com itens 5 e 6; login e step-up separados; chave de produção via `OTP_HMAC_SECRET`; 6ª tentativa bloqueada |
 | 21 | Reenvio OTP com cooldown e limite por conta/IP | F1 | Auth/MFA e rate limit | ✅ código e testes locais; teste Redis real pendente (#41) |
-| 22 | Filtrar capítulos agendados e bloquear obra arquivada no leitor/storage | F3 | `WorkApplicationService`, `ChapterFileAccessGuard` | ✅ futuro oculto; arquivamento LGPD bloqueia detalhe e URL antiga |
+| 22 | Listar capítulo programado na ficha e bloquear a leitura antecipada | F3 | `WorkApplicationService`, `ChapterFileAccessGuard` | ✅ futuro aparece marcado (antecipado para membros) e continua bloqueado para não-membro; arquivamento LGPD bloqueia detalhe e URL antiga |
 | 23 | Limites de quantidade e dimensão das páginas + teste de carga | F3 | upload/leitor | ✅ 100 GETs com página real: 100×200, concorrência 10, p95 190 ms |
 | 24 | Auditoria append-only da troca de PIX | F4 | V7, `CreatorApplicationService`, `CreatorController` | ✅ gravação mascarada e trigger de imutabilidade testados em PostgreSQL real |
 | 25 | Sobre nós com história da plataforma e do criador | F5 | `SobrePage` e fotos locais | ✅ copy sem promessas de recursos ainda inexistentes; build frontend verde |
@@ -400,6 +400,7 @@ Depois de provisionar: instalar Docker/Compose, criar `.env` fora do Git com cha
 | 55 | Analytics/Seasons | F17 | serviços/controllers | Série por dia, retenção, líquido; janela de 60 dias idempotente |
 | 56 | Alinhamento documental | — | docs | Contradições listadas corrigidas; nenhum segredo exposto |
 | 57 | Governança do proprietário | F1/F6 | V14, auth, sessão, segurança | ✅ `is_owner`/`ROLE_OWNER`, herança de moderação, hardening e conta DONO criada/verificada com sessão real; senha não registrada |
+| 58 | CRUD do capítulo (criar, editar, excluir) e capítulo programado visível | F3 | `WorkApplicationService`, `WorkController`, `CreatorChaptersPage`, `WorkDetailPage` | ✅ capítulo agendado aparece na ficha com data; leitura só para membro/autor/moderação; autor exclui o próprio capítulo (cascata + contador + feed) com teste |
 
 > **Pendente honesto:** o deploy real (Fase 13 "em produção") exige credenciais/infra que não estão nesta máquina; nada foi publicado. O job de rotação usa join em memória obras×eventos (adequado ao MVP, não a milhões de obras).
 

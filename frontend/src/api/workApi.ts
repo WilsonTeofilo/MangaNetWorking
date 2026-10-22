@@ -203,8 +203,8 @@ export const workApi = {
   },
 
   /**
-   * EdiÃ§Ã£o de um capÃ­tulo pelo autor: pÃ¡ginas (nova ordem), capa, tÃ­tulo, texto e
-   * data de lanÃ§amento.
+   * Edição de um capítulo pelo autor: páginas (nova ordem), capa, título, texto e
+   * data de lançamento.
    */
   updateChapter(workId: string, chapterNumber: number, payload: {
     title: string;
@@ -217,6 +217,13 @@ export const workApi = {
     return request(`/works/${encodeURIComponent(workId)}/chapters/${chapterNumber}`, {
       method: 'PUT',
       body: JSON.stringify(payload),
+    });
+  },
+
+  /** Exclui um capitulo do proprio autor. */
+  deleteChapter(workId: string, chapterNumber: number) {
+    return request(`/works/${encodeURIComponent(workId)}/chapters/${chapterNumber}`, {
+      method: 'DELETE',
     });
   },
 

@@ -613,7 +613,7 @@ O detalhe público da obra agora omite capítulos com `publicReleaseAt` futuro; 
 - [x] **BUG RAIZ do upload ( Nginx ):** o `location /api/` perdia para a regra de assets estaticos
   (`.png/.jpg/.webp`) e o Nginx servia o index.html em vez de proxiar. Resultado: TODO arquivo em
   `/api/storage/**` (avatar, capa, banner) devolvia **404 pelo front**, mesmo com o arquivo gravado
-  no servidor â€” por isso "nao consigo subir foto" e o icone de imagem quebrada no painel.
+  no servidor — por isso "nao consigo subir foto" e o icone de imagem quebrada no painel.
   Correcao: `location ^~ /api/` (o prefixo `^~` tem prioridade sobre as regex de estatico).
   Prova: avatar do criador via `localhost:5180` saiu de **404 para 200**; o upload sempre gravava
   (o log do servidor mostra "arquivo armazenado com sucesso").
@@ -631,7 +631,7 @@ O detalhe público da obra agora omite capítulos com `publicReleaseAt` futuro; 
 - [x] **"Minha conta" some do menu do escritor:** a entrada deixa de aparecer para quem e escritor
   (a pagina continua existindo para o leitor) e o util dela foi para o painel do autor: foto, bio,
   links e o link para o perfil publico.
-- [x] **UX do painel do autor:** o formulario reidrata com o que esta no servidor (bio e links) â€”
+- [x] **UX do painel do autor:** o formulario reidrata com o que esta no servidor (bio e links) —
   antes a bio sumia ao recarregar porque o workspace nao a devolvia; o save agora mostra um aviso
   persistente "PERFIL ATUALIZADO NO SERVIDOR" com o botao "VER MEU PERFIL PUBLICO", e o erro real
   do servidor aparece em vez de uma mensagem generica.
@@ -645,7 +645,7 @@ O detalhe público da obra agora omite capítulos com `publicReleaseAt` futuro; 
   excluir conta, com confirmacao antes de apagar) e o aviso de que o perfil de escritor e sempre
   publico, com o username como identificador.
 - [x] **Avatar do painel no tamanho do MangaTeofilo (128px, redondo) e header sincronizado:** o upload no
-  painel atualizava so o perfil do AUTOR, enquanto o header mostra o avatar da CONTA â€” por isso a foto
+  painel atualizava so o perfil do AUTOR, enquanto o header mostra o avatar da CONTA — por isso a foto
   salva nao aparecia no icone do header. Agora o upload atualiza os dois e reidrata a sessao.
 - [x] **Publicacao em 5 etapas (clone do MangaTeofilo):** `components/creator/ChapterPublishWizard.tsx`
   reproduz o `useChapterWizard` + `ChapterStepUpload/Organize/Cover/Review/Publish`: (1) Upload com
@@ -658,7 +658,7 @@ O detalhe público da obra agora omite capítulos com `publicReleaseAt` futuro; 
 ## 7.25 Perfil do leitor enxuto, candidatura a escritor separada e recorte de foto (2026-10-21)
 
 - [x] **Duplicidade removida:** "Minha conta" carregava o bloco "Quero publicar como escritor" com os
-  mesmos tres campos de link que ja existem na candidatura â€” duas telas quase iguais. Agora "Minha conta"
+  mesmos tres campos de link que ja existem na candidatura — duas telas quase iguais. Agora "Minha conta"
   tem so o que a identidade visual 9.6 pede: identidade (nome, @username, e-mail, Leitor/Escritor),
   visibilidade do perfil, ver a pagina publica, painel do leitor e dados/privacidade.
 - [x] **Candidatura a escritor virou pagina propria** (`/become-writer`, no menu do avatar): deixa claro que
@@ -675,24 +675,24 @@ O detalhe público da obra agora omite capítulos com `publicReleaseAt` futuro; 
   confirmacao em **modal**, foco visivel, alvos >= 44px e informacao nunca so por cor.
 - [x] **Suite:** **366 testes**, 0 falhas, 0 erros; build do frontend verde.
 
-## 7.26 Obras e CapÃ­tulos: responsabilidades separadas (2026-10-21)
+## 7.26 Obras e Capítulos: responsabilidades separadas (2026-10-21)
 
-- [x] **A mistura foi corrigida:** "Minhas obras" e "CapÃ­tulos" passam a terpaper as responsabilidades
+- [x] **A mistura foi corrigida:** "Minhas obras" e "Capítulos" passam a terpaper as responsabilidades
   separadas do MangaTeofilo (`ObrasList`/`ObrasEditor` x `CreatorChaptersPage`):
-  - **Minhas obras**: lanÃ§ar e CONFIGURAR a obra (capa, banner, categorias, tÃ­tulo, sinopse e
-    estado). NÃ£o publica capÃ­tulo.
-  - **CapÃ­tulos**: escolher uma obra SUA (o seletor lista as obras de "Minhas obras") e publicar o
-    capÃ­tulo no fluxo de 5 etapas (pÃ¡ginas, capa do capÃ­tulo, revisÃ£o, publicaÃ§Ã£o). NÃ£o cria obra.
-- [x] **API nova (a ediÃ§Ã£o de obra nÃ£o existia):** `PUT /api/works/{workId}` (sÃ³ o autor; capa/banner
-  validados por `WorkImageUrlPolicy`, que sÃ³ aceita arquivo enviado ao storage da plataforma),
-  `DELETE /api/works/{workId}` (sÃ³ o autor) e `GET /api/works/mine` (a lista do painel).
+  - **Minhas obras**: lançar e CONFIGURAR a obra (capa, banner, categorias, título, sinopse e
+    estado). Não publica capítulo.
+  - **Capítulos**: escolher uma obra SUA (o seletor lista as obras de "Minhas obras") e publicar o
+    capítulo no fluxo de 5 etapas (páginas, capa do capítulo, revisão, publicação). Não cria obra.
+- [x] **API nova (a edição de obra não existia):** `PUT /api/works/{workId}` (só o autor; capa/banner
+  validados por `WorkImageUrlPolicy`, que só aceita arquivo enviado ao storage da plataforma),
+  `DELETE /api/works/{workId}` (só o autor) e `GET /api/works/mine` (a lista do painel).
 - [x] **Suite:** **366 testes**, 0 falhas, 0 erros; build do frontend verde.
 
 ## 7.27 Primeiro acesso nao se repete para quem ja configurou o perfil (2026-10-21)
 
 - [x] **Causa:** o login lia o `user` ANTIGO da closure (`user.avatarUrl` ? feed : onboarding) antes do
   `refreshSession()` resolver, e como o `user` era o de visitante, **todo login caia em "Vamos montar seu
-  perfil"** â€” mesmo com o perfil completo.
+  perfil"** — mesmo com o perfil completo.
 - [x] **Correcao em duas frentes:**
   - servidor: `V18` cria `users.profile_onboarding_completed_at` (marcado quando o titular salva o perfil:
     foto, nome ou visibilidade). O backfill marca como prontas as contas que ja tinham foto, para ninguem
@@ -724,21 +724,21 @@ O detalhe público da obra agora omite capítulos com `publicReleaseAt` futuro; 
 
 ## 7.29 Revisao geral do dia: falhas, limpo, seguranca e manutencao (2026-10-21)
 
-- [x] **Falha real 1 â€” editar obra apagava a sinopse:** o resumo da lista ("Minhas obras") nao trazia a sinopse,
+- [x] **Falha real 1 — editar obra apagava a sinopse:** o resumo da lista ("Minhas obras") nao trazia a sinopse,
   entao o editor abria vazio e o salvamento era rejeitado (400) por campo obrigatorio. Agora o resumo traz
   `synopsis` e `genres`, e o editor abre com os valores reais do servidor.
-- [x] **Falha real 2 â€” obra removida continuava no feed:** o `WorkFeedRemovalEvent` existia (usado pela
+- [x] **Falha real 2 — obra removida continuava no feed:** o `WorkFeedRemovalEvent` existia (usado pela
   moderacao) mas a remocao da obra pelo autor nao o publicava: a obra saia do Postgres e continuava no
   feed/cache do Mongo. A remocao agora publica o evento e o feed e limpo.
-- [x] **Seguranca 1 â€” comentario em obra nao publicada:** `POST /api/works/{id}/comments` aceitava comentario em
+- [x] **Seguranca 1 — comentario em obra nao publicada:** `POST /api/works/{id}/comments` aceitava comentario em
   obra em rascunho (basta conhecer o id), revelando conteudo que o autor nao publicou. Agora so obra
   publicada (`ongoing`/`completed`) recebe comentario.
-- [x] **Seguranca 2 â€” spam de comentario:** o POST de comentario caia no bucket global (120/min). Passou a ter
+- [x] **Seguranca 2 — spam de comentario:** o POST de comentario caia no bucket global (120/min). Passou a ter
   bucket proprio de conteudo (`platform.security.content-rate-limit-per-minute`, padrao 20/min por IP).
-- [x] **Manutencao 1 â€” templates de e-mail fora do adaptador SMTP:** o `SmtpMfaNotificationSender` carregava
+- [x] **Manutencao 1 — templates de e-mail fora do adaptador SMTP:** o `SmtpMfaNotificationSender` carregava
   o HTML da marca (293 linhas). A apresentacao foi para `MangaEmailTemplates` (tokens da identidade visual
   em um lugar so) e o sender ficou so com o transporte: conexao, autenticacao, supressao e metricas.
-- [x] **Manutencao 2 â€” debounce na consulta de username:** a tela de "Minha conta" batia na API a cada tecla;
+- [x] **Manutencao 2 — debounce na consulta de username:** a tela de "Minha conta" batia na API a cada tecla;
   agora consulta com 400 ms de atraso, cancelando a requisicao anterior (evita 429 e desperdicio).
 - [x] **Verificacao de seguranca feita:** propriedade das obras validada no servico em PUT/DELETE (403 para
   quem nao e autor); `GET /api/works/mine`, `PUT` e `DELETE /api/works/*` exigem papel de criador; o
@@ -749,10 +749,10 @@ O detalhe público da obra agora omite capítulos com `publicReleaseAt` futuro; 
 
 ## 7.30 Segunda revisao: light novel sem caminho e ajustes de reacao (2026-10-21)
 
-- [x] **Falha real 3 â€” light novel nao tinha como publicar capitulo:** o fluxo de capitulo so sabia enviar
+- [x] **Falha real 3 — light novel nao tinha como publicar capitulo:** o fluxo de capitulo so sabia enviar
   PAGINAS e mandava `IMAGE_PAGES` sempre. Em obra `LIGHT_NOVEL` o servidor recusa ("o formato do capitulo
   deve corresponder ao formato da obra"), ou seja, **nenhuma obra de prosa publicava capitulo**. Agora:
-  o resumo da obra traz o formato, a tela "CapÃ­tulos" repassa para o fluxo e o wizard se adapta â€”
+  o resumo da obra traz o formato, a tela "Capítulos" repassa para o fluxo e o wizard se adapta —
   paginas (MANGA) ou texto de prosa (LIGHT_NOVEL), com o payload correto (`pages` x `content`).
 - [x] **Ajuste de reacao:** a lista de "Minhas obras" recriava a funcao de carga a cada render (warning do
   React no `useEffect`); o efeito agora tem a carga embutida e cancela o resultado se a tela desmontar.
@@ -766,7 +766,7 @@ O detalhe público da obra agora omite capítulos com `publicReleaseAt` futuro; 
 ## 7.31 Recorte de imagem, edicao de capitulo e lancamento (2026-10-21)
 
 - [x] **Recorte reescrito com a matematica do MangaTeofilo:** o ajuste anterior usava `transform` com
-  `width: 100%` e o canvas calculava o retangulo de outro jeito â€” por isso a imagem nao aparecia inteira, o
+  `width: 100%` e o canvas calculava o retangulo de outro jeito — por isso a imagem nao aparecia inteira, o
   arrasto travava em um eixo e o arquivo salvo era diferente do preview. Agora `utils/responsiveCrop.ts` traz o
   modelo da referencia (`zoom` + `x`/`y` em percentual, limites por eixo, imagem em modo "cover") e o
   `ImageCropper` usa a MESMA geometria no CSS e no canvas: o preview ao lado do quadro **e** o arquivo gravado.
@@ -776,11 +776,11 @@ O detalhe público da obra agora omite capítulos com `publicReleaseAt` futuro; 
 - [x] **Capa e banner da obra tambem tem recorte:** lancamento/edicao de obra abre o editor 2:3 (900x1200) e 16:9
   (1600x900).
 - [x] **Organizar paginas no padrao do MangaTeofilo:** avanco automatico para "Organizar paginas" depois do upload,
-  arrastar e soltar para reordenar (alÃ©m das setas), campo "ir para a pagina N" e botao "ADICIONAR MAIS IMAGENS"
+  arrastar e soltar para reordenar (além das setas), campo "ir para a pagina N" e botao "ADICIONAR MAIS IMAGENS"
   dentro da propria etapa (sem voltar ao upload). As paginas ficaram com o tamanho do modelo de referencia.
-- [x] **Escritor edita capitulo:** `PUT /api/works/{workId}/chapters/{number}` (sÃ³ o autor) edita paginas em nova
+- [x] **Escritor edita capitulo:** `PUT /api/works/{workId}/chapters/{number}` (só o autor) edita paginas em nova
   ordem, capa, titulo, texto e data de lancamento. Bug encontrado no caminho: a edicao quebrava no indice unico
-  de `chapter_files.filename` (a pagina ja registrada) â€” a vinculo agora e substituido, nao acrescido.
+  de `chapter_files.filename` (a pagina ja registrada) — a vinculo agora e substituido, nao acrescido.
 - [x] **Lancamento sem data por padrao:** a data de liberacao virou OPCIONAL no cadastro do capitulo; sem data o
   capitulo entra no ar imediatamente, e a data (quando o autor quiser agendar) fica visivel e editavel na etapa
   "Revisar".
@@ -791,30 +791,53 @@ O detalhe público da obra agora omite capítulos com `publicReleaseAt` futuro; 
 - [x] **Causa raiz 1 - a data de lancamento viajava em UTC:** o front enviava `new Date(...).toISOString()`
   (com "Z") para um campo `LocalDateTime` do servidor. O valor gravado saia deslocado e o capitulo
   acabava agendado para **um mes a frente**: o leitor nao o via, a ficha da obra nao o listava e a lista de
-  edicao do autor (que le os capitulos pela ficha) ficava vazia â€” parecia que a edicao havia apagado o
+  edicao do autor (que le os capitulos pela ficha) ficava vazia — parecia que a edicao havia apagado o
   capitulo. Agora o front envia no formato local (`toBackendLocalDateTime`), que e o que o backend le.
 - [x] **Causa raiz 2 - o autor nao via o proprio capitulo ainda nao liberado:** a ficha da obra e a leitura do
   capitulo filtravam por data de liberacao para todo mundo. Agora o **autor (e a moderacao) ve o conteudo
-  ainda nao liberado** â€” como no MangaTeofilo. O leitor comum continua vendo so o que foi publicado.
+  ainda nao liberado** — como no MangaTeofilo. O leitor comum continua vendo so o que foi publicado.
 - [x] **Padrao de lancamento:** o campo de data ja vem preenchido com **a data e a hora atuais** (o autor pode
   mudar para agendar) e o texto deixa claro: sem data = publica agora.
 - [x] **Prova ao vivo:** edicao do capitulo 1 da obra "teste miomya" (5 paginas reordenadas, titulo novo) ->
-  `200 "CapÃ­tulo atualizado com sucesso."`, com a data gravada exatamente como enviada (2026-10-21 12:00:00) e
+  `200 "Capítulo atualizado com sucesso."`, com a data gravada exatamente como enviada (2026-10-21 12:00:00) e
   as 5 paginas intactas em `chapter_files`.
 - [x] **Suite:** **368 testes**, 0 falhas, 0 erros; build do frontend verde.
 
-## 8. Ordem de corre
-## 8. Ordem de corre
-## 8. Ordem de corre
-## 8. Ordem de corre
-## 8. Ordem de corre
-## 8. Ordem de corre
-## 8. Ordem de corre
-## 8. Ordem de corre
-## 8. Ordem de corre
-## 8. Ordem de corre
-## 8. Ordem de corre
-## 8. Ordem de corre
+## 7.33 Capitulo PROGRAMADO visivel para o leitor e CRUD completo do autor (2026-10-22)
+
+- [x] **Requisito do usuario:** o capitulo agendado tem que ficar **visivel na ficha da obra** para o
+  leitor (para ele querer assinar e ler antes) sem virar leitura liberada, e o autor tem que **achar e
+  excluir** o proprio capitulo.
+- [x] **Leitor enxerga o capitulo PROGRAMADO:** `GET /api/works/{slug}` passou a listar os capitulos
+  com data futura quando a obra esta publicada (`ongoing`/`completed`), marcados com `isEarlyAccess=true`
+  e com a data de lancamento. A ficha mostra **"LANCAMENTO EM <data> · ANTECIPADO PARA MEMBROS"**.
+- [x] **Leitor nao-membro continua barrado:** a leitura responde `403` com a mensagem que convida a
+  entrar como membro oficial do autor (a trava de acesso antecipado nao afrouxa nada).
+- [x] **Autor nao era reconhecido como autor (bug real):** `isAuthorOrModerator` comparava o id do
+  **usuario** da sessao com o id do **criador** da obra — nunca batia. Agora compara com
+  `work.getAuthor().getUser().getId()`.
+- [x] **Ordem das travas invertida (bug real):** a trava de acesso antecipado era avaliada **antes**
+  do cheque de privilegio, entao o **autor tomava 403 no proprio capitulo agendado**. Agora o privilegio
+  e verificado primeiro e a trava so vale para quem nao e autor/moderador.
+- [x] **CRUD completo do capitulo:** `DELETE /api/works/{workId}/chapters/{chapterNumber}` (so o autor)
+  exclui o capitulo, apaga as paginas em cascata (`chapter_files.chapter_id ON DELETE CASCADE`),
+  corrige `works.total_chapters` e sincroniza o feed. No painel do autor ha o botao **EXCLUIR** ao lado
+  do **EDITAR**.
+- [x] **Painel do autor:** a lista de capitulos agora carrega a data real (`publicReleaseAt`) e marca
+  **"PROGRAMADO PARA <data>"** (antes o campo vinha fixo em `null`, entao o selo nunca aparecia).
+- [x] **Encoding:** o repositorio tinha texto com UTF-8 duplamente codificado ("CapÃ­tulo",
+  "nÃ£o", "lanÃ§amento") em mensagens de erro e na interface. Decodificado com inverso CP1252 estrito
+  (preserva `->`, `—` e emoji) em backend, frontend e documentacao.
+- [x] **Bagunca corrigida:** o `AUDITORIA-ATUAL.md` tinha 13 copias do titulo "## 8. Ordem de corre"
+  (restou uma).
+- [x] **Prova ao vivo:** obra "teste miomya" com o capitulo 1 programado para 25/10/2026 — leitor sem
+  sessao ve "LANCAMENTO EM 25/10/2026 · ANTECIPADO PARA MEMBROS" na ficha; leitura sem sessao
+  `403 "Capitulo em Acesso Antecipado exclusivo para membros oficiais do autor @mapplestar"`; autor
+  le o proprio capitulo (`200`); `DELETE` do capitulo de teste removeu capitulo + pagina e baixou
+  `total_chapters` de 2 para 1.
+- [x] **Suite:** **371 testes**, 0 falhas, 0 erros (3 novos: autor le o proprio capitulo programado,
+  exclusao ajusta o contador, exclusao por terceiro e negada); build do frontend verde.
+
 ## 8. Ordem de correção
 
 A fila está em `docs/orquestracao/ROADMAP-FASES.md`. Resumo:

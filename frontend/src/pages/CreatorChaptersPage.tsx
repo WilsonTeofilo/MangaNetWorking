@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { FileText, ChevronDown, Pencil } from 'lucide-react';
+import { FileText, ChevronDown, Pencil, Trash2 } from 'lucide-react';
 import { workApi, CreatorWorkSummaryDto } from '../api/workApi';
 import { ChapterPublishWizard, ChapterDraft } from '../components/creator/ChapterPublishWizard';
 import { Button } from '../components/ui/Button';
@@ -15,7 +15,7 @@ import { Button } from '../components/ui/Button';
  * <p>Cada capítulo publicado pode ser **editado** (páginas em nova ordem, capa, título, texto e
  * data de lançamento) — o mesmo CRUD do MangaTeofilo.</p>
  */
-/** Extrai a lista de pÃ¡ginas do capÃ­tulo (o servidor entrega em JSON). */
+/** Extrai a lista de páginas do capítulo (o servidor entrega em JSON). */
 function parsePages(read: { pages?: string[]; pagesJson?: string | null }): string[] {
   if (Array.isArray(read.pages)) return read.pages;
   if (!read.pagesJson) return [];
@@ -45,7 +45,7 @@ export function CreatorChaptersPage() {
   const [chaptersLoading, setChaptersLoading] = useState(false);
   const [editing, setEditing] = useState<ChapterDraft | null>(null);
 
-  useEffect(() => {
+  const reloadWorks = () => {
     workApi
       .listMyWorks()
       .then((payload) => {
@@ -56,6 +56,11 @@ export function CreatorChaptersPage() {
       })
       .catch(() => setError('Não foi possível carregar suas obras.'))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    reloadWorks();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const selectedWork = works.find((work) => work.id === selectedWorkId) || null;
@@ -79,7 +84,7 @@ export function CreatorChaptersPage() {
             title: chapter.title,
             coverUrl: chapter.coverUrl,
             pages: read ? parsePages(read) : [],
-            releaseDate: null,
+            releaseDate: chapter.publicReleaseAt ?? null,
           });
         }
         if (active) setChapters(rows);
@@ -94,6 +99,20 @@ export function CreatorChaptersPage() {
       active = false;
     };
   }, [selectedWork]);
+
+  const removeChapter = async (chapter: ChapterRow) => {
+    if (!selectedWork) return;
+    if (!window.confirm(`Excluir o capítulo #${chapter.chapterNumber}? As páginas dele saem do catálogo.`)) return;
+    try {
+      await workApi.deleteChapter(selectedWork.id, chapter.chapterNumber);
+      setError(null);
+      setChapters((current) => current.filter((item) => item.chapterNumber !== chapter.chapterNumber));
+      setEditing(null);
+      reloadWorks();
+    } catch (err: any) {
+      setError(err?.message || 'Não foi possível excluir o capítulo.');
+    }
+  };
 
   return (
     <section className="mn-container py-10 space-y-6">
@@ -208,21 +227,31 @@ export function CreatorChaptersPage() {
                   <span className="ml-2 font-pixel text-[10px] uppercase text-[var(--mn-mute)]">
                     {chapter.pages.length} pág
                   </span>
+                  {chapter.releaseDate && new Date(chapter.releaseDate).getTime() > Date.now() && (
+                    <span className="ml-2 font-pixel text-[10px] uppercase text-[var(--mn-teal)]">
+                      PROGRAMADO PARA {new Date(chapter.releaseDate).toLocaleDateString('pt-BR')}
+                    </span>
+                  )}
                 </span>
-                <Button
-                  variant="ghost"
-                  onClick={() =>
-                    setEditing({
-                      chapterNumber: chapter.chapterNumber,
-                      title: chapter.title,
-                      pages: chapter.pages,
-                      coverUrl: chapter.coverUrl ?? null,
-                      releaseDate: chapter.releaseDate ?? null,
-                    })
-                  }
-                >
-                  <Pencil size={13} /> EDITAR
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    onClick={() =>
+                      setEditing({
+                        chapterNumber: chapter.chapterNumber,
+                        title: chapter.title,
+                        pages: chapter.pages,
+                        coverUrl: chapter.coverUrl ?? null,
+                        releaseDate: chapter.releaseDate ?? null,
+                      })
+                    }
+                  >
+                    <Pencil size={13} /> EDITAR
+                  </Button>
+                  <Button variant="ghost" onClick={() => removeChapter(chapter)} title="Excluir este capítulo (com as páginas)">
+                    <Trash2 size={13} /> EXCLUIR
+                  </Button>
+                </div>
               </li>
             ))}
           </ul>

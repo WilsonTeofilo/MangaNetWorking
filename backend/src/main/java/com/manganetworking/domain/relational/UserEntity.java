@@ -78,7 +78,7 @@ public class UserEntity {
     private java.time.LocalDate birthDate;
 
     // Instante em que o titular configurou o perfil (foto/visibilidade).
-    // Ã‰ o sinal de que o primeiro acesso (montar o perfil) ja aconteceu.
+    // É o sinal de que o primeiro acesso (montar o perfil) ja aconteceu.
     private java.time.LocalDateTime profileOnboardingCompletedAt;
 
     // Obras curtidas pelo usuário (Biblioteca de favoritos)

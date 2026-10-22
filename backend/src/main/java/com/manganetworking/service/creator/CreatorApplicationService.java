@@ -173,7 +173,7 @@ public class CreatorApplicationService {
     @Transactional
     public void updateCreatorIdentity(UUID creatorId, UpdateCreatorIdentityRequestDto dto) {
         CreatorEntity creator = creatorRepository.findById(creatorId)
-                .orElseThrow(() -> new ResourceNotFoundException("Criador nÃ£o encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException("Criador não encontrado"));
 
         if (dto.name() != null && !dto.name().isBlank() && creator.getUser() != null) {
             creator.getUser().setName(com.manganetworking.util.SanitizationUtils.stripAllHtml(dto.name().trim()));

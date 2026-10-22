@@ -33,18 +33,18 @@ const STEPS = [
 
 interface PageItem {
   key: string;
-  /** Arquivo novo (ainda nÃ£o enviado). Ausente em pÃ¡gina jÃ¡ publicada. */
+  /** Arquivo novo (ainda não enviado). Ausente em página já publicada. */
   file?: File;
-  /** URL definitiva da pÃ¡gina (no modo de ediÃ§Ã£o, a pÃ¡gina jÃ¡ estÃ¡ no storage). */
+  /** URL definitiva da página (no modo de edição, a página já está no storage). */
   url?: string;
   previewUrl: string;
 }
 
 export interface ChapterDraft {
-  /** NÃºmero do capÃ­tulo (ediÃ§Ã£o). */
+  /** Número do capítulo (edição). */
   chapterNumber?: number;
   title?: string;
-  /** PÃ¡ginas jÃ¡ publicadas (URLs do storage). */
+  /** Páginas já publicadas (URLs do storage). */
   pages?: string[];
   coverUrl?: string | null;
   releaseDate?: string | null;
@@ -61,7 +61,7 @@ export function ChapterPublishWizard({
   workTitle: string;
   workFormat?: 'MANGA' | 'LIGHT_NOVEL' | null;
   nextChapterNumber: number;
-  /** CapÃ­tulo em ediÃ§Ã£o (pÃ¡ginas e metadados jÃ¡ gravados). */
+  /** Capítulo em edição (páginas e metadados já gravados). */
   draft?: ChapterDraft | null;
 }) {
   const isEditing = Boolean(draft);
@@ -206,7 +206,7 @@ export function ChapterPublishWizard({
         previewUrl: url,
       }))
     );
-    setChapterTitle(draft?.title ?? `CapÃ­tulo ${nextChapterNumber}`);
+    setChapterTitle(draft?.title ?? `Capítulo ${nextChapterNumber}`);
     setCoverFile(null);
     setCoverUrl(draft?.coverUrl ?? null);
     setCoverPreview(draft?.coverUrl ?? null);
@@ -236,7 +236,7 @@ export function ChapterPublishWizard({
       if (!isProse) {
         for (const page of pages) {
           if (page.url) {
-            // PÃ¡gina jÃ¡ publicada: mantÃ©m a URL (nÃ£o reenvia o arquivo).
+            // Página já publicada: mantém a URL (não reenvia o arquivo).
             uploaded.push(page.url);
             continue;
           }

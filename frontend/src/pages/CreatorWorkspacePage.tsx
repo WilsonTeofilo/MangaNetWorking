@@ -88,7 +88,7 @@ export function CreatorWorkspacePage({ section = 'dashboard', onOpenPublicProfil
     event.target.value = '';
     if (!file || isUploadingAvatar) return;
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-      setSaveError('Formato nÃ£o suportado. Envie JPG, PNG ou WebP.');
+      setSaveError('Formato não suportado. Envie JPG, PNG ou WebP.');
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
@@ -113,7 +113,7 @@ export function CreatorWorkspacePage({ section = 'dashboard', onOpenPublicProfil
       setAvatarCropSource(null);
       setSaveError(null);
     } catch (err: any) {
-      setSaveError(err?.message || 'NÃ£o foi possÃ­vel salvar o avatar.');
+      setSaveError(err?.message || 'Não foi possível salvar o avatar.');
     } finally {
       setIsUploadingAvatar(false);
     }
@@ -134,7 +134,7 @@ export function CreatorWorkspacePage({ section = 'dashboard', onOpenPublicProfil
       setIsSaved(true);
       setTimeout(() => setIsSaved(false), 2500);
       } catch (err: any) {
-        setSaveError(err?.message || 'NÃ£o foi possÃ­vel salvar no servidor. Verifique a sessÃ£o e tente novamente.');
+        setSaveError(err?.message || 'Não foi possível salvar no servidor. Verifique a sessão e tente novamente.');
     } finally {
       setIsSaving(false);
     }
@@ -182,7 +182,7 @@ export function CreatorWorkspacePage({ section = 'dashboard', onOpenPublicProfil
           </div>
         </div>
 
-        {/* Aviso Mandat��rio Anti-Pirataria em Caixa de Carimbo */}
+        {/* Aviso Mandatório Anti-Pirataria em Caixa de Carimbo */}
       <div className="border-2 border-[var(--mn-red)] mn-red-subtle p-5 space-y-2">
         <div className="flex items-center gap-2">
           <ShieldAlert size={18} className="text-[var(--mn-red)]" />
