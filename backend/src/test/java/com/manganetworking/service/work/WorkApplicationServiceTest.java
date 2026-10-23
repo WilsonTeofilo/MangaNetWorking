@@ -242,6 +242,39 @@ class WorkApplicationServiceTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    @DisplayName("Capítulo em blocos registra as ilustrações para herdarem o acesso do capítulo")
+    void shouldRegisterIllustrationFilesForAccessControl() {
+        work.setFormat(WorkFormat.LIGHT_NOVEL);
+        UUID chapterId = UUID.randomUUID();
+        when(workRepository.findById(workId)).thenReturn(Optional.of(work));
+        when(chapterRepository.findByWorkIdAndChapterNumber(workId, 1)).thenReturn(Optional.empty());
+        when(chapterRepository.save(any(ChapterEntity.class))).thenAnswer(invocation -> {
+            ChapterEntity saved = invocation.getArgument(0);
+            saved.setId(chapterId);
+            return saved;
+        });
+        when(workRepository.save(any(WorkEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        String text = "Parágrafo " + "a".repeat(1_100);
+        String blocksJson = "{\"version\":1,\"blocks\":["
+                + "{\"type\":\"text\",\"content\":{\"text\":\"" + text + "\"}},"
+                + "{\"type\":\"illustration\",\"content\":{\"fileId\":\"ilustracao-1.png\",\"altText\":\"Cena\"}},"
+                + "{\"type\":\"separator\",\"content\":{\"style\":\"scene\"}}"
+                + "]}";
+
+        workService.createChapter(creatorId, workId, new CreateChapterRequestDto(
+                1, "Capítulo 1", null, List.of(), LocalDateTime.now(),
+                ChapterFormat.PROSE, ChapterType.REGULAR, null, blocksJson));
+
+        ArgumentCaptor<List<ChapterFileEntity>> captor = ArgumentCaptor.forClass(List.class);
+        verify(chapterFileRepository).saveAll(captor.capture());
+        assertEquals(List.of("ilustracao-1.png"),
+                captor.getValue().stream().map(ChapterFileEntity::getFilename).toList(),
+                "Sem esse vínculo o guard trataria a ilustração como conteúdo público");
+    }
+
+    @Test
     @DisplayName("Publica capítulo em prosa sem alterar o contrato de páginas do mangá")
     void shouldPublishProseChapterForLightNovel() {
         work.setFormat(WorkFormat.LIGHT_NOVEL);
@@ -383,6 +416,29 @@ class WorkApplicationServiceTest {
         assertEquals(7, response.chapterNumber());
         verify(membershipRepository, never()).existsBySubscriberIdAndCreatorIdAndStatusAndExpiresAtAfter(
                 any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("Leitura do capítulo expõe os blocos e o tipo editorial de light novel")
+    void shouldExposeBlocksAndChapterTypeOnRead() {
+        UserEntity owner = new UserEntity();
+        owner.setId(UUID.randomUUID());
+        author.setUser(owner);
+
+        ChapterEntity prologue = chapter(0, LocalDateTime.now().minusDays(1));
+        prologue.setFormat(ChapterFormat.PROSE);
+        prologue.setChapterType(ChapterType.PROLOGUE);
+        prologue.setBlocksJson("{\"version\":1,\"blocks\":[{\"type\":\"text\",\"content\":{\"text\":\"Prólogo\"}}]}");
+        prologue.setContentText("Prólogo");
+
+        when(workRepository.findBySlug("cronicas-de-cyberpunk")).thenReturn(Optional.of(work));
+        when(chapterRepository.findByWorkIdAndChapterNumber(workId, 0)).thenReturn(Optional.of(prologue));
+
+        var response = workService.readChapter("cronicas-de-cyberpunk", 0, owner.getId());
+
+        assertEquals(ChapterType.PROLOGUE, response.chapterType());
+        assertEquals(prologue.getBlocksJson(), response.blocksJson());
+        assertEquals("Prólogo", response.content());
     }
 
     @Test

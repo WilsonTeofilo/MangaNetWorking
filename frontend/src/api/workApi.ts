@@ -125,6 +125,7 @@ export interface ChapterReadDto {
   format: 'IMAGE_PAGES' | 'PROSE';
   content?: string | null;
   blocksJson?: string | null;
+  chapterType?: 'REGULAR' | 'PROLOGUE' | 'SPECIAL' | null;
   likes: number;
   likedByMe?: boolean;
   authorHandle: string;

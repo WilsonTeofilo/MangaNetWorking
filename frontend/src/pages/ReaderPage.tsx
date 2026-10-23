@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, ChevronLeft, ChevronRight, Heart, Star, Flag, BookOpen, ScrollText } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Heart, Star, Flag, BookOpen, ScrollText, Settings2, Minus, Plus, X } from 'lucide-react';
 import { Work, Chapter } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useModals } from '../context/ModalContext';
@@ -78,6 +78,44 @@ export function ReaderPage({ work, chapter, initialPage, onBack, onNavigateChapt
       return 'paginated';
     }
   });
+  // Configuração de leitura da prosa (light novel): fonte, tamanho, entrelinha e largura.
+  // Fica no botão de configuração do header e é persistida no navegador.
+  const [proseSettings, setProseSettings] = useState(() => {
+    try {
+      const raw = window.localStorage.getItem('mn-prose-settings');
+      if (raw) {
+        const parsed = JSON.parse(raw) as Partial<{
+          fontSize: number;
+          lineHeight: number;
+          maxWidth: number;
+          serif: boolean;
+        }>;
+        return {
+          fontSize: Number(parsed.fontSize) || 18,
+          lineHeight: Number(parsed.lineHeight) || 1.9,
+          maxWidth: Number(parsed.maxWidth) || 720,
+          serif: parsed.serif !== false,
+        };
+      }
+    } catch {
+      // preferência inválida: usa o padrão
+    }
+    return { fontSize: 18, lineHeight: 1.9, maxWidth: 720, serif: true };
+  });
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  const updateProseSettings = (patch: Partial<typeof proseSettings>) => {
+    setProseSettings((current) => {
+      const next = { ...current, ...patch };
+      try {
+        window.localStorage.setItem('mn-prose-settings', JSON.stringify(next));
+      } catch {
+        // sem storage: vale só nesta sessão
+      }
+      return next;
+    });
+  };
+
   // Volta do login/cadastro direto para a conversa deste capítulo.
   useEffect(() => {
     if (window.sessionStorage.getItem('mn:scroll-comments') !== '1') {
@@ -642,6 +680,150 @@ export function ReaderPage({ work, chapter, initialPage, onBack, onNavigateChapt
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Configuração de leitura da prosa: fonte, tamanho, entrelinha e largura */}
+          {chapterFormat === 'PROSE' && (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setSettingsOpen((open) => !open)}
+                aria-expanded={settingsOpen}
+                aria-controls="prose-reading-settings"
+                aria-label="Configuração de leitura"
+                title="Configuração de leitura"
+                className={`p-1.5 border transition-colors ${
+                  settingsOpen
+                    ? 'border-[#FFD400] text-[#FFD400] bg-[#151517]'
+                    : 'border-[#34343A] bg-[#151517] text-[#A9A59A] hover:text-[#F4EFE3] hover:border-[#F4EFE3]'
+                }`}
+              >
+                <Settings2 size={16} />
+              </button>
+
+              {settingsOpen && (
+                <div
+                  id="prose-reading-settings"
+                  role="dialog"
+                  aria-label="Configuração de leitura"
+                  className="absolute right-0 top-full mt-2 w-64 border border-[#34343A] bg-[#151517] p-3 space-y-3 z-50 shadow-[4px_4px_0_rgba(0,0,0,0.4)]"
+                >
+                  <div className="flex items-center justify-between">
+                    <p className="font-pixel text-[11px] uppercase text-[#FFD400]">Leitura</p>
+                    <button
+                      type="button"
+                      onClick={() => setSettingsOpen(false)}
+                      aria-label="Fechar configuração de leitura"
+                      className="text-[#A9A59A] hover:text-[#F4EFE3]"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+
+                  <div className="space-y-1">
+                    <p className="font-body text-[11px] text-[#A9A59A]">Fonte</p>
+                    <div className="flex border border-[#34343A]">
+                      <button
+                        type="button"
+                        aria-pressed={proseSettings.serif}
+                        onClick={() => updateProseSettings({ serif: true })}
+                        className={`flex-1 px-2 py-1 font-body text-xs ${
+                          proseSettings.serif ? 'bg-[#FFD400] text-[#0B0B0C]' : 'text-[#F4EFE3]'
+                        }`}
+                        style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
+                      >
+                        Serifa
+                      </button>
+                      <button
+                        type="button"
+                        aria-pressed={!proseSettings.serif}
+                        onClick={() => updateProseSettings({ serif: false })}
+                        className={`flex-1 px-2 py-1 font-body text-xs border-l border-[#34343A] ${
+                          !proseSettings.serif ? 'bg-[#FFD400] text-[#0B0B0C]' : 'text-[#F4EFE3]'
+                        }`}
+                      >
+                        Sem serifa
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <p className="font-body text-[11px] text-[#A9A59A]">
+                      Tamanho do texto · <span className="tabular-nums">{proseSettings.fontSize}px</span>
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateProseSettings({ fontSize: Math.max(15, proseSettings.fontSize - 1) })
+                        }
+                        disabled={proseSettings.fontSize <= 15}
+                        aria-label="Diminuir tamanho do texto"
+                        className="p-1.5 border border-[#34343A] text-[#F4EFE3] disabled:opacity-40"
+                      >
+                        <Minus size={13} />
+                      </button>
+                      <span className="flex-1 text-center font-body text-sm text-[#F4EFE3] tabular-nums">
+                        {proseSettings.fontSize}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateProseSettings({ fontSize: Math.min(26, proseSettings.fontSize + 1) })
+                        }
+                        disabled={proseSettings.fontSize >= 26}
+                        aria-label="Aumentar tamanho do texto"
+                        className="p-1.5 border border-[#34343A] text-[#F4EFE3] disabled:opacity-40"
+                      >
+                        <Plus size={13} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <p className="font-body text-[11px] text-[#A9A59A]">Entrelinha</p>
+                    <div className="flex border border-[#34343A]">
+                      {[1.6, 1.9, 2.2].map((value) => (
+                        <button
+                          key={value}
+                          type="button"
+                          aria-pressed={proseSettings.lineHeight === value}
+                          onClick={() => updateProseSettings({ lineHeight: value })}
+                          className={`flex-1 px-2 py-1 font-body text-xs tabular-nums ${
+                            proseSettings.lineHeight === value
+                              ? 'bg-[#FFD400] text-[#0B0B0C]'
+                              : 'text-[#F4EFE3]'
+                          }`}
+                        >
+                          {value}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <p className="font-body text-[11px] text-[#A9A59A]">Largura da coluna</p>
+                    <div className="flex border border-[#34343A]">
+                      {[620, 720, 820].map((value) => (
+                        <button
+                          key={value}
+                          type="button"
+                          aria-pressed={proseSettings.maxWidth === value}
+                          onClick={() => updateProseSettings({ maxWidth: value })}
+                          className={`flex-1 px-2 py-1 font-body text-xs tabular-nums ${
+                            proseSettings.maxWidth === value
+                              ? 'bg-[#FFD400] text-[#0B0B0C]'
+                              : 'text-[#F4EFE3]'
+                          }`}
+                        >
+                          {value}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Seletor de modo de leitura: paginado (PC) x rolagem contínua (celular) */}
           {chapterFormat !== 'PROSE' && (
             <div className="flex items-center border border-[#34343A]" role="group" aria-label="Modo de leitura">
@@ -751,7 +933,13 @@ export function ReaderPage({ work, chapter, initialPage, onBack, onNavigateChapt
             <article 
               lang="pt-BR" 
               aria-label={`Texto do capítulo ${chapter.number}`} 
-              className="w-full max-w-[720px] px-5 py-8 sm:px-10 sm:py-12 text-left font-body text-lg leading-[1.9] text-[var(--mn-paper)] whitespace-pre-wrap select-text"
+              style={{
+                fontSize: `${proseSettings.fontSize}px`,
+                lineHeight: proseSettings.lineHeight,
+                maxWidth: `${proseSettings.maxWidth}px`,
+                fontFamily: proseSettings.serif ? 'Georgia, "Times New Roman", serif' : undefined,
+              }}
+              className="w-full px-5 py-8 sm:px-10 sm:py-12 text-left font-body text-[var(--mn-paper)] whitespace-pre-wrap select-text"
             >
               {proseBlocks.length > 0 ? (
                 proseBlocks.map((block, idx) => (
@@ -772,7 +960,11 @@ export function ReaderPage({ work, chapter, initialPage, onBack, onNavigateChapt
                     {block.type === 'illustration' && block.content.fileId && (
                       <div className="my-6 text-center">
                         <img
-                          src={`/api/storage/${block.content.fileId}`}
+                          src={
+                            block.content.fileId.startsWith('http') || block.content.fileId.startsWith('/')
+                              ? block.content.fileId
+                              : `/api/storage/${block.content.fileId}`
+                          }
                           alt={block.content.altText || `Ilustração do capítulo ${chapter.number}`}
                           style={{ 
                             maxWidth: `${block.content.width || 50}%`, 

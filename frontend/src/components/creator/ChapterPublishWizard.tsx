@@ -6,6 +6,11 @@ import { Button } from '../ui/Button';
 import { Field } from '../ui/Field';
 import { toBackendLocalDateTime } from '../../utils/datetime';
 import { ImageCropper } from '../common/ImageCropper';
+import { LightNovelChapterWizard } from './LightNovelChapterWizard';
+import type { ChapterDraft } from './LightNovelChapterWizard';
+
+// O contrato de rascunho é comum aos dois fluxos (mangá e light novel).
+export type { ChapterDraft };
 
 /**
  * Publicação de um CAPÍTULO em 5 etapas, na mesma ordem e com as mesmas regras do
@@ -40,30 +45,37 @@ interface PageItem {
   previewUrl: string;
 }
 
-export interface ChapterDraft {
-  /** Número do capítulo (edição). */
-  chapterNumber?: number;
-  title?: string;
-  /** Páginas já publicadas (URLs do storage). */
-  pages?: string[];
-  coverUrl?: string | null;
-  releaseDate?: string | null;
+export interface ChapterPublishWizardProps {
+  workId: string;
+  workTitle: string;
+  workFormat?: 'MANGA' | 'LIGHT_NOVEL' | null;
+  nextChapterNumber: number;
+  /** Capítulo em edição (páginas, texto e metadados já gravados). */
+  draft?: ChapterDraft | null;
+  /** Números de capítulo já usados na obra (light novel: impede um segundo capítulo 0). */
+  existingChapterNumbers?: number[];
+  /** Publicou/editou: o painel recarrega a lista de capítulos. */
+  onPublished?: () => void;
 }
 
-export function ChapterPublishWizard({
+/**
+ * Roteia para o fluxo certo. Mangá e light novel são sistemas de publicação
+ * diferentes: páginas ordenadas vs. documento de blocos (texto + ilustrações).
+ */
+export function ChapterPublishWizard(props: ChapterPublishWizardProps) {
+  if (props.workFormat === 'LIGHT_NOVEL') {
+    return <LightNovelChapterWizard {...props} />;
+  }
+  return <MangaChapterPublishWizard {...props} />;
+}
+
+function MangaChapterPublishWizard({
   workId,
   workTitle,
   workFormat,
   nextChapterNumber,
   draft,
-}: {
-  workId: string;
-  workTitle: string;
-  workFormat?: 'MANGA' | 'LIGHT_NOVEL' | null;
-  nextChapterNumber: number;
-  /** Capítulo em edição (páginas e metadados já gravados). */
-  draft?: ChapterDraft | null;
-}) {
+}: ChapterPublishWizardProps) {
   const isEditing = Boolean(draft);
   const isProse = workFormat === 'LIGHT_NOVEL';
 

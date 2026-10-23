@@ -33,6 +33,36 @@ interface ChapterRow {
   coverUrl?: string | null;
   pages: string[];
   releaseDate?: string | null;
+  content?: string | null;
+  blocksJson?: string | null;
+  chapterType?: 'REGULAR' | 'PROLOGUE' | 'SPECIAL' | null;
+}
+
+/** Contagem aproximada de caracteres visíveis do capítulo (prosa). */
+function proseLength(row: ChapterRow): number {
+  if (row.blocksJson) {
+    try {
+      const parsed = JSON.parse(row.blocksJson) as { blocks?: Array<{ type: string; content?: { text?: string } }> };
+      return (parsed.blocks ?? []).reduce(
+        (sum, block) => (block.type === 'text' ? sum + (block.content?.text ?? '').length : sum),
+        0
+      );
+    } catch {
+      return row.content?.length ?? 0;
+    }
+  }
+  return row.content?.length ?? 0;
+}
+
+/** Quantas ilustrações intercaladas o capítulo tem (prosa). */
+function proseIllustrations(row: ChapterRow): number {
+  if (!row.blocksJson) return 0;
+  try {
+    const parsed = JSON.parse(row.blocksJson) as { blocks?: Array<{ type: string }> };
+    return (parsed.blocks ?? []).filter((block) => block.type === 'illustration').length;
+  } catch {
+    return 0;
+  }
 }
 
 export function CreatorChaptersPage() {
@@ -44,6 +74,8 @@ export function CreatorChaptersPage() {
   const [chapters, setChapters] = useState<ChapterRow[]>([]);
   const [chaptersLoading, setChaptersLoading] = useState(false);
   const [editing, setEditing] = useState<ChapterDraft | null>(null);
+  /** Incrementa depois de publicar/editar para recarregar a lista de capítulos. */
+  const [reloadToken, setReloadToken] = useState(0);
 
   const reloadWorks = () => {
     workApi
@@ -85,6 +117,9 @@ export function CreatorChaptersPage() {
             coverUrl: chapter.coverUrl,
             pages: read ? parsePages(read) : [],
             releaseDate: chapter.publicReleaseAt ?? null,
+            content: read?.content ?? null,
+            blocksJson: read?.blocksJson ?? null,
+            chapterType: read?.chapterType ?? null,
           });
         }
         if (active) setChapters(rows);
@@ -98,7 +133,7 @@ export function CreatorChaptersPage() {
     return () => {
       active = false;
     };
-  }, [selectedWork]);
+  }, [selectedWork, reloadToken]);
 
   const removeChapter = async (chapter: ChapterRow) => {
     if (!selectedWork) return;
@@ -122,9 +157,8 @@ export function CreatorChaptersPage() {
           <FileText size={26} className="text-[var(--mn-yellow)]" /> Capítulos
         </h1>
         <p className="mt-2 text-sm text-[var(--mn-mute)]">
-          Escolha a obra que você criou em <strong className="text-[var(--mn-paper)]">Minhas obras</strong> e publique
-          o capítulo: upload das páginas, capa do capítulo, revisão e publicação. Capítulo já publicado pode ser
-          editado aqui.
+          Escolha a obra e publique o capítulo. Mangá usa páginas ordenadas; light novel usa um editor
+          de texto com ilustrações intercaladas — cada formato tem o seu próprio fluxo abaixo.
         </p>
       </header>
 
@@ -209,8 +243,10 @@ export function CreatorChaptersPage() {
           </div>
           {chapters.length === 0 && !chaptersLoading && (
             <p className="font-body text-sm text-[var(--mn-mute)]">
-              Nenhum capítulo publicado nesta obra ainda. Publique o primeiro no fluxo abaixo (Upload →
-              Organizar páginas → Capa → Revisar → Publicar): ele aparece aqui com o botão <strong>EDITAR</strong>.
+              Nenhum capítulo publicado nesta obra ainda.{' '}
+              {selectedWork.format === 'LIGHT_NOVEL'
+                ? 'Publique o primeiro no fluxo abaixo (Detalhes → Escrever → Revisar → Publicar): o capítulo aparece aqui com o botão EDITAR.'
+                : 'Publique o primeiro no fluxo abaixo (Upload → Organizar páginas → Capa → Revisar → Publicar): ele aparece aqui com o botão EDITAR.'}
             </p>
           )}
           <ul className="space-y-2">
@@ -224,9 +260,26 @@ export function CreatorChaptersPage() {
                     #{chapter.chapterNumber}
                   </span>
                   {chapter.title}
-                  <span className="ml-2 font-pixel text-[10px] uppercase text-[var(--mn-mute)]">
-                    {chapter.pages.length} pág
-                  </span>
+                  {selectedWork?.format === 'LIGHT_NOVEL' ? (
+                    <>
+                      <span className="ml-2 font-pixel text-[10px] uppercase text-[var(--mn-mute)]">
+                        {proseLength(chapter).toLocaleString('pt-BR')} car
+                      </span>
+                      <span className="ml-2 font-pixel text-[10px] uppercase text-[var(--mn-mute)]">
+                        {proseIllustrations(chapter)} ilus
+                      </span>
+                      {chapter.chapterType === 'PROLOGUE' && (
+                        <span className="ml-2 font-pixel text-[10px] uppercase text-[var(--mn-teal)]">prólogo</span>
+                      )}
+                      {chapter.chapterType === 'SPECIAL' && (
+                        <span className="ml-2 font-pixel text-[10px] uppercase text-[var(--mn-teal)]">especial</span>
+                      )}
+                    </>
+                  ) : (
+                    <span className="ml-2 font-pixel text-[10px] uppercase text-[var(--mn-mute)]">
+                      {chapter.pages.length} pág
+                    </span>
+                  )}
                   {chapter.releaseDate && new Date(chapter.releaseDate).getTime() > Date.now() && (
                     <span className="ml-2 font-pixel text-[10px] uppercase text-[var(--mn-teal)]">
                       PROGRAMADO PARA {new Date(chapter.releaseDate).toLocaleDateString('pt-BR')}
@@ -243,6 +296,9 @@ export function CreatorChaptersPage() {
                         pages: chapter.pages,
                         coverUrl: chapter.coverUrl ?? null,
                         releaseDate: chapter.releaseDate ?? null,
+                        content: chapter.content ?? null,
+                        blocksJson: chapter.blocksJson ?? null,
+                        chapterType: chapter.chapterType ?? null,
                       })
                     }
                   >
@@ -278,8 +334,13 @@ export function CreatorChaptersPage() {
             workId={selectedWork.id}
             workTitle={selectedWork.title}
             workFormat={selectedWork.format}
-            nextChapterNumber={editing?.chapterNumber ?? selectedWork.totalChapters + 1}
+            nextChapterNumber={
+              editing?.chapterNumber ??
+              Math.max(0, ...chapters.map((row) => row.chapterNumber)) + 1
+            }
             draft={editing}
+            existingChapterNumbers={chapters.map((row) => row.chapterNumber)}
+            onPublished={() => setReloadToken((token) => token + 1)}
           />
         </>
       )}

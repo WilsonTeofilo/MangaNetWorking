@@ -1,6 +1,7 @@
 package com.manganetworking.service.work;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.manganetworking.config.exception.AccessDeniedException;
 import com.manganetworking.config.exception.ResourceNotFoundException;
@@ -228,7 +229,9 @@ public class WorkApplicationService {
                 supportEnabled,
                 author != null ? author.getMembershipPriceBrl() : null,
                 chapter.getFormat(),
-                chapter.getContentText()
+                chapter.getContentText(),
+                chapter.getBlocksJson(),
+                chapter.getChapterType()
         );
     }
 
@@ -482,7 +485,7 @@ public class WorkApplicationService {
         chapter.setPublicReleaseAt(dto.publicReleaseAt() != null ? dto.publicReleaseAt() : LocalDateTime.now());
 
         ChapterEntity saved = chapterRepository.save(chapter);
-        replaceChapterFiles(saved.getId(), pages);
+        replaceChapterFiles(saved.getId(), accessFiles(pages, blocksJson));
 
         // Atualiza contadores na obra
         work.setTotalChapters(work.getTotalChapters() + 1);
@@ -655,9 +658,41 @@ public class WorkApplicationService {
         chapter.setPublicReleaseAt(dto.publicReleaseAt() != null ? dto.publicReleaseAt() : LocalDateTime.now());
 
         ChapterEntity saved = chapterRepository.save(chapter);
-        replaceChapterFiles(saved.getId(), pages);
+        replaceChapterFiles(saved.getId(), accessFiles(pages, blocksJson));
         publishFeedSync(work.getId(), "edição de capítulo");
         return saved;
+    }
+
+    /**
+     * Arquivos cujo acesso herda o do capítulo: páginas de mangá **e** ilustrações internas da
+     * prosa.
+     *
+     * <p>O {@code ChapterFileAccessGuard} trata arquivo desconhecido como conteúdo público (capa,
+     * banner, avatar). Se a ilustração de um capítulo em acesso antecipado não fosse registrada,
+     * a imagem vazaria pela URL direta do storage. Por isso ela entra na mesma relação
+     * {@code chapter_files} das páginas.</p>
+     */
+    private List<String> accessFiles(List<String> pages, String blocksJson) {
+        if (blocksJson == null || blocksJson.isBlank()) {
+            return pages;
+        }
+
+        List<String> files = new ArrayList<>(pages);
+        try {
+            JsonNode root = objectMapper.readTree(blocksJson);
+            for (JsonNode block : root.path("blocks")) {
+                if (!"illustration".equals(block.path("type").asText())) {
+                    continue;
+                }
+                String fileId = block.path("content").path("fileId").asText(null);
+                if (fileId != null && !fileId.isBlank()) {
+                    files.add(fileId);
+                }
+            }
+        } catch (JsonProcessingException ignored) {
+            // JSON inválido já é rejeitado pela política de blocos antes de chegar aqui.
+        }
+        return files;
     }
 
     /**

@@ -1016,6 +1016,67 @@ A fila está em `docs/orquestracao/ROADMAP-FASES.md`. Resumo:
 - [x] **Apresentação visual da obra:** Campo `presentation_json` em `WorkEntity` para editor futuro (capa, banner, galeria de abertura).
 - [ ] **Próximos passos:** Upload/seleção de ilustrações intercaladas (integração com `chapter_files`), volumes/tipos especiais avançados, CSV de analytics de retenção de prosa.
 
+## 7.42 Fluxo de autoria de light novel separado do mangá (2026-10-23)
+
+**Causa:** o wizard de capítulo era um só para os dois formatos. Para light novel, o "editor" era um
+`textarea` de prosa e as etapas falavam de páginas, capa e organização de mangá. Isso não é só
+cosmético: o capítulo de prosa é um **documento de blocos ordenados**, e o contrato de leitura
+(`ChapterReadResponseDto`) nem devolvia `blocksJson`/`chapterType` — o leitor caía sempre no texto
+plano e a edição perdia as ilustrações.
+
+- [x] **Contrato de leitura:** `ChapterReadResponseDto` passa a expor `blocksJson` e `chapterType`
+  (a fonte da verdade do capítulo). Sem isso o leitor não renderiza ilustrações e o editor não
+  reidrata os blocos ao editar. Regressão coberta em
+  `WorkApplicationServiceTest.shouldExposeBlocksAndChapterTypeOnRead`.
+- [x] **Fluxo dedicado:** `LightNovelChapterWizard` implementa **Detalhes → Escrever → Revisar →
+  Publicar** e substitui o wizard de 5 etapas somente quando `workFormat === 'LIGHT_NOVEL'`. O fluxo
+  de mangá permanece no `MangaChapterPublishWizard`, sem alteração de comportamento.
+- [x] **Etapa Detalhes:** tipo de capítulo (regular/prólogo/especial) com o limite editorial de cada
+  um, título de 1–120 caracteres e bloqueio do capítulo 0 quando a obra já tem prólogo. Em edição o
+  tipo é somente leitura (o backend não o altera) e o cabeçalho mostra o banner de modo edição.
+- [x] **Etapa Escrever:** um único documento. Blocos de texto com auto-altura, ilustração e
+  separador de cena; inserção pelo topo do documento ou por "+ parágrafo aqui" no ponto desejado;
+  reordenação por arrastar **e** por `↑`/`↓` (acessível por teclado); duplicar/remover bloco.
+  Ilustração tem upload imediato (`storageApi.uploadFile`, JPG/PNG/WebP até 8 MB), placeholder de
+  envio, miniatura, texto alternativo, largura de leitura e vaga liberada ao remover.
+- [x] **Limite e contagem:** `n/6` ilustrações no painel lateral; o botão de inserir desabilita em
+  6/6 com explicação. O contador usa `countVisibleProseCharacters` (espelho da política do backend)
+  e uma barra mostra a faixa recomendada de 6.000–18.000 com marcas, além dos avisos de curto
+  (<3.000), acima da faixa e acima do máximo de 30.000.
+- [x] **Autosave local:** rascunho por obra+capítulo em `localStorage` (título, tipo e blocos),
+  faixa "rascunho salvo" com restaurar/descartar e aviso de saída (`beforeunload`) com alterações
+  não publicadas. Não substitui o servidor — é proteção contra perda de digitação.
+- [x] **Revisar:** prévia fiel em tipografia de leitura (blocos na ordem salva, imagem com largura
+  relativa e `alt`), capa opcional do capítulo com recorte 900×1200 e agendamento
+  (`publicReleaseAt` vazio = agora).
+- [x] **Publicar:** resumo de obra, capítulo, contagem e data; erros de estrutura **e** de política
+  listados antes do botão, que fica desabilitado com o motivo exato. Em edição o texto avisa que o
+  capítulo, os comentários, as visualizações e a data original são preservados.
+- [x] **Segurança das ilustrações:** o `ChapterFileAccessGuard` trata arquivo desconhecido como
+  público. Publicar um capítulo em acesso antecipado com ilustração não registrada vazaria a imagem
+  pela URL do storage. Agora as ilustrações do `blocksJson` entram em `chapter_files` junto com as
+  páginas, herdando o controle de acesso do capítulo
+  (`WorkApplicationServiceTest.shouldRegisterIllustrationFilesForAccessControl`).
+- [x] **Painel de capítulos:** lista de light novel mostra caracteres e ilustrações em vez de
+  "0 pág"; o próximo número vem do maior capítulo existente (não de `totalChapters`, que quebrava a
+  sequência depois de um prólogo 0); publicar/editar recarrega a lista sem `F5`.
+- [x] **Configuração de leitura:** botão de configuração no header do leitor (somente prosa) com
+  fonte serifada/sem serifa, tamanho 15–26 px, entrelinha 1,6/1,9/2,2 e largura de coluna
+  620/720/820 px, persistida no navegador. Ilustração do leitor aceita nome de arquivo ou URL.
+- [x] **Migration V23:** `V23__light_novel_blocks_and_presentation.sql` acrescenta `chapters.chapter_type`
+  (default `REGULAR`), `chapters.blocks_json`, `chapters.blocks_version`, `works.presentation_json` e
+  três constraints: tipo válido, `blocks_json` só em prosa sem páginas e com versão ≥1. V1..V22
+  permanecem imutáveis. **Isto corrigia uma falha real:** o `ddl-auto: validate` quebrava os testes de
+  integração com `missing column [blocks_json]` — o diagnóstico anterior de "Docker indisponível"
+  estava errado.
+- [x] **Testes/build:** `mvn -o test` → **426 testes, 0 falhas, 0 erros, 0 ignorados**, incluindo os
+  14 de integração com Testcontainers (`*IntegrationTest`). `cmd /c npm run build` → verde, 1672
+  módulos (aviso não impeditivo de bundle >500 kB).
+- [ ] **Ainda pendente:** volumes como entidade própria; apresentação visual da obra (0–6 imagens de
+  abertura) no painel; upload com validação de MIME real/dimensões e variantes responsivas no
+  servidor; `checkpoint` nos eventos de retenção (hoje os checkpoints de 10% enviam só
+  `page=1/totalPages=1` e o backend não distingue faixas); CSV de retenção de prosa.
+
 ## 7.39 Engajamento real, comentários, notificações e ranking (2026-10-22)
 
 **Causa das views baixas:** o `VIEW` era deduplicado para sempre por `(userId, chapterId, eventType)`;
