@@ -40,6 +40,9 @@ public class WorkEntity {
 
     private String bannerUrl;
 
+    @Column(name = "presentation_json", columnDefinition = "TEXT")
+    private String presentationJson;
+
     @ElementCollection(targetClass = Genre.class, fetch = FetchType.EAGER)
     @CollectionTable(name = "work_genres", joinColumns = @JoinColumn(name = "work_id"))
     @Enumerated(EnumType.STRING)
@@ -59,6 +62,11 @@ public class WorkEntity {
     @Column(nullable = false)
     private Long totalViews = 0L;
 
+    /** Leitores que favoritaram a obra na biblioteca (estrela). */
+    @Column(nullable = false)
+    private Long totalFavorites = 0L;
+
+    /** Curtidas reais da obra (coração), separadas do favorito/biblioteca. */
     @Column(nullable = false)
     private Long totalLikes = 0L;
 
@@ -98,6 +106,9 @@ public class WorkEntity {
     public String getBannerUrl() { return bannerUrl; }
     public void setBannerUrl(String bannerUrl) { this.bannerUrl = bannerUrl; }
 
+    public String getPresentationJson() { return presentationJson; }
+    public void setPresentationJson(String presentationJson) { this.presentationJson = presentationJson; }
+
     public List<Genre> getGenres() { return genres; }
     public void setGenres(List<Genre> genres) { this.genres = genres; }
 
@@ -112,6 +123,9 @@ public class WorkEntity {
 
     public Long getTotalViews() { return totalViews; }
     public void setTotalViews(Long totalViews) { this.totalViews = totalViews; }
+
+    public Long getTotalFavorites() { return totalFavorites; }
+    public void setTotalFavorites(Long totalFavorites) { this.totalFavorites = totalFavorites; }
 
     public Long getTotalLikes() { return totalLikes; }
     public void setTotalLikes(Long totalLikes) { this.totalLikes = totalLikes; }

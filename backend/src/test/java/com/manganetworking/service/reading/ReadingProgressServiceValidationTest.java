@@ -3,6 +3,7 @@ package com.manganetworking.service.reading;
 import com.manganetworking.config.exception.ResourceNotFoundException;
 import com.manganetworking.config.observability.ObservabilityMetricsService;
 import com.manganetworking.config.properties.PlatformProperties;
+import com.manganetworking.domain.nosql.EngagementEventDocument;
 import com.manganetworking.domain.relational.ChapterEntity;
 import com.manganetworking.domain.relational.WorkEntity;
 import com.manganetworking.repository.jpa.AdRevenueLedgerRepository;
@@ -24,7 +25,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -139,6 +145,109 @@ class ReadingProgressServiceValidationTest {
 
         org.assertj.core.api.Assertions.assertThat(result.progress().getCumulativePagesRead()).isEqualTo(1);
         org.assertj.core.api.Assertions.assertThat(result.triggerAd()).isFalse();
+        verify(engagementEventRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Avançar de página grava um único evento READ para o analytics")
+    void shouldRecordOneReadEventWhenAdvancingPage() {
+        when(chapterRepository.findById(chapterId)).thenReturn(Optional.of(chapter));
+        var existing = new com.manganetworking.domain.nosql.ReadingProgressDocument();
+        existing.setUserId(userId.toString());
+        existing.setWorkId(workId.toString());
+        existing.setChapterId(chapterId.toString());
+        existing.setPage(1);
+        existing.setCumulativePagesRead(1);
+        when(progressMongoRepository.findByUserIdAndWorkId(userId.toString(), workId.toString()))
+                .thenReturn(Optional.of(existing));
+        when(properties.getAds()).thenReturn(new PlatformProperties.Ads());
+        when(progressMongoRepository.save(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        readingProgressService.trackPageRead(
+                userId.toString(), workId.toString(), chapterId.toString(), 2, 3);
+
+        org.mockito.ArgumentCaptor<EngagementEventDocument> captor =
+                org.mockito.ArgumentCaptor.forClass(EngagementEventDocument.class);
+        // Uma visualização (primeira página do capítulo) + uma leitura de página.
+        verify(engagementEventRepository, times(2)).save(captor.capture());
+
+        var events = captor.getAllValues();
+        EngagementEventDocument viewEvent = events.stream()
+                .filter(e -> "VIEW".equals(e.getEventType()))
+                .findFirst()
+                .orElseThrow();
+        assertThat(viewEvent.getWorkId()).isEqualTo(workId.toString());
+        assertThat(viewEvent.getChapterId()).isEqualTo(chapterId.toString());
+        assertThat(viewEvent.getTimestamp()).isNotNull();
+
+        EngagementEventDocument readEvent = events.stream()
+                .filter(e -> "READ".equals(e.getEventType()))
+                .findFirst()
+                .orElseThrow();
+        assertThat(readEvent.getWorkId()).isEqualTo(workId.toString());
+        assertThat(readEvent.getChapterId()).isEqualTo(chapterId.toString());
+        assertThat(readEvent.getReadPage()).isEqualTo(2);
+        assertThat(readEvent.getTimestamp()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Reler o capítulo no mesmo dia não gera nova visualização")
+    void shouldNotCountViewTwiceForSameReaderAndChapterOnSameDay() {
+        when(chapterRepository.findById(chapterId)).thenReturn(Optional.of(chapter));
+        var existing = new com.manganetworking.domain.nosql.ReadingProgressDocument();
+        existing.setUserId(userId.toString());
+        existing.setWorkId(workId.toString());
+        existing.setChapterId(UUID.randomUUID().toString());
+        existing.setPage(3);
+        existing.setCumulativePagesRead(3);
+        when(progressMongoRepository.findByUserIdAndWorkId(userId.toString(), workId.toString()))
+                .thenReturn(Optional.of(existing));
+        when(properties.getAds()).thenReturn(new PlatformProperties.Ads());
+        when(progressMongoRepository.save(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(engagementEventRepository.existsByIdempotencyKey(any())).thenReturn(true);
+
+        readingProgressService.trackPageRead(
+                userId.toString(), workId.toString(), chapterId.toString(), 1, 3);
+
+        org.mockito.ArgumentCaptor<EngagementEventDocument> captor =
+                org.mockito.ArgumentCaptor.forClass(EngagementEventDocument.class);
+        verify(engagementEventRepository, times(1)).save(captor.capture());
+        assertThat(captor.getAllValues()).noneMatch(e -> "VIEW".equals(e.getEventType()));
+    }
+
+    @Test
+    @DisplayName("Reler o capítulo em outro dia conta uma nova visualização diária")
+    void shouldCountOneViewPerReaderPerChapterPerDay() {
+        when(chapterRepository.findById(chapterId)).thenReturn(Optional.of(chapter));
+        var existing = new com.manganetworking.domain.nosql.ReadingProgressDocument();
+        existing.setUserId(userId.toString());
+        existing.setWorkId(workId.toString());
+        existing.setChapterId(chapterId.toString());
+        existing.setPage(1);
+        existing.setCumulativePagesRead(1);
+        when(progressMongoRepository.findByUserIdAndWorkId(userId.toString(), workId.toString()))
+                .thenReturn(Optional.of(existing));
+        when(properties.getAds()).thenReturn(new PlatformProperties.Ads());
+        when(progressMongoRepository.save(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(engagementEventRepository.existsByIdempotencyKey(any())).thenReturn(false);
+
+        readingProgressService.trackPageRead(
+                userId.toString(), workId.toString(), chapterId.toString(), 2, 3);
+
+        org.mockito.ArgumentCaptor<EngagementEventDocument> captor =
+                org.mockito.ArgumentCaptor.forClass(EngagementEventDocument.class);
+        verify(engagementEventRepository, times(2)).save(captor.capture());
+        EngagementEventDocument viewEvent = captor.getAllValues().stream()
+                .filter(e -> "VIEW".equals(e.getEventType()))
+                .findFirst()
+                .orElseThrow();
+        assertThat(viewEvent.getIdempotencyKey()).contains(userId.toString())
+                .contains(chapterId.toString())
+                .startsWith(userId + ":VIEW:");
+        assertThat(viewEvent.getEventVersion()).isEqualTo(2);
     }
 
     @Test

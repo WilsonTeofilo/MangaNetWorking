@@ -31,9 +31,60 @@ import { ReportModal } from './components/modals/ReportModal';
 import { Work, Chapter } from './types';
 import { MOCK_CHAPTERS } from './data/mockData';
 import { workApi } from './api/workApi';
-import { authApi } from './api/authApi';
-import { mapChapterSummary } from './utils/apiMappers';
+import { authApi, userApi } from './api/authApi';
+import { mapChapterSummary, mapWorkDetailsToWork } from './utils/apiMappers';
 import { useAuth } from './context/AuthContext';
+
+/** Chave do snapshot de navegação — mantém a tela atual no F5 (o app não usa rotas). */
+const NAV_STORAGE_KEY = 'mn:nav';
+/** Destino salvo quando um visitante tenta comentar/favoritar e precisa entrar. */
+const AUTH_RETURN_KEY = 'mn:auth-return';
+
+interface NavSnapshot {
+  tab: AppTab;
+  workSlug?: string;
+  chapterNumber?: number;
+  profileUsername?: string;
+}
+
+interface AuthReturnTarget {
+  slug: string;
+  chapterNumber?: number;
+}
+
+function readAuthReturn(): AuthReturnTarget | null {
+  try {
+    const raw = window.sessionStorage.getItem(AUTH_RETURN_KEY);
+    return raw ? (JSON.parse(raw) as AuthReturnTarget) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveAuthReturn(target: AuthReturnTarget) {
+  try {
+    window.sessionStorage.setItem(AUTH_RETURN_KEY, JSON.stringify(target));
+  } catch {
+    // sessionStorage indisponível: o login ainda funciona, só não volta ao ponto exato.
+  }
+}
+
+function clearAuthReturn() {
+  try {
+    window.sessionStorage.removeItem(AUTH_RETURN_KEY);
+  } catch {
+    // sessionStorage indisponível: nada a limpar.
+  }
+}
+
+function readNavSnapshot(): NavSnapshot | null {
+  try {
+    const raw = window.sessionStorage.getItem(NAV_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as NavSnapshot) : null;
+  } catch {
+    return null;
+  }
+}
 
 function AppContent() {
   const { refreshSession, user, isAuthenticated, acceptCurrentPrivacyPolicy, logout, favoriteNotice, dismissFavoriteNotice } = useAuth();
@@ -58,14 +109,80 @@ function AppContent() {
     window.history.replaceState({}, '', '/');
   }, [refreshSession]);
 
-  const [currentTab, setCurrentTab] = useState<AppTab>('feed');
-  const [publicProfileUsername, setPublicProfileUsername] = useState('');
+  const [currentTab, setCurrentTab] = useState<AppTab>(() => readNavSnapshot()?.tab ?? 'feed');
+  const [publicProfileUsername, setPublicProfileUsername] = useState(
+    () => readNavSnapshot()?.profileUsername ?? ''
+  );
   const [selectedWork, setSelectedWork] = useState<Work | null>(null);
   const [readingChapter, setReadingChapter] = useState<Chapter | null>(null);
   /** Página em que o leitor deve abrir o capítulo (continuar de onde parou). */
   const [readingStartPage, setReadingStartPage] = useState<number | undefined>(undefined);
+  /** Obra/capítulo a reabrir depois do F5 (recarregados da API pelo slug). */
+  const [pendingRestore, setPendingRestore] = useState<{ slug: string; chapterNumber?: number } | null>(() => {
+    const nav = readNavSnapshot();
+    return nav?.workSlug ? { slug: nav.workSlug, chapterNumber: nav.chapterNumber } : null;
+  });
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [privacyError, setPrivacyError] = useState('');
+
+  /** Reabre a obra/capítulo de onde o F5 interrompeu (o app guarda a tela em sessionStorage). */
+  useEffect(() => {
+    if (!pendingRestore) return;
+    let active = true;
+    workApi
+      .getWorkBySlug(pendingRestore.slug)
+      .then(async (dto) => {
+        if (!active) return;
+        const restoredWork = mapWorkDetailsToWork(dto);
+        setSelectedWork(restoredWork);
+        if (pendingRestore.chapterNumber) {
+          const chapter = restoredWork.chapters?.find((c) => c.number === pendingRestore.chapterNumber);
+          if (chapter) {
+            setReadingChapter(chapter);
+            setReadingStartPage(undefined);
+            // Volta para a página exata em que o leitor estava antes do F5.
+            // O `await` mantém `active` válido até o fim (o cleanup do efeito só
+            // acontece depois que `pendingRestore` vira null).
+            const entries = await userApi.getReadingProgress().catch(() => []);
+            if (!active) return;
+            const entry = entries.find((item) => item.chapterId === chapter.id);
+            if (entry) {
+              const page = entry.page ?? 1;
+              const totalPages = entry.totalPages ?? 0;
+              setReadingStartPage(totalPages > 0 && page >= totalPages ? 1 : page);
+            }
+          }
+        }
+      })
+      .catch(() => {
+        // Obra removida/offline: volta para o feed em vez de ficar preso no loading.
+        if (active) setCurrentTab('feed');
+      })
+      .finally(() => {
+        if (active) setPendingRestore(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [pendingRestore]);
+
+  /** Mantém a tela atual no snapshot para o F5 não voltar ao feed. */
+  useEffect(() => {
+    // Não sobrescreve o snapshot antes de a restauração terminar: um segundo F5
+    // durante o carregamento perderia a obra que estava sendo reaberta.
+    if (pendingRestore) return;
+    const snapshot: NavSnapshot = {
+      tab: currentTab,
+      workSlug: selectedWork?.slug,
+      chapterNumber: readingChapter?.number,
+      profileUsername: publicProfileUsername || undefined,
+    };
+    try {
+      window.sessionStorage.setItem(NAV_STORAGE_KEY, JSON.stringify(snapshot));
+    } catch {
+      // sessionStorage indisponível (modo privado restrito): navegação segue normal.
+    }
+  }, [pendingRestore, currentTab, selectedWork?.slug, readingChapter?.number, publicProfileUsername]);
 
   // Ao selecionar uma obra, abre a Página de Banner/Detalhes da Obra (WorkDetailPage)
   const handleSelectWork = (work: Work) => {
@@ -73,6 +190,25 @@ function AppContent() {
     setReadingChapter(null);
     setReadingStartPage(undefined);
   };
+
+  // Destino real das notificações internas: abre a obra pelo slug sem recarregar o app.
+  useEffect(() => {
+    const onOpenWork = (event: Event) => {
+      const slug = (event as CustomEvent<{ slug?: string }>).detail?.slug;
+      if (!slug) return;
+      workApi
+        .getWorkBySlug(slug)
+        .then((dto) => {
+          setCurrentTab('feed');
+          setSelectedWork(mapWorkDetailsToWork(dto));
+          setReadingChapter(null);
+          setReadingStartPage(undefined);
+        })
+        .catch(() => {});
+    };
+    window.addEventListener('mn:open-work', onOpenWork);
+    return () => window.removeEventListener('mn:open-work', onOpenWork);
+  }, []);
 
   // Ao selecionar um capítulo específico, abre o leitor (ReaderPage).
   // `page` opcional retoma a leitura exatamente onde o leitor parou.
@@ -116,6 +252,46 @@ function AppContent() {
     setCurrentTab(tab);
   };
 
+  /** Visitante tentou comentar/favoritar: guarda o destino e abre login/cadastro. */
+  const handleRequireAuth = () => {
+    if (selectedWork) {
+      saveAuthReturn({
+        slug: selectedWork.slug,
+        chapterNumber: readingChapter?.number,
+      });
+    }
+    handleSwitchTab('login');
+  };
+
+  /** Reabre a obra/capítulo (e a conversa) salvos antes do login. */
+  const restoreAuthReturn = async (): Promise<boolean> => {
+    const target = readAuthReturn();
+    if (!target) return false;
+    try {
+      const dto = await workApi.getWorkBySlug(target.slug);
+      const restoredWork = mapWorkDetailsToWork(dto);
+      const chapter = target.chapterNumber
+        ? restoredWork.chapters?.find((item) => item.number === target.chapterNumber) ?? null
+        : null;
+      setCurrentTab('feed');
+      setSelectedWork(restoredWork);
+      setReadingChapter(chapter);
+      setReadingStartPage(undefined);
+      if (chapter) {
+        try {
+          window.sessionStorage.setItem('mn:scroll-comments', '1');
+        } catch {
+          // Sem sessionStorage, o usuário volta ao capítulo mas não rola automaticamente.
+        }
+      }
+      return true;
+    } catch {
+      return false;
+    } finally {
+      clearAuthReturn();
+    }
+  };
+
   /** Abre a página pública de um username (pelo próprio perfil ou pelo link de um autor). */
   const openPublicProfile = (username: string) => {
     setPublicProfileUsername(username);
@@ -131,7 +307,22 @@ function AppContent() {
     const session = await authApi.me().catch(() => null);
     await refreshSession();
     const needsOnboarding = session ? !session.profileOnboardingCompleted : false;
-    handleSwitchTab(needsOnboarding ? 'onboarding' : 'feed');
+    if (needsOnboarding) {
+      handleSwitchTab('onboarding');
+      return;
+    }
+    const restored = await restoreAuthReturn();
+    if (!restored) {
+      handleSwitchTab('feed');
+    }
+  };
+
+  /** Onboarding de conta nova: se veio de um comentário, volta para ele. */
+  const handleProfileSaved = async () => {
+    const restored = await restoreAuthReturn();
+    if (!restored) {
+      handleSwitchTab('feed');
+    }
   };
 
   if (passwordResetRoute) {
@@ -178,6 +369,7 @@ function AppContent() {
               setReadingStartPage(undefined);
             }}
             onNavigateChapter={handleNavigateChapter}
+            onRequireAuth={handleRequireAuth}
           />
         ) : selectedWork ? (
           /* 2. Tela de Detalhes da Obra com Banner (Página de Banner / Dentro do Catálogo) */
@@ -192,6 +384,7 @@ function AppContent() {
                 work={selectedWork}
                 onBackToCatalog={() => setSelectedWork(null)}
                 onOpenChapter={handleOpenChapter}
+                onRequireAuth={handleRequireAuth}
               />
             </main>
             <Footer />
@@ -199,7 +392,10 @@ function AppContent() {
         ) : currentTab === 'login' ? (
           /* 3. Tela de Login MangaTeofilo Tempestuosa */
           <LoginPage
-            onBackToFeed={() => handleSwitchTab('feed')}
+            onBackToFeed={() => {
+              clearAuthReturn();
+              handleSwitchTab('feed');
+            }}
             onLoginSuccess={handleLoginSuccess}
           />
         ) : (
@@ -259,7 +455,7 @@ function AppContent() {
               {currentTab === 'onboarding' && (
                 <OnboardingPage
                   onOpenPublicProfile={openPublicProfile}
-                  onProfileSaved={() => handleSwitchTab('feed')}
+                  onProfileSaved={handleProfileSaved}
                 />
               )}
 

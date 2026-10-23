@@ -142,12 +142,22 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/works/*/chapters/*").hasRole("CREATOR")
                         .requestMatchers(HttpMethod.DELETE, "/api/works/*").hasRole("CREATOR")
                         .requestMatchers(HttpMethod.POST, "/api/works/*/comments").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/works/*/comments/*").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/works/*/comments/*").authenticated()
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/works/*/comments/*/like",
+                                "/api/works/*/comments/*/report").authenticated()
+                        // Curtir capítulo é ação de qualquer leitor autenticado; precisa vir
+                        // ANTES da regra de POST /api/works/** (restrita a criador).
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/works/*/chapters/*/like").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/works/**").hasRole("CREATOR")
                         // Workspace do criador é dado privado (saldo, doações, chave PIX): exige sessão de criador.
                         // Deve vir ANTES do permitAll de /api/creators/** (primeiro match vence).
                         .requestMatchers(HttpMethod.GET, "/api/creators/workspace").hasRole("CREATOR")
                         .requestMatchers(HttpMethod.GET, "/api/creators/workspace/works").hasRole("CREATOR")
-                        .requestMatchers(HttpMethod.GET, "/api/creators/analytics", "/api/creators/season").hasRole("CREATOR")
+                        .requestMatchers(HttpMethod.GET, "/api/creators/analytics",
+                                "/api/creators/analytics/export.csv", "/api/creators/season").hasRole("CREATOR")
                         // Transição de leitor para escritor e seguir/seguir-fora: ação de qualquer conta
                         // autenticada. Precisa vir ANTES da regra de POST de /api/creators/** (só criador).
                         .requestMatchers(HttpMethod.POST, "/api/creators/apply").authenticated()
@@ -166,6 +176,8 @@ public class SecurityConfig {
                         // Envio de denúncia é público; fila e ações são exclusivas de moderadores
                         .requestMatchers(HttpMethod.POST, "/api/reports").permitAll()
                         .requestMatchers("/api/reports/**").hasRole("MODERATOR")
+                        // Central interna de notificações: cada usuário só vê as próprias.
+                        .requestMatchers("/api/notifications/**").authenticated()
                         // Área administrativa do proprietário: papel exclusivo, nunca inferido do cliente.
                         .requestMatchers("/api/owner/**").hasRole("OWNER")
                         .requestMatchers("/error").permitAll()

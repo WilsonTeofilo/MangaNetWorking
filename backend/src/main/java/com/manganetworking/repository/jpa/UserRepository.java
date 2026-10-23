@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -27,6 +28,10 @@ public interface UserRepository extends JpaRepository<UserEntity, UUID> {
 
     @Query("select count(w) from UserEntity u join u.likedWorks w where u.id = :userId")
     long countLikedWorks(@Param("userId") UUID userId);
+
+    /** Leitores que favoritaram a obra; usado para notificar novo capítulo. */
+    @Query("select u.id from UserEntity u join u.likedWorks w where w.id = :workId")
+    List<UUID> findUserIdsByFavoriteWork(@Param("workId") UUID workId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select u from UserEntity u where u.id = :id")

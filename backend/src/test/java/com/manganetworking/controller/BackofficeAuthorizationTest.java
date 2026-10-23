@@ -4,6 +4,7 @@ import com.manganetworking.config.security.SecurityConfig;
 import com.manganetworking.service.moderation.ModerationApplicationService;
 import com.manganetworking.service.moderation.dto.PendingReportResponseDto;
 import com.manganetworking.service.session.SessionService;
+import com.manganetworking.service.work.WorkCommentService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,6 +46,10 @@ class BackofficeAuthorizationTest {
     // O slice @WebMvcTest inclui beans Filter; a SessionAuthenticationFilter depende deste serviço.
     @MockitoBean
     private SessionService sessionService;
+
+    // ReportController expõe também a fila de denúncias de comentários.
+    @MockitoBean
+    private WorkCommentService commentService;
 
     @Test
     @DisplayName("Anônimo na fila de denúncias → 401 (autenticação obrigatória)")

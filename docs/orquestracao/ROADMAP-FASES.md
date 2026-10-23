@@ -1,4 +1,4 @@
-- Identidade separada (21/10/2026): V17 adiciona `users.username` (único, imutável depois de escolhido, com
+﻿- Identidade separada (21/10/2026): V17 adiciona `users.username` (único, imutável depois de escolhido, com
   backfill `user_<id>`), `users.sex`, `creator_follows` e `work_comments`. Login e 2FA aceitam e-mail **ou** username.
   Cadastro cria sempre leitor; virar escritor exige `POST /api/creators/apply` com pelo menos um vínculo social
   (allowlist de host + HTTPS obrigatório, sem `javascript:`/`data:`/credencial/porta).
@@ -7,7 +7,7 @@
   "modo criador/leitor" (menu do avatar), painel do criador em telas separadas (workspace, obras, capítulos, missões,
   analytics, monetização), tela "Minha conta" e onboarding pós-cadastro. Bug real do stack de alerta corrigido: anotação
   YAML com `:` não citado derrubava o Prometheus (`promtool` → 4 regras, alvo `up`); Prometheus e Alertmanager
-  passaram para o profile `monitoring` do Compose. Suíte: **352 testes, 0 falhas, 0 erros**.
+  passaram para o profile `monitoring` do Compose. Suíte: **412 testes, 0 falhas, 0 erros**.
 
 # ROADMAP DE FASES — MangaNetWorking
 
@@ -137,7 +137,7 @@ Legenda: ✅ pronto · 🟡 parcial · 🔴 bloqueado/pendente · ⏸️ fora do
 - Páginas são servidas por extensão MIME correta, `X-Content-Type-Options: nosniff` e conteúdo de capítulo sem cache público. GET de storage não consome o bucket de rate limit.
 - Progresso não regride em requests fora de ordem e repetições da mesma página não incrementam o contador; índice composto único mantém um documento por `userId + workId`.
 - Upload em lote limita 300 páginas; antes de persistir, o backend verifica dimensões (máximo 8192 px por lado e 16 MP) por metadata do decoder. Formatos sem leitor ImageIO configurado (incluindo WebP neste runtime) são rejeitados no lote.
-- Migração V8 acrescenta `work_format` (`MANGA`/`LIGHT_NOVEL`) e `chapter_format` (`IMAGE_PAGES`/`PROSE`) sem alterar V1..V7. Capítulos em prosa são sanitizados, limitados a 2 MiB e incompatíveis com páginas; o leitor seleciona renderização conforme o formato entregue pela API. Mangá mantém o fluxo de páginas.
+- Migração V8 acrescenta `work_format` (`MANGA`/`LIGHT_NOVEL`) e `chapter_format` (`IMAGE_PAGES`/`PROSE`) sem alterar V1..V7. Capítulos em prosa existentes seguem legíveis como texto simples; a política de capítulo regular agora normaliza NFC, conta code points Unicode e valida 1.000–30.000 caracteres visíveis no backend em criação/edição. Front mostra contador, recomendação de 6.000–18.000 e aviso abaixo de 3.000. O limite de 2.000.000 caracteres brutos é apenas defesa de processamento, não tamanho editorial. **Formato de blocos versionado (v1) implementado**: `blocks_json` + `blocks_version` na entidade `ChapterEntity`, DTOs `ChapterBlockDto` (text/illustration/separator), política `ChapterBlocksPolicy` valida estrutura, total de caracteres (1.000–30.000), máximo 6 ilustrações intercaladas por capítulo; migração automática de `content_text` legado para blocos v1. **Tipos de capítulo**: `ChapterType` (REGULAR, PROLOGUE, SPECIAL) com validações específicas (prólogo = cap. 0 único, mínimo 300 chars; especial = mínimo 300 chars). **Editor de blocos no wizard** com toolbar, drag-and-drop, validação tempo real. **Leitor scroll-only** com barras de progresso e checkpoints 10% (10–100%). **Apresentação visual da obra**: `presentation_json` em `WorkEntity`. Ilustrações de abertura, volumes, CSV de analytics de retenção permanecem pendentes.
 - `ChapterFileAccessIntegrationTest` criou um capítulo publicado em PostgreSQL efêmero, gravou um JPEG real do projeto (`shito.jpg`, 1.060.446 bytes) no storage e serviu 100 GETs HTTP com concorrência 10: 100×200, MIME `image/jpeg`, bytes idênticos; medição final: duração total 723 ms, p50 46 ms, p95 190 ms, máximo 191 ms. O volume legado ainda contém referências órfãs; esse problema de dados não invalida a medição controlada.
 
 **Aceite**
@@ -418,3 +418,20 @@ Ao concluir um item, atualize **esta tabela** e `AUDITORIA-ATUAL.md` no mesmo co
 | 59 | F1/F2 | ✅ `UsernamePolicy` estrita (sem espaço/acento/hífen, sem símbolo repetido, reservados) + espelho no formulário; 377 testes verdes |
 | 60 | F2/F3 | ✅ Biblioteca real (`GET /users/me/library`) com favorito persistido, "continuar de onde parou" na página exata e "ler novamente" ao concluir o capítulo |
 | 61 | F9 | ✅ Analytics estilo Studio: período 7/28/90/180, visão geral + conteúdo por obra/capítulo, 48 h em tempo real e retenção real |
+| 62 | F9 | ✅ Evento `READ` deduplicado por avanço de página (retry/re-render não inflam leitura), `uniqueReaders` só da janela (nunca soma dos dias) e `docs/ANALYTICS-METRICAS.md` com fonte de verdade, fórmulas e limites |
+| 63 | F9/F3 | ✅ Visualização = leitor que leu a 1ª página do capítulo (`VIEW`, 1 por leitor/capítulo; abrir e sair não conta), total da obra = soma dos capítulos na ficha/feed/catálogo, cada capítulo mostra o próprio número, F5 mantém obra/capítulo/página, datas dd/mm/aaaa e tooltip de hora+total nas 48 h; 380 testes verdes |
+| 64 | F9/F6 | ✅ Funil de descoberta instrumentado (`IMPRESSION` ≥50%/1s em lote idempotente + `OPEN` atribuído em 30 min), CTR honesto (nulo sem denominador), comparação com período anterior, conclusão de mangá ≥80% (prosa indisponível), heatmap 7×24 em `America/Sao_Paulo`, exportação CSV server-side com neutralização de fórmula, tooltip no gráfico diário (mouse/teclado/toque), layout mobile e teste HTTP anti-IDOR; 398 testes verdes |
+| 65 | F2/F3 | ✅ Favorito/biblioteca é ação de estrela; curtidas existem somente por capítulo via `chapter_likes` (V19), e `works.total_likes` agrega os capítulos (V22 remove `work_likes`). Toggles idempotentes e contadores atômicos; `total_favorites` preserva o legado. View é 1 por leitor/capítulo/dia (`America/Sao_Paulo`) e só é enviada após a primeira página ficar visível; leitura em outro dia conta de novo. Apoio no fim do capítulo só aparece quando o autor é monetizado e o checkout está configurado |
+| 66 | F3/F9 | ✅ Comentários separados por capítulo (V20): respostas em profundidade 1, curtidas, edição/exclusão lógica dos próprios, denúncia com dedup, fila de moderação (`DISMISS`/`HIDE`), paginação, ordenação estável, contadores e selo amarelo de assinante ativo calculado no servidor. Front no fim do capítulo (mangá e light novel); visitante vai para login/cadastro e retorna ao capítulo/comentários |
+| 67 | F2/F9 | ✅ Central interna de notificações (V21): persistida, idempotente por `(user_id, dedup_key)`, não lidas, marcar uma/todas, limpar lidas com confirmação, paginação e destino que abre a obra. Eventos: novo capítulo de favorito (acesso antecipado respeitado + job de liberação), resposta e marcos de curtida (1/5/10/20/30/50/100). Push real continua **bloqueado** por VAPID/HTTPS/domínio e não foi simulado |
+| 68 | F9 | ✅ Ranking de obras normalizado por `log1p` e decaimento; ranking de comentários separado (`curtidas × 2 + respostas × 0,5 − idade × 0,1`, desempate por data/id). Teste de normalização adicionado; suíte backend **412 testes, 0 falhas/0 erros** e frontend `npm.cmd run build` verde |
+| 69 | F2/F3 | ✅ Sem curtida direta na obra: único botão de estrela salva favorito; ficha exibe curtidas/views por capítulo. Comentários só no capítulo, CTA visitante com retorno pós-login/onboarding para `#chapter-comments`; removido botão redundante de volta ao modo paginado no fim do scroll. V22 recalcula `works.total_likes` e remove `work_likes`; exclusão de capítulo subtrai as curtidas agregadas |
+| 70 | F3/F5 | ✅ `ProseEditorialPolicy` (backend Java + frontend TS): NFC/code-point, mín 1.000, aviso 3.000, rec 6.000-18.000, máx 30.000; capítulo especial/prólogo mín 300; contador em tempo real no editor; 4/4 testes verdes |
+| 71 | F5 | ✅ `AdOverlay` hardened: backdrop sem `onClick`, Escape bloqueado, 15 s cronometrados, fechar só pelo botão, cleanup de listeners após desmontagem |
+| 72 | F5 | ✅ `SobrePage`: carousel editorial duotone P&B→amarelo (crossfade 4,2 s, pausa no hover), história do Kokuin/Kiraya/Moshiki, seção MANGÁ · LIGHT NOVEL · AUTORIAL, CTA preto-sobre-amarelo. Rota `about` no `App.tsx`; link SOBRE no `Header.tsx` (tipo union atualizado) |
+
+> **Pendências honestas desta rodada:** as fatias 65–69 foram validadas por compilação, testes,
+> build, migrations reais e E2E HTTP (comentário, resposta, curtida, notificação, edição/exclusão e toggle de curtida de capítulo com soma da obra).
+> O QA **visual** no navegador (curtida, comentário, sino e retorno pós-login) não foi reexecutado após o rebuild. A
+> moderação de comentários tem API e fila, mas ainda não tem tela dedicada no front. Push real,
+> leitura anônima e progresso de prosa continuam bloqueados pelas decisões já registradas.

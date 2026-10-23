@@ -278,6 +278,8 @@ export function ReaderProfilePage({ onSelectWork }: ReaderProfilePageProps) {
                 work={work}
                 onSelect={onSelectWork}
                 isFavorite={true}
+                analyticsSurface="BIBLIOTECA"
+                analyticsEnabled={isAuthenticated}
               />
             ))}
           </div>

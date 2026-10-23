@@ -34,6 +34,7 @@ public class WorkFeedDocument {
 
     private Long totalViews = 0L;
     private Long totalLikes = 0L;
+    private Long totalFavorites = 0L;
     private Long totalComments = 0L;
     private Integer totalChapters = 0;
 
@@ -108,6 +109,9 @@ public class WorkFeedDocument {
 
     public Long getTotalLikes() { return totalLikes; }
     public void setTotalLikes(Long totalLikes) { this.totalLikes = totalLikes; }
+
+    public Long getTotalFavorites() { return totalFavorites; }
+    public void setTotalFavorites(Long totalFavorites) { this.totalFavorites = totalFavorites; }
 
     public Long getTotalComments() { return totalComments; }
     public void setTotalComments(Long totalComments) { this.totalComments = totalComments; }

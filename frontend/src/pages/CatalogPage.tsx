@@ -202,6 +202,8 @@ export function CatalogPage({ onSelectWork }: CatalogPageProps) {
                 onSelect={onSelectWork}
                 isFavorite={user.favorites.includes(work.id)}
                 onToggleFavorite={toggleFavorite}
+                analyticsSurface={searchTerm.trim() ? 'BUSCA' : 'CATALOGO'}
+                analyticsEnabled={Boolean(user.uid)}
               />
             ))}
           </div>

@@ -14,7 +14,7 @@ interface AuthContextType {
   becomeWriter: (payload: { handle?: string; instagramUrl?: string; youtubeUrl?: string; portfolioUrl?: string; cpf?: string }) => Promise<{ message: string; creatorId: string; creatorHandle: string }>;
   /** Atualiza avatar/visibilidade do perfil e reidrata a sessão. */
   saveProfile: (payload: { avatarUrl?: string; isProfilePublic?: boolean }) => Promise<void>;
-  toggleFavorite: (workId: string) => Promise<void>;
+  toggleFavorite: (workId: string) => Promise<{ favorite: boolean; totalFavorites: number } | null>;
   /** Aviso amigável quando o favorito não pôde ser gravado (visitante ou falha de rede). */
   favoriteNotice: string | null;
   dismissFavoriteNotice: () => void;
@@ -150,7 +150,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const toggleFavorite = async (workId: string) => {
     if (!isAuthenticated) {
       setFavoriteNotice('Entre na sua conta para salvar obras na biblioteca.');
-      return;
+      return null;
     }
     const previous = user.favorites;
     const wasFavorite = previous.includes(workId);
@@ -161,12 +161,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser((prev) => ({ ...prev, favorites: next }));
 
     try {
-      await userApi.toggleLibrary(workId);
+      const result = await userApi.toggleLibrary(workId);
       // Só depois da confirmação do servidor a lista da biblioteca é recarregada.
       setLibraryVersion((version) => version + 1);
+      return result;
     } catch {
       setUser((prev) => ({ ...prev, favorites: previous }));
       setFavoriteNotice('Não foi possível salvar na biblioteca agora. Tente novamente.');
+      return null;
     }
   };
 

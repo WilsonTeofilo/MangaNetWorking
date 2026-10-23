@@ -12,6 +12,9 @@ import jakarta.validation.constraints.Size;
 public record CreateCommentRequestDto(
         java.util.UUID chapterId,
 
+        /** Resposta a um comentário de primeiro nível. Null = comentário raiz. */
+        java.util.UUID parentId,
+
         @NotBlank(message = "O comentário não pode ficar em branco.")
         @Size(max = MAX_LENGTH, message = "O comentário deve ter no máximo 1000 caracteres.")
         String body

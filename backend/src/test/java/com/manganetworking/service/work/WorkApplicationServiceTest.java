@@ -3,8 +3,10 @@ package com.manganetworking.service.work;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.manganetworking.config.exception.AccessDeniedException;
 import com.manganetworking.config.exception.ResourceNotFoundException;
+import com.manganetworking.config.properties.PlatformProperties;
 import com.manganetworking.domain.enums.Genre;
 import com.manganetworking.domain.enums.ChapterFormat;
+import com.manganetworking.domain.enums.ChapterType;
 import com.manganetworking.domain.enums.WorkFormat;
 import com.manganetworking.domain.relational.ChapterEntity;
 import com.manganetworking.domain.relational.ChapterFileEntity;
@@ -12,11 +14,13 @@ import com.manganetworking.domain.relational.CreatorEntity;
 import com.manganetworking.domain.relational.UserEntity;
 import com.manganetworking.domain.relational.WorkEntity;
 import com.manganetworking.repository.jpa.ChapterFileRepository;
+import com.manganetworking.repository.jpa.ChapterLikeRepository;
 import com.manganetworking.repository.jpa.ChapterRepository;
 import com.manganetworking.repository.jpa.CreatorRepository;
 import com.manganetworking.repository.jpa.MembershipSubscriptionRepository;
 import com.manganetworking.repository.jpa.WorkRepository;
 import com.manganetworking.service.feed.event.WorkFeedSyncEvent;
+import com.manganetworking.service.notification.NotificationService;
 import com.manganetworking.service.work.dto.CreateChapterRequestDto;
 import com.manganetworking.service.work.dto.CreateWorkRequestDto;
 import com.manganetworking.service.work.dto.WorkDetailsResponseDto;
@@ -57,6 +61,15 @@ class WorkApplicationServiceTest {
 
     @Mock
     private CreatorRepository creatorRepository;
+
+    @Mock
+    private ChapterLikeRepository chapterLikeRepository;
+
+    @Mock
+    private PlatformProperties properties;
+
+    @Mock
+    private NotificationService notificationService;
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
@@ -237,13 +250,15 @@ class WorkApplicationServiceTest {
         when(chapterRepository.save(any(ChapterEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(workRepository.save(any(WorkEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
+        // Capítulo regular tem piso de 1.000 caracteres visíveis; HTML removido antes da contagem.
+        String longText = "Texto seguro " + "a".repeat(1_000);
         ChapterEntity created = workService.createChapter(creatorId, workId, new CreateChapterRequestDto(
                 1, "Capítulo 1", null, List.of(), LocalDateTime.now().minusMinutes(1),
-                ChapterFormat.PROSE, "<script>alert(1)</script>Texto seguro"));
+                ChapterFormat.PROSE, ChapterType.REGULAR, "<script>alert(1)</script>" + longText, null));
 
         assertEquals(ChapterFormat.PROSE, created.getFormat());
         assertNull(created.getPagesJson());
-        assertEquals("Texto seguro", created.getContentText());
+        assertEquals(longText, created.getContentText());
         verifyNoInteractions(chapterFileRepository);
     }
 
@@ -254,7 +269,7 @@ class WorkApplicationServiceTest {
 
         assertThrows(IllegalArgumentException.class, () -> workService.createChapter(creatorId, workId,
                 new CreateChapterRequestDto(1, "Capítulo 1", null, List.of(), LocalDateTime.now(),
-                        ChapterFormat.PROSE, "Texto")));
+                        ChapterFormat.PROSE, ChapterType.REGULAR, "x".repeat(1_000), null)));
         verify(chapterRepository, never()).save(any());
     }
 
@@ -371,9 +386,28 @@ class WorkApplicationServiceTest {
     }
 
     @Test
+    @DisplayName("Abrir o capítulo não conta visualização; quem conta é a primeira página lida")
+    void shouldNotCountViewWhenChapterIsOpened() {
+        ChapterEntity released = chapter(8, LocalDateTime.now().minusDays(1));
+        released.setViews(3L);
+        work.setTotalViews(10L);
+
+        when(workRepository.findBySlug("cronicas-de-cyberpunk")).thenReturn(Optional.of(work));
+        when(chapterRepository.findByWorkIdAndChapterNumber(workId, 8)).thenReturn(Optional.of(released));
+
+        workService.readChapter("cronicas-de-cyberpunk", 8, null);
+
+        assertEquals(3L, released.getViews());
+        assertEquals(10L, work.getTotalViews());
+        verify(chapterRepository, never()).save(released);
+        verify(workRepository, never()).save(work);
+    }
+
+    @Test
     @DisplayName("Autor exclui o próprio capítulo e a contagem da obra acompanha")
     void shouldDeleteChapterAndUpdateWorkCounter() {
         ChapterEntity scheduled = chapter(3, LocalDateTime.now().plusDays(2));
+        scheduled.setLikes(7L);
         work.setTotalChapters(4);
         when(workRepository.findById(workId)).thenReturn(Optional.of(work));
         when(chapterRepository.findByWorkIdAndChapterNumber(workId, 3)).thenReturn(Optional.of(scheduled));
@@ -382,7 +416,9 @@ class WorkApplicationServiceTest {
 
         verify(chapterRepository).delete(scheduled);
         assertEquals(3, work.getTotalChapters());
-        verify(workRepository).save(work);
+        verify(workRepository).saveAndFlush(work);
+        // A obra agrega curtidas de capítulos: excluir o capítulo remove só as 7 dele.
+        verify(workRepository).decrementTotalLikesBy(workId, 7L);
     }
 
     @Test

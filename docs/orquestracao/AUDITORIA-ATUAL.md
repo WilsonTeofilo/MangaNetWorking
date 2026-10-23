@@ -1,8 +1,8 @@
-# AUDITORIA ATUAL — MangaNetWorking
+﻿# AUDITORIA ATUAL — MangaNetWorking
 
-> **Data:** 20/10/2026 · **Escopo:** working tree real (backend Spring Boot, frontend React, Docker, documentação).
+> **Data:** 22/10/2026 · **Escopo:** working tree real (backend Spring Boot, frontend React, Docker, documentação).
 > **Método:** leitura do código/diff e verificações anotadas nas seções 7.2–7.6.
-> **Verificação mais recente:** `mvn -o test` → **322 testes, 0 falhas, 0 erros, 0 ignorados**; Docker/Testcontainers disponíveis. V13 e V14 aplicadas em PostgreSQL real (`token_hash character varying(64)` e `users.is_owner boolean`, `validate` verde); fluxo de recuperação no Mailpit, consumo concorrente 204/401, rotação de token e `ROLE_OWNER` exercitados. `npm.cmd run build` verde; container frontend reconstruído. Compose local e de produção passaram `config --quiet` (prod com `MAIL_*` fictícios, sem `.env`). As seções 7.15–7.17 registram o estado mais recente. Nesta rodada foram executados testes reais, QA autenticado de criador/moderador, revisão de segurança/arquitetura e criação da conta DONO com sessão real verificada; a senha não foi registrada.
+> **Verificação mais recente:** `mvn -o test` → **412 testes, 0 falhas, 0 erros, 0 ignorados**; Docker/Testcontainers disponíveis. V13 e V14 aplicadas em PostgreSQL real (`token_hash character varying(64)` e `users.is_owner boolean`, `validate` verde); fluxo de recuperação no Mailpit, consumo concorrente 204/401, rotação de token e `ROLE_OWNER` exercitados. `npm.cmd run build` verde; container frontend reconstruído. Compose local e de produção passaram `config --quiet` (prod com `MAIL_*` fictícios, sem `.env`). As seções 7.15–7.17 registram o estado mais recente. Nesta rodada foram executados testes reais, QA autenticado de criador/moderador, revisão de segurança/arquitetura e criação da conta DONO com sessão real verificada; a senha não foi registrada.
 
 ---
 
@@ -903,3 +903,152 @@ A fila está em `docs/orquestracao/ROADMAP-FASES.md`. Resumo:
   (com Dev Outbox e retorno a `PLATFORM_MAIL_ENABLED=true`); verificação manual no navegador dos
   quatro fluxos. Limpeza: página de leitura restaurada em 8/8, favorito removido e sessão de QA
   apagada do Redis.
+
+## 7.36 Analytics: evento READ deduplicado e contrato de métricas (2026-10-22)
+
+- [x] **Repetir a mesma página não infla mais a leitura:** `ReadingProgressService.trackPageRead`
+  gravava um evento `READ` em toda chamada válida, mesmo sem avanço de página — retry de rede,
+  re-render do leitor ou retorno à mesma página somavam leituras e distorciam a retenção por
+  página. Agora o evento só é gravado no mesmo caso que incrementa `cumulativePagesRead` (página
+  nova ou troca de capítulo). `ReadingProgressServiceValidationTest` cobre "mesma página não grava
+  evento" e "avançar grava exatamente um `READ`" (9 testes na classe).
+- [x] **Leitores únicos não são somados:** o fallback da tela somava `uniqueReaders` dos dias,
+  contando o mesmo leitor uma vez por dia em que voltou. Agora a tela usa só `totals` do backend
+  (distinto na janela) e mostra `—` quando o contrato não vier, em vez de um número falso.
+- [x] **Documento central de métricas:** `docs/ANALYTICS-METRICAS.md` define fonte única de verdade,
+  campos e regras do evento `READ`, fórmulas de leitura/leitores únicos/séries/retenção/financeiro,
+  deduplicação, janela em UTC, TTL de 180 dias, autorização e a lista explícita do que ainda não é
+  medido (impressões, CTR, origem de descoberta, início qualificado, conclusão, tempo ativo,
+  recorrência, continuação entre capítulos, curva de light novel, fuso do criador e CSV).
+- [x] **Prova:** backend **378 testes**, 0 falhas, 0 erros; `npm.cmd run build` verde (2,96 s).
+  Smoke E2E não reexecutado nesta rodada: a mudança é interna ao evento de leitura e está coberta
+  por teste unitário.
+
+## 7.37 Visualização por capítulo, total da obra e tela preservada no F5 (2026-10-22)
+
+- [x] **Visualização ≠ página lida:** o contador subia ao abrir o capítulo (`readChapter`) e o painel
+  somava eventos `READ` (1 por página). Agora `READ` alimenta **só** a retenção e `VIEW` é gravado
+  **uma vez por leitor por capítulo** quando a primeira página avança, com dedup por
+  `(userId, chapterId, eventType)` e índice composto novo. Abrir e sair sem ler não conta; reler o
+  mesmo capítulo não soma de novo.
+- [x] **Total da obra = soma dos capítulos:** `chapters.views` e `works.total_views` recebem +1 no
+  mesmo caso do `VIEW`. A ficha mostra o total e a linha de cada capítulo; catálogo/feed mostram o
+  total da obra; o painel traz visão geral + recorte por obra e por capítulo.
+- [x] **Números fabricados removidos:** `RankRow` exibia `420` curtidas e `1.240` views quando o
+  valor era zero (fallback hardcoded). Os `420` relatados vinham daí; `20/24` eram aberturas antigas
+  e `49` eram page reads repetidos de QA. Contadores locais foram reconciliados com `VIEW` e 15
+  eventos órfãos de capítulo apagado foram removidos (sem tocar em conteúdo do autor).
+- [x] **F5 mantém a tela:** como o app não usa router, a navegação passa a ser gravada em
+  `sessionStorage` e a obra/capítulo/página são reabertos no reload; o snapshot não é sobrescrito
+  enquanto a restauração corre. Validado no navegador (ficha e leitor reabrindo em 3/8).
+- [x] **Datas e tooltip:** o painel usa dd/mm/aaaa e as barras de 48 h têm tooltip próprio
+  ("Hoje, 12:00 – 13:00" + total), no lugar do `title` nativo.
+- [x] **Prova:** backend **380 testes**, 0 falhas, 0 erros; `npm.cmd run build` verde;
+  `GET /api/creators/analytics` = 1 visualização / 1 leitor / retenção 8 páginas; chamada repetida de
+  `track` não criou `VIEW` duplicado; ficha, feed e leitor conferidos no navegador.
+- [ ] **Pendências:** impressões/CTR/origem de descoberta, início qualificado, conclusão estimada,
+  tempo ativo, recorrência D1/D7/D30, continuação entre capítulos, curva de light novel, exportação
+  CSV e teste HTTP de IDOR em `/api/creators/analytics`. Smoke E2E não reexecutado nesta rodada.
+
+## 7.38 Funil de descoberta, comparação, conclusão, heatmap e CSV (2026-10-22)
+
+- [x] **Impressão e abertura separadas da leitura:** `POST /api/analytics/impressions` recebe lote
+  de até 20 cards que ficaram ≥50% visíveis por ~1 s (`IntersectionObserver` no `WorkCard`) e
+  `POST /api/analytics/openings` registra o clique. `idempotencyKey = userId:evento:sessão:superfície:obra`
+  tem índice único; retry/re-render/scroll não duplicam. Só leitor autenticado é rastreado.
+- [x] **CTR declarado, não inflado:** numerador = abertura com impressão da mesma pessoa/obra nos
+  30 minutos anteriores; abertura por link externo continua no funil, mas não no CTR. Sem
+  impressões, `ctrPercent = null` (indisponível), nunca zero fabricado.
+- [x] **Início qualificado e conclusão:** `VIEW` é o início qualificado (1ª página realmente lida).
+  Conclusão v1 de mangá = maior `readPage` ≥80% das páginas distintas; prosa devolve `null` até
+  existir checkpoint de progresso — não inferimos leitura por página em texto.
+- [x] **Comparação e fuso:** a janela anterior de mesma duração alimenta o delta dos KPIs e a linha
+  tracejada do gráfico; bordas e agrupamento diário passam a usar `America/Sao_Paulo` (IANA), com
+  armazenamento em UTC preservado.
+- [x] **Heatmap e amostra mínima:** matriz 7×24 dos últimos 28 dias em `America/Sao_Paulo`. Curva
+  de retenção, heatmap e detalhamento de origem ficam ocultos com amostra < 10
+  ("Dados insuficientes"), sem revelar indivíduo.
+- [x] **CSV server-side:** `GET /api/creators/analytics/export.csv` usa o mesmo serviço/fórmulas da
+  tela, exige `ROLE_CREATOR`, não exporta evento bruto nem leitor e neutraliza `=`, `+`, `-`, `@`,
+  tab e CR; células com vírgula, aspas, quebra de linha, Unicode e vazio cobertas por teste.
+- [x] **UI:** tooltip do gráfico diário em mouse, teclado (←/→/Home/End/Esc) e toque, com valor do
+  dia e período anterior; tabela de conteúdo ordenável; layout responsivo (grid de KPIs, gráfico,
+  tabela com rolagem, painel 48 h e cabeçalho).
+- [x] **Anti-IDOR:** `CreatorAnalyticsIdentityTest` prova que `creatorId`/`workId`/`chapterId` na URL
+  são ignorados (identidade só da sessão), leitor comum recebe 403 e anônimo 401, inclusive na
+  exportação.
+- [x] **Prova:** backend **398 testes**, 0 falhas, 0 erros (`BUILD SUCCESS`); `npm.cmd run build`
+  verde (3,38 s); containers `backend`/`frontend` reconstruídos e `healthy`. Em runtime local:
+  2 impressões + 1 abertura resultaram em **CTR 50,0%**, `attributedOpenings = 1`, funil
+  2 → 1 → 1 → 1; reenvio do lote devolveu `accepted: 0, duplicates: 2`; o CSV respondeu `200`
+  com `Content-Disposition`, BOM e linhas de resumo/obra/capítulo; `creatorId`/`workId` forjados
+  foram ignorados (`days=9999` fixado em 180, obra da sessão mantida). A tela renderizou os
+  mesmos números, o tooltip do gráfico respondeu a ponteiro e a teclado (End/←), inclusive na
+  borda direita (reposicionado sem overflow), a aba Conteúdo mostrou o capítulo com conclusão
+  100% e não houve overflow horizontal em 1000 px. Conclusão ignora `READ` sem `VIEW` (não passa
+  de 100%). Eventos de teste foram removidos do Mongo e as sessões manuais do Redis, apagadas; o
+  painel voltou a `impressions = 0` e `ctr = null`.
+- [ ] **Não verificado:** emulação visual de celular — o harness não expõe viewport/redimensionamento
+  nem screenshot; a responsividade foi revisada nas classes e medida apenas em 1000 px.
+- [ ] **Pendências:** tempo ativo (heartbeat), coortes D1/D7/D30, continuação para o próximo
+  capítulo, progresso de prosa e leitura anônima/dispositivo seguem sem instrumentação; superfícies
+  `RECOMENDACAO`/`PERFIL_CRIADOR`/`EXTERNO` ainda não disparam cards.
+
+## 7.40 Política editorial inicial para capítulos regulares de light novel (2026-10-22)
+
+- [x] **Backend:** `ProseEditorialPolicy` centraliza NFC, normalização de quebras, remoção do HTML no formato legado de texto simples e contagem por code points Unicode. Criação e edição rejeitam capítulos regulares abaixo de 1.000 ou acima de 30.000 caracteres visíveis; payload bruto acima de 2.000.000 é barrado antes de sanitização. O aviso de capítulo curto (<3.000) não bloqueia. Edição sem `content` mantém o texto existente.
+- [x] **Frontend:** `ChapterPublishWizard` mostra contador visível, restantes, faixa recomendada 6.000–18.000, aviso de capítulo curto e aviso acima da faixa; bloqueia avanço/publicação fora dos limites técnicos.
+- [x] **Testes:** `ProseEditorialPolicyTest` cobre NFC, emoji, quebras, tags, mínimo/máximo inclusivos, capítulo curto e teto bruto; `WorkApplicationServiceTest` cobre sanitização e validação no caso de uso. Testes direcionados: **21 testes, 0 falhas, 0 erros**; suíte completa: **412 testes, 0 falhas, 0 erros, 0 ignorados**. `cmd /c npm run build` concluiu; aviso não impeditivo de bundle acima de 500 kB.
+- [ ] **Ainda não implementado:** editor de blocos ordenados texto/ilustração/separador, limite de 0–6 imagens por capítulo, apresentação visual independente, volumes/tipos especiais e leitor de prosa somente em scroll com barra/configurações. A barra visual atual não registra progresso de retenção; checkpoints 10% ainda pendentes. Sem migration nesta fatia; não altera `content_text` existente.
+
+## 7.41 Formato de blocos versionado para light novel (2026-10-22)
+
+- [x] **Backend:** Nova coluna `blocks_json` (TEXT) e `blocks_version` (INTEGER) em `ChapterEntity`. DTOs `ChapterBlockDto` (sealed interface com `TextBlock`, `IllustrationBlock`, `SeparatorBlock`) e container `ChapterBlocksDto` versionado (v1 atual). Política `ChapterBlocksPolicy` valida estrutura JSON, contagem total de caracteres visíveis (1.000–30.000), máximo 6 ilustrações intercaladas, bloco de texto individual ≤30.000, pelo menos um bloco de texto. Migração automática `content_text` → blocos v1 via `ChapterBlocksPolicy.migratePlainTextToBlocks`. Separação estrita: `blocksJson` exclusivo com `content`/`pages`.
+- [x] **Novos tipos de capítulo:** `ChapterType` (REGULAR, PROLOGUE, SPECIAL) com validações específicas:
+  - REGULAR: 1.000–30.000 caracteres, mínimo 1 bloco de texto
+  - PROLOGUE: capítulo 0 opcional e único, mínimo 300 caracteres, exige bloco de texto
+  - SPECIAL: conteúdo extra, mínimo 300 caracteres, pode ter só ilustrações
+- [x] **DTOs:** `CreateChapterRequestDto` e `UpdateChapterRequestDto` ganham campos `chapterType` e `blocksJson`. Criação/edição de capítulo PROSE aceita blocos v1 (gera `content_text` legível para compatibilidade) ou formato legado `content` (mantido para retrocompatibilidade).
+- [x] **Testes:** `ChapterBlocksPolicyTest` (12 testes) cobre validação feliz, mín/máx total, limite por bloco, ilustrações (0–6), separadores, versão não suportada, JSON inválido, migração legado, validação PROLOGUE/SPECIAL. `WorkApplicationServiceTest` (17 testes) continua verde cobrindo ambos os formatos. `ProseEditorialPolicyTest` (4 testes) cobre formato legado. Suíte unitária backend: **424 testes, 0 falhas, 0 erros** (12 erros de integração por Docker/Testcontainers indisponível, não relacionados à mudança).
+- [x] **Frontend build:** `npm run build` verde (TypeScript + Vite, 1671 módulos).
+- [x] **Editor de blocos no wizard:** Toolbar com botões para adicionar Texto/Ilustração/Separador, drag-and-drop para reordenar, edição inline de cada bloco, validação em tempo real com erros/avisos, contador de caracteres e ilustrações, seletor de tipo de capítulo (Regular/Prólogo/Especial).
+- [x] **Leitor de prosa em scroll (ReaderPage):** Renderiza blocos ordenados (texto, ilustrações, separadores), barra de progresso no topo e na parte inferior do artigo, modo scroll-only (sem toggle paginado/vertical para prosa), checkpoints de retenção a cada 10% (10%–100%) com deduplicação e envio para `trackReadingProgress`, fim de capítulo detectado automaticamente no 100%.
+- [x] **Apresentação visual da obra:** Campo `presentation_json` em `WorkEntity` para editor futuro (capa, banner, galeria de abertura).
+- [ ] **Próximos passos:** Upload/seleção de ilustrações intercaladas (integração com `chapter_files`), volumes/tipos especiais avançados, CSV de analytics de retenção de prosa.
+
+## 7.39 Engajamento real, comentários, notificações e ranking (2026-10-22)
+
+**Causa das views baixas:** o `VIEW` era deduplicado para sempre por `(userId, chapterId, eventType)`;
+reabrir o mesmo capítulo no mesmo dia nunca gerava novo evento. A correção usa uma chave diária
+`userId:VIEW:chapterId:AAAA-MM-DD` em `America/Sao_Paulo` e `eventVersion=2`. O leitor só envia a view
+depois que a primeira página fica ≥50% visível por ~1 s (ou após navegar para página >1); abrir e sair
+não conta. Aba sem login não envia evento porque o tracking exige sessão — isso é decisão de produto,
+não bug, e não foi ativado fingerprint/IP.
+
+- [x] **V19/V22:** V19 separou `total_favorites` do contador de curtidas. A decisão final elimina curtida direta da obra: `chapter_likes` é a fonte de verdade e `works.total_likes` agrega `chapters.likes`; V22 recalcula o agregado e remove `work_likes`. Toggles usam `INSERT ... ON CONFLICT DO NOTHING` e contadores atômicos; incremento/decremento só quando a linha mudou. Excluir capítulo também remove do total agregado as curtidas daquele capítulo.
+- [x] **V20:** `work_comments` ganhou `parent_id`, `likes_count`, `status`, `edited_at`, `deleted_at`;
+  `comment_likes` e `comment_reports` têm unicidade por usuário. Respostas só em profundidade 1,
+  exclusão lógica preserva respostas, edição só do autor, denúncia só de terceiro e uma vez por
+  usuário. Moderação: `GET /api/reports/comments/pending` e `POST /api/reports/comments/{id}/moderate`
+  (`DISMISS`/`HIDE`). Corpo é sanitizado e renderizado como texto (sem `innerHTML`).
+- [x] **Selo de membro:** estrela amarela apenas quando existe `membership_subscriptions` com
+  `status=ACTIVE` e `expiresAt > agora` para o criador dono da obra; o cliente não envia esse campo.
+- [x] **V21:** central interna de notificações com `UNIQUE(user_id, dedup_key)`. Novo capítulo de
+  obra favoritada respeita acesso antecipado (antes da liberação só assinantes ativos; job de 5 min
+  notifica os demais sem duplicar), resposta e marcos de curtida não notificam a própria ação.
+  Endpoints de listagem, não lidas, marcar uma/todas e limpar lidas. Push real segue **bloqueado**
+  por VAPID/HTTPS/domínio/serviço de entrega.
+- [x] **Ranking:** obras usam `log1p` para views/curtidas/favoritos/comentários/capítulos, bônus de
+  recência, decaimento e boost de criador; tendência separa o histórico do agora pelo decaimento.
+  Comentários usam curtidas com peso predominante, respostas e recência como apoio, com desempate
+  determinístico.
+- [x] **Prova:** backend `mvn -o test` → **412 testes, 0 falhas, 0 erros, 0 ignorados**; frontend
+  `cmd /c npm run build` verde. Imagens `backend`/`frontend` reconstruídas; V19–V22 aplicadas no
+  PostgreSQL real (`flyway_schema_history` em 22; `work_likes` ausente). E2E HTTP com sessão real:
+  comentários/resposta/moderação/notificações (prova anterior) e toggle de curtida de capítulo: capítulo
+  `1→2→1`, obra `1→2→1`, soma dos capítulos igual ao agregado em cada passo. A conta de QA usada
+  nesta última prova permaneceu no banco porque o registro de consentimento é append-only.
+- [ ] **Não verificado:** QA visual no navegador do leitor/sino/comentários e retorno pós-login. A tela de moderação
+  de comentários é pendência de produto; as APIs já existem.
+- [ ] **Pendências:** push real, views anônimas (LGPD), progresso de prosa, heartbeat/coortes e
+  instrumentação de `RECOMENDACAO`/`PERFIL_CRIADOR`/`EXTERNO`.

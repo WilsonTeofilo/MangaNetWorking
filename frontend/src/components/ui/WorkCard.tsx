@@ -1,6 +1,8 @@
 import { MouseEvent } from 'react';
-import { Heart } from 'lucide-react';
+import { Star, Eye } from 'lucide-react';
 import { Work } from '../../types';
+import { AnalyticsSurface, trackOpening } from '../../api/discoveryAnalyticsApi';
+import { useWorkImpression } from '../../hooks/useWorkImpression';
 import { Cover } from './Cover';
 import { Sticker, StickerKind } from './Sticker';
 
@@ -11,6 +13,10 @@ export interface WorkCardProps {
   onToggleFavorite?: (workId: string) => void;
   badges?: StickerKind[];
   className?: string;
+  /** Superfície real onde o card aparece; sem ela, nada é rastreado. */
+  analyticsSurface?: AnalyticsSurface;
+  /** Só leitor autenticado é rastreado — visitante não recebe identificador anônimo. */
+  analyticsEnabled?: boolean;
 }
 
 export function WorkCard({
@@ -20,7 +26,11 @@ export function WorkCard({
   onToggleFavorite,
   badges = [],
   className = '',
+  analyticsSurface,
+  analyticsEnabled = false,
 }: WorkCardProps) {
+  const cardRef = useWorkImpression(work.id, analyticsSurface, analyticsEnabled);
+
   const handleFavoriteClick = (e: MouseEvent) => {
     e.stopPropagation();
     if (onToggleFavorite) {
@@ -28,9 +38,17 @@ export function WorkCard({
     }
   };
 
+  const handleSelect = () => {
+    if (analyticsSurface && analyticsEnabled) {
+      trackOpening(work.id, analyticsSurface);
+    }
+    onSelect(work);
+  };
+
   return (
     <article
-      onClick={() => onSelect(work)}
+      ref={cardRef}
+      onClick={handleSelect}
       className={`group cursor-pointer flex flex-col select-none transition-all duration-100 ${className}`}
       title={work.title}
     >
@@ -52,7 +70,7 @@ export function WorkCard({
             aria-label={isFavorite ? `Remover ${work.title} dos favoritos` : `Favoritar ${work.title}`}
             className="absolute top-2 right-2 w-11 h-11 flex items-center justify-center bg-[var(--mn-ink)] border-2 border-[var(--mn-paper)] shadow-[2px_2px_0_var(--mn-paper)] hover:scale-105 transition-all z-20"
           >
-            <Heart
+            <Star
               size={18}
               className={
                 isFavorite
@@ -78,8 +96,22 @@ export function WorkCard({
         <h4 className="font-display text-lg sm:text-[20px] text-[var(--mn-paper)] leading-[1.05] uppercase line-clamp-2 group-hover:text-[var(--mn-yellow)] transition-colors">
           {work.title}
         </h4>
-        <p className="font-body text-xs sm:text-[13px] text-[var(--mn-mute)] mt-1 truncate">
-          por <span className="text-[var(--mn-paper)] font-medium">{work.authorName}</span> · <span className="tabular-nums">{work.totalChapters || 1} caps</span>
+        <p className="font-body text-xs sm:text-[13px] text-[var(--mn-mute)] mt-1 truncate flex items-center gap-1.5">
+          por <span className="text-[var(--mn-paper)] font-medium">{work.authorName}</span> ·{' '}
+          <span className="tabular-nums">{work.totalChapters || 1} caps</span>
+          <span aria-hidden="true">·</span>
+          <span className="inline-flex items-center gap-1 tabular-nums" title="Visualizações da obra (soma dos capítulos)">
+            <Eye size={12} aria-hidden="true" />
+            {Number(work.totalViews ?? 0).toLocaleString('pt-BR')}
+          </span>
+          <span aria-hidden="true">·</span>
+          <span
+            className="inline-flex items-center gap-1 tabular-nums"
+            title="Leitores que favoritaram esta obra"
+          >
+            <Star size={12} aria-hidden="true" className="fill-[var(--mn-yellow)] text-[var(--mn-yellow)]" />
+            {Number(work.totalFavorites ?? 0).toLocaleString('pt-BR')}
+          </span>
         </p>
       </div>
     </article>

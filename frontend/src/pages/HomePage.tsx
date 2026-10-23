@@ -26,7 +26,7 @@ export function HomePage({
   onOpenChapter,
   onNavigateToCatalog,
 }: HomePageProps) {
-  const { user, isMemberOf } = useAuth();
+  const { user, isMemberOf, isAuthenticated } = useAuth();
   const { openEarlyAccess } = useModals();
 
   const [heroIndex, setHeroIndex] = useState(0);
@@ -40,7 +40,7 @@ export function HomePage({
 
   // Ranking Top 5 (Em Alta Agora)
   const trendingRanking = [...catalogWorks]
-    .sort((a, b) => b.totalViews + b.totalLikes * 10 - (a.totalViews + a.totalLikes * 10))
+    .sort((a, b) => b.totalViews + b.totalLikes * 10 + (b.totalFavorites ?? 0) * 12 - (a.totalViews + a.totalLikes * 10 + (a.totalFavorites ?? 0) * 12))
     .slice(0, 5);
 
   const handleReadNow = (work: Work) => {
@@ -280,6 +280,8 @@ export function HomePage({
                 onSelect={onSelectWork}
                 isFavorite={user.favorites.includes(work.id)}
                 badges={idx === 0 ? ['new'] : idx === 1 ? ['members'] : []}
+                analyticsSurface="FEED"
+                analyticsEnabled={isAuthenticated}
               />
             ))}
           </div>

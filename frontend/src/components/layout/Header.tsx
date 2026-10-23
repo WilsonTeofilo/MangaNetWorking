@@ -2,6 +2,7 @@ import { Heart, BookOpen, Compass, Info, User as UserIcon, Crown, ShieldAlert, L
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useModals } from '../../context/ModalContext';
+import { NotificationBell } from './NotificationBell';
 import logoSymbol from '../../assets/brand/logo-symbol.svg';
 
 export type AppTab =
@@ -175,6 +176,9 @@ export function Header({ currentTab, setCurrentTab, onOpenLogin, publicProfileUs
                 <span>DONO</span>
               </div>
             )}
+
+            {/* Central interna (persistida). Push real continua bloqueado por VAPID/HTTPS. */}
+            <NotificationBell />
 
             {/* VIP Status / Assinar VIP */}
             {user.isVip ? (

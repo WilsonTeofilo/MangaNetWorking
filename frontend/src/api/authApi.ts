@@ -253,7 +253,7 @@ export const userApi = {
    * Alternar favorito/biblioteca no PostgreSQL.
    */
   toggleLibrary(workId: string) {
-    return request<{ liked: boolean; totalLikes: number }>(`/users/library/${workId}/toggle`, {
+    return request<{ favorite: boolean; totalFavorites: number }>(`/users/library/${workId}/toggle`, {
       method: 'POST',
     });
   },

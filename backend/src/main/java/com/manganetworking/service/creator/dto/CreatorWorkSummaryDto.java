@@ -10,5 +10,6 @@ public record CreatorWorkSummaryDto(
         String coverUrl,
         int totalChapters,
         long totalViews,
-        long totalLikes
+        long totalLikes,
+        long totalFavorites
 ) {}

@@ -100,6 +100,7 @@ export function computeWorkDiscoveryScore(
   const organicBase = 
     work.totalViews * 1.0 + 
     work.totalLikes * 3.5 + 
+    (work.totalFavorites ?? 0) * 4.0 +
     work.totalComments * 5.0 + 
     work.totalChapters * 3.0;
 
@@ -123,7 +124,7 @@ export function computeWorkDiscoveryScore(
  * Cálculo de "Em Alta" (Trending puro baseado no volume bruto de atenção recente)
  */
 export function computeTrendingScore(work: Work): number {
-  return work.totalViews + work.totalLikes * 3 + work.totalComments * 4;
+  return work.totalViews + work.totalLikes * 3 + (work.totalFavorites ?? 0) * 4 + work.totalComments * 4;
 }
 
 /**

@@ -263,7 +263,7 @@ export function CreatorWorksPage() {
                     {work.status === 'draft' ? 'Rascunho' : work.status === 'completed' ? 'Concluída' : 'Em lançamento'}
                   </p>
                   <p className="font-pixel text-[10px] uppercase text-[var(--mn-mute)]">
-                    {work.totalChapters} cap · {work.totalViews} views · {work.totalLikes} likes
+                    {work.totalChapters} cap · {work.totalViews} views · {work.totalLikes} curtidas · {work.totalFavorites ?? 0} favoritos
                   </p>
                 </div>
               </div>

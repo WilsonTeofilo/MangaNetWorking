@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, ChevronLeft, ChevronRight, Heart, Flag, BookOpen, ScrollText } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Heart, Star, Flag, BookOpen, ScrollText } from 'lucide-react';
 import { Work, Chapter } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useModals } from '../context/ModalContext';
@@ -10,7 +10,20 @@ import { parsePagesJson } from '../utils/apiMappers';
 import { Button } from '../components/ui/Button';
 import { AdOverlay } from '../components/ads/AdOverlay';
 import type { AdSlot } from '../components/ads/AdOverlay';
+import { WorkCommentsPanel } from '../components/comments/WorkCommentsPanel';
 import { offlineStorage } from '../services/offlineStorage';
+
+interface ProseBlock {
+  type: 'text' | 'illustration' | 'separator';
+  content: {
+    text?: string;
+    fileId?: string;
+    altText?: string;
+    width?: number;
+    height?: number;
+    style?: string;
+  };
+}
 
 interface ReaderPageProps {
   work: Work;
@@ -19,6 +32,8 @@ interface ReaderPageProps {
   initialPage?: number;
   onBack: () => void;
   onNavigateChapter: (nextNumber: number) => void;
+  /** Visitante: leva para login/cadastro e volta para os comentários do capítulo. */
+  onRequireAuth?: () => void;
 }
 
 // Anúncio é por CAPÍTULO, não por página: 15s ao abrir e 15s ao terminar,
@@ -26,8 +41,11 @@ interface ReaderPageProps {
 const AD_SECONDS = 15;
 const AD_EVERY_PAGES = 30;
 
-export function ReaderPage({ work, chapter, initialPage, onBack, onNavigateChapter }: ReaderPageProps) {
-  const { user, toggleFavorite } = useAuth();
+// Checkpoints de retenção para prosa: 10%, 20%, ..., 100%
+const PROSE_CHECKPOINTS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+
+export function ReaderPage({ work, chapter, initialPage, onBack, onNavigateChapter, onRequireAuth }: ReaderPageProps) {
+  const { user, toggleFavorite, isAuthenticated } = useAuth();
   const { openDonate, openReport } = useModals();
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -38,7 +56,18 @@ export function ReaderPage({ work, chapter, initialPage, onBack, onNavigateChapt
   const [pages, setPages] = useState<string[]>(chapter.pages ?? []);
   const [chapterFormat, setChapterFormat] = useState<'IMAGE_PAGES' | 'PROSE'>(chapter.format ?? 'IMAGE_PAGES');
   const [proseContent, setProseContent] = useState<string | null>(chapter.format === 'PROSE' ? chapter.content ?? null : null);
+  const [proseBlocks, setProseBlocks] = useState<ProseBlock[]>([]);
   const [earlyAccessLocked, setEarlyAccessLocked] = useState(false);
+  // Curtida do capítulo: fonte da verdade é o servidor; o estado local é otimista.
+  const [chapterLikes, setChapterLikes] = useState(Number(chapter.likes ?? 0));
+  const [chapterLiked, setChapterLiked] = useState(Boolean(chapter.likedByMe));
+  const [likePending, setLikePending] = useState(false);
+  const [likeNotice, setLikeNotice] = useState<string | null>(null);
+  // Apoio só é oferecido quando o servidor confirma autor monetizado + checkout configurado.
+  const [supportEnabled, setSupportEnabled] = useState(false);
+  const [membershipPriceBrl, setMembershipPriceBrl] = useState<number | null>(null);
+  // Visualização válida: primeira página ao menos 50% visível por ~1s (ou navegação).
+  const [viewQualified, setViewQualified] = useState(false);
 
   // Modo de leitura: paginado (PC, página a página) ou vertical (webtoon, rolagem livre/celular).
   // A preferência fica gravada no navegador.
@@ -49,11 +78,33 @@ export function ReaderPage({ work, chapter, initialPage, onBack, onNavigateChapt
       return 'paginated';
     }
   });
+  // Volta do login/cadastro direto para a conversa deste capítulo.
+  useEffect(() => {
+    if (window.sessionStorage.getItem('mn:scroll-comments') !== '1') {
+      return;
+    }
+    let attempts = 0;
+    const timer = window.setInterval(() => {
+      const comments = document.getElementById('chapter-comments');
+      if (comments) {
+        comments.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        window.sessionStorage.removeItem('mn:scroll-comments');
+        window.clearInterval(timer);
+      } else if (++attempts >= 12) {
+        window.clearInterval(timer);
+      }
+    }, 250);
+    return () => window.clearInterval(timer);
+  }, [chapter.id]);
+
   const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const firstPageRef = useRef<HTMLDivElement | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const lastCountedPageRef = useRef(1);
   const endTriggeredRef = useRef(false);
   const initialPageAppliedRef = useRef<string | null>(null);
+  // Checkpoints de prosa já enviados
+  const checkpointsSentRef = useRef<Set<number>>(new Set());
 
   const changeReadingMode = (mode: 'paginated' | 'vertical') => {
     setReadingMode(mode);
@@ -89,15 +140,54 @@ export function ReaderPage({ work, chapter, initialPage, onBack, onNavigateChapt
     window.scrollTo({ top: 0 });
   };
 
+  const handleToggleChapterLike = async () => {
+    if (!isAuthenticated) {
+      if (onRequireAuth) {
+        onRequireAuth();
+        return;
+      }
+      setLikeNotice('Entre na sua conta para curtir este capítulo.');
+      return;
+    }
+    if (likePending) {
+      return;
+    }
+    const previousLiked = chapterLiked;
+    const previousCount = chapterLikes;
+    setChapterLiked(!previousLiked);
+    setChapterLikes(Math.max(0, previousCount + (previousLiked ? -1 : 1)));
+    setLikePending(true);
+    try {
+      const result = await workApi.toggleChapterLike(work.id, chapter.number);
+      setChapterLiked(result.liked);
+      setChapterLikes(result.totalLikes);
+      setLikeNotice(null);
+    } catch {
+      setChapterLiked(previousLiked);
+      setChapterLikes(previousCount);
+      setLikeNotice('Não foi possível registrar a curtida. Tente novamente.');
+    } finally {
+      setLikePending(false);
+    }
+  };
+
   // Carrega as páginas reais do capítulo (online ou offline PWA)
   useEffect(() => {
     let active = true;
     setEarlyAccessLocked(false);
     setChapterFormat(chapter.format ?? 'IMAGE_PAGES');
     setProseContent(chapter.format === 'PROSE' ? chapter.content ?? null : null);
+    setProseBlocks([]);
+    checkpointsSentRef.current.clear();
     setCurrentPage(1);
     setChapterFinished(false);
     setCumulativePages(0);
+    setChapterLikes(Number(chapter.likes ?? 0));
+    setChapterLiked(Boolean(chapter.likedByMe));
+    setLikeNotice(null);
+    setSupportEnabled(false);
+    setMembershipPriceBrl(null);
+    setViewQualified(false);
     lastCountedPageRef.current = 1;
     endTriggeredRef.current = false;
     initialPageAppliedRef.current = null;
@@ -117,14 +207,28 @@ export function ReaderPage({ work, chapter, initialPage, onBack, onNavigateChapt
       .readChapter(work.slug, chapter.number)
       .then((resp) => {
         if (!active) return;
+        setChapterLikes(Number(resp.likes ?? 0));
+        setChapterLiked(Boolean(resp.likedByMe));
+        setSupportEnabled(Boolean(resp.supportEnabled));
+        setMembershipPriceBrl(resp.membershipPriceBrl ?? null);
         if (resp.format === 'PROSE') {
           setChapterFormat('PROSE');
           setProseContent(resp.content ?? '');
+          // Parse blocksJson se disponível
+          if (resp.blocksJson) {
+            try {
+              const blocksDto = JSON.parse(resp.blocksJson);
+              setProseBlocks(blocksDto.blocks || []);
+            } catch {
+              setProseBlocks([]);
+            }
+          }
           setPages([]);
           return;
         }
         setChapterFormat('IMAGE_PAGES');
         setProseContent(null);
+        setProseBlocks([]);
         const realPages = parsePagesJson(resp.pagesJson);
         if (realPages.length > 0) {
           setPages(realPages);
@@ -144,7 +248,7 @@ export function ReaderPage({ work, chapter, initialPage, onBack, onNavigateChapt
     return () => {
       active = false;
     };
-  }, [work.slug, chapter.number, chapter.pages, chapter.format, chapter.content]);
+  }, [work.slug, chapter.number, chapter.pages, chapter.format, chapter.content, chapter.blocksJson]);
 
   // Retoma a leitura na página salva (biblioteca / ficha da obra), depois que as
   // páginas reais chegam da API. Aplica uma vez por capítulo para não "puxar" o
@@ -169,21 +273,156 @@ export function ReaderPage({ work, chapter, initialPage, onBack, onNavigateChapt
     window.scrollTo({ top: 0 });
   }, [work.slug, chapter.number]);
 
-  // Rastreio de leitura contínua no MongoDB
+  // Qualificação da visualização: abrir e sair não conta. A primeira página
+  // precisa estar ao menos 50% visível por ~1s. No modo prosa, o texto conta
+  // após 1s de permanência. Navegar para outra página também qualifica.
   useEffect(() => {
+    if (viewQualified) {
+      return;
+    }
+    if (chapterFormat === 'PROSE') {
+      const timer = window.setTimeout(() => setViewQualified(true), 1000);
+      return () => window.clearTimeout(timer);
+    }
+    if (currentPage > 1) {
+      setViewQualified(true);
+      return;
+    }
+    const el = firstPageRef.current;
+    if (!el) {
+      return;
+    }
+    let timer: number | undefined;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries.some(
+          (entry) => entry.isIntersecting && entry.intersectionRatio >= 0.5,
+        );
+        if (visible) {
+          if (timer === undefined) {
+            timer = window.setTimeout(() => setViewQualified(true), 1000);
+          }
+        } else if (timer !== undefined) {
+          window.clearTimeout(timer);
+          timer = undefined;
+        }
+      },
+      { threshold: [0, 0.5, 1] },
+    );
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      if (timer !== undefined) {
+        window.clearTimeout(timer);
+      }
+    };
+  }, [chapter.id, chapterFormat, currentPage, pages.length, readingMode, viewQualified]);
+
+  // Rastreio de leitura contínua no MongoDB. A view só é enviada depois da
+  // qualificação acima; o backend deduplica por leitor/capítulo/dia.
+  useEffect(() => {
+    if (!viewQualified) {
+      return;
+    }
+    const isProse = chapterFormat === 'PROSE';
     userApi.trackReadingProgress({
       workId: work.id,
       chapterId: chapter.id,
-      page: currentPage,
-      totalPages,
+      page: isProse ? 1 : currentPage,
+      totalPages: isProse ? 1 : totalPages,
     }).catch(() => {});
-  }, [work.id, chapter.id, currentPage, totalPages]);
+  }, [work.id, chapter.id, currentPage, totalPages, chapterFormat, viewQualified]);
 
-  // Anúncio de intervalo: a cada 30 páginas lidas, nos dois modos de leitura.
+  // Checkpoints de retenção para prosa (10%, 20%, ..., 100%)
+  // Dispara eventos de leitura no backend para analytics de retenção
   useEffect(() => {
-    if (currentPage <= lastCountedPageRef.current) {
+    if (chapterFormat !== 'PROSE' || proseBlocks.length === 0) {
       return;
     }
+    // Calcula progresso baseado na posição de scroll dos blocos de texto
+    const handleScroll = () => {
+      if (chapterFinished) return;
+      
+      // Encontra o bloco de texto mais visível na tela
+      const textBlocks = proseBlocks.filter(b => b.type === 'text');
+      if (textBlocks.length === 0) return;
+      
+      let totalChars = 0;
+      
+      // Calcula total de caracteres
+      for (const block of textBlocks) {
+        const text = block.content.text || '';
+        totalChars += text.length;
+      }
+      
+      // Estima progresso baseado na posição do scroll
+      // Usa o primeiro e último elemento de bloco de texto visíveis
+      const blockElements = document.querySelectorAll('[data-prose-block]');
+      if (blockElements.length === 0) return;
+      
+      const viewportHeight = window.innerHeight;
+      let firstVisibleIndex = -1;
+      
+      blockElements.forEach((el, idx) => {
+        const rect = el.getBoundingClientRect();
+        const isVisible = rect.top < viewportHeight && rect.bottom > 0;
+        if (isVisible && firstVisibleIndex === -1) {
+          firstVisibleIndex = idx;
+        }
+      });
+      
+      if (firstVisibleIndex !== -1) {
+        // Progresso aproximado: posição do primeiro bloco visível / total de blocos
+        const progress = Math.round((firstVisibleIndex / Math.max(1, blockElements.length - 1)) * 100);
+        
+        // Atualiza barras de progresso da prosa
+        const topBar = document.getElementById('prose-progress-bar-top');
+        const bottomBar = document.getElementById('prose-progress-bar');
+        if (topBar) topBar.style.width = `${progress}%`;
+        if (bottomBar) bottomBar.style.width = `${progress}%`;
+        
+        // Dispara checkpoints que ainda não foram enviados
+        for (const checkpoint of PROSE_CHECKPOINTS) {
+          if (progress >= checkpoint && !checkpointsSentRef.current.has(checkpoint)) {
+            checkpointsSentRef.current.add(checkpoint);
+            userApi.trackReadingProgress({
+              workId: work.id,
+              chapterId: chapter.id,
+              page: 1,
+              totalPages: 1,
+            }).catch(() => {});
+          }
+        }
+        
+        // 100% = fim do capítulo
+        if (progress >= 100 && !checkpointsSentRef.current.has(100)) {
+          checkpointsSentRef.current.add(100);
+          finishChapter();
+        }
+      }
+    };
+    
+    // Throttle scroll
+    let ticking = false;
+    const throttledScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          handleScroll();
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+    
+    window.addEventListener('scroll', throttledScroll, { passive: true });
+    return () => window.removeEventListener('scroll', throttledScroll);
+  }, [chapterFormat, proseBlocks, chapterFinished, work.id, chapter.id]);
+
+  // Anúncio de intervalo: a cada 30 páginas lidas (apenas para mangá/IMAGE_PAGES).
+  // Para prosa, os checkpoints de 10% substituem esta lógica.
+  useEffect(() => {
+    if (chapterFormat === 'PROSE') return;
+    if (currentPage <= lastCountedPageRef.current) return;
     const advanced = currentPage - lastCountedPageRef.current;
     lastCountedPageRef.current = currentPage;
     const next = cumulativePages + advanced;
@@ -193,7 +432,7 @@ export function ReaderPage({ work, chapter, initialPage, onBack, onNavigateChapt
     } else {
       setCumulativePages(next);
     }
-  }, [currentPage, cumulativePages]);
+  }, [currentPage, cumulativePages, chapterFormat]);
 
   const handleNextPage = () => {
     if (currentPage < totalPages) {
@@ -318,6 +557,62 @@ export function ReaderPage({ work, chapter, initialPage, onBack, onNavigateChapt
           RELER CAPÍTULO
         </Button>
       </div>
+
+      <div className="flex flex-wrap items-center justify-center gap-3 border-t border-[#34343A] pt-4">
+        <button
+          type="button"
+          onClick={handleToggleChapterLike}
+          disabled={likePending}
+          aria-pressed={chapterLiked}
+          className={`inline-flex items-center gap-2 px-4 py-2 font-display text-sm uppercase border-2 transition-all disabled:opacity-60 ${
+            chapterLiked
+              ? 'bg-[#FF4D6D] text-[#F4EFE3] border-[#0B0B0C]'
+              : 'bg-[#0B0B0C] text-[#F4EFE3] border-[#34343A] hover:border-[#FF4D6D]'
+          }`}
+        >
+          <Heart size={15} className={chapterLiked ? 'fill-[#F4EFE3]' : ''} />
+          <span>{chapterLiked ? 'CAPÍTULO CURTIDO' : 'CURTIR CAPÍTULO'}</span>
+          <span className="tabular-nums opacity-80">{Number(chapterLikes).toLocaleString('pt-BR')}</span>
+        </button>
+      </div>
+
+      {likeNotice && (
+        <p role="status" className="font-body text-xs text-[#FFD400]">
+          {likeNotice}
+        </p>
+      )}
+
+      {supportEnabled && (
+        <div className="w-full border-2 border-[#34343A] bg-[#101114] p-5 text-center space-y-3">
+          <p className="font-display text-lg text-[#F4EFE3] uppercase">
+            GOSTOU DESTE CAPÍTULO? APOIE O AUTOR.
+          </p>
+          <p className="font-body text-sm text-[#A9A59A]">
+            {membershipPriceBrl
+              ? `Doação direta ou clube de membros a partir de ${membershipPriceBrl.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} por mês.`
+              : 'Apoio direto ao autor desta obra.'}{' '}
+            O próximo capítulo continua disponível.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => openDonate(work.authorId, work.authorName, work.title, work.id)}
+              className="!min-h-[38px] !text-xs"
+            >
+              APOIAR COM DOAÇÃO
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={onBack}
+              className="!min-h-[38px] !text-xs"
+            >
+              VER OPÇÕES NA OBRA
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -348,51 +643,55 @@ export function ReaderPage({ work, chapter, initialPage, onBack, onNavigateChapt
 
         <div className="flex items-center gap-3">
           {/* Seletor de modo de leitura: paginado (PC) x rolagem contínua (celular) */}
-          <div className="flex items-center border border-[#34343A]" role="group" aria-label="Modo de leitura">
-            <button
-              type="button"
-              onClick={() => changeReadingMode('paginated')}
-              aria-pressed={readingMode === 'paginated'}
-              title="Leitura página a página (ideal para PC)"
-              className={`flex items-center gap-1 px-2 py-1 font-pixel text-[12px] uppercase transition-colors ${
-                readingMode === 'paginated'
-                  ? 'bg-[#FFD400] text-[#0B0B0C]'
-                  : 'bg-[#151517] text-[#A9A59A] hover:text-[#F4EFE3]'
-              }`}
-            >
-              <BookOpen size={13} />
-              <span className="hidden md:inline">PÁGINA</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => changeReadingMode('vertical')}
-              aria-pressed={readingMode === 'vertical'}
-              title="Rolagem contínua/webtoon (ideal para celular)"
-              className={`flex items-center gap-1 px-2 py-1 font-pixel text-[12px] uppercase transition-colors border-l border-[#34343A] ${
-                readingMode === 'vertical'
-                  ? 'bg-[#FFD400] text-[#0B0B0C]'
-                  : 'bg-[#151517] text-[#A9A59A] hover:text-[#F4EFE3]'
-              }`}
-            >
-              <ScrollText size={13} />
-              <span className="hidden md:inline">SCROLL</span>
-            </button>
-          </div>
+          {chapterFormat !== 'PROSE' && (
+            <div className="flex items-center border border-[#34343A]" role="group" aria-label="Modo de leitura">
+              <button
+                type="button"
+                onClick={() => changeReadingMode('paginated')}
+                aria-pressed={readingMode === 'paginated'}
+                title="Leitura página a página (ideal para PC)"
+                className={`flex items-center gap-1 px-2 py-1 font-pixel text-[12px] uppercase transition-colors ${
+                  readingMode === 'paginated'
+                    ? 'bg-[#FFD400] text-[#0B0B0C]'
+                    : 'bg-[#151517] text-[#A9A59A] hover:text-[#F4EFE3]'
+                }`}
+              >
+                <BookOpen size={13} />
+                <span className="hidden md:inline">PÁGINA</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => changeReadingMode('vertical')}
+                aria-pressed={readingMode === 'vertical'}
+                title="Rolagem contínua/webtoon (ideal para celular)"
+                className={`flex items-center gap-1 px-2 py-1 font-pixel text-[12px] uppercase transition-colors border-l border-[#34343A] ${
+                  readingMode === 'vertical'
+                    ? 'bg-[#FFD400] text-[#0B0B0C]'
+                    : 'bg-[#151517] text-[#A9A59A] hover:text-[#F4EFE3]'
+                }`}
+              >
+                <ScrollText size={13} />
+                <span className="hidden md:inline">SCROLL</span>
+              </button>
+            </div>
+          )}
 
           <span className="hidden sm:inline font-pixel text-[12px] text-[#A9A59A] tabular-nums">
-            {chapterFormat === 'PROSE' ? 'LEITURA EM PROSA' : `PÁG. ${currentPage} / ${totalPages}`}
+            {chapterFormat === 'PROSE' ? 'LEITURA EM PROSA (SCROLL)' : `PÁG. ${currentPage} / ${totalPages}`}
           </span>
 
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => {
-              openDonate(work.authorId, work.authorName, work.title, work.id);
-            }}
-            className="!min-h-[34px] !py-1 !px-3 !text-xs"
-          >
-            APOIAR
-          </Button>
+          {supportEnabled && (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                openDonate(work.authorId, work.authorName, work.title, work.id);
+              }}
+              className="!min-h-[34px] !py-1 !px-3 !text-xs"
+            >
+              APOIAR
+            </Button>
+          )}
 
           <button
             type="button"
@@ -406,12 +705,22 @@ export function ReaderPage({ work, chapter, initialPage, onBack, onNavigateChapt
       </header>
 
       {/* 2. Barra de Progresso Fina no Topo */}
-      <div className="w-full h-1 bg-[#151517]">
-        <div
-          className="h-full bg-[#FFD400] transition-all duration-100"
-          style={{ width: `${(currentPage / totalPages) * 100}%` }}
-        />
-      </div>
+      {chapterFormat === 'PROSE' ? (
+        <div className="w-full h-1 bg-[#151517] sticky top-14 z-30" aria-hidden="true">
+          <div
+            id="prose-progress-bar-top"
+            className="h-full bg-[#FFD400] transition-all duration-200"
+            style={{ width: '0%' }}
+          />
+        </div>
+      ) : (
+        <div className="w-full h-1 bg-[#151517]">
+          <div
+            className="h-full bg-[#FFD400] transition-all duration-100"
+            style={{ width: `${(currentPage / totalPages) * 100}%` }}
+          />
+        </div>
+      )}
 
       {/* 3. Visualizador: paginado (PC) ou rolagem contínua/webtoon (celular) */}
       <main className="flex-1 max-w-[800px] mx-auto w-full py-4 px-2 flex flex-col items-center">
@@ -429,9 +738,71 @@ export function ReaderPage({ work, chapter, initialPage, onBack, onNavigateChapt
             </Button>
           </div>
         ) : chapterFormat === 'PROSE' ? (
-          <article lang="pt-BR" aria-label={`Texto do capítulo ${chapter.number}`} className="w-full max-w-[720px] px-5 py-8 sm:px-10 sm:py-12 text-left font-body text-lg leading-[1.9] text-[var(--mn-paper)] whitespace-pre-wrap select-text">
-            {proseContent ?? 'Carregando capítulo…'}
-          </article>
+          <>
+            {/* Barra de progresso específica para prosa (substitui a fina do topo) */}
+            <div className="w-full h-1 bg-[#151517] sticky top-14 z-30" aria-hidden="true">
+              <div
+                className="h-full bg-[#FFD400] transition-all duration-200"
+                id="prose-progress-bar"
+                style={{ width: '0%' }}
+              />
+            </div>
+            
+            <article 
+              lang="pt-BR" 
+              aria-label={`Texto do capítulo ${chapter.number}`} 
+              className="w-full max-w-[720px] px-5 py-8 sm:px-10 sm:py-12 text-left font-body text-lg leading-[1.9] text-[var(--mn-paper)] whitespace-pre-wrap select-text"
+            >
+              {proseBlocks.length > 0 ? (
+                proseBlocks.map((block, idx) => (
+                  <div 
+                    key={idx} 
+                    data-prose-block={block.type === 'text' ? 'true' : 'false'}
+                    className="mb-8"
+                  >
+                    {block.type === 'text' && block.content.text && (
+                      <div className="prose-block-text" dangerouslySetInnerHTML={{ 
+                        __html: block.content.text
+                          .replace(/&/g, '&')
+                          .replace(/</g, '<')
+                          .replace(/>/g, '>')
+                          .replace(/\n/g, '<br/>')
+                      }} />
+                    )}
+                    {block.type === 'illustration' && block.content.fileId && (
+                      <div className="my-6 text-center">
+                        <img
+                          src={`/api/storage/${block.content.fileId}`}
+                          alt={block.content.altText || `Ilustração do capítulo ${chapter.number}`}
+                          style={{ 
+                            maxWidth: `${block.content.width || 50}%`, 
+                            height: 'auto',
+                            maxHeight: '50vh'
+                          }}
+                          className="mx-auto rounded border border-[#34343A]"
+                          loading="lazy"
+                        />
+                        {block.content.altText && (
+                          <p className="font-body text-xs text-[var(--mn-mute)] mt-1 text-center">{block.content.altText}</p>
+                        )}
+                      </div>
+                    )}
+                    {block.type === 'separator' && (
+                      <div className="my-8 text-center">
+                        {block.content?.style === 'scene' && <span className="font-display text-[var(--mn-mute)]">— — —</span>}
+                        {block.content?.style === 'time' && <span className="font-display text-[var(--mn-mute)]">~ ~ ~</span>}
+                        {block.content?.style === 'pov' && <span className="font-display text-[var(--mn-mute)]">• • •</span>}
+                        {block.content?.style === 'line' && <span className="font-display text-[var(--mn-mute)]">—</span>}
+                        {!block.content?.style && <span className="font-display text-[var(--mn-mute)]">— — —</span>}
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                proseContent ?? 'Carregando capítulo…'
+              )}
+            </article>
+          </>
         ) : readingMode === 'vertical' ? (
           /* Rolagem contínua: todas as páginas empilhadas, sem cliques */
           <>
@@ -442,6 +813,9 @@ export function ReaderPage({ work, chapter, initialPage, onBack, onNavigateChapt
                   data-page={idx + 1}
                   ref={(el) => {
                     pageRefs.current[idx] = el;
+                    if (idx === 0) {
+                      firstPageRef.current = el;
+                    }
                   }}
                   className="relative w-full bg-[#000000]"
                 >
@@ -460,23 +834,12 @@ export function ReaderPage({ work, chapter, initialPage, onBack, onNavigateChapt
             <div ref={sentinelRef} aria-hidden="true" className="w-full h-12" />
 
             {chapterFinished && chapterEndPanel}
-
-            <div className="pt-4 pb-2 text-center">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => changeReadingMode('paginated')}
-                className="!min-h-[34px] !text-xs"
-              >
-                VOLTAR À LEITURA PÁGINA A PÁGINA
-              </Button>
-            </div>
           </>
         ) : chapterFinished ? (
           chapterEndPanel
         ) : (
           <>
-            <div className="relative w-full overflow-hidden bg-[#000000] flex justify-center">
+            <div ref={firstPageRef} className="relative w-full overflow-hidden bg-[#000000] flex justify-center">
               <img
                 src={pages[currentPage - 1] || pages[0] || ''}
                 alt={`Página ${currentPage} de ${work.title}`}
@@ -512,6 +875,15 @@ export function ReaderPage({ work, chapter, initialPage, onBack, onNavigateChapt
             </div>
           </>
         )}
+
+        <div className="mt-8">
+          <WorkCommentsPanel
+            workId={work.id}
+            chapterId={chapter.id}
+            heading={`COMENTÁRIOS DO CAP. #${chapter.number}`}
+            onRequireAuth={onRequireAuth}
+          />
+        </div>
       </main>
 
       {/* 4. Barra Inferior Mínima */}
@@ -525,7 +897,7 @@ export function ReaderPage({ work, chapter, initialPage, onBack, onNavigateChapt
               : 'bg-[#151517] text-[#A9A59A] border-[#34343A] hover:text-[#F4EFE3]'
           }`}
         >
-          <Heart size={14} className={isLiked ? 'fill-[#0B0B0C]' : ''} />
+          <Star size={14} className={isLiked ? 'fill-[#0B0B0C]' : ''} />
           <span>{isLiked ? 'FAVORITADO' : 'FAVORITAR'}</span>
         </button>
 

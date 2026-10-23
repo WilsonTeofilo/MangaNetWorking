@@ -57,6 +57,7 @@ export interface CreatorWorkSummary {
   totalChapters: number;
   totalViews: number;
   totalLikes: number;
+  totalFavorites?: number;
 }
 
 export interface CreatorPublicProfileDto {

@@ -6,6 +6,9 @@ import com.manganetworking.service.moderation.ModerationApplicationService;
 import com.manganetworking.service.moderation.dto.CreateReportRequestDto;
 import com.manganetworking.service.moderation.dto.ModerationActionRequestDto;
 import com.manganetworking.service.moderation.dto.PendingReportResponseDto;
+import com.manganetworking.service.work.WorkCommentService;
+import com.manganetworking.service.work.dto.CommentReportResponseDto;
+import com.manganetworking.service.work.dto.ModerateCommentRequestDto;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,9 +23,11 @@ import java.util.UUID;
 public class ReportController {
 
     private final ModerationApplicationService moderationService;
+    private final WorkCommentService commentService;
 
-    public ReportController(ModerationApplicationService moderationService) {
+    public ReportController(ModerationApplicationService moderationService, WorkCommentService commentService) {
         this.moderationService = moderationService;
+        this.commentService = commentService;
     }
 
     @PostMapping
@@ -79,5 +84,23 @@ public class ReportController {
                 : "Denúncia analisada e arquivada pela moderação.";
         moderationService.dismissReport(reportId, notes);
         return ResponseEntity.ok(Map.of("message", "Denúncia arquivada com sucesso"));
+    }
+
+    /** Fila de denúncias de comentários (texto), separada da fila de obras. */
+    @GetMapping("/comments/pending")
+    @PreAuthorize("hasRole('MODERATOR')")
+    public ResponseEntity<List<CommentReportResponseDto>> getPendingCommentReports() {
+        return ResponseEntity.ok(commentService.listPendingReports());
+    }
+
+    /** DISMISS arquiva a denúncia; HIDE oculta o comentário e recalcula contadores. */
+    @PostMapping("/comments/{reportId}/moderate")
+    @PreAuthorize("hasRole('MODERATOR')")
+    public ResponseEntity<Map<String, String>> moderateComment(
+            @PathVariable UUID reportId,
+            @Valid @RequestBody ModerateCommentRequestDto request
+    ) {
+        commentService.moderateReport(reportId, request.action(), request.notes());
+        return ResponseEntity.ok(Map.of("message", "Denúncia de comentário analisada."));
     }
 }

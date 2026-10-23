@@ -2,6 +2,7 @@ package com.manganetworking.service.work.dto;
 
 import com.manganetworking.domain.enums.ChapterFormat;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 public record ChapterReadResponseDto(
@@ -12,8 +13,11 @@ public record ChapterReadResponseDto(
         String chapterTitle,
         String pagesJson,
         long likes,
+        boolean likedByMe,
         String authorHandle,
         UUID authorId,
+        boolean supportEnabled,
+        BigDecimal membershipPriceBrl,
         ChapterFormat format,
         String content
 ) {}

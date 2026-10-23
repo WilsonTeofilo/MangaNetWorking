@@ -120,7 +120,8 @@ public class CreatorApplicationService {
                         w.getCoverUrl(),
                         w.getTotalChapters(),
                         w.getTotalViews(),
-                        w.getTotalLikes()
+                        w.getTotalLikes(),
+                        w.getTotalFavorites()
                 ))
                 .toList();
 

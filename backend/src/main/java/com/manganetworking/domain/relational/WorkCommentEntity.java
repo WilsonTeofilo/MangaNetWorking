@@ -43,6 +43,24 @@ public class WorkCommentEntity {
     @Column(nullable = false, length = 1000)
     private String body;
 
+    /** Resposta direta a um comentário de primeiro nível (profundidade máxima 1). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_id")
+    private WorkCommentEntity parent;
+
+    @Column(name = "likes_count", nullable = false)
+    private Long likesCount = 0L;
+
+    /** VISIBLE, DELETED (lógico, preserva respostas) ou HIDDEN (moderação). */
+    @Column(nullable = false, length = 20)
+    private String status = "VISIBLE";
+
+    @Column(name = "edited_at")
+    private LocalDateTime editedAt;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -51,6 +69,7 @@ public class WorkCommentEntity {
     }
 
     public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
     public WorkEntity getWork() { return work; }
     public void setWork(WorkEntity work) { this.work = work; }
     public ChapterEntity getChapter() { return chapter; }
@@ -59,5 +78,17 @@ public class WorkCommentEntity {
     public void setUser(UserEntity user) { this.user = user; }
     public String getBody() { return body; }
     public void setBody(String body) { this.body = body; }
+    public WorkCommentEntity getParent() { return parent; }
+    public void setParent(WorkCommentEntity parent) { this.parent = parent; }
+    public Long getLikesCount() { return likesCount; }
+    public void setLikesCount(Long likesCount) { this.likesCount = likesCount; }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+    public LocalDateTime getEditedAt() { return editedAt; }
+    public void setEditedAt(LocalDateTime editedAt) { this.editedAt = editedAt; }
+    public LocalDateTime getDeletedAt() { return deletedAt; }
+    public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
     public LocalDateTime getCreatedAt() { return createdAt; }
+    public boolean isVisible() { return "VISIBLE".equalsIgnoreCase(status); }
+    public boolean isDeleted() { return "DELETED".equalsIgnoreCase(status); }
 }

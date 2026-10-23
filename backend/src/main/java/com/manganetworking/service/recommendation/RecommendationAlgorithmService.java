@@ -24,7 +24,9 @@ import java.util.UUID;
  * Serviço autoritativo de ranking de obras (Fase 5 do plano).
  *
  * <p>Fórmula: {@code Score = (BaseOrgânica + BônusRecência) × DecaimentoTemporal × QualidadeEngajamento × BoostMissão}.
- * O resultado é materializado na coleção MongoDB {@code feed_works}, que alimenta o feed público.</p>
+ * Os sinais de volume entram normalizados por {@code log1p}, para que uma obra com 1.000.000 de views não
+ * esmague uma obra nova com 1.000. O ranking de comentários é separado (curtidas predominantes,
+ * respostas e recência como apoio) e vive no {@code WorkCommentRepository}.</p>
  *
  * <p>É a única implementação de algoritmo do backend. A antiga duplicata em
  * {@code com.manganetworking.algorithm} foi consolidada aqui para eliminar a colisão de bean
@@ -135,10 +137,11 @@ public class RecommendationAlgorithmService {
 
         LocalDateTime lastUpdate = latestChapter != null ? latestChapter.getCreatedAt() : work.getUpdatedAt();
 
-        double organicBase = (work.getTotalViews() * 1.0)
-                + (work.getTotalLikes() * 3.5)
-                + (work.getTotalComments() * 5.0)
-                + (work.getTotalChapters() * 3.0);
+        double organicBase = normalized(work.getTotalViews()) * 1.0
+                + normalized(work.getTotalLikes()) * 4.0
+                + normalized(work.getTotalFavorites()) * 4.5
+                + normalized(work.getTotalComments()) * 5.0
+                + normalized(work.getTotalChapters()) * 3.0;
 
         RecencyResult recency = calculateRecencyBoost(lastUpdate);
         double baseWithRecency = organicBase + recency.points();
@@ -152,9 +155,11 @@ public class RecommendationAlgorithmService {
         }
 
         double discoveryScore = baseWithRecency * decay * quality * creatorBoost;
-        double trendingScore = (work.getTotalViews() * 1.0)
-                + (work.getTotalLikes() * 3.0)
-                + (work.getTotalComments() * 4.0);
+        // Tendência prioriza engajamento recente; o decaimento separa o histórico do agora.
+        double trendingScore = (normalized(work.getTotalViews())
+                + normalized(work.getTotalLikes()) * 3.5
+                + normalized(work.getTotalFavorites()) * 4.0
+                + normalized(work.getTotalComments()) * 4.5) * Math.max(0.05, decay);
 
         WorkFeedDocument doc = workFeedMongoRepository.findByWorkId(work.getId().toString())
                 .orElseGet(() -> {
@@ -175,6 +180,7 @@ public class RecommendationAlgorithmService {
         doc.setTotalChapters(work.getTotalChapters());
         doc.setTotalViews(work.getTotalViews());
         doc.setTotalLikes(work.getTotalLikes());
+        doc.setTotalFavorites(work.getTotalFavorites());
         doc.setTotalComments(work.getTotalComments());
 
         if (creator != null) {
@@ -222,6 +228,12 @@ public class RecommendationAlgorithmService {
     private boolean isHidden(WorkEntity work) {
         return work.getStatus() != null
                 && HIDDEN_STATUSES.stream().anyMatch(status -> status.equalsIgnoreCase(work.getStatus()));
+    }
+
+    /** Compressão logarítmica dos contadores; sinais de vaidade não dominam a fila. */
+    private double normalized(Number value) {
+        long number = value == null ? 0L : value.longValue();
+        return Math.log1p(Math.max(0L, number));
     }
 
     /**

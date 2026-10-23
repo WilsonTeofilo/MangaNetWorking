@@ -6,16 +6,21 @@ import com.manganetworking.domain.nosql.EngagementEventDocument;
 import com.manganetworking.domain.nosql.ReadingProgressDocument;
 import com.manganetworking.domain.relational.ChapterEntity;
 import com.manganetworking.domain.relational.UserEntity;
+import com.manganetworking.domain.relational.WorkEntity;
 import com.manganetworking.repository.jpa.ChapterRepository;
 import com.manganetworking.repository.jpa.UserRepository;
+import com.manganetworking.repository.jpa.WorkRepository;
 import com.manganetworking.repository.mongo.ReadingProgressMongoRepository;
 import com.manganetworking.repository.mongo.EngagementEventMongoRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.UUID;
 
 /**
@@ -27,9 +32,17 @@ public class ReadingProgressService {
 
     private static final Logger log = LoggerFactory.getLogger(ReadingProgressService.class);
 
+    /** Visualização de capítulo: 1 por leitor por capítulo por dia (fuso de exibição). */
+    private static final String VIEW_EVENT = "VIEW";
+    /** Leitura de página: alimenta a retenção, não a contagem de visualizações. */
+    private static final String READ_EVENT = "READ";
+    /** Janela de nova visualização: o mesmo leitor pode voltar em outro dia. */
+    private static final ZoneId VIEW_ZONE = ZoneId.of("America/Sao_Paulo");
+
     private final ReadingProgressMongoRepository progressMongoRepository;
     private final ChapterRepository chapterRepository;
     private final UserRepository userRepository;
+    private final WorkRepository workRepository;
     private final PlatformProperties properties;
     private final com.manganetworking.config.observability.ObservabilityMetricsService observabilityMetricsService;
     private final EngagementEventMongoRepository engagementEventRepository;
@@ -38,6 +51,7 @@ public class ReadingProgressService {
             ReadingProgressMongoRepository progressMongoRepository,
             ChapterRepository chapterRepository,
             UserRepository userRepository,
+            WorkRepository workRepository,
             PlatformProperties properties,
             com.manganetworking.config.observability.ObservabilityMetricsService observabilityMetricsService,
             EngagementEventMongoRepository engagementEventRepository
@@ -45,6 +59,7 @@ public class ReadingProgressService {
         this.progressMongoRepository = progressMongoRepository;
         this.chapterRepository = chapterRepository;
         this.userRepository = userRepository;
+        this.workRepository = workRepository;
         this.properties = properties;
         this.observabilityMetricsService = observabilityMetricsService;
         this.engagementEventRepository = engagementEventRepository;
@@ -120,7 +135,14 @@ public class ReadingProgressService {
 
         doc.setCumulativePagesRead(cumulative);
         progressMongoRepository.save(doc);
-        recordReadEvent(userId, workId, chapterId, page);
+        // Analytics só conta avanço de leitura: repetir a mesma página (retry, re-render,
+        // heartbeat) não pode inflar leituras nem a retenção por página.
+        if (newPageRead) {
+            recordReadEvent(userId, workId, chapterId, page);
+            // O evento VIEW é deduplicado por (leitor, capítulo): a checagem só acontece
+            // quando o leitor avança de página, nunca a cada re-render da mesma página.
+            recordChapterViewOnce(chapter, userId);
+        }
 
         return new ReadingProgressResult(doc, shouldTriggerAd);
     }
@@ -143,6 +165,15 @@ public class ReadingProgressService {
                 .orElseThrow(() -> new ResourceNotFoundException("Capítulo não encontrado."));
         if (chapter.getWork() == null || !chapter.getWork().getId().equals(workUuid)) {
             throw new ResourceNotFoundException("Capítulo não encontrado.");
+        }
+        // Light novel não tem páginas ilustradas: o progresso mensurável é a
+        // permanência no texto (página 1 de 1). Sem isso, toda leitura em prosa
+        // era rejeitada por não haver pagesJson para comparar.
+        if (chapter.getFormat() == com.manganetworking.domain.enums.ChapterFormat.PROSE) {
+            if (page != 1 || totalPages != 1) {
+                throw new IllegalArgumentException("Capítulo em prosa deve ser lido na página 1 de 1.");
+            }
+            return chapter;
         }
         if (totalPages != countChapterPages(chapter.getPagesJson())) {
             throw new IllegalArgumentException("O total de páginas não corresponde ao capítulo.");
@@ -173,6 +204,64 @@ public class ReadingProgressService {
             engagementEventRepository.save(event);
         } catch (RuntimeException e) {
             log.warn("[ANALYTICS] Falha ao registrar evento de leitura da obra {}: {}", workId, e.getMessage());
+        }
+    }
+
+    /**
+     * Conta a visualização do capítulo uma única vez por leitor, capítulo e dia
+     * (America/Sao_Paulo). A qualificação é a primeira página efetivamente alcançada:
+     * abrir o capítulo e sair não conta. A janela diária permite que uma releitura
+     * legítima em outro dia conte de novo, mas limita o spam a 1 por dia.
+     *
+     * <p>O evento {@code VIEW} é a fonte da verdade do analytics; os contadores
+     * {@code chapters.views}/{@code works.total_views} são agregados atualizados
+     * atomicamente. Best-effort: falha de contador não bloqueia a leitura.</p>
+     */
+    private void recordChapterViewOnce(ChapterEntity chapter, String userId) {
+        if (chapter == null || chapter.getId() == null || userId == null || userId.isBlank()) {
+            return;
+        }
+        String chapterId = chapter.getId().toString();
+        String viewDay = LocalDate.now(VIEW_ZONE).toString();
+        String idempotencyKey = userId + ":" + VIEW_EVENT + ":" + chapterId + ":" + viewDay;
+        try {
+            if (engagementEventRepository.existsByIdempotencyKey(idempotencyKey)) {
+                return;
+            }
+            EngagementEventDocument event = new EngagementEventDocument();
+            event.setEventType(VIEW_EVENT);
+            event.setUserId(userId);
+            event.setWorkId(chapter.getWork() != null && chapter.getWork().getId() != null
+                    ? chapter.getWork().getId().toString()
+                    : null);
+            event.setChapterId(chapterId);
+            event.setReadPage(1);
+            event.setIdempotencyKey(idempotencyKey);
+            // v2: a semântica passou de "1 por leitor/capítulo" para "1 por dia".
+            event.setEventVersion(2);
+            engagementEventRepository.save(event);
+        } catch (DuplicateKeyException duplicate) {
+            // Duas requisições simultâneas: a chave única já registrou a view do dia.
+            return;
+        } catch (RuntimeException e) {
+            log.warn("[ANALYTICS] Falha ao registrar visualização do capítulo {}: {}", chapterId, e.getMessage());
+            return;
+        }
+
+        // Captura o vínculo antes do UPDATE em massa: o chapter pode ser
+        // desanexado pelo clearAutomatically e a proxy lazy de work falharia.
+        UUID chapterUuid = chapter.getId();
+        WorkEntity work = chapter.getWork();
+        UUID workUuid = work != null ? work.getId() : null;
+        try {
+            chapterRepository.incrementViews(chapterUuid);
+            if (workUuid != null) {
+                workRepository.incrementTotalViews(workUuid);
+            }
+        } catch (RuntimeException e) {
+            // O evento já é a fonte do analytics; o contador exibido é melhor esforço.
+            log.warn("[ANALYTICS] Falha ao atualizar contador de visualização do capítulo {}: {}",
+                    chapterId, e.getMessage());
         }
     }
 

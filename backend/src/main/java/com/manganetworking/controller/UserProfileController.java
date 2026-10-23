@@ -56,7 +56,7 @@ public class UserProfileController {
     }
 
     @PostMapping("/library/{workId}/toggle")
-    public ResponseEntity<ToggleLikeResponseDto> toggleLikeWork(@PathVariable UUID workId) {
+    public ResponseEntity<ToggleFavoriteResponseDto> toggleLikeWork(@PathVariable UUID workId) {
         return ResponseEntity.ok(profileService.toggleLikeWork(SecurityContextUtils.requireCurrentUserId(), workId));
     }
 

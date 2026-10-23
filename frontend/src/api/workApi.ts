@@ -19,6 +19,8 @@ export interface CreateChapterPayload {
   publicReleaseAt: string;
   format?: 'IMAGE_PAGES' | 'PROSE';
   content?: string;
+  blocksJson?: string;
+  chapterType?: 'REGULAR' | 'PROLOGUE' | 'SPECIAL';
 }
 
 /** Resumo de uma obra na lista "Minhas obras" (espelha `CreatorWorkSummaryResponseDto`). */
@@ -36,6 +38,7 @@ export interface CreatorWorkSummaryDto {
   totalChapters: number;
   totalViews: number;
   totalLikes: number;
+  totalFavorites?: number;
 }
 
 /** Projeção do item de feed (MongoDB) retornada por `GET /api/feed`. */
@@ -56,6 +59,7 @@ export interface FeedWorkDto {
   format?: 'MANGA' | 'LIGHT_NOVEL';
   totalViews?: number | null;
   totalLikes?: number | null;
+  totalFavorites?: number | null;
   totalComments?: number | null;
   totalChapters?: number | null;
   latestChapterNumber?: number | null;
@@ -105,6 +109,7 @@ export interface WorkDetailsDto {
   totalChapters: number;
   totalViews: number;
   totalLikes: number;
+  totalFavorites: number;
   author?: AuthorSummaryDto | null;
   chapters: ChapterSummaryDto[];
 }
@@ -119,9 +124,14 @@ export interface ChapterReadDto {
   pagesJson: string | null;
   format: 'IMAGE_PAGES' | 'PROSE';
   content?: string | null;
+  blocksJson?: string | null;
   likes: number;
+  likedByMe?: boolean;
   authorHandle: string;
   authorId?: string | null;
+  /** Apoio só aparece quando o autor é monetizado e o checkout tem credencial. */
+  supportEnabled?: boolean;
+  membershipPriceBrl?: number | null;
 }
 
 /**
@@ -130,13 +140,37 @@ export interface ChapterReadDto {
  */
 export interface WorkCommentDto {
   id: string;
+  parentId: string | null;
   username: string;
   displayName: string | null;
   avatarUrl: string | null;
   profilePublic: boolean;
   isCreator: boolean;
+  /** Assinatura ativa do criador dono da obra, decidida no servidor. */
+  subscriber: boolean;
   body: string;
+  likesCount: number;
+  replyCount: number;
+  likedByMe: boolean;
+  mine: boolean;
+  edited: boolean;
+  deleted: boolean;
   createdAt: string | null;
+  editedAt: string | null;
+  replies: WorkCommentDto[];
+}
+
+export interface CommentPageDto {
+  items: WorkCommentDto[];
+  page: number;
+  size: number;
+  total: number;
+  hasMore: boolean;
+}
+
+export interface CommentLikeDto {
+  liked: boolean;
+  likesCount: number;
 }
 export const workApi = {
   /**
@@ -211,7 +245,9 @@ export const workApi = {
     coverUrl?: string;
     pages?: string[];
     content?: string;
+    blocksJson?: string;
     format?: 'IMAGE_PAGES' | 'PROSE';
+    chapterType?: 'REGULAR' | 'PROLOGUE' | 'SPECIAL';
     publicReleaseAt?: string;
   }) {
     return request(`/works/${encodeURIComponent(workId)}/chapters/${chapterNumber}`, {
@@ -250,6 +286,14 @@ export const workApi = {
     return request<ChapterReadDto>(`/works/${slug}/chapters/${chapterNumber}`);
   },
 
+  /** Curtida real do capítulo (coração). A obra agrega a soma das curtidas. */
+  toggleChapterLike(workId: string, chapterNumber: number) {
+    return request<{ liked: boolean; totalLikes: number }>(
+      `/works/${encodeURIComponent(workId)}/chapters/${chapterNumber}/like`,
+      { method: 'POST' },
+    );
+  },
+
   /**
    * Resgate de missão da temporada de criadores com boost de algoritmo.
    */
@@ -263,17 +307,54 @@ export const workApi = {
    * O username do autor sempre aparece; nome e avatar só são expostos quando o
    * perfil do autor está público (regra decidida no servidor).
    */
-  listComments(workId: string, limit = 50) {
-    return request<WorkCommentDto[]>(`/works/${encodeURIComponent(workId)}/comments?limit=${limit}`, {
-      method: 'GET',
+  listComments(
+    workId: string,
+    options: { chapterId?: string; page?: number; size?: number; sort?: 'top' | 'new' } = {},
+  ) {
+    const params = new URLSearchParams();
+    if (options.chapterId) params.set('chapterId', options.chapterId);
+    params.set('page', String(options.page ?? 0));
+    params.set('size', String(options.size ?? 20));
+    params.set('sort', options.sort ?? 'top');
+    return request<CommentPageDto>(
+      `/works/${encodeURIComponent(workId)}/comments?${params.toString()}`,
+      { method: 'GET' },
+    );
+  },
+
+  createComment(workId: string, body: string, chapterId?: string, parentId?: string) {
+    return request<WorkCommentDto>(`/works/${encodeURIComponent(workId)}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ body, chapterId: chapterId ?? null, parentId: parentId ?? null }),
     });
   },
 
-  createComment(workId: string, body: string, chapterId?: string) {
-    return request<WorkCommentDto>(`/works/${encodeURIComponent(workId)}/comments`, {
-      method: 'POST',
-      body: JSON.stringify({ body, chapterId: chapterId ?? null }),
-    });
+  editComment(workId: string, commentId: string, body: string) {
+    return request<WorkCommentDto>(
+      `/works/${encodeURIComponent(workId)}/comments/${encodeURIComponent(commentId)}`,
+      { method: 'PUT', body: JSON.stringify({ body }) },
+    );
+  },
+
+  deleteComment(workId: string, commentId: string) {
+    return request<{ message: string }>(
+      `/works/${encodeURIComponent(workId)}/comments/${encodeURIComponent(commentId)}`,
+      { method: 'DELETE' },
+    );
+  },
+
+  toggleCommentLike(workId: string, commentId: string) {
+    return request<CommentLikeDto>(
+      `/works/${encodeURIComponent(workId)}/comments/${encodeURIComponent(commentId)}/like`,
+      { method: 'POST' },
+    );
+  },
+
+  reportComment(workId: string, commentId: string, reason: string, details?: string) {
+    return request<{ message: string }>(
+      `/works/${encodeURIComponent(workId)}/comments/${encodeURIComponent(commentId)}/report`,
+      { method: 'POST', body: JSON.stringify({ reason, details: details ?? null }) },
+    );
   },
 };
 

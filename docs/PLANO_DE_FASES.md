@@ -2,13 +2,13 @@
 
 > **DOCUMENTO MESTRE DE PRODUTO & REGRAS DE NEGÓCIO**
 >
-> **Última Atualização:** 20 de Outubro de 2026
+> **Última Atualização:** 22 de Outubro de 2026
 >
 > **Escopo deste arquivo:** regras de produto, plano atual F0–F8 e histórico de decisões/fases antigas. A seção 4 resume o estado atual das fases; a fila detalhada e evidências de execução ficam sincronizadas em `docs/orquestracao/ROADMAP-FASES.md`. Fases legadas posteriores estão preservadas como histórico, não como status corrente. Achados abertos ficam em `docs/orquestracao/AUDITORIA-ATUAL.md` e o progresso anterior permanece em `docs/orquestracao/HISTORICO_TAREFAS.md`.
 >
 > ⚠️ **Fonte de estado:** a seção 4 é o mapa de produto F0–F8; para logs, comandos, resultados de teste e ordem exata da fila, consulte o roadmap/auditoria. O histórico abaixo não deve ser interpretado como status atual.
 >
-> **Migrações Flyway:** V1..V16 aplicadas em PostgreSQL local real e em schema limpo via Testcontainers até 20/10/2026; versões aplicadas são imutáveis. A V14 acrescenta `users.is_owner` (papel de proprietário), a V15 cria a auditoria append-only de governança de dados e a V16 registra eventos de entrega de e-mail (bounce/complaint) sem gravar o endereço em claro.
+> **Migrações Flyway:** V1..V22 aplicadas em PostgreSQL local real. Imutáveis. V14 (`users.is_owner`), V15 (auditoria append-only), V16 (eventos de e-mail), V17 (`username`, `sex`, `creator_follows`, `work_comments`), V19 (separa `work_likes`/`chapter_likes`/`total_favorites`), V20 (threads, curtidas e denúncias de comentários), V21 (central de notificações), V22 (agrega `total_likes` a partir dos capítulos e remove `work_likes`).
 >
 > **Ambiente e saúde da stack:** ver `ROADMAP-FASES.md`; não inferir que serviços estão rodando só porque o Compose existe.
 
@@ -102,12 +102,12 @@ Fluxo exercitado de ponta a ponta na stack local (backend 8085, frontend 5180, P
 | **Criar obra** (com autoria original declarada) | ✅ funciona | `POST /api/works` → `id` + `slug`; feed e catálogo listam a obra |
 | **Publicar capítulo** com páginas vinculadas | ✅ funciona | `POST /api/works/{id}/chapters` → capítulo 1 com páginas; leitura pública liberada |
 | **Ler a obra** (detalhe, capítulo e página) | ✅ funciona | verificado com **uma segunda conta**: `GET /api/works/{slug}` → 200 (`status=ongoing`), `GET /api/works/{slug}/chapters/1` → `locked=false`, e a página em `/api/storage/...` → **200 sem sessão** (conteúdo público) |
-| Biblioteca (favoritar) e progresso de leitura | ✅ funciona | `POST /api/users/library/{workId}/toggle` → `{"liked":true}`; `POST /api/users/reading-progress/track` → 200 e `GET /api/users/reading-progress` devolve o item (Mongo) |
+| Biblioteca (favoritar) e progresso de leitura | ✅ funciona | `POST /api/users/library/{workId}/toggle` → `{favorite, totalFavorites}`; `POST /api/users/reading-progress/track` → 200 e `GET /api/users/reading-progress` devolve o item (Mongo) |
 | Denunciar e moderar (fila, suspensão) | ✅ funciona | `POST /api/reports` (público) + fila do DONO/moderador + suspensão cautelar |
 | Workspace do criador (analytics, missões, chave PIX com step-up 2FA) | ✅ funciona | `/api/creators/workspace`, `/api/creators/analytics`, `PUT /api/creators/pix-key` com OTP |
 | Painel do DONO (governança de dados) | ⚠️ parcial | existe o papel `ROLE_OWNER` e os endpoints de auditoria/saneamento; **não há dashboard de produto** |
 | **Editar obra/capítulo já publicado** | ❌ **não existe** | com sessão autenticada, `PUT /api/works/{id}`, `PUT /api/works/{id}/chapters/1`, `DELETE /api/works/{id}` e `DELETE .../chapters/1` respondem **405 Method Not Allowed**: só há `POST` (criar) e `GET` (ler) |
-| Comentários na obra | ❌ não existe | o modelo tem `comments_count`, mas não há API de comentário |
+| Comentários na obra e no capítulo | ✅ funciona | `GET/POST /api/works/{workId}/comments` (público/autenticado) com `chapterId`, `parentId`, página, tamanho e ordenação; respostas em profundidade 1, curtidas, edição/exclusão lógica dos próprios, denúncia deduplicada e moderação. `POST` é bloqueado em obra não publicada e tem limite por minuto; corpo sanitizado |
 | Doação, membresia e VIP | ❌ bloqueado | checkout Mercado Pago exige credenciais Sandbox/webhook público; a rota legada devolve `410` (nenhum crédito fictício) |
 | Login social (Google) | ❌ bloqueado | exige ID token real e domínio/DNS (#44) |
 | E-mail para destinatário real | ⚠️ parcial | **entrega real comprovada em desenvolvimento** (SMTP do `.env`: OTP e link de recuperação com `outcome=sent` no e-mail do titular). Para produção falta **domínio autenticado com SPF/DKIM/DMARC** e provedor institucional (#46) — conta pessoal não serve como remetente de produção |
@@ -115,7 +115,7 @@ Fluxo exercitado de ponta a ponta na stack local (backend 8085, frontend 5180, P
 | Criar conta com **username** e entrar por ele | ✅ funciona | `POST /api/auth/register` com `username` + sexo → 2FA; `POST /api/auth/login` com `{identifier}` aceita e-mail **ou** username (prova ao vivo: login com `qa.leitor.92542227` devolveu a conta e o OTP para o e-mail real) |
 | Perfil **público** por username | ✅ funciona | `GET /api/users/{username}/public-profile` sem sessão: nome, avatar, links, seguidores, obras e curtidas |
 | Perfil **privado** | ✅ funciona | a mesma rota devolve **só o username**; é o que aparece nos comentários |
-| **Comentar** na obra | OK funciona | `POST /api/works/{workId}/comments` (leitor autenticado, so obra publicada, bucket anti-spam) e `GET` publico; username sempre visivel, nome/avatar so com perfil publico; corpo higienizado |
+| **Comentar** na obra/capítulo | ✅ funciona | `POST /api/works/{workId}/comments` (leitor autenticado, só obra publicada, limite por minuto) e `GET` público; username sempre visível, nome/avatar só com perfil público; corpo higienizado; curtida, resposta, edição/exclusão e denúncia no mesmo recurso; selo de assinante calculado no servidor |
 | **Seguir** um escritor | ✅ funciona | `POST /api/creators/{handle}/follow` — só escritores têm seguidores; leitor não é seguido e ninguém segue a si mesmo |
 | **Virar escritor** (leitor → escritor) | ✅ funciona | `POST /api/creators/apply` exige **pelo menos 1** vínculo social (Instagram **ou** YouTube **ou** portfólio — os três são opcionais, um é obrigatório); sem link: 400. O identificador do autor é o **username da conta de leitor** (reciclado) e nome/foto são herdados |
 | Perfil de **escritor é sempre público** | ✅ funciona | o servidor recusa `isProfilePublic=false` para escritor; leitor escolhe livremente |
@@ -143,12 +143,12 @@ Fluxo exercitado de ponta a ponta na stack local (backend 8085, frontend 5180, P
 > canônico, e endereço inválido volta **400** com mensagem clara.
 >
 > Evidência desta rodada: CI remoto verde no commit `8cff00f` (run `39521554083` com os quatro
-> jobs - backend (**366 testes**), frontend, validação do Compose de produção e smoke 12/12.
+> jobs - backend (**412 testes**), frontend, validação do Compose de produção e smoke 12/12.
 > Smoke local 12/12 na stack real e V17 aplicada em PostgreSQL real.
 
 ### 4.1 O que ainda não dá (ordem de bloqueio)
 
-1. **Produto incompleto:** edição/exclusão de obra e capítulo, comentários, dashboard do DONO e o
+1. **Produto incompleto:** tela dedicada de moderação de comentários, dashboard do DONO e o
    motor completo de analytics/Seasons (F17).
 2. **Paginação real:** checkout do Mercado Pago (Sandbox, webhook público e chaves de produção).
 3. **Identidade e e-mail de produção:** ID token Google e **domínio com SPF/DKIM/DMARC + provedor
@@ -222,7 +222,7 @@ Fluxo exercitado de ponta a ponta na stack local (backend 8085, frontend 5180, P
 - [x] Limites de páginas/dimensões e capítulos de prosa implementados sem quebrar o fluxo de páginas de mangá.
 - [x] Carga HTTP com página real: 100/100 respostas 200, concorrência 10, p95 190 ms; detalhe e evidência no roadmap.
 - [x] Fluxo completo verificado em 20/10/2026: criar obra, publicar capítulo com páginas e **ler a obra por uma segunda conta** (detalhe público, capítulo e página) — ver 4.0.
-- [ ] **Lacunas de produto:** não existe `PUT/PATCH/DELETE` de obra ou capítulo (só criação) e não há API de comentários. Editar ou remover conteúdo publicado é a próxima entrega de F3.
+- [ ] **Lacunas de produto:** comentários e respostas já existem (V20) e a edição de capítulo está implementada; ainda falta uma tela dedicada de moderação de comentários e revisar o CRUD completo de obra. Editar ou remover conteúdo publicado segue como próxima entrega de F3.
 
 ### F4 — Monetização e financeiro · 🟡 parcial
 **Objetivo:** doações e Clube de Membros idempotentes, splits, ledger e PIX com step-up, sem saldo fictício.
@@ -247,7 +247,7 @@ Fluxo exercitado de ponta a ponta na stack local (backend 8085, frontend 5180, P
 ### F7 — QA, E2E e CI · ✅ concluída
 **Objetivo:** comprovar fluxos em stack real e automatizar validação em pull request.
 
-- [x] Suíte backend em 20/10/2026: **335 testes, 0 falhas/erros**, com Docker disponível (concorrência e rotação em Testcontainers); build frontend verde e smoke E2E 12/12 local; workflow de CI configurado para pull requests. Último run verde na `main`: `39500739630` (commit `345c7a7`) com os quatro jobs.
+- [x] Suíte backend em 22/10/2026: **412 testes, 0 falhas/erros**, com Docker disponível (concorrência e rotação em Testcontainers); build frontend verde e smoke E2E 12/12 local; workflow de CI configurado para pull requests. Último run verde na `main`: `39500739630` (commit `345c7a7`) com os quatro jobs.
 - [x] Job `docker-validation` recebeu `MAIL_*` fictícios; Compose de produção validado sem `.env` localmente (`docker compose config --quiet` = 0). O run `39448285071` do PR #5 ficou verde em backend, frontend, Docker e smoke 12/12; a falha anterior de V13 foi corrigida e a senha do smoke foi alinhada à política atual (#43).
 
 ### F8 — Prontidão de produção · 🟡 parcial
@@ -445,10 +445,12 @@ Fluxo exercitado de ponta a ponta na stack local (backend 8085, frontend 5180, P
 | **Passe 24** | 20/10/2026 | **Papel de proprietário, governança de dados e prontidão de produção:**<br>- V14 (`users.is_owner`) com `ROLE_OWNER` derivado no servidor; `/api/owner/**` exige o papel; `/auth/me` expõe `isOwner`.<br>- V15 (`privacy_governance_actions`, append-only) e V16 (`email_delivery_events`).<br>- Publicação controlada da Política de Privacidade (`GET /api/legal/privacy-policy` + `ops/legal/publish-privacy-policy.ps1`).<br>- Saneamento controlado de CPF legado (16 registros) e exclusão LGPD limpando privilégios residuais.<br>- Backup cifrado (AES-256-CBC + HMAC) com cópia off-site e retenção; Prometheus + Alertmanager com alerta real; exercício de runbook automatizado; `ops/deploy` para a Oracle.<br>- PR #5 mergeado na `main` (merge commit `35479b7`) e `develop`→`main` (PR #7, `f6350a4`). | **322 testes** verdes; CI remoto verde (run `39490345472`); stack local 6/6 saudável; sem credencial de produção, sem deploy e sem aprovação legal inventada. |
 | **Passe 25** | 20/10/2026 | **E-mail real e canonicalização no servidor:**<br>- `util.EmailNormalizer` (trim + minúsculas + validação RFC 5321) aplicado em cadastro, login, Google OAuth, 2FA, recuperação, OTP, Dev Outbox e webhook de bounce; o `@Email` do framework saiu dos DTOs porque recusava endereço com espaço nas pontas.<br>- Compose local passou a repassar `MAIL_*` do `.env` (antes fixava Mailpit e ignorava o `.env`: todo OTP ia para o Mailpit).<br>- Cadastro com conta pendente (e-mail nunca confirmado) reenvia o OTP; conta já confirmada não recebe e-mail no cadastro (é login). | **335 testes**, 0 falhas/0 erros; entrega real comprovada com `outcome=sent` (OTP de 2FA e link de recuperação no e-mail do titular) e Mailpit com 0 mensagens no mesmo intervalo; Dev Outbox **404** no stack real (atalho de dev desligado); CI remoto verde (run `39500739630`). |
 | **Passe 26** | 21/10/2026 | **Identidade separada e reorganizacao da interface:**<br>- V17: `users.username` (unico, imutavel depois de escolhido), `users.sex`, `creator_follows`, `work_comments`.<br>- Login e 2FA aceitam e-mail **ou** username; cadastro cria sempre leitor; virar escritor exige pelo menos um vinculo social (allowlist + HTTPS).<br>- Perfil publico por username com privacidade real; seguidores so de escritor; comentarios com username.<br>- Header sem a divisao "modo leitor/criador" (menu do avatar); painel do criador em telas separadas; "Minha conta"; onboarding pos-cadastro.<br>- Prometheus e Alertmanager no profile `monitoring` do Compose; bug real de YAML nas regras corrigido. | **366 testes**, 0 falhas/0 erros; V17 aplicada; smoke 12/12 local e no CI (run `39521554083`); login por username e perfil publico comprovados ao vivo. |
+| **Passe 27** | 22/10/2026 | **Engajamento, comunidade e ranking:**<br>- V19 separa favorito de curtida (`work_likes`, `chapter_likes`, `total_favorites`) e a view passa a ser 1/leitor/capítulo/dia em `America/Sao_Paulo`, enviada só após leitura real.<br>- V20 evolui comentários com respostas em profundidade 1, curtidas, edição/exclusão, denúncia deduplicada, moderação e selo de assinante ativo.<br>- V21 cria a central interna de notificações com dedup, respeito ao acesso antecipado, respostas, marcos de curtida e limpeza de lidas.<br>- Ranking de obras normalizado por `log1p`/decaimento; ranking de comentários separado.<br>- Front: coração de curtida distinto da estrela de favorito, comentários no fim do capítulo e sino no header. | Backend **412 testes, 0 falhas/0 erros**; frontend build verde; V19–V21 aplicadas no PostgreSQL real e E2E HTTP de comentário/resposta/curtida/notificação/edição/exclusão confirmado. QA visual no navegador e tela de moderação de comentários seguem pendentes e declarados. |
+| **Passe 28** | 22/10/2026 | **Light novels, analytics Studio, AdOverlay e Sobre nós:**<br>- `ProseEditorialPolicy` (Java + TS): contagem NFC/code-point, mín 1.000, aviso 3.000, rec 6.000–18.000, máx 30.000; capítulo especial/prólogo com mín 300; 4/4 testes verdes.<br>- V22 recalcula `works.total_likes` a partir dos capítulos e remove `work_likes`; exclusão de capítulo desconta `total_likes` agregado.<br>- Analytics estilo Studio (59–69): período 7/28/90/180 d, impressão por funil, CTR honesto, retensão real, heatmap 7×24, exportação CSV, comparação período anterior, visualização normalizada por `log1p`; teste anti-IDOR incluído.<br>- `AdOverlay`: backdrop sem `onClick`, Escape bloqueado, 15 s de contagem, fechar só pelo botão; desmontagem limpa os listeners.<br>- `SobrePage`: carousel editorial duotone P&B→amarelo, crossfade 4,2 s, história do Kokuin/Kiraya, seção MANGÁ · LIGHT NOVEL · AUTORIAL. Rota `about` no `App.tsx`; link SOBRE no `Header.tsx`.<br>- `UsernamePolicy` estrita (sem espaço/acento, reservados); biblioteca real com \"continuar de onde parou\" e \"ler novamente\". | **412 testes, 0 falhas/0 erros** (`mvn -o test` confirmado); frontend `✓ built in 2.59s` (cmd, 22/10/2026). V22 aplicada no PostgreSQL real. |
 
 ### Próximos passos (estado atual)
 
-A ordem vigente é mantida em `docs/orquestracao/ROADMAP-FASES.md`. Concluído com evidência: o passe autenticado/teclado (#40), o run remoto verde (#43), a retenção/cifra/off-site do backup no ambiente local (#42 — falta o destino externo e a aprovação), a governança de dados do proprietário e a entrega de e-mail em caixa real (OTP e recuperação) em desenvolvimento. Restam, marcados como dependências externas sem simulação: boot `prod` entre réplicas (#41), domínio autenticado com SPF/DKIM/DMARC e provedor institucional de e-mail, credenciais Sandbox do Mercado Pago com webhook HTTPS público, ID token Google, texto oficial da Política de Privacidade e nomeação do encarregado, prazos de retenção aprovados, destino off-site e KMS, e acesso Oracle (região/shape/chave SSH). Nenhuma compra real, mudança de DNS ou infraestrutura externa foi criada. A suíte backend passou **358/0/0** com Docker; o restore foi verificado em bancos isolados; o CI remoto está verde na `main` (run `39521554083`) e o smoke local fez 12/12. A identidade (username, leitor x escritor, perfil público, seguidores e comentários) entrou no servidor com a V17 e o painel do criador foi quebrado em telas separadas por endpoint.
+A ordem vigente é mantida em `docs/orquestracao/ROADMAP-FASES.md`. Concluído com evidência: passos autenticado/teclado (#40), run remoto verde (#43), retenção/cifra/off-site do backup local (#42), governança do proprietário, entrega real de e-mail (OTP e recuperação), identidade separada (V17), engajamento/comunidade (V19–V21), analytics Studio (itens 59–69), `ProseEditorialPolicy` (V22, 4/4 testes), `SobrePage`/`AdOverlay`/`UsernamePolicy`. A suíte backend passou **412 testes, 0 falhas/0 erros**; frontend build verde em 2.59s. Restam, marcados como dependências externas sem simulação: boot `prod` entre réplicas (#41), domínio autenticado com SPF/DKIM/DMARC e provedor institucional de e-mail, credenciais Sandbox do Mercado Pago com webhook HTTPS público, ID token Google, texto oficial da Política de Privacidade e nomeação do encarregado, prazos de retenção aprovados, destino off-site e KMS, e acesso Oracle (região/shape/chave SSH). Tela dedicada de moderação de comentários e QA visual do novo engajamento seguem como próxima entrega local. Nenhuma compra real, mudança de DNS ou infraestrutura externa foi criada.
 
 ---
 
@@ -456,9 +458,9 @@ A ordem vigente é mantida em `docs/orquestracao/ROADMAP-FASES.md`. Concluído c
 
 | Componente | Tecnologia | Porta / Path | Status de Verificação |
 |---|---|---|---|
-| **API Backend** | Spring Boot 3.4.2 / Java 21 | `8085` | **366 testes** em 21/10/2026, 0 falhas/erros/ignorados com Docker; Sandbox pendente |
-| **Banco Relacional** | PostgreSQL 16 (Docker) | `25432` | V1–V16 aplicadas em stack local real; V13 com `token_hash VARCHAR(64)`, V14 com `is_owner` e `validate` verde |
+| **API Backend** | Spring Boot 3.4.2 / Java 21 | `8085` | **412 testes** em 22/10/2026, 0 falhas/erros/ignorados com Docker; Sandbox pendente |
+| **Banco Relacional** | PostgreSQL 16 (Docker) | `25432` | V1–V22 aplicadas em stack local real; V13 com `token_hash VARCHAR(64)`, V14 com `is_owner`, V17 username/follows/comments, V19-V22 engajamento/notificações; `validate` verde |
 | **Banco NoSQL** | MongoDB 7 (Docker) | `27017` | Eventos de feed e telemetria validados ao vivo |
 | **Storage de Imagens** | Filesystem Local Sanitizado | `./data/uploads/` | Magic bytes e guard por `chapter_files` validados |
-| **Frontend Web** | React 19 / TypeScript / Vite | `5180` | Build limpo em 21/10/2026 (1649 módulos) |
+| **Frontend Web** | React 19 / TypeScript / Vite | `5180` | Build limpo em 22/10/2026 (2.59s, ~1644 módulos) |
 | **E-mail (SMTP)** | `SmtpMfaNotificationSender` | — | Entrega real de OTP e de link de recuperação comprovada em 20/10/2026 (`outcome=sent`); produção exige domínio autenticado com SPF/DKIM/DMARC |

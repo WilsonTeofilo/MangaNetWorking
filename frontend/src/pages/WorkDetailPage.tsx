@@ -1,8 +1,10 @@
 import { useState, useMemo, useEffect } from 'react';
-import { WorkCommentsPanel } from '../components/comments/WorkCommentsPanel';
 import { 
   ArrowUpDown, 
   Heart, 
+  Star,
+  Eye,
+  BookOpen,
   Flag,
   Calendar,
   Sparkles,
@@ -27,18 +29,22 @@ interface WorkDetailPageProps {
   work: Work;
   onBackToCatalog: () => void;
   onOpenChapter: (work: Work, chapter: Chapter, page?: number) => void;
+  onRequireAuth?: () => void;
 }
 
 export function WorkDetailPage({
   work,
   onBackToCatalog,
   onOpenChapter,
+  onRequireAuth,
 }: WorkDetailPageProps) {
-  const { user, toggleFavorite, isMemberOf } = useAuth();
+  const { user, toggleFavorite, isMemberOf, isAuthenticated } = useAuth();
   const { openEarlyAccess, openDonate, openMembership, openReport, openVip } = useModals();
 
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [readingProgress, setReadingProgress] = useState<ReadingProgressDto | null>(null);
+  const [workLikes, setWorkLikes] = useState(Number(work.totalLikes ?? 0));
+  const [favoritesCount, setFavoritesCount] = useState(Number(work.totalFavorites ?? 0));
   const [downloadingChapterId, setDownloadingChapterId] = useState<string | null>(null);
   const [offlineChapterIds, setOfflineChapterIds] = useState<Set<string>>(() =>
     new Set(offlineStorage.getOfflineChapters().map((c) => c.chapterId))
@@ -76,11 +82,13 @@ export function WorkDetailPage({
 
   // Dados reais da obra vindos da API (fallback para mock quando indisponível).
   const [realChapters, setRealChapters] = useState<Chapter[] | null>(null);
+  const [chaptersError, setChaptersError] = useState(false);
   const [apiAuthor, setApiAuthor] = useState<AuthorSummaryDto | null>(null);
 
   useEffect(() => {
     let active = true;
     setRealChapters(null);
+    setChaptersError(false);
     setApiAuthor(null);
 
     workApi
@@ -89,8 +97,13 @@ export function WorkDetailPage({
         if (!active) return;
         setApiAuthor(dto.author ?? null);
         setRealChapters((dto.chapters ?? []).map((c) => mapChapterSummary(c, dto.id)));
+        setWorkLikes(Number(dto.totalLikes ?? 0));
+        setFavoritesCount(Number(dto.totalFavorites ?? 0));
       })
       .catch(() => {
+        if (!active) return;
+        // Falha transitória (rede/limite): avisa em vez de fingir obra sem capítulos.
+        setChaptersError(true);
         setRealChapters(import.meta.env.DEV ? null : []);
       });
 
@@ -100,6 +113,23 @@ export function WorkDetailPage({
   }, [work.slug]);
 
   const isFavorited = user.favorites.includes(work.id);
+
+  useEffect(() => {
+    setWorkLikes(Number(work.totalLikes ?? 0));
+    setFavoritesCount(Number(work.totalFavorites ?? 0));
+  }, [work.id, work.totalLikes, work.totalFavorites]);
+
+  const handleToggleFavorite = async () => {
+    if (!isAuthenticated) {
+      onRequireAuth?.();
+      return;
+    }
+    const result = await toggleFavorite(work.id);
+    if (result) {
+      setFavoritesCount(result.totalFavorites);
+    }
+  };
+
   const mockCreator = import.meta.env.DEV
     ? MOCK_CREATORS[work.authorId] || Object.values(MOCK_CREATORS)[0]
     : undefined;
@@ -241,6 +271,27 @@ export function WorkDetailPage({
                 Criado por{' '}
                 <strong className="text-[#FFD400] font-semibold">{work.authorName}</strong>
               </p>
+
+              {/* Total da obra: soma das visualizações de todos os capítulos */}
+              <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 font-body text-sm text-[#A9A59A] tabular-nums">
+                <span className="inline-flex items-center gap-1.5" title="Visualizações da obra (soma dos capítulos)">
+                  <Eye size={14} aria-hidden="true" /> {Number(work.totalViews ?? 0).toLocaleString('pt-BR')}{' '}
+                  {Number(work.totalViews ?? 0) === 1 ? 'visualização' : 'visualizações'}
+                </span>
+                <span className="inline-flex items-center gap-1.5" title="Curtidas da obra (soma das curtidas dos capítulos)">
+                  <Heart size={14} aria-hidden="true" /> {Number(workLikes).toLocaleString('pt-BR')}{' '}
+                  {Number(workLikes) === 1 ? 'curtida' : 'curtidas'}
+                </span>
+                <span className="inline-flex items-center gap-1.5" title="Leitores que favoritaram a obra">
+                  <Star size={14} aria-hidden="true" className="fill-[#FFD400] text-[#FFD400]" />{' '}
+                  {Number(favoritesCount).toLocaleString('pt-BR')}{' '}
+                  {Number(favoritesCount) === 1 ? 'favorito' : 'favoritos'}
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <BookOpen size={14} aria-hidden="true" /> {work.totalChapters}{' '}
+                  {work.totalChapters === 1 ? 'capítulo' : 'capítulos'}
+                </span>
+              </p>
             </div>
 
             {/* Chips de Gênero */}
@@ -289,15 +340,17 @@ export function WorkDetailPage({
 
               <button
                 type="button"
-                onClick={() => toggleFavorite(work.id)}
+                onClick={handleToggleFavorite}
+                aria-pressed={isFavorited}
                 className={`inline-flex items-center gap-2 px-4 py-2.5 font-display text-base uppercase border-2 transition-all ${
                   isFavorited
                     ? 'bg-[#FFD400] text-[#0B0B0C] border-[#0B0B0C] shadow-[3px_3px_0_#F4EFE3]'
                     : 'bg-[#0B0B0C] text-[#F4EFE3] border-[#34343A] hover:border-[#FFD400]'
                 }`}
               >
-                <Heart size={16} className={isFavorited ? 'fill-[#0B0B0C]' : ''} />
-                <span>{isFavorited ? 'FAVORITADO' : '+ FAVORITAR'}</span>
+                <Star size={16} className={isFavorited ? 'fill-[#0B0B0C]' : ''} />
+                <span>{isFavorited ? 'NA BIBLIOTECA' : 'FAVORITAR'}</span>
+                <span className="tabular-nums opacity-80">{Number(favoritesCount).toLocaleString('pt-BR')}</span>
               </button>
 
               {creator && (
@@ -344,6 +397,11 @@ export function WorkDetailPage({
           </div>
 
           <div className="border-t-2 border-[#34343A]">
+            {chaptersError && chapters.length === 0 && (
+              <p className="py-6 font-body text-sm text-[#A9A59A]">
+                Não foi possível carregar os capítulos agora. Recarregue a página.
+              </p>
+            )}
             {chapters.map((chap) => {
               const isLocked = isChapterEarlyAccess(chap) && !isMemberOf(work.authorId);
 
@@ -362,8 +420,16 @@ export function WorkDetailPage({
                       <h4 className="font-display text-lg text-[#F4EFE3] group-hover:text-[#FFD400] transition-colors uppercase">
                         {chap.title}
                       </h4>
-                      <p className="font-body text-xs text-[#A9A59A] tabular-nums">
-                        {chap.format === 'PROSE' ? 'Light novel · prosa' : 'Mangá · páginas ilustradas'}
+                      <p className="font-body text-xs text-[#A9A59A] tabular-nums flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <span>{chap.format === 'PROSE' ? 'Light novel · prosa' : 'Mangá · páginas ilustradas'}</span>
+                        <span className="inline-flex items-center gap-1" title="Visualizações do capítulo">
+                          <Eye size={12} aria-hidden="true" />
+                          {Number(chap.views ?? 0).toLocaleString('pt-BR')}
+                        </span>
+                        <span className="inline-flex items-center gap-1" title="Curtidas do capítulo">
+                          <Heart size={12} aria-hidden="true" />
+                          {Number(chap.likes ?? 0).toLocaleString('pt-BR')}
+                        </span>
                       </p>
                       {chap.isEarlyAccess && (
                         <p className="font-pixel text-[10px] uppercase text-[#45A29E]">
@@ -433,9 +499,6 @@ export function WorkDetailPage({
             </button>
           </div>
         </section>
-
-        {/* Comentários da obra (username do autor; perfil privado esconde o resto) */}
-        <WorkCommentsPanel workId={work.id} />
 
         {/* Sidebar: Card de Apoio ao Criador & Atualização */}
         <aside className="space-y-6">

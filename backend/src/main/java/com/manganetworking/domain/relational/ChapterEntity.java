@@ -1,6 +1,7 @@
 package com.manganetworking.domain.relational;
 
 import com.manganetworking.domain.enums.ChapterFormat;
+import com.manganetworking.domain.enums.ChapterType;
 
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -38,8 +39,18 @@ public class ChapterEntity {
     @Column(name = "chapter_format", nullable = false, length = 20)
     private ChapterFormat format = ChapterFormat.IMAGE_PAGES;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "chapter_type", nullable = false, length = 20)
+    private ChapterType chapterType = ChapterType.REGULAR;
+
     @Column(name = "content_text", columnDefinition = "TEXT")
     private String contentText;
+
+    @Column(name = "blocks_json", columnDefinition = "TEXT")
+    private String blocksJson;
+
+    @Column(name = "blocks_version")
+    private Integer blocksVersion;
 
     @Column(nullable = false)
     private LocalDateTime publicReleaseAt;
@@ -88,8 +99,17 @@ public class ChapterEntity {
     public ChapterFormat getFormat() { return format; }
     public void setFormat(ChapterFormat format) { this.format = format; }
 
+    public ChapterType getChapterType() { return chapterType; }
+    public void setChapterType(ChapterType chapterType) { this.chapterType = chapterType; }
+
     public String getContentText() { return contentText; }
     public void setContentText(String contentText) { this.contentText = contentText; }
+
+    public String getBlocksJson() { return blocksJson; }
+    public void setBlocksJson(String blocksJson) { this.blocksJson = blocksJson; }
+
+    public Integer getBlocksVersion() { return blocksVersion; }
+    public void setBlocksVersion(Integer blocksVersion) { this.blocksVersion = blocksVersion; }
 
     public LocalDateTime getPublicReleaseAt() { return publicReleaseAt; }
     public void setPublicReleaseAt(LocalDateTime publicReleaseAt) { this.publicReleaseAt = publicReleaseAt; }

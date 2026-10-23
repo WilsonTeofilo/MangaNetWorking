@@ -4,18 +4,22 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.manganetworking.config.exception.AccessDeniedException;
 import com.manganetworking.config.exception.ResourceNotFoundException;
+import com.manganetworking.config.properties.PlatformProperties;
 import com.manganetworking.config.security.SecurityContextUtils;
 import com.manganetworking.domain.relational.ChapterEntity;
 import com.manganetworking.domain.enums.ChapterFormat;
+import com.manganetworking.domain.enums.ChapterType;
 import com.manganetworking.domain.relational.ChapterFileEntity;
 import com.manganetworking.domain.relational.CreatorEntity;
 import com.manganetworking.domain.relational.WorkEntity;
 import com.manganetworking.repository.jpa.ChapterFileRepository;
+import com.manganetworking.repository.jpa.ChapterLikeRepository;
 import com.manganetworking.repository.jpa.ChapterRepository;
 import com.manganetworking.repository.jpa.CreatorRepository;
 import com.manganetworking.repository.jpa.MembershipSubscriptionRepository;
 import com.manganetworking.repository.jpa.WorkRepository;
 import com.manganetworking.service.feed.event.WorkFeedSyncEvent;
+import com.manganetworking.service.notification.NotificationService;
 import com.manganetworking.service.session.SessionService;
 import com.manganetworking.service.work.dto.*;
 import com.manganetworking.util.StorageFileNames;
@@ -49,6 +53,9 @@ public class WorkApplicationService {
     private final CreatorRepository creatorRepository;
     private final ObjectMapper objectMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final ChapterLikeRepository chapterLikeRepository;
+    private final PlatformProperties properties;
+    private final NotificationService notificationService;
 
     public WorkApplicationService(
             WorkRepository workRepository,
@@ -57,7 +64,10 @@ public class WorkApplicationService {
             MembershipSubscriptionRepository membershipRepository,
             CreatorRepository creatorRepository,
             ObjectMapper objectMapper,
-            ApplicationEventPublisher eventPublisher
+            ApplicationEventPublisher eventPublisher,
+            ChapterLikeRepository chapterLikeRepository,
+            PlatformProperties properties,
+            NotificationService notificationService
     ) {
         this.workRepository = workRepository;
         this.chapterRepository = chapterRepository;
@@ -66,6 +76,9 @@ public class WorkApplicationService {
         this.creatorRepository = creatorRepository;
         this.objectMapper = objectMapper;
         this.eventPublisher = eventPublisher;
+        this.chapterLikeRepository = chapterLikeRepository;
+        this.properties = properties;
+        this.notificationService = notificationService;
     }
 
     /** O usuario atual e o autor da obra ou um moderador: ve o conteudo ainda nao liberado. */
@@ -144,6 +157,7 @@ public class WorkApplicationService {
                 work.getTotalChapters(),
                 work.getTotalViews(),
                 work.getTotalLikes(),
+                work.getTotalFavorites(),
                 authorDto,
                 chaptersDto
         );
@@ -186,11 +200,19 @@ public class WorkApplicationService {
             throw new ResourceNotFoundException("Capítulo #" + chapterNumber + " ainda não foi liberado.");
         }
 
-        // Capítulo Liberado: Incrementa métricas de visualização
-        chapter.setViews(chapter.getViews() + 1);
-        work.setTotalViews(work.getTotalViews() + 1);
-        chapterRepository.save(chapter);
-        workRepository.save(work);
+        // A contagem de visualização acontece quando o leitor lê a primeira página
+        // (ReadingProgressService), não ao abrir o capítulo: abrir e sair não é leitura.
+
+        boolean likedByMe = currentUserId != null
+                && chapterLikeRepository.existsByUser_IdAndChapter_Id(currentUserId, chapter.getId());
+        // Só anuncia apoio se o autor está monetizado E o provedor de pagamento tem
+        // credencial configurada. Sem token, o checkout falharia: não prometemos o que
+        // o servidor não consegue entregar.
+        String accessToken = properties != null && properties.getMercadopago() != null
+                ? properties.getMercadopago().getAccessToken()
+                : null;
+        boolean paymentsConfigured = accessToken != null && !accessToken.isBlank();
+        boolean supportEnabled = author != null && author.isMonetizationUnlocked() && paymentsConfigured;
 
         return new ChapterReadResponseDto(
                 false,
@@ -200,8 +222,11 @@ public class WorkApplicationService {
                 chapter.getTitle(),
                 chapter.getPagesJson(),
                 chapter.getLikes(),
+                likedByMe,
                 author != null ? "@" + author.getHandle() : "",
                 author != null ? author.getId() : null,
+                supportEnabled,
+                author != null ? author.getMembershipPriceBrl() : null,
                 chapter.getFormat(),
                 chapter.getContentText()
         );
@@ -230,7 +255,8 @@ public class WorkApplicationService {
                         work.getFormat() != null ? work.getFormat().name() : null,
                         work.getTotalChapters(),
                         work.getTotalViews(),
-                        work.getTotalLikes()))
+                        work.getTotalLikes(),
+                        work.getTotalFavorites()))
                 .sorted(Comparator.comparing(CreatorWorkSummaryResponseDto::title, String.CASE_INSENSITIVE_ORDER))
                 .toList();
     }
@@ -349,16 +375,64 @@ public class WorkApplicationService {
     @Transactional
     public ChapterEntity createChapter(UUID creatorId, UUID workId, CreateChapterRequestDto dto) {
         ChapterFormat format = dto.format();
+        ChapterType chapterType = dto.chapterType();
         List<String> pages = dto.pages() == null ? List.of() : dto.pages();
-        String content = dto.content() == null ? null : com.manganetworking.util.SanitizationUtils.stripAllHtml(dto.content()).trim();
+
+        // Validação de blocos (light novel) vs formato legado (prose/text)
+        boolean hasBlocks = dto.blocksJson() != null && !dto.blocksJson().isBlank();
+        boolean hasLegacyProse = dto.content() != null && !dto.content().isBlank();
+
+        if (hasBlocks && (hasLegacyProse || !pages.isEmpty())) {
+            throw new IllegalArgumentException("Blocos (blocksJson) são exclusivos com content/pages.");
+        }
+
+        String content = null;
+        String blocksJson = null;
+
+        if (format == ChapterFormat.PROSE) {
+            // Validações específicas por tipo de capítulo
+            if (chapterType == ChapterType.PROLOGUE) {
+                if (dto.chapterNumber() != 0) {
+                    throw new IllegalArgumentException("Prólogo deve ser o capítulo 0.");
+                }
+                // Verifica se já existe prólogo
+                if (chapterRepository.findByWorkIdAndChapterNumber(workId, 0).isPresent()) {
+                    throw new IllegalArgumentException("Esta obra já possui um prólogo (capítulo 0).");
+                }
+            }
+
+            if (hasBlocks) {
+                if (dto.blocksJson().length() > ChapterBlocksPolicy.MAX_RAW_JSON_CHARS) {
+                    throw new IllegalArgumentException("O JSON de blocos excede o limite técnico de processamento.");
+                }
+                // Validação conforme tipo de capítulo
+                if (chapterType == ChapterType.PROLOGUE || chapterType == ChapterType.SPECIAL) {
+                    ChapterBlocksPolicy.validateSpecialOrPrologueChapter(dto.blocksJson(), chapterType);
+                } else {
+                    ChapterBlocksPolicy.validateRegularChapter(dto.blocksJson());
+                }
+                blocksJson = dto.blocksJson();
+                // Gera content_text legível para compatibilidade (busca, leitores legados, etc.)
+                content = ChapterBlocksPolicy.blocksToPlainText(blocksJson);
+            } else {
+                if (dto.content() != null && dto.content().length() > ProseEditorialPolicy.MAX_RAW_CHARACTERS) {
+                    throw new IllegalArgumentException("O texto enviado excede o limite técnico de processamento.");
+                }
+                content = dto.content() == null ? null : ProseEditorialPolicy.normalizePlainText(dto.content());
+                if (content == null || content.isBlank() || !pages.isEmpty()) {
+                    throw new IllegalArgumentException("Capítulos em prosa precisam de texto e não aceitam páginas de imagem.");
+                }
+                // Validação conforme tipo de capítulo
+                if (chapterType == ChapterType.PROLOGUE || chapterType == ChapterType.SPECIAL) {
+                    ProseEditorialPolicy.validateSpecialOrPrologueChapter(content, chapterType);
+                } else {
+                    ProseEditorialPolicy.validateRegularChapter(content);
+                }
+            }
+        }
+
         if (format == ChapterFormat.IMAGE_PAGES && (pages.isEmpty() || content != null && !content.isBlank())) {
             throw new IllegalArgumentException("Capítulos de mangá precisam conter páginas e não aceitam texto de prosa.");
-        }
-        if (format == ChapterFormat.PROSE && (content == null || content.isBlank() || !pages.isEmpty())) {
-            throw new IllegalArgumentException("Capítulos em prosa precisam de texto e não aceitam páginas de imagem.");
-        }
-        if (format == ChapterFormat.PROSE && content.length() > 2_000_000) {
-            throw new IllegalArgumentException("O texto do capítulo excede o limite de 2 MB.");
         }
         if (format == ChapterFormat.IMAGE_PAGES && pages.size() > MAX_CHAPTER_PAGES) {
             throw new IllegalArgumentException("O capítulo excede o limite de " + MAX_CHAPTER_PAGES + " páginas.");
@@ -400,7 +474,10 @@ public class WorkApplicationService {
         chapter.setCoverUrl(dto.coverUrl() != null ? dto.coverUrl().trim() : null);
         chapter.setPagesJson(pagesJson);
         chapter.setFormat(format);
-        chapter.setContentText(format == ChapterFormat.PROSE ? content : null);
+        chapter.setChapterType(chapterType);
+        chapter.setContentText(content);
+        chapter.setBlocksJson(blocksJson);
+        chapter.setBlocksVersion(hasBlocks ? ChapterBlockDto.CURRENT_VERSION : null);
         // Sem data informada, o capitulo entra no ar imediatamente (padrao do produto).
         chapter.setPublicReleaseAt(dto.publicReleaseAt() != null ? dto.publicReleaseAt() : LocalDateTime.now());
 
@@ -412,6 +489,7 @@ public class WorkApplicationService {
         WorkEntity updatedWork = workRepository.save(work);
 
         publishFeedSync(updatedWork.getId(), "publicação de capítulo");
+        notificationService.notifyNewChapter(saved);
 
         return saved;
     }
@@ -468,12 +546,20 @@ public class WorkApplicationService {
         ChapterEntity chapter = chapterRepository.findByWorkIdAndChapterNumber(workId, number)
                 .orElseThrow(() -> new ResourceNotFoundException("Capítulo #" + number + " não encontrado"));
 
+        long removedLikes = chapter.getLikes() == null ? 0L : chapter.getLikes();
+
         chapterRepository.delete(chapter);
         chapterRepository.flush();
 
         // A contagem de capitulos da obra precisa acompanhar a exclusao.
         work.setTotalChapters(Math.max(0, work.getTotalChapters() - 1));
-        workRepository.save(work);
+        workRepository.saveAndFlush(work);
+
+        // A curtida da obra é a soma dos capítulos: excluir um capítulo remove do
+        // agregado apenas as curtidas que aquele capítulo tinha.
+        if (removedLikes > 0) {
+            workRepository.decrementTotalLikesBy(work.getId(), removedLikes);
+        }
         publishFeedSync(work.getId(), "exclusão de capítulo");
     }
 
@@ -488,17 +574,66 @@ public class WorkApplicationService {
         ChapterEntity chapter = chapterRepository.findByWorkIdAndChapterNumber(workId, number)
                 .orElseThrow(() -> new ResourceNotFoundException("Capítulo #" + number + " não encontrado"));
 
+        // chapterType não muda na edição; usa o existente para validação
+        ChapterType chapterType = chapter.getChapterType();
+
         ChapterFormat format = dto.format() != null ? dto.format() : chapter.getFormat();
         List<String> pages = dto.pages() != null ? dto.pages() : readPages(chapter);
-        String content = dto.content() != null
-                ? com.manganetworking.util.SanitizationUtils.stripAllHtml(dto.content()).trim()
-                : chapter.getContentText();
+
+        // Validação de blocos vs formato legado
+        boolean hasBlocks = dto.blocksJson() != null && !dto.blocksJson().isBlank();
+        boolean hasLegacyProse = dto.content() != null && !dto.content().isBlank();
+
+        if (hasBlocks && (hasLegacyProse || (dto.pages() != null && !dto.pages().isEmpty()))) {
+            throw new IllegalArgumentException("Blocos (blocksJson) são exclusivos com content/pages.");
+        }
+
+        String content = null;
+        String blocksJson = null;
+        Integer blocksVersion = null;
+
+        if (format == ChapterFormat.PROSE) {
+            if (hasBlocks) {
+                if (dto.blocksJson().length() > ChapterBlocksPolicy.MAX_RAW_JSON_CHARS) {
+                    throw new IllegalArgumentException("O JSON de blocos excede o limite técnico de processamento.");
+                }
+                // Validação conforme tipo do capítulo
+                if (chapterType == ChapterType.PROLOGUE || chapterType == ChapterType.SPECIAL) {
+                    ChapterBlocksPolicy.validateSpecialOrPrologueChapter(dto.blocksJson(), chapterType);
+                } else {
+                    ChapterBlocksPolicy.validateRegularChapter(dto.blocksJson());
+                }
+                blocksJson = dto.blocksJson();
+                blocksVersion = ChapterBlockDto.CURRENT_VERSION;
+                content = ChapterBlocksPolicy.blocksToPlainText(blocksJson);
+            } else {
+                if (dto.content() != null && dto.content().length() > ProseEditorialPolicy.MAX_RAW_CHARACTERS) {
+                    throw new IllegalArgumentException("O texto enviado excede o limite técnico de processamento.");
+                }
+                content = dto.content() != null
+                        ? ProseEditorialPolicy.normalizePlainText(dto.content())
+                        : chapter.getContentText();
+                if (content == null || content.isBlank()) {
+                    throw new IllegalArgumentException("Capítulos em prosa precisam de texto.");
+                }
+                if (dto.content() != null) {
+                    // Validação conforme tipo do capítulo
+                    if (chapterType == ChapterType.PROLOGUE || chapterType == ChapterType.SPECIAL) {
+                        ProseEditorialPolicy.validateSpecialOrPrologueChapter(content, chapterType);
+                    } else {
+                        ProseEditorialPolicy.validateRegularChapter(content);
+                    }
+                }
+                // Se não enviou blocksJson mas o capítulo já tinha, preserva
+                if (chapter.getBlocksJson() != null && dto.blocksJson() == null) {
+                    blocksJson = chapter.getBlocksJson();
+                    blocksVersion = chapter.getBlocksVersion();
+                }
+            }
+        }
 
         if (format == ChapterFormat.IMAGE_PAGES && pages.isEmpty()) {
             throw new IllegalArgumentException("Capítulos de mangá precisam de pelo menos uma página.");
-        }
-        if (format == ChapterFormat.PROSE && (content == null || content.isBlank())) {
-            throw new IllegalArgumentException("Capítulos em prosa precisam de texto.");
         }
         if (format == ChapterFormat.IMAGE_PAGES && pages.size() > MAX_CHAPTER_PAGES) {
             throw new IllegalArgumentException("O capítulo excede o limite de " + MAX_CHAPTER_PAGES + " páginas.");
@@ -512,6 +647,9 @@ public class WorkApplicationService {
         chapter.setContentText(format == ChapterFormat.PROSE ? content : null);
         if (format == ChapterFormat.IMAGE_PAGES) {
             chapter.setPagesJson(writePagesJson(pages));
+        } else if (format == ChapterFormat.PROSE) {
+            chapter.setBlocksJson(blocksJson);
+            chapter.setBlocksVersion(blocksVersion);
         }
         // Sem data informada, o capitulo volta a ficar publicado imediatamente.
         chapter.setPublicReleaseAt(dto.publicReleaseAt() != null ? dto.publicReleaseAt() : LocalDateTime.now());

@@ -5,7 +5,11 @@ import com.manganetworking.service.work.WorkApplicationService;
 import com.manganetworking.service.work.dto.ChapterReadResponseDto;
 import com.manganetworking.service.work.dto.WorkDetailsResponseDto;
 import com.manganetworking.service.work.dto.WorkCommentResponseDto;
+import com.manganetworking.service.work.dto.CommentLikeResponseDto;
+import com.manganetworking.service.work.dto.CommentPageResponseDto;
 import com.manganetworking.service.work.dto.CreateCommentRequestDto;
+import com.manganetworking.service.work.dto.ReportCommentRequestDto;
+import com.manganetworking.service.work.dto.UpdateCommentRequestDto;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,6 +21,7 @@ import com.manganetworking.service.work.dto.CreateWorkRequestDto;
 import com.manganetworking.service.work.dto.UpdateWorkRequestDto;
 import com.manganetworking.service.work.dto.UpdateChapterRequestDto;
 import com.manganetworking.service.work.dto.CreatorWorkSummaryResponseDto;
+import com.manganetworking.service.user.dto.ToggleLikeResponseDto;
 import jakarta.validation.Valid;
 
 import java.util.List;
@@ -29,11 +34,14 @@ public class WorkController {
 
     private final WorkApplicationService workService;
     private final com.manganetworking.service.work.WorkCommentService commentService;
+    private final com.manganetworking.service.work.ChapterLikeService chapterLikeService;
 
     public WorkController(WorkApplicationService workService,
-                          com.manganetworking.service.work.WorkCommentService commentService) {
+                          com.manganetworking.service.work.WorkCommentService commentService,
+                          com.manganetworking.service.work.ChapterLikeService chapterLikeService) {
         this.workService = workService;
         this.commentService = commentService;
+        this.chapterLikeService = chapterLikeService;
     }
 
     @PostMapping
@@ -143,15 +151,19 @@ public class WorkController {
         return ResponseEntity.ok(workService.getWorkBySlug(slug, currentUserId));
     }
 
-    /** Comentários da obra: leitura pública, escrita por qualquer conta autenticada. */
+    /** Comentários da obra/capítulo: leitura pública, escrita por conta autenticada. */
     @GetMapping("/{workId}/comments")
-    public ResponseEntity<java.util.List<WorkCommentResponseDto>> listComments(
+    public ResponseEntity<CommentPageResponseDto> listComments(
             @PathVariable UUID workId,
-            @RequestParam(defaultValue = "50") int limit
+            @RequestParam(required = false) UUID chapterId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "top") String sort
     ) {
+        UUID currentUserId = SecurityContextUtils.resolveCurrentUserId(null);
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
-                .body(commentService.listComments(workId, limit));
+                .body(commentService.listComments(workId, chapterId, page, size, sort, currentUserId));
     }
 
     @PostMapping("/{workId}/comments")
@@ -160,7 +172,58 @@ public class WorkController {
             @Valid @RequestBody CreateCommentRequestDto dto
     ) {
         UUID userId = SecurityContextUtils.requireCurrentUserId();
-        return ResponseEntity.ok(commentService.createComment(userId, workId, dto.chapterId(), dto.body()));
+        return ResponseEntity.ok(commentService.createComment(
+                userId, workId, dto.chapterId(), dto.parentId(), dto.body()));
+    }
+
+    @PutMapping("/{workId}/comments/{commentId}")
+    public ResponseEntity<WorkCommentResponseDto> editComment(
+            @PathVariable UUID workId,
+            @PathVariable UUID commentId,
+            @Valid @RequestBody UpdateCommentRequestDto dto
+    ) {
+        UUID userId = SecurityContextUtils.requireCurrentUserId();
+        return ResponseEntity.ok(commentService.editComment(userId, workId, commentId, dto.body()));
+    }
+
+    @DeleteMapping("/{workId}/comments/{commentId}")
+    public ResponseEntity<Map<String, String>> deleteComment(
+            @PathVariable UUID workId,
+            @PathVariable UUID commentId
+    ) {
+        UUID userId = SecurityContextUtils.requireCurrentUserId();
+        commentService.deleteComment(userId, workId, commentId);
+        return ResponseEntity.ok(Map.of("message", "Comentário excluído."));
+    }
+
+    @PostMapping("/{workId}/comments/{commentId}/like")
+    public ResponseEntity<CommentLikeResponseDto> toggleCommentLike(
+            @PathVariable UUID workId,
+            @PathVariable UUID commentId
+    ) {
+        UUID userId = SecurityContextUtils.requireCurrentUserId();
+        return ResponseEntity.ok(commentService.toggleLike(userId, workId, commentId));
+    }
+
+    @PostMapping("/{workId}/comments/{commentId}/report")
+    public ResponseEntity<Map<String, String>> reportComment(
+            @PathVariable UUID workId,
+            @PathVariable UUID commentId,
+            @Valid @RequestBody ReportCommentRequestDto dto
+    ) {
+        UUID userId = SecurityContextUtils.requireCurrentUserId();
+        commentService.reportComment(userId, workId, commentId, dto);
+        return ResponseEntity.ok(Map.of("message", "Denúncia recebida. A moderação vai analisar."));
+    }
+
+    /** Curtida do capítulo (coração). A obra exibe a soma das curtidas dos capítulos. */
+    @PostMapping("/{workId}/chapters/{chapterNumber}/like")
+    public ResponseEntity<ToggleLikeResponseDto> toggleChapterLike(
+            @PathVariable UUID workId,
+            @PathVariable Integer chapterNumber
+    ) {
+        UUID userId = SecurityContextUtils.requireCurrentUserId();
+        return ResponseEntity.ok(chapterLikeService.toggle(userId, workId, chapterNumber));
     }
 
     @GetMapping("/{slug}/chapters/{chapterNumber}")

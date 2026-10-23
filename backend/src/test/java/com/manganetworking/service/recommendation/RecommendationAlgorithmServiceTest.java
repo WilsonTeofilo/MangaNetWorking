@@ -87,6 +87,27 @@ class RecommendationAlgorithmServiceTest {
     }
 
     @Test
+    @DisplayName("Contadores grandes são normalizados: 10x volume não vira 10x score")
+    void normalizesVolumeSignalsWithLog1p() {
+        WorkEntity small = workWithTotals(100L, 10L, 5L, 2L, 1);
+        WorkEntity large = workWithTotals(10_000L, 1_000L, 500L, 200L, 10);
+
+        when(chapterRepo.findAllByWorkIdOrderByChapterNumberDesc(any())).thenReturn(List.of());
+        when(feedRepo.findByWorkId(small.getId().toString())).thenReturn(Optional.empty());
+        when(feedRepo.findByWorkId(large.getId().toString())).thenReturn(Optional.empty());
+        when(feedRepo.save(any(WorkFeedDocument.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        WorkFeedDocument smallDoc = service.syncWorkToFeed(small);
+        WorkFeedDocument largeDoc = service.syncWorkToFeed(large);
+
+        assertNotNull(smallDoc);
+        assertNotNull(largeDoc);
+        assertTrue(largeDoc.getDiscoveryScore() > smallDoc.getDiscoveryScore());
+        assertTrue(largeDoc.getDiscoveryScore() < smallDoc.getDiscoveryScore() * 10,
+                "log1p deve impedir que 10x contadores virem 10x score");
+    }
+
+    @Test
     @DisplayName("Boost de Season do criador multiplica o discoveryScore da obra")
     void appliesCreatorSeasonBoost() {
         WorkRepository workRepo = mock(WorkRepository.class);
@@ -219,6 +240,23 @@ class RecommendationAlgorithmServiceTest {
         work.setSlug("obra-suspensa");
         work.setCoverUrl("/api/storage/cover.jpg");
         work.setStatus("suspended");
+        return work;
+    }
+
+    private WorkEntity workWithTotals(
+            long views, long likes, long favorites, long comments, int chapters) {
+        WorkEntity work = new WorkEntity();
+        work.setId(UUID.randomUUID());
+        work.setTitle("Obra " + views);
+        work.setSlug("obra-" + views);
+        work.setCoverUrl("/api/storage/cover.jpg");
+        work.setStatus("ongoing");
+        work.setTotalViews(views);
+        work.setTotalLikes(likes);
+        work.setTotalFavorites(favorites);
+        work.setTotalComments(comments);
+        work.setTotalChapters(chapters);
+        work.setUpdatedAt(LocalDateTime.now().minusDays(20));
         return work;
     }
 

@@ -27,6 +27,7 @@ public record CreatorWorkSummaryResponseDto(
         String format,
         int totalChapters,
         long totalViews,
-        long totalLikes
+        long totalLikes,
+        long totalFavorites
 ) {
 }

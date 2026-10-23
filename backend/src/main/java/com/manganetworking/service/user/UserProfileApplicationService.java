@@ -139,26 +139,28 @@ public class UserProfileApplicationService {
     }
 
     @Transactional
-    public ToggleLikeResponseDto toggleLikeWork(UUID currentUserId, UUID workId) {
+    public ToggleFavoriteResponseDto toggleLikeWork(UUID currentUserId, UUID workId) {
         UserEntity user = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado"));
 
         WorkEntity work = workRepository.findById(workId)
                 .orElseThrow(() -> new ResourceNotFoundException("Obra não encontrada com ID: " + workId));
 
-        boolean alreadyLiked = user.getLikedWorks().contains(work);
-        if (alreadyLiked) {
+        boolean alreadyFavorite = user.getLikedWorks().contains(work);
+        if (alreadyFavorite) {
             user.getLikedWorks().remove(work);
-            work.setTotalLikes(Math.max(0, work.getTotalLikes() - 1));
+            workRepository.decrementTotalFavorites(workId);
         } else {
             user.getLikedWorks().add(work);
-            work.setTotalLikes(work.getTotalLikes() + 1);
+            workRepository.incrementTotalFavorites(workId);
         }
 
+        // A biblioteca é a fonte da verdade do favorito. O contador agregado é
+        // atualizado atomicamente para não perder cliques concorrentes.
         userRepository.save(user);
-        workRepository.save(work);
 
-        return new ToggleLikeResponseDto(!alreadyLiked, work.getTotalLikes());
+        Long totalFavorites = workRepository.findTotalFavorites(workId);
+        return new ToggleFavoriteResponseDto(!alreadyFavorite, totalFavorites == null ? 0L : totalFavorites);
     }
 
     /**

@@ -52,8 +52,10 @@ export function RankRow({ rank, work, onSelect }: RankRowProps) {
           por <span className="text-[var(--mn-paper)] font-medium">{work.authorName}</span>
         </p>
         <p className="font-body text-[12px] text-[var(--mn-mute)] tabular-nums mt-0.5">
-          {work.totalViews ? Number(work.totalViews).toLocaleString('pt-BR') : '1.240'} views ·{' '}
-          {work.totalLikes ? Number(work.totalLikes).toLocaleString('pt-BR') : '420'} likes
+          {Number(work.totalViews ?? 0).toLocaleString('pt-BR')}{' '}
+          {Number(work.totalViews ?? 0) === 1 ? 'visualização' : 'visualizações'} ·{' '}
+          {Number(work.totalLikes ?? 0).toLocaleString('pt-BR')}{' '}
+          {Number(work.totalLikes ?? 0) === 1 ? 'curtida' : 'curtidas'}
         </p>
       </div>
     </div>

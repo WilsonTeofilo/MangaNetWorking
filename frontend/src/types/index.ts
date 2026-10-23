@@ -23,9 +23,12 @@ export interface Chapter {
   isEarlyAccess?: boolean;
   views: number;
   likes: number;
+  /** Curtida do capítulo pelo leitor autenticado. */
+  likedByMe?: boolean;
   commentsCount: number;
   format?: 'IMAGE_PAGES' | 'PROSE';
   content?: string;
+  blocksJson?: string;
 }
 
 export interface CreatorMission {
@@ -76,7 +79,10 @@ export interface Work {
   format?: 'MANGA' | 'LIGHT_NOVEL';
   totalChapters: number;
   totalViews: number;
+  /** Soma das curtidas reais dos capítulos; não há curtida direta da obra. */
   totalLikes: number;
+  /** Leitores que favoritaram a obra na biblioteca (estrela). */
+  totalFavorites?: number;
   totalComments: number;
   rating: number;
   updatedAt: string; // ISO

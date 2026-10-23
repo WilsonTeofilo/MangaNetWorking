@@ -20,6 +20,7 @@ public record WorkDetailsResponseDto(
         int totalChapters,
         long totalViews,
         long totalLikes,
+        long totalFavorites,
         AuthorSummaryDto author,
         List<ChapterSummaryDto> chapters
 ) {}
