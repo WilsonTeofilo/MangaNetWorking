@@ -69,7 +69,8 @@ export function ModerationBackofficePage({ onBack }: ModerationBackofficePagePro
           <button
             type="button"
             onClick={onBack}
-            className="p-2 bg-[var(--mn-ink-2)] border-2 border-[var(--mn-line)] text-[var(--mn-mute)] hover:text-[var(--mn-yellow)] hover:border-[var(--mn-yellow)] transition-colors"
+            aria-label="Voltar para a página anterior"
+            className="p-2 bg-[var(--mn-ink-2)] border-2 border-[var(--mn-line)] text-[var(--mn-mute)] hover:text-[var(--mn-yellow)] hover:border-[var(--mn-yellow)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--mn-yellow)] transition-colors"
           >
             <ArrowLeft size={18} />
           </button>

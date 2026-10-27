@@ -23,7 +23,8 @@ public class ProductionSecretsGuard {
             @Value("${platform.security.otp-hmac-secret:}") String otpHmacSecret,
             @Value("${platform.security.aes-secret-key:}") String aesSecretKey,
             @Value("${platform.security.cookie-secure:false}") boolean cookieSecure,
-            @Value("${spring.mail.webhook-secret:}") String emailWebhookSecret
+            @Value("${spring.mail.webhook-secret:}") String emailWebhookSecret,
+            @Value("${google.auth.staging-mock-enabled:false}") boolean googleStagingMockEnabled
     ) {
         if (otpHmacSecret == null
                 || otpHmacSecret.isBlank()
@@ -53,6 +54,11 @@ public class ProductionSecretsGuard {
                     "O perfil prod exige EMAIL_WEBHOOK_SECRET com ao menos 32 caracteres; "
                             + "sem ele o webhook de bounce do provedor de e-mail fica indisponível "
                             + "e a reputação do domínio fica sem monitoração."
+            );
+        }
+        if (googleStagingMockEnabled) {
+            throw new IllegalStateException(
+                    "O perfil prod proíbe estritamente GOOGLE_STAGING_MOCK_ENABLED=true."
             );
         }
     }

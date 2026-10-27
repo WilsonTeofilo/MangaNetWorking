@@ -85,7 +85,7 @@ if ([string]::IsNullOrWhiteSpace($content)) {
 
 $normalized = $content -replace "`r`n", "`n"
 if ($normalized.StartsWith([char]0xFEFF)) { $normalized = $normalized.Substring(1) }
-if (-not $normalized.StartsWith("---`n")) {
+if (-not $normalized.StartsWith("---`n", [System.StringComparison]::Ordinal)) {
     throw 'Front matter ausente. O documento precisa comecar com "---" e declarar version, effectiveDate, approvedBy e approvalReference.'
 }
 

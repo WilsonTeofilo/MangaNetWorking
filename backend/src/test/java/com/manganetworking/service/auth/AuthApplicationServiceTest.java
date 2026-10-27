@@ -342,4 +342,31 @@ class AuthApplicationServiceTest {
         assertTrue(devOutboxRepository.findLatest("confirmada@teste.com").isEmpty());
         verify(userRepository, never()).save(any());
     }
+    @Test
+    void shouldAuthenticateWithStagingGoogleTokenWhenEnabled() {
+        AuthApplicationService stagingService = new AuthApplicationService(
+                userRepository,
+                creatorRepository,
+                new com.manganetworking.service.creator.CreatorProfileFactory(),
+                twoFactorAuthService,
+                new OtpIssuanceLimiter(null, "inmemory"),
+                sessionService,
+                passwordEncoder,
+                privacyComplianceService,
+                "test-google-client-id",
+                true
+        );
+
+        when(privacyComplianceService.currentPolicyVersion()).thenReturn("2026-10-v1");
+
+        var response = stagingService.loginWithGoogle(new GoogleLoginRequestDto(
+                "STAGING_GOOGLE_TOKEN:leitor.staging@teste.com:Leitor Staging",
+                true,
+                "2026-10-v1"
+        ));
+
+        assertEquals("2FA_REQUIRED", response.get("status"));
+        assertEquals("leitor.staging@teste.com", response.get("email"));
+        assertTrue(devOutboxRepository.findLatest("leitor.staging@teste.com").isPresent());
+    }
 }

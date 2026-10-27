@@ -19,14 +19,14 @@ class ProductionSecretsGuardTest {
                         "manganetworking-local-otp-hmac-secret-change-before-production",
                         VALID_AES_KEY,
                         true,
-                        VALID_WEBHOOK_SECRET));
+                        VALID_WEBHOOK_SECRET, false));
         assertTrue(error.getMessage().contains("OTP_HMAC_SECRET"));
     }
 
     @Test
     void rejectsShortOtpSecretInProduction() {
         assertThrows(IllegalStateException.class,
-                () -> new ProductionSecretsGuard("curto-demais", VALID_AES_KEY, true, VALID_WEBHOOK_SECRET));
+                () -> new ProductionSecretsGuard("curto-demais", VALID_AES_KEY, true, VALID_WEBHOOK_SECRET, false));
     }
 
     @Test
@@ -36,32 +36,38 @@ class ProductionSecretsGuardTest {
                         VALID_OTP_SECRET,
                         "MangaNetWorkingLocalDev2026SecureKey!",
                         true,
-                        VALID_WEBHOOK_SECRET));
+                        VALID_WEBHOOK_SECRET, false));
         assertTrue(error.getMessage().contains("AES_SECRET_KEY"));
     }
 
     @Test
     void rejectsShortAesKeyInProduction() {
         assertThrows(IllegalStateException.class,
-                () -> new ProductionSecretsGuard(VALID_OTP_SECRET, "chave-curta", true, VALID_WEBHOOK_SECRET));
+                () -> new ProductionSecretsGuard(VALID_OTP_SECRET, "chave-curta", true, VALID_WEBHOOK_SECRET, false));
     }
 
     @Test
     void rejectsInsecureCookieFlagInProduction() {
         assertThrows(IllegalStateException.class,
-                () -> new ProductionSecretsGuard(VALID_OTP_SECRET, VALID_AES_KEY, false, VALID_WEBHOOK_SECRET));
+                () -> new ProductionSecretsGuard(VALID_OTP_SECRET, VALID_AES_KEY, false, VALID_WEBHOOK_SECRET, false));
     }
 
     @Test
     void rejectsMissingEmailWebhookSecretInProduction() {
         IllegalStateException error = assertThrows(IllegalStateException.class,
-                () -> new ProductionSecretsGuard(VALID_OTP_SECRET, VALID_AES_KEY, true, ""));
+                () -> new ProductionSecretsGuard(VALID_OTP_SECRET, VALID_AES_KEY, true, "", false));
         assertTrue(error.getMessage().contains("EMAIL_WEBHOOK_SECRET"));
     }
 
     @Test
     void acceptsProductionSecretAndSecureCookie() {
         assertDoesNotThrow(
-                () -> new ProductionSecretsGuard(VALID_OTP_SECRET, VALID_AES_KEY, true, VALID_WEBHOOK_SECRET));
+                () -> new ProductionSecretsGuard(VALID_OTP_SECRET, VALID_AES_KEY, true, VALID_WEBHOOK_SECRET, false));
+    }
+    @Test
+    void rejectsGoogleStagingMockInProduction() {
+        IllegalStateException error = assertThrows(IllegalStateException.class,
+                () -> new ProductionSecretsGuard(VALID_OTP_SECRET, VALID_AES_KEY, true, VALID_WEBHOOK_SECRET, true));
+        assertTrue(error.getMessage().contains("GOOGLE_STAGING_MOCK_ENABLED"));
     }
 }
