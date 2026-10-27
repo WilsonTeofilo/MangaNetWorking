@@ -175,4 +175,27 @@ class RateLimitingFilterTest {
             return seconds >= 1 && seconds <= 60;
         }));
     }
+    @Test
+    @DisplayName("POST em comentários e likes de comentários utiliza bucket de conteúdo estrito")
+    void shouldEnforceContentRateLimitOnCommentsAndSubPaths() throws Exception {
+        properties.getSecurity().setContentRateLimitPerMinute(2);
+        properties.getSecurity().setRateLimitPerMinute(20);
+
+        when(request.getRequestURI()).thenReturn("/api/works/work-123/comments");
+        when(request.getMethod()).thenReturn("POST");
+        when(request.getRemoteAddr()).thenReturn("192.168.1.88");
+        when(response.getWriter()).thenReturn(new PrintWriter(new StringWriter()));
+
+        // 2 POSTs permitidos
+        rateLimitingFilter.doFilterInternal(request, response, filterChain);
+        rateLimitingFilter.doFilterInternal(request, response, filterChain);
+        verify(filterChain, times(2)).doFilter(request, response);
+
+        // 3º POST (ex: curtida no comentário) excede o limite de conteúdo (2/min)
+        when(request.getRequestURI()).thenReturn("/api/works/work-123/comments/comm-456/like");
+        rateLimitingFilter.doFilterInternal(request, response, filterChain);
+
+        verify(response).setStatus(429);
+        verify(filterChain, times(2)).doFilter(request, response);
+    }
 }
