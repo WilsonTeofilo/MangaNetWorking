@@ -173,16 +173,117 @@ export interface CommentLikeDto {
   liked: boolean;
   likesCount: number;
 }
+
+/** Formato público da obra (`MANGA` = páginas, `LIGHT_NOVEL` = prosa com blocos). */
+export type WorkFormatDto = 'MANGA' | 'LIGHT_NOVEL';
+
+/** Item de `GET /api/catalog` (allow-list explícito do backend). */
+export interface CatalogWorkDto {
+  id: string;
+  slug: string;
+  title: string;
+  originalTitle?: string | null;
+  synopsis?: string | null;
+  coverUrl?: string | null;
+  format?: WorkFormatDto | null;
+  genres: string[];
+  status?: string | null;
+  totalChapters: number;
+  totalViews: number;
+  totalFavorites: number;
+  totalLikes: number;
+  totalComments: number;
+  authorName?: string | null;
+  authorHandle?: string | null;
+  authorAvatarUrl?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
+/** Página do catálogo com contadores por formato (mesmo recorte, sem o eixo de formato). */
+export interface CatalogPageDto {
+  items: CatalogWorkDto[];
+  page: number;
+  size: number;
+  total: number;
+  totalPages: number;
+  totalAll: number;
+  totalManga: number;
+  totalLightNovel: number;
+}
+
+export interface CatalogQuery {
+  formato?: 'manga' | 'light-novel';
+  genero?: string[];
+  status?: 'ongoing' | 'completed' | 'hiatus';
+  publico?: 'shonen' | 'seinen';
+  q?: string;
+  ordem?: 'relevance' | 'recent' | 'updated' | 'views' | 'title';
+  ilustracoes?: boolean;
+  page?: number;
+  size?: number;
+}
+
+/** Lançamento já público (`GET /api/catalog/releases`). */
+export interface CatalogReleaseDto {
+  workId: string;
+  workSlug: string;
+  workTitle: string;
+  coverUrl?: string | null;
+  format?: WorkFormatDto | null;
+  chapterId: string;
+  chapterNumber: number;
+  chapterTitle: string;
+  chapterType?: 'REGULAR' | 'PROLOGUE' | 'SPECIAL' | null;
+  publishedAt: string;
+  totalChapters?: number;
+  totalViews?: number;
+  totalFavorites?: number;
+}
+
 export const workApi = {
   /**
    * Feed de descoberta (MongoDB): recomendado, em alta ou lançamentos recentes.
+   * `formato` separa os trilhos: em "Tudo" o front pede os dois recortes.
    */
-  getFeed(sort: 'recommended' | 'trending' | 'fresh' = 'recommended', genre?: string, size?: number) {
+  getFeed(
+    sort: 'recommended' | 'trending' | 'fresh' = 'recommended',
+    genre?: string,
+    size?: number,
+    formato?: 'manga' | 'light-novel'
+  ) {
     const params = new URLSearchParams();
     params.set('sort', sort);
     if (genre) params.set('genre', genre);
     if (size) params.set('size', String(size));
+    if (formato) params.set('formato', formato);
     return request<FeedWorkDto[]>(`/feed?${params.toString()}`);
+  },
+
+  /**
+   * Catálogo com filtro de formato no servidor, contadores e paginação.
+   * A fonte é o PostgreSQL: um filtro nunca depende do último sync do feed.
+   */
+  getCatalog(query: CatalogQuery) {
+    const params = new URLSearchParams();
+    if (query.formato) params.set('formato', query.formato);
+    (query.genero ?? []).forEach((genero) => params.append('genero', genero));
+    if (query.status) params.set('status', query.status);
+    if (query.publico) params.set('publico', query.publico);
+    if (query.q) params.set('q', query.q);
+    if (query.ordem) params.set('ordem', query.ordem);
+    if (query.ilustracoes) params.set('ilustracoes', 'true');
+    params.set('page', String(query.page ?? 0));
+    params.set('size', String(query.size ?? 24));
+    return request<CatalogPageDto>(`/catalog?${params.toString()}`);
+  },
+
+  /** Lançamentos já públicos, mais recentes primeiro. */
+  getReleases(formato?: 'manga' | 'light-novel', limit = 40) {
+    const params = new URLSearchParams();
+    if (formato) params.set('formato', formato);
+    params.set('limit', String(limit));
+    return request<CatalogReleaseDto[]>(`/catalog/releases?${params.toString()}`);
   },
 
   /**

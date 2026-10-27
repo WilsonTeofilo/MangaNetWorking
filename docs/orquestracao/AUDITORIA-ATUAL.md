@@ -1077,6 +1077,50 @@ plano e a edição perdia as ilustrações.
   servidor; `checkpoint` nos eventos de retenção (hoje os checkpoints de 10% enviam só
   `page=1/totalPages=1` e o backend não distingue faixas); CSV de retenção de prosa.
 
+## 7.43 Catálogo, home e feed com dois formatos (2026-10-23)
+
+**Causa:** home, catálogo e feed foram desenhados quando só existia mangá. O catálogo filtrava no
+cliente sobre os 50 itens do feed do Mongo, sem status, sem público e sem paginação; o "Em alta" era um
+ranking único misturando formatos com métricas não comparáveis; os cards não diziam o formato; a
+biblioteca não tinha eixo de formato e o "continuar lendo" só existia em `DEV` com mock.
+
+- [x] **Fonte de verdade do catálogo:** `GET /api/catalog` consulta o PostgreSQL com `Specification`
+  (formato, gêneros em OR, público, status, busca por título/sinopse/autor/rótulo de gênero, ordem e
+  página) e calcula os contadores por formato sobre o mesmo recorte. O feed do Mongo continua sendo
+  motor de recomendação, mas um filtro não depende mais do último sync.
+- [x] **Param inválido nunca esconde conteúdo:** `formato` desconhecido cai em "tudo"; gênero/status
+  fora da allow-list são ignorados; `size` é limitado a 48.
+- [x] **Privacidade e agendamento:** suspensa, arquivada por LGPD e **rascunho** ficam fora do
+  catálogo, dos lançamentos e do feed (sync e consulta); `GET /api/catalog/releases` só devolve
+  capítulo com `public_release_at <= agora`.
+- [x] **Ranking separado:** `/api/feed/trending` aceita `formato`; a home pede dois trilhos
+  independentes em "Tudo" e um só quando o formato está filtrado.
+- [x] **Um card, dois badges:** `FormatBadge` (amarelo/papel + ícone + rótulo) no canto inferior
+  esquerdo; `WorkCard` mostra `N caps` ou `Light novel · N caps`. Stickers editoriais foram para o topo
+  da capa para não competir com o badge.
+- [x] **Um seletor em todas as telas:** `FormatSwitcher` com `aria-pressed`, navegação por setas e
+  contadores; estado na URL (`?formato=`, `?genero=`, `?status=`, `?ordem=`, `?q=`, `?pagina=`), com
+  `pushState`/`replaceState` + `popstate`. A home usa `?inicio=` para não colidir com o catálogo.
+- [x] **Três níveis de filtro:** formato segmentado, chips de gênero múltiplos (com "+ mais") e drawer
+  para status, público, ordem e "Com ilustrações" (só aparece em Light novel). Pílulas com ✕ e
+  "limpar tudo", contador dinâmico, skeleton, vazio e erro com ação.
+- [x] **Home:** novos capítulos agrupados por obra (até 3 capítulos + tempo relativo), "Em alta" por
+  formato com trilho só a partir de 4 obras (CTA para autor logado abaixo disso) e timeline de
+  lançamentos por dia ("Hoje", "Ontem", data). Mobile repete o seletor no topo fixo.
+- [x] **Biblioteca e ficha:** abas de formato na biblioteca com o mesmo componente; badge na ficha;
+  progresso de prosa não inventa 100% (`page=1/totalPages=1` não é conclusão) e o capítulo
+  reconstruído leva o formato para o leitor abrir em scroll.
+- [x] **Dados de progresso:** `reading_progress` passa a gravar `workSlug`/`workFormat`; documentos
+  antigos ficam nulos e o front simplesmente não mostra o card sem slug (nada fabricado).
+- [x] **Migration V24:** índices `works(work_format,status)`, `works(created_at/updated_at/total_views)`,
+  `work_genres(genre, work_id)` e `chapters(public_release_at)`.
+- [x] **Testes/build:** `CatalogIntegrationTest` (8 cenários reais com Testcontainers) + suíte
+  **434 testes, 0 falhas/0 erros**; `npm.cmd run build` verde; `GET /api/catalog?formato=light-novel`,
+  `?formato=abc` (cai em tudo) e `/api/catalog/releases` conferidos por HTTP na stack local.
+- [ ] **Ainda pendente:** volumes como entidade (rótulo `Vol. X · Cap. N`), percentual real de scroll
+  para prosa, onboarding de uma pergunta e teste automatizado de UI (não há runner no frontend).
+
+
 ## 7.39 Engajamento real, comentários, notificações e ranking (2026-10-22)
 
 **Causa das views baixas:** o `VIEW` era deduplicado para sempre por `(userId, chapterId, eventType)`;

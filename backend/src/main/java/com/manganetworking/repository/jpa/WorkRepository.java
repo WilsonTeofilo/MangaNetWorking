@@ -2,6 +2,7 @@ package com.manganetworking.repository.jpa;
 
 import com.manganetworking.domain.relational.WorkEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,7 +13,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface WorkRepository extends JpaRepository<WorkEntity, UUID> {
+public interface WorkRepository extends JpaRepository<WorkEntity, UUID>, JpaSpecificationExecutor<WorkEntity> {
     Optional<WorkEntity> findBySlug(String slug);
     List<WorkEntity> findAllByAuthorId(UUID authorId);
 
@@ -54,6 +55,11 @@ public interface WorkRepository extends JpaRepository<WorkEntity, UUID> {
     @Modifying(flushAutomatically = true)
     @Query("update WorkEntity w set w.totalViews = w.totalViews + 1 where w.id = :id")
     int incrementTotalViews(@Param("id") UUID id);
+
+    /** Remove do agregado as visualizações de um capítulo excluído. */
+    @Modifying(flushAutomatically = true)
+    @Query("update WorkEntity w set w.totalViews = case when w.totalViews >= :amount then w.totalViews - :amount else 0 end where w.id = :id")
+    int decrementTotalViewsBy(@Param("id") UUID id, @Param("amount") long amount);
 
     @Modifying(flushAutomatically = true)
     @Query("update WorkEntity w set w.totalComments = w.totalComments + 1 where w.id = :id")

@@ -13,6 +13,8 @@ import com.manganetworking.repository.jpa.WorkRepository;
 import com.manganetworking.service.storage.ChapterFileAccessGuard;
 import com.manganetworking.service.storage.FileStorageService;
 import com.manganetworking.service.work.WorkApplicationService;
+import com.manganetworking.service.work.ChapterApplicationService;
+import com.manganetworking.service.work.dto.WorkDetailsResponseDto;
 import com.manganetworking.service.work.dto.CreateChapterRequestDto;
 import com.manganetworking.service.work.dto.CreateWorkRequestDto;
 import org.junit.jupiter.api.AfterEach;
@@ -73,6 +75,9 @@ class ChapterFileAccessIntegrationTest {
     private WorkApplicationService workApplicationService;
 
     @Autowired
+    private ChapterApplicationService chapterApplicationService;
+
+    @Autowired
     private ChapterFileAccessGuard guard;
 
     @Autowired
@@ -104,7 +109,7 @@ class ChapterFileAccessIntegrationTest {
         CreatorEntity creator = newCreator();
         WorkEntity work = newWork(creator.getId());
 
-        workApplicationService.createChapter(creator.getId(), work.getId(), new CreateChapterRequestDto(
+        chapterApplicationService.createChapter(creator.getId(), work.getId(), new CreateChapterRequestDto(
                 1, "Capítulo 1", null,
                 List.of("/api/storage/pagina-1.png", "/api/storage/pagina-2.png"),
                 LocalDateTime.now().minusDays(1)));
@@ -134,7 +139,7 @@ class ChapterFileAccessIntegrationTest {
         CreatorEntity creator = newCreator();
         WorkEntity work = newWork(creator.getId());
 
-        workApplicationService.createChapter(creator.getId(), work.getId(), new CreateChapterRequestDto(
+        chapterApplicationService.createChapter(creator.getId(), work.getId(), new CreateChapterRequestDto(
                 1, "Capítulo 1", null,
                 List.of("/api/storage/antecipada-1.png"),
                 LocalDateTime.now().plusDays(2)));
@@ -151,7 +156,7 @@ class ChapterFileAccessIntegrationTest {
         byte[] realImage = Files.readAllBytes(Path.of("../frontend/public/assets/kokuin/shito.jpg"));
         String filename = fileStorageService.storeFile(realImage, "shito.jpg", "image/jpeg");
 
-        workApplicationService.createChapter(creator.getId(), work.getId(), new CreateChapterRequestDto(
+        chapterApplicationService.createChapter(creator.getId(), work.getId(), new CreateChapterRequestDto(
                 1, "Página de carga", null,
                 List.of("/api/storage/" + filename),
                 LocalDateTime.now().minusDays(1)));
@@ -222,6 +227,7 @@ class ChapterFileAccessIntegrationTest {
                 List.of(Genre.ACAO),
                 true
         );
-        return workApplicationService.createWork(creatorId, dto);
+        WorkDetailsResponseDto created = workApplicationService.createWork(creatorId, dto);
+        return workRepository.findById(created.id()).orElseThrow();
     }
 }

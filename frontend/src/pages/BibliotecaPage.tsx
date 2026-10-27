@@ -5,6 +5,9 @@ import { LibraryWorkDto, ReadingProgressDto, userApi } from '../api/authApi';
 import { Work, Chapter } from '../types';
 import { Cover } from '../components/ui/Cover';
 import { Button } from '../components/ui/Button';
+import { FormatSwitcher } from '../components/ui/FormatSwitcher';
+import { FormatBadge } from '../components/ui/FormatBadge';
+import { FormatFilter, isLightNovel } from '../utils/formatMeta';
 import mascotSvg from '../assets/brand/mascot-placeholder.svg';
 
 interface BibliotecaPageProps {
@@ -35,9 +38,11 @@ function toWork(entry: LibraryWorkDto): Work {
     synopsis: '',
     genres: [],
     status: entry.status === 'completed' ? 'completed' : entry.status === 'hiatus' ? 'hiatus' : 'ongoing',
+    format: isLightNovel(entry.format) ? 'LIGHT_NOVEL' : 'MANGA',
     totalChapters: entry.totalChapters ?? 0,
     totalViews: 0,
     totalLikes: 0,
+    totalFavorites: 0,
     totalComments: 0,
     rating: 0,
     updatedAt: '',
@@ -45,7 +50,7 @@ function toWork(entry: LibraryWorkDto): Work {
 }
 
 /** Reconstrói o capítulo a partir do progresso salvo (id e número já conhecidos). */
-function toChapter(workId: string, progress: ReadingProgressDto): Chapter | null {
+function toChapter(workId: string, progress: ReadingProgressDto, format?: Work['format']): Chapter | null {
   if (!progress.chapterId) return null;
   return {
     id: progress.chapterId,
@@ -58,6 +63,7 @@ function toChapter(workId: string, progress: ReadingProgressDto): Chapter | null
     views: 0,
     likes: 0,
     commentsCount: 0,
+    format: isLightNovel(format) ? 'PROSE' : 'IMAGE_PAGES',
   };
 }
 
@@ -77,6 +83,7 @@ export function BibliotecaPage({
   const [entries, setEntries] = useState<LibraryWorkDto[]>([]);
   const [progress, setProgress] = useState<ReadingProgressDto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [formato, setFormato] = useState<FormatFilter>('all');
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -107,7 +114,7 @@ export function BibliotecaPage({
     };
   }, [isAuthenticated, user.uid, libraryVersion]);
 
-  const cards = useMemo<LibraryCard[]>(() => {
+  const allCards = useMemo<LibraryCard[]>(() => {
     const byWork = new Map(progress.map((item) => [item.workId, item]));
     return entries.map((entry) => {
       const item = byWork.get(entry.id) ?? null;
@@ -117,19 +124,36 @@ export function BibliotecaPage({
         work: toWork(entry),
         entry,
         progress: item,
-        finished: Boolean(totalPages > 0 && page >= totalPages),
+        finished: !isLightNovel(entry.format) && Boolean(totalPages > 0 && page >= totalPages),
         page,
         totalPages,
       };
     });
   }, [entries, progress]);
 
+  const counts = useMemo(
+    () => ({
+      all: allCards.length,
+      manga: allCards.filter((card) => !isLightNovel(card.work.format)).length,
+      lightNovel: allCards.filter((card) => isLightNovel(card.work.format)).length,
+    }),
+    [allCards]
+  );
+
+  const cards = useMemo(
+    () =>
+      formato === 'all'
+        ? allCards
+        : allCards.filter((card) => card.work.format === formato),
+    [allCards, formato]
+  );
+
   const openResume = (card: LibraryCard, page: number) => {
     if (!card.progress) {
       onSelectWork(card.work);
       return;
     }
-    const chapter = toChapter(card.work.id, card.progress);
+    const chapter = toChapter(card.work.id, card.progress, card.work.format);
     if (!chapter) {
       onSelectWork(card.work);
       return;
@@ -159,9 +183,18 @@ export function BibliotecaPage({
         </div>
       </header>
 
+      {allCards.length > 0 && (
+        <section className="flex flex-col sm:flex-row sm:items-center gap-3 border-b-2 border-[#34343A] pb-4">
+          <span className="font-pixel text-[12px] uppercase tracking-wider text-[#A9A59A]">
+            Ver por formato
+          </span>
+          <FormatSwitcher value={formato} onChange={setFormato} counts={counts} />
+        </section>
+      )}
+
       {loading ? (
         <p className="font-pixel text-xs text-[#A9A59A] uppercase">Carregando sua biblioteca...</p>
-      ) : cards.length === 0 ? (
+      ) : allCards.length === 0 ? (
         <section className="p-12 text-center border-2 border-dashed border-[#34343A] bg-[#151517] space-y-4 max-w-lg mx-auto">
           <img src={mascotSvg} alt="Mascote Nanquim" className="w-20 h-24 mx-auto opacity-80" />
           <h2 className="font-display text-2xl text-[#FFD400] uppercase">NADA POR AQUI AINDA</h2>
@@ -175,6 +208,18 @@ export function BibliotecaPage({
               EXPLORAR CATÁLOGO
             </Button>
           </div>
+        </section>
+      ) : cards.length === 0 ? (
+        <section className="p-10 text-center border-2 border-dashed border-[#34343A] bg-[#151517] space-y-3 max-w-lg mx-auto">
+          <h2 className="font-display text-2xl text-[#FFD400] uppercase">
+            {formato === 'LIGHT_NOVEL' ? 'NENHUMA LIGHT NOVEL SALVA' : 'NENHUM MANGÁ SALVO'}
+          </h2>
+          <p className="font-body text-xs text-[#A9A59A]">
+            Você tem {allCards.length} {allCards.length === 1 ? 'obra' : 'obras'} na biblioteca, mas nenhuma neste formato.
+          </p>
+          <Button variant="primary" onClick={() => setFormato('all')}>
+            VER TODAS
+          </Button>
         </section>
       ) : (
         <section className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
@@ -190,6 +235,9 @@ export function BibliotecaPage({
                   onClick={() => onSelectWork(card.work)}
                 >
                   <Cover src={card.work.coverUrl} title={card.work.title} aspectRatio="2/3" dropShadow={false} />
+                  <div className="absolute bottom-2 left-2">
+                    <FormatBadge format={card.work.format} />
+                  </div>
                   <span className="absolute top-2 right-2 bg-[#0B0B0C] border border-[#FFD400] text-[#FFD400] px-1.5 py-0.5 font-pixel text-[12px] tabular-nums">
                     {card.entry.totalChapters} CAPS
                   </span>
@@ -211,20 +259,27 @@ export function BibliotecaPage({
 
                   <div className="pt-2 border-t border-[#34343A] flex flex-col gap-2">
                     {card.progress ? (
-                      <>
+                      isLightNovel(card.work.format) ? (
                         <div className="flex items-center justify-between font-pixel text-[11px] text-[#A9A59A] uppercase">
-                          <span>
-                            {card.finished ? 'CAPÍTULO CONCLUÍDO' : `PÁG. ${card.page}/${card.totalPages || '?'}`}
-                          </span>
-                          <span className="tabular-nums">{card.finished ? '100%' : `${percent}%`}</span>
+                          <span>CAP. {card.progress.chapterNumber ?? 1}</span>
+                          <span className="text-[#FFD400]">EM ANDAMENTO</span>
                         </div>
-                        <div className="h-1.5 w-full bg-[#34343A]" aria-hidden="true">
-                          <div
-                            className="h-full bg-[#FFD400]"
-                            style={{ width: `${card.finished ? 100 : percent}%` }}
-                          />
-                        </div>
-                      </>
+                      ) : (
+                        <>
+                          <div className="flex items-center justify-between font-pixel text-[11px] text-[#A9A59A] uppercase">
+                            <span>
+                              {card.finished ? 'CAPÍTULO CONCLUÍDO' : `PÁG. ${card.page}/${card.totalPages || '?'}`}
+                            </span>
+                            <span className="tabular-nums">{card.finished ? '100%' : `${percent}%`}</span>
+                          </div>
+                          <div className="h-1.5 w-full bg-[#34343A]" aria-hidden="true">
+                            <div
+                              className="h-full bg-[#FFD400]"
+                              style={{ width: `${card.finished ? 100 : percent}%` }}
+                            />
+                          </div>
+                        </>
+                      )
                     ) : (
                       <p className="font-pixel text-[11px] text-[#A9A59A] uppercase">AINDA NÃO ABERTA</p>
                     )}

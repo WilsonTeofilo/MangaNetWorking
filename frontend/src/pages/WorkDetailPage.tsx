@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+﻿import { useState, useMemo, useEffect } from 'react';
 import { 
   ArrowUpDown, 
   Heart, 
@@ -13,7 +13,6 @@ import {
   Loader2
 } from 'lucide-react';
 import { Work, Chapter, Creator } from '../types';
-import { MOCK_CHAPTERS, MOCK_CREATORS } from '../data/mockData';
 import { workApi, AuthorSummaryDto } from '../api/workApi';
 import { userApi, ReadingProgressDto } from '../api/authApi';
 import { mapChapterSummary } from '../utils/apiMappers';
@@ -23,6 +22,7 @@ import { isChapterEarlyAccess } from '../utils/discoveryAlgorithm';
 import { Cover } from '../components/ui/Cover';
 import { Button } from '../components/ui/Button';
 import { Sticker } from '../components/ui/Sticker';
+import { FormatBadge } from '../components/ui/FormatBadge';
 import { offlineStorage } from '../services/offlineStorage';
 
 interface WorkDetailPageProps {
@@ -104,7 +104,7 @@ export function WorkDetailPage({
         if (!active) return;
         // Falha transitória (rede/limite): avisa em vez de fingir obra sem capítulos.
         setChaptersError(true);
-        setRealChapters(import.meta.env.DEV ? null : []);
+        setRealChapters([]);
       });
 
     return () => {
@@ -130,9 +130,6 @@ export function WorkDetailPage({
     }
   };
 
-  const mockCreator = import.meta.env.DEV
-    ? MOCK_CREATORS[work.authorId] || Object.values(MOCK_CREATORS)[0]
-    : undefined;
   const creator: Creator | undefined = apiAuthor
     ? {
         id: apiAuthor.authorId,
@@ -145,17 +142,11 @@ export function WorkDetailPage({
         pendingPayoutsBrl: 0, worksCount: 0, verified: false,
         engagementBoostMul: 1, missions: [],
       }
-    : mockCreator;
+    : undefined;
 
   // Capítulos desta obra: reais (API) quando houver, senão mock.
   const chapters = useMemo(() => {
-    const source =
-      realChapters !== null
-        ? realChapters
-        : import.meta.env.DEV ? (() => {
-            const list = MOCK_CHAPTERS.filter((c) => c.workId === work.id);
-            return list.length > 0 ? list : MOCK_CHAPTERS.slice(0, 3);
-          })() : [];
+    const source = realChapters !== null ? realChapters : [];
     const sorted = [...source];
     sorted.sort((a, b) => (sortOrder === 'asc' ? a.number - b.number : b.number - a.number));
     return sorted;
@@ -260,6 +251,7 @@ export function WorkDetailPage({
                 <span className="font-pixel text-[12px] text-[#FFD400] font-bold tracking-widest uppercase">
                   OBRA NACIONAL ORIGINAL
                 </span>
+                <FormatBadge format={work.format} size="md" />
                 {work.status === 'completed' && <Sticker kind="complete" />}
               </div>
 
@@ -332,6 +324,7 @@ export function WorkDetailPage({
                 <Button
                   variant="primary"
                   onClick={() => firstChapter && handleChapterClick(firstChapter)}
+                  disabled={!firstChapter}
                   className="!text-lg !px-6"
                 >
                   LER DO COMEÇO

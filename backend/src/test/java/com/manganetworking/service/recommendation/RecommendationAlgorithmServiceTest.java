@@ -1,4 +1,5 @@
 package com.manganetworking.service.recommendation;
+import com.manganetworking.domain.enums.WorkStatus;
 
 import com.manganetworking.domain.nosql.WorkFeedDocument;
 import com.manganetworking.domain.relational.CreatorEntity;
@@ -177,7 +178,7 @@ class RecommendationAlgorithmServiceTest {
         RecommendationAlgorithmService algorithm = newService();
 
         WorkEntity archived = suspendedWork();
-        archived.setStatus("archived_lgpd");
+        archived.setStatus(WorkStatus.ARCHIVED_LGPD);
 
         WorkFeedDocument result = algorithm.syncWorkToFeed(archived);
 
@@ -239,7 +240,7 @@ class RecommendationAlgorithmServiceTest {
         work.setTitle("Obra Suspensa");
         work.setSlug("obra-suspensa");
         work.setCoverUrl("/api/storage/cover.jpg");
-        work.setStatus("suspended");
+        work.setStatus(WorkStatus.SUSPENDED);
         return work;
     }
 
@@ -250,7 +251,7 @@ class RecommendationAlgorithmServiceTest {
         work.setTitle("Obra " + views);
         work.setSlug("obra-" + views);
         work.setCoverUrl("/api/storage/cover.jpg");
-        work.setStatus("ongoing");
+        work.setStatus(WorkStatus.ONGOING);
         work.setTotalViews(views);
         work.setTotalLikes(likes);
         work.setTotalFavorites(favorites);

@@ -1,5 +1,5 @@
 import { Work, Chapter } from '../types';
-import { FeedWorkDto, WorkDetailsDto, ChapterSummaryDto } from '../api/workApi';
+import { FeedWorkDto, WorkDetailsDto, ChapterSummaryDto, CatalogWorkDto, CatalogReleaseDto } from '../api/workApi';
 
 const VALID_GENRES = [
   'Ação',
@@ -76,8 +76,10 @@ function normalizeGenres(genres: string[] | null | undefined): ValidGenre[] {
 }
 
 function normalizeStatus(status: string | null | undefined): Work['status'] {
-  if (status === 'completed') return 'completed';
-  if (status === 'hiatus') return 'hiatus';
+  if (!status) return 'ongoing';
+  const lower = status.toLowerCase();
+  if (lower === 'completed') return 'completed';
+  if (lower === 'hiatus') return 'hiatus';
   return 'ongoing';
 }
 
@@ -107,6 +109,71 @@ export function mapFeedToWork(doc: FeedWorkDto): Work {
     trendingScore: doc.trendingScore ?? undefined,
     isFreshRelease: doc.freshRelease ?? undefined,
     activeBoostMul: doc.creatorBoostMul ?? undefined,
+  };
+}
+
+/**
+ * Mapeia um item do catálogo (PostgreSQL) para o tipo `Work` do frontend.
+ *
+ * <p>Mesmo card para os dois formatos: o que muda é o badge (`format`) e os metadados.
+ * O catálogo já traz os contadores agregados, então não há chamada extra por card.</p>
+ */
+export function mapCatalogToWork(doc: CatalogWorkDto): Work {
+  return {
+    id: doc.id,
+    slug: doc.slug,
+    title: doc.title,
+    originalTitle: doc.originalTitle ?? undefined,
+    authorId: '',
+    authorName: doc.authorName ?? doc.authorHandle ?? '',
+    coverUrl: doc.coverUrl ?? '',
+    bannerUrl: doc.coverUrl ?? '',
+    synopsis: doc.synopsis ?? '',
+    genres: normalizeGenres(doc.genres),
+    status: normalizeStatus(doc.status),
+    format: doc.format ?? 'MANGA',
+    totalChapters: doc.totalChapters ?? 0,
+    totalViews: doc.totalViews ?? 0,
+    totalLikes: doc.totalLikes ?? 0,
+    totalFavorites: doc.totalFavorites ?? 0,
+    totalComments: doc.totalComments ?? 0,
+    rating: 0,
+    updatedAt: doc.updatedAt ?? doc.createdAt ?? '',
+  };
+}
+
+/** Linha do tempo de lançamentos: um capítulo público com o formato da obra. */
+export interface ReleaseRow {
+  workId: string;
+  workSlug: string;
+  workTitle: string;
+  coverUrl: string;
+  format: 'MANGA' | 'LIGHT_NOVEL';
+  chapterId: string;
+  chapterNumber: number;
+  chapterTitle: string;
+  chapterType: 'REGULAR' | 'PROLOGUE' | 'SPECIAL';
+  publishedAt: string;
+  totalChapters: number;
+  totalViews: number;
+  totalFavorites: number;
+}
+
+export function mapRelease(dto: CatalogReleaseDto): ReleaseRow {
+  return {
+    workId: dto.workId,
+    workSlug: dto.workSlug,
+    workTitle: dto.workTitle,
+    coverUrl: dto.coverUrl ?? '',
+    format: dto.format ?? 'MANGA',
+    chapterId: dto.chapterId,
+    chapterNumber: dto.chapterNumber,
+    chapterTitle: dto.chapterTitle,
+    chapterType: dto.chapterType ?? 'REGULAR',
+    publishedAt: dto.publishedAt,
+    totalChapters: dto.totalChapters ?? 0,
+    totalViews: dto.totalViews ?? 0,
+    totalFavorites: dto.totalFavorites ?? 0,
   };
 }
 

@@ -5,6 +5,7 @@ import com.manganetworking.domain.relational.ChapterEntity;
 import com.manganetworking.domain.relational.CommentReportEntity;
 import com.manganetworking.domain.relational.UserEntity;
 import com.manganetworking.domain.relational.WorkCommentEntity;
+import com.manganetworking.domain.enums.WorkStatus;
 import com.manganetworking.domain.relational.WorkEntity;
 import com.manganetworking.repository.jpa.ChapterRepository;
 import com.manganetworking.repository.jpa.CommentLikeRepository;
@@ -168,9 +169,8 @@ public class WorkCommentService {
         WorkEntity work = workRepository.findById(workId)
                 .orElseThrow(() -> new ResourceNotFoundException("Obra não encontrada"));
 
-        if (!"ongoing".equalsIgnoreCase(work.getStatus())
-                && !"completed".equalsIgnoreCase(work.getStatus())) {
-            throw new IllegalArgumentException("Esta obra ainda não está disponível para comentários.");
+        if (work.getStatus() == null || !work.getStatus().isPublic()) {
+            throw new IllegalArgumentException("Esta obra ainda nÃ£o estÃ¡ disponÃ­vel para comentÃ¡rios.");
         }
 
         ChapterEntity chapter = null;

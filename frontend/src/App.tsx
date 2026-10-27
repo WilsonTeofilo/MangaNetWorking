@@ -5,6 +5,7 @@ import { Header, AppTab } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
 import { HomePage } from './pages/HomePage';
 import { CatalogPage } from './pages/CatalogPage';
+import { hasCatalogParams } from './utils/catalogFilters';
 import { BibliotecaPage } from './pages/BibliotecaPage';
 import { WorkDetailPage } from './pages/WorkDetailPage';
 import { LoginPage } from './pages/LoginPage';
@@ -109,7 +110,13 @@ function AppContent() {
     window.history.replaceState({}, '', '/');
   }, [refreshSession]);
 
-  const [currentTab, setCurrentTab] = useState<AppTab>(() => readNavSnapshot()?.tab ?? 'feed');
+  const [currentTab, setCurrentTab] = useState<AppTab>(() => {
+    // Link compartilhado com filtro de catálogo (`?formato=light-novel`) abre o catálogo.
+    if (typeof window !== 'undefined' && hasCatalogParams(window.location.search)) {
+      return 'works';
+    }
+    return readNavSnapshot()?.tab ?? 'feed';
+  });
   const [publicProfileUsername, setPublicProfileUsername] = useState(
     () => readNavSnapshot()?.profileUsername ?? ''
   );
@@ -250,6 +257,10 @@ function AppContent() {
     setSelectedWork(null);
     setReadingChapter(null);
     setCurrentTab(tab);
+    // Sair do catálogo limpa o estado de filtros da URL: outro link não herda o recorte.
+    if (tab !== 'works' && typeof window !== 'undefined' && hasCatalogParams(window.location.search)) {
+      window.history.replaceState({ tab }, '', window.location.pathname);
+    }
   };
 
   /** Visitante tentou comentar/favoritar: guarda o destino e abre login/cadastro. */
@@ -414,11 +425,15 @@ function AppContent() {
                   onSelectWork={handleSelectWork}
                   onOpenChapter={handleOpenChapter}
                   onNavigateToCatalog={() => handleSwitchTab('works')}
+                  onPublishWork={() => handleSwitchTab('become-writer')}
                 />
               )}
 
               {currentTab === 'works' && (
-                <CatalogPage onSelectWork={handleSelectWork} />
+                <CatalogPage
+                  onSelectWork={handleSelectWork}
+                  onPublishWork={() => handleSwitchTab('become-writer')}
+                />
               )}
 
               {currentTab === 'about' && (

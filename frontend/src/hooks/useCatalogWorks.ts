@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Work } from '../types';
-import { MOCK_WORKS } from '../data/mockData';
 import { workApi } from '../api/workApi';
 import { mapFeedToWork } from '../utils/apiMappers';
 
 /**
- * Carrega o catálogo do feed; fixtures só são usadas em desenvolvimento.
+ * Carrega o catálogo do feed da API real (sem fixtures/mocks em ambiente nenhum).
  */
 export function useCatalogWorks(): Work[] {
-  const [works, setWorks] = useState<Work[]>(import.meta.env.DEV ? MOCK_WORKS : []);
+  const [works, setWorks] = useState<Work[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -17,10 +16,10 @@ export function useCatalogWorks(): Work[] {
       .then((list) => {
         if (!active) return;
         const mapped = Array.isArray(list) ? list.map(mapFeedToWork) : [];
-        setWorks(mapped.length ? mapped : (import.meta.env.DEV ? MOCK_WORKS : []));
+        setWorks(mapped);
       })
       .catch(() => {
-        if (active && !import.meta.env.DEV) setWorks([]);
+        if (active) setWorks([]);
       });
     return () => {
       active = false;

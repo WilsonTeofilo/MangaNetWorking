@@ -59,6 +59,8 @@ export interface LibraryWorkDto {
   authorHandle: string;
   totalChapters: number;
   status?: string | null;
+  /** Formato da obra (`MANGA` = páginas, `LIGHT_NOVEL` = prosa). */
+  format?: 'MANGA' | 'LIGHT_NOVEL' | null;
 }
 
 /** Progresso de leitura por obra (`GET /api/users/reading-progress`). */
@@ -67,6 +69,8 @@ export interface ReadingProgressDto {
   workId: string;
   workTitle?: string | null;
   workCoverUrl?: string | null;
+  workSlug?: string | null;
+  workFormat?: 'MANGA' | 'LIGHT_NOVEL' | null;
   chapterId?: string | null;
   chapterNumber?: number | null;
   chapterTitle?: string | null;

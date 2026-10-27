@@ -3,6 +3,7 @@ package com.manganetworking.service.storage;
 import com.manganetworking.config.security.SecurityContextUtils;
 import com.manganetworking.domain.relational.ChapterEntity;
 import com.manganetworking.domain.relational.ChapterFileEntity;
+import com.manganetworking.domain.enums.WorkStatus;
 import com.manganetworking.domain.relational.CreatorEntity;
 import com.manganetworking.domain.relational.WorkEntity;
 import com.manganetworking.repository.jpa.ChapterFileRepository;
@@ -82,7 +83,7 @@ public class ChapterFileAccessGuard {
         CreatorEntity author = work != null ? work.getAuthor() : null;
 
         // A exclusão LGPD despublica a obra; URLs antigas não podem contornar o arquivo.
-        if (work != null && STATUS_ARCHIVED_LGPD.equalsIgnoreCase(work.getStatus())) {
+        if (work != null && work.getStatus() == WorkStatus.ARCHIVED_LGPD) {
             return new AccessDecision(false, true);
         }
 
@@ -93,7 +94,7 @@ public class ChapterFileAccessGuard {
         boolean isAuthor = sessionCreatorId != null && author != null && sessionCreatorId.equals(author.getId());
 
         // Obra suspensa cautelarmente: acessível apenas ao autor e à moderação.
-        if (work != null && STATUS_SUSPENDED.equalsIgnoreCase(work.getStatus())) {
+        if (work != null && work.getStatus() == WorkStatus.SUSPENDED) {
             return new AccessDecision(isAuthor || isModerator, true);
         }
 

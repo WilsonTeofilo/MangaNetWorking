@@ -1,4 +1,5 @@
 package com.manganetworking.service.storage;
+import com.manganetworking.domain.enums.WorkStatus;
 
 import com.manganetworking.domain.relational.ChapterEntity;
 import com.manganetworking.domain.relational.ChapterFileEntity;
@@ -62,7 +63,7 @@ class ChapterFileAccessGuardTest {
         work = new WorkEntity();
         work.setId(UUID.randomUUID());
         work.setAuthor(author);
-        work.setStatus("ongoing");
+        work.setStatus(WorkStatus.ONGOING);
     }
 
     @AfterEach
@@ -186,7 +187,7 @@ class ChapterFileAccessGuardTest {
     @Test
     @DisplayName("Página de obra suspensa é negada para anônimo")
     void blocksSuspendedWorkAnonymously() {
-        work.setStatus("suspended");
+        work.setStatus(WorkStatus.SUSPENDED);
         chapterFilePointsTo("page.jpg", chapterReleasingAt(LocalDateTime.now().minusDays(2)));
 
         assertFalse(guard.canRead("page.jpg"));
@@ -195,7 +196,7 @@ class ChapterFileAccessGuardTest {
     @Test
     @DisplayName("Página de obra arquivada por exclusão LGPD é negada mesmo por URL antiga")
     void blocksLgpdArchivedWork() {
-        work.setStatus("archived_lgpd");
+        work.setStatus(WorkStatus.ARCHIVED_LGPD);
         chapterFilePointsTo("page.jpg", chapterReleasingAt(LocalDateTime.now().minusDays(2)));
 
         ChapterFileAccessGuard.AccessDecision decision = guard.evaluate("page.jpg");
@@ -208,7 +209,7 @@ class ChapterFileAccessGuardTest {
     @Test
     @DisplayName("Página de obra suspensa é liberada para a moderação")
     void allowsSuspendedWorkForModerator() {
-        work.setStatus("suspended");
+        work.setStatus(WorkStatus.SUSPENDED);
         authenticateAs(UUID.randomUUID(), null, true);
         chapterFilePointsTo("page.jpg", chapterReleasingAt(LocalDateTime.now().minusDays(2)));
 

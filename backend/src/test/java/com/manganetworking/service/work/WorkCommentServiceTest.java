@@ -1,4 +1,5 @@
 package com.manganetworking.service.work;
+import com.manganetworking.domain.enums.WorkStatus;
 
 import com.manganetworking.config.exception.AccessDeniedException;
 import com.manganetworking.domain.relational.ChapterEntity;
@@ -64,7 +65,7 @@ class WorkCommentServiceTest {
         work.setId(workId);
         work.setTitle("Obra");
         work.setSlug("obra");
-        work.setStatus("ongoing");
+        work.setStatus(WorkStatus.ONGOING);
 
         owner = new UserEntity();
         owner.setId(userId);

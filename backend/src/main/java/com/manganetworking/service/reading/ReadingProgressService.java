@@ -1,7 +1,11 @@
 package com.manganetworking.service.reading;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.manganetworking.config.exception.ResourceNotFoundException;
+import com.manganetworking.config.observability.ObservabilityMetricsService;
 import com.manganetworking.config.properties.PlatformProperties;
+import com.manganetworking.domain.enums.ChapterFormat;
 import com.manganetworking.domain.nosql.EngagementEventDocument;
 import com.manganetworking.domain.nosql.ReadingProgressDocument;
 import com.manganetworking.domain.relational.ChapterEntity;
@@ -44,7 +48,11 @@ public class ReadingProgressService {
     private final UserRepository userRepository;
     private final WorkRepository workRepository;
     private final PlatformProperties properties;
-    private final com.manganetworking.config.observability.ObservabilityMetricsService observabilityMetricsService;
+    /** Versão atual do evento VIEW (incrementar quando a semântica mudar). */
+    private static final int VIEW_EVENT_VERSION = 2;
+
+    private final ObservabilityMetricsService observabilityMetricsService;
+    private final ObjectMapper objectMapper;
     private final EngagementEventMongoRepository engagementEventRepository;
 
     public ReadingProgressService(
@@ -53,7 +61,8 @@ public class ReadingProgressService {
             UserRepository userRepository,
             WorkRepository workRepository,
             PlatformProperties properties,
-            com.manganetworking.config.observability.ObservabilityMetricsService observabilityMetricsService,
+            ObservabilityMetricsService observabilityMetricsService,
+            ObjectMapper objectMapper,
             EngagementEventMongoRepository engagementEventRepository
     ) {
         this.progressMongoRepository = progressMongoRepository;
@@ -62,6 +71,7 @@ public class ReadingProgressService {
         this.workRepository = workRepository;
         this.properties = properties;
         this.observabilityMetricsService = observabilityMetricsService;
+        this.objectMapper = objectMapper != null ? objectMapper : new ObjectMapper();
         this.engagementEventRepository = engagementEventRepository;
     }
 
@@ -95,6 +105,10 @@ public class ReadingProgressService {
         doc.setChapterTitle(chapter.getTitle());
         doc.setWorkTitle(chapter.getWork().getTitle());
         doc.setWorkCoverUrl(chapter.getWork().getCoverUrl());
+        doc.setWorkSlug(chapter.getWork().getSlug());
+        doc.setWorkFormat(chapter.getWork().getFormat() == null
+                ? null
+                : chapter.getWork().getFormat().name());
         doc.setPage(pageToPersist);
         doc.setTotalPages(totalPages);
         doc.setUpdatedAt(Instant.now());
@@ -169,7 +183,7 @@ public class ReadingProgressService {
         // Light novel não tem páginas ilustradas: o progresso mensurável é a
         // permanência no texto (página 1 de 1). Sem isso, toda leitura em prosa
         // era rejeitada por não haver pagesJson para comparar.
-        if (chapter.getFormat() == com.manganetworking.domain.enums.ChapterFormat.PROSE) {
+        if (chapter.getFormat() == ChapterFormat.PROSE) {
             if (page != 1 || totalPages != 1) {
                 throw new IllegalArgumentException("Capítulo em prosa deve ser lido na página 1 de 1.");
             }
@@ -183,8 +197,8 @@ public class ReadingProgressService {
 
     private int countChapterPages(String pagesJson) {
         try {
-            return new com.fasterxml.jackson.databind.ObjectMapper().readTree(pagesJson).size();
-        } catch (com.fasterxml.jackson.core.JsonProcessingException | NullPointerException exception) {
+            return objectMapper.readTree(pagesJson).size();
+        } catch (JsonProcessingException | NullPointerException exception) {
             throw new IllegalStateException("Páginas do capítulo armazenadas em formato inválido.", exception);
         }
     }
@@ -196,7 +210,7 @@ public class ReadingProgressService {
     private void recordReadEvent(String userId, String workId, String chapterId, int page) {
         try {
             EngagementEventDocument event = new EngagementEventDocument();
-            event.setEventType("READ");
+            event.setEventType(READ_EVENT);
             event.setUserId(userId);
             event.setWorkId(workId);
             event.setChapterId(chapterId);
@@ -237,8 +251,8 @@ public class ReadingProgressService {
             event.setChapterId(chapterId);
             event.setReadPage(1);
             event.setIdempotencyKey(idempotencyKey);
-            // v2: a semântica passou de "1 por leitor/capítulo" para "1 por dia".
-            event.setEventVersion(2);
+            // VIEW_EVENT_VERSION: incrementar quando a semântica de deduplicação mudar.
+            event.setEventVersion(VIEW_EVENT_VERSION);
             engagementEventRepository.save(event);
         } catch (DuplicateKeyException duplicate) {
             // Duas requisições simultâneas: a chave única já registrou a view do dia.

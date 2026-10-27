@@ -1,4 +1,5 @@
 package com.manganetworking.service.moderation;
+import com.manganetworking.domain.enums.WorkStatus;
 
 import com.manganetworking.domain.enums.ReportReason;
 import com.manganetworking.domain.enums.ReportStatus;
@@ -57,7 +58,7 @@ class ModerationApplicationServiceTest {
         work = new WorkEntity();
         work.setId(workId);
         work.setTitle("Obra em Investigação");
-        work.setStatus("ongoing");
+        work.setStatus(WorkStatus.ONGOING);
     }
 
     @Test
@@ -95,7 +96,7 @@ class ModerationApplicationServiceTest {
 
         moderationService.suspendWork(workId, "Violação de Direitos Autorais confirmada");
 
-        assertEquals("suspended", work.getStatus());
+        assertEquals(WorkStatus.SUSPENDED, work.getStatus());
         assertEquals(ReportStatus.RESOLVED_SUSPENDED, pendingReport.getStatus());
         assertNotNull(pendingReport.getResolvedAt());
         assertTrue(pendingReport.getResolutionNotes().contains("Violação de Direitos Autorais"));

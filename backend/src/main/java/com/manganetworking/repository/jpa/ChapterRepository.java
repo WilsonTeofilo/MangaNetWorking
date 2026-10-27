@@ -50,4 +50,25 @@ public interface ChapterRepository extends JpaRepository<ChapterEntity, UUID> {
     List<ChapterEntity> findReleasedBetween(
             @Param("now") java.time.LocalDateTime now,
             @Param("since") java.time.LocalDateTime since);
+
+    /**
+     * Lançamentos já públicos para a timeline do catálogo/home.
+     *
+     * <p>Só entra capítulo com {@code public_release_at <= agora} (agendado ou em acesso
+     * antecipado não vaza) e de obra não suspensa, não arquivada por LGPD e não em rascunho.</p>
+     */
+    @Query("""
+            select c from ChapterEntity c
+            join fetch c.work w
+            join fetch w.author a
+            where c.publicReleaseAt is not null
+              and c.publicReleaseAt <= :now
+              and (:format is null or w.format = :format)
+              and w.status not in ('suspended', 'archived_lgpd', 'draft')
+            order by c.publicReleaseAt desc
+            """)
+    List<ChapterEntity> findRecentReleases(
+            @Param("now") java.time.LocalDateTime now,
+            @Param("format") com.manganetworking.domain.enums.WorkFormat format,
+            org.springframework.data.domain.Pageable pageable);
 }

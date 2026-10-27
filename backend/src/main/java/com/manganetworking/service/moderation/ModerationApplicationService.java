@@ -6,6 +6,7 @@ import com.manganetworking.domain.enums.ReportStatus;
 import com.manganetworking.domain.relational.ChapterEntity;
 import com.manganetworking.domain.relational.ReportEntity;
 import com.manganetworking.domain.relational.UserEntity;
+import com.manganetworking.domain.enums.WorkStatus;
 import com.manganetworking.domain.relational.WorkEntity;
 import com.manganetworking.repository.jpa.ChapterRepository;
 import com.manganetworking.repository.jpa.ReportRepository;
@@ -87,7 +88,7 @@ public class ModerationApplicationService {
         WorkEntity work = workRepository.findById(workId)
                 .orElseThrow(() -> new ResourceNotFoundException("Obra não encontrada: " + workId));
 
-        work.setStatus("suspended");
+        work.setStatus(WorkStatus.SUSPENDED);
         workRepository.save(work);
 
         List<ReportEntity> reports = reportRepository.findAllByWorkIdOrderByCreatedAtDesc(workId);

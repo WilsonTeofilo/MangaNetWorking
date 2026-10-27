@@ -40,8 +40,13 @@ export function countVisibleProseCharacters(raw: string): number {
   return Array.from(visible).length;
 }
 
+export interface ValidationResult {
+  valid: boolean;
+  errors: string[];
+}
+
 /** Valida capítulo no frontend (espelho da validação server-side). */
-export function validateChapterBlocks(blocks: ChapterBlocksDto, chapterType: ChapterType = 'REGULAR'): { valid: boolean; errors: string[] } {
+export function validateChapterBlocks(blocks: ChapterBlocksDto, chapterType: ChapterType = 'REGULAR'): ValidationResult {
   const errors: string[] = [];
   
   if (!blocks || blocks.version < 1 || blocks.version > 1) {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { ShieldAlert, Check, Upload, Crop } from 'lucide-react';
 import { Button } from '../components/ui/Button';
@@ -7,7 +7,6 @@ import { CreatorMissionsPanel } from '../components/creator/CreatorMissionsPanel
 import { ImageCropper } from '../components/common/ImageCropper';
 import { LevelPatch } from '../components/ui/LevelPatch';
 import { Sticker } from '../components/ui/Sticker';
-import { MOCK_CREATORS } from '../data/mockData';
 import { storageApi } from '../api/storageApi';
 import { userApi } from '../api/authApi';
 import { creatorApi, CreatorWorkspaceDto } from '../api/creatorApi';
@@ -16,20 +15,19 @@ import { creatorApi, CreatorWorkspaceDto } from '../api/creatorApi';
 export type CreatorWorkspaceSection = 'dashboard' | 'missions' | 'works';
 export function CreatorWorkspacePage({ section = 'dashboard', onOpenPublicProfile }: { section?: CreatorWorkspaceSection; onOpenPublicProfile?: (username: string) => void } = {}) {
   const { refreshSession } = useAuth();
-  const creator = import.meta.env.DEV ? MOCK_CREATORS['creator-teofilo'] || Object.values(MOCK_CREATORS)[0] : undefined;
 
   // Painel real do autor (`GET /api/creators/workspace`); cai na demo quando não há sessão de criador.
   const [workspace, setWorkspace] = useState<CreatorWorkspaceDto | null>(null);
   const [workspaceLoading, setWorkspaceLoading] = useState(true);
 
-  const [profileName, setProfileName] = useState(creator?.name ?? '');
+  const [profileName, setProfileName] = useState('');
   // Links sociais do autor: pelo menos um e obrigatorio (regra do servidor).
   const [instagramUrl, setInstagramUrl] = useState<string>('');
   const [youtubeUrl, setYoutubeUrl] = useState<string>('');
   const [portfolioUrl, setPortfolioUrl] = useState<string>('');
-  const [bio, setBio] = useState(creator?.bio ?? '');
-  const [membershipPrice, setMembershipPrice] = useState<number | null>(creator?.membershipPriceBrl ?? null);
-  const [avatarPreview, setAvatarPreview] = useState(creator?.avatarUrl ?? '');
+  const [bio, setBio] = useState('');
+  const [membershipPrice, setMembershipPrice] = useState<number | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState('');
   // Pre-visualizacao local: o arquivo escolhido aparece na hora (objectURL), como no
   // MangaTeofilo, e so depois troca pela URL definitiva do servidor.
   const [localAvatarPreview] = useState<string | null>(null);
@@ -73,11 +71,11 @@ export function CreatorWorkspacePage({ section = 'dashboard', onOpenPublicProfil
   }, []);
 
   // Valores exibidos: dados do servidor quando a sessão de criador existe; zero se não autenticado (anti-fake data).
-  const displayHandle = workspace?.handle ?? creator?.handle ?? '—';
+  const displayHandle = workspace?.handle ?? '-';
   const monetizationLevel = workspace?.monetizationLevel ?? 0;
-  const walletBalanceBrl = workspace ? Number(workspace.walletBalanceBrl) : creator?.walletBalanceBrl;
-  const totalDonationsBrl = workspace ? Number(workspace.totalDonationsBrl) : creator?.totalDonationsBrl;
-  const monthlyMembersCount = workspace?.monthlyMembersCount ?? creator?.monthlyMembersCount;
+  const walletBalanceBrl = workspace ? Number(workspace.walletBalanceBrl) : 0;
+  const totalDonationsBrl = workspace ? Number(workspace.totalDonationsBrl) : 0;
+  const monthlyMembersCount = workspace?.monthlyMembersCount ?? 0;
   const activeMissions = workspace?.missions ?? [];
 
 
@@ -140,7 +138,7 @@ export function CreatorWorkspacePage({ section = 'dashboard', onOpenPublicProfil
     }
   };
 
-  if (!workspaceLoading && !workspace && !import.meta.env.DEV) {
+  if (!workspaceLoading && !workspace) {
     return <div role="status" className="mn-container py-16 text-center space-y-4"><h1 className="font-display text-3xl text-[var(--mn-paper)]">PAINEL DO CRIADOR</h1><p className="font-body text-[var(--mn-mute)]">{workspaceError ?? 'Entre com uma conta de criador para acessar este painel.'}</p></div>;
   }
 

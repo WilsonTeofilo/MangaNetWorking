@@ -7,6 +7,7 @@ import com.manganetworking.config.exception.AccessDeniedException;
 import com.manganetworking.config.exception.ResourceNotFoundException;
 import com.manganetworking.domain.relational.ChapterEntity;
 import com.manganetworking.domain.relational.CreatorEntity;
+import com.manganetworking.domain.enums.WorkStatus;
 import com.manganetworking.domain.relational.UserEntity;
 import com.manganetworking.domain.relational.WorkEntity;
 import com.manganetworking.repository.jpa.ChapterRepository;
@@ -28,7 +29,7 @@ public class MobileOfflineApplicationService {
 
     private static final Logger log = LoggerFactory.getLogger(MobileOfflineApplicationService.class);
 
-    private static final String STATUS_SUSPENDED = "suspended";
+
 
     private final UserRepository userRepository;
     private final ChapterRepository chapterRepository;
@@ -75,7 +76,7 @@ public class MobileOfflineApplicationService {
         CreatorEntity author = work.getAuthor();
 
         // 2. Obra suspensa cautelarmente: indisponível para download por leitores.
-        if (work.getStatus() != null && STATUS_SUSPENDED.equalsIgnoreCase(work.getStatus())) {
+        if (work.getStatus() == WorkStatus.SUSPENDED) {
             throw new AccessDeniedException("Esta obra está suspensa cautelarmente e não pode ser baixada.");
         }
 

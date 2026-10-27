@@ -439,7 +439,7 @@ public class CreatorAnalyticsApplicationService {
                     work.getTitle(),
                     work.getSlug(),
                     work.getCoverUrl(),
-                    work.getStatus(),
+                    work.getStatus() != null ? work.getStatus().name() : null,
                     workViews.size(),
                     uniqueReaders,
                     chapters,

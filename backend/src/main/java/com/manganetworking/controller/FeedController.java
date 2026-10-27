@@ -40,25 +40,32 @@ public class FeedController {
     public ResponseEntity<List<FeedWorkResponseDto>> getFeed(
             @RequestParam(defaultValue = "recommended") String sort,
             @RequestParam(required = false) String genre,
+            @RequestParam(required = false) String formato,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        return ResponseEntity.ok(feedService.getFeed(sort, genre, page, size));
+        return ResponseEntity.ok(feedService.getFeed(sort, genre, formato, page, size));
     }
 
     /**
-     * Obras em Alta (Trending)
+     * Obras em Alta (Trending). Aceita {@code formato} para o ranking nunca misturar mangá e novel.
      */
     @GetMapping("/trending")
-    public ResponseEntity<List<FeedWorkResponseDto>> getTrending(@RequestParam(defaultValue = "10") int limit) {
-        return ResponseEntity.ok(feedService.getTrending(limit));
+    public ResponseEntity<List<FeedWorkResponseDto>> getTrending(
+            @RequestParam(defaultValue = "10") int limit,
+            @RequestParam(required = false) String formato
+    ) {
+        return ResponseEntity.ok(feedService.getTrending(limit, formato));
     }
 
     /**
-     * Novos Capítulos / Lançamentos Recentes
+     * Novos Capítulos / Lançamentos Recentes.
      */
     @GetMapping("/fresh")
-    public ResponseEntity<List<FeedWorkResponseDto>> getFreshReleases(@RequestParam(defaultValue = "10") int limit) {
-        return ResponseEntity.ok(feedService.getFreshReleases(limit));
+    public ResponseEntity<List<FeedWorkResponseDto>> getFreshReleases(
+            @RequestParam(defaultValue = "10") int limit,
+            @RequestParam(required = false) String formato
+    ) {
+        return ResponseEntity.ok(feedService.getFreshReleases(limit, formato));
     }
 }

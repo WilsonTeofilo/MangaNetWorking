@@ -18,6 +18,7 @@ public record LibraryWorkDto(
         String authorName,
         String authorHandle,
         int totalChapters,
-        String status
+        String status,
+        String format
 ) {
 }

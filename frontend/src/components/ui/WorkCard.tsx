@@ -1,10 +1,12 @@
-import { MouseEvent } from 'react';
+import { MouseEvent, ReactNode } from 'react';
 import { Star, Eye } from 'lucide-react';
 import { Work } from '../../types';
 import { AnalyticsSurface, trackOpening } from '../../api/discoveryAnalyticsApi';
 import { useWorkImpression } from '../../hooks/useWorkImpression';
 import { Cover } from './Cover';
+import { FormatBadge } from './FormatBadge';
 import { Sticker, StickerKind } from './Sticker';
+import { workMetaLine } from '../../utils/formatMeta';
 
 export interface WorkCardProps {
   work: Work;
@@ -17,6 +19,10 @@ export interface WorkCardProps {
   analyticsSurface?: AnalyticsSurface;
   /** Só leitor autenticado é rastreado — visitante não recebe identificador anônimo. */
   analyticsEnabled?: boolean;
+  /** Linha extra (ex.: capítulo recente e tempo relativo no feed). */
+  footer?: ReactNode;
+  /** Esconde o badge de formato quando o contexto já deixou o formato óbvio. */
+  showFormatBadge?: boolean;
 }
 
 export function WorkCard({
@@ -28,6 +34,8 @@ export function WorkCard({
   className = '',
   analyticsSurface,
   analyticsEnabled = false,
+  footer,
+  showFormatBadge = true,
 }: WorkCardProps) {
   const cardRef = useWorkImpression(work.id, analyticsSurface, analyticsEnabled);
 
@@ -81,12 +89,19 @@ export function WorkCard({
           </button>
         )}
 
-        {/* Badges sobre a capa (canto inferior esquerdo, máx 2) */}
+        {/* Badges editoriais sobre a capa (canto superior esquerdo, máx 2) */}
         {badges.length > 0 && (
-          <div className="absolute bottom-2 left-2 flex flex-col gap-1 items-start z-20 pointer-events-none">
+          <div className="absolute top-2 left-2 flex flex-col gap-1 items-start z-20 pointer-events-none">
             {badges.slice(0, 2).map((kind, idx) => (
               <Sticker key={idx} kind={kind} rotate={idx % 2 === 0 ? -2 : 2} />
             ))}
+          </div>
+        )}
+
+        {/* Formato: canto inferior esquerdo, mesmo card para mangá e light novel */}
+        {showFormatBadge && (
+          <div className="absolute bottom-2 left-2 z-20 pointer-events-none">
+            <FormatBadge format={work.format} />
           </div>
         )}
       </div>
@@ -97,8 +112,12 @@ export function WorkCard({
           {work.title}
         </h4>
         <p className="font-body text-xs sm:text-[13px] text-[var(--mn-mute)] mt-1 truncate flex items-center gap-1.5">
-          por <span className="text-[var(--mn-paper)] font-medium">{work.authorName}</span> ·{' '}
-          <span className="tabular-nums">{work.totalChapters || 1} caps</span>
+          {work.authorName ? (
+            <>
+              por <span className="text-[var(--mn-paper)] font-medium">{work.authorName}</span> ·{' '}
+            </>
+          ) : null}
+          <span className="tabular-nums">{workMetaLine(work.format, work.totalChapters)}</span>
           <span aria-hidden="true">·</span>
           <span className="inline-flex items-center gap-1 tabular-nums" title="Visualizações da obra (soma dos capítulos)">
             <Eye size={12} aria-hidden="true" />
@@ -113,6 +132,7 @@ export function WorkCard({
             {Number(work.totalFavorites ?? 0).toLocaleString('pt-BR')}
           </span>
         </p>
+        {footer && <div className="mt-1.5">{footer}</div>}
       </div>
     </article>
   );

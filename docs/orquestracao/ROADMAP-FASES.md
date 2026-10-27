@@ -1,4 +1,4 @@
-﻿- Identidade separada (21/10/2026): V17 adiciona `users.username` (único, imutável depois de escolhido, com
+- Identidade separada (21/10/2026): V17 adiciona `users.username` (único, imutável depois de escolhido, com
   backfill `user_<id>`), `users.sex`, `creator_follows` e `work_comments`. Login e 2FA aceitam e-mail **ou** username.
   Cadastro cria sempre leitor; virar escritor exige `POST /api/creators/apply` com pelo menos um vínculo social
   (allowlist de host + HTTPS obrigatório, sem `javascript:`/`data:`/credencial/porta).
@@ -139,9 +139,11 @@ Legenda: ✅ pronto · 🟡 parcial · 🔴 bloqueado/pendente · ⏸️ fora do
 - Upload em lote limita 300 páginas; antes de persistir, o backend verifica dimensões (máximo 8192 px por lado e 16 MP) por metadata do decoder. Formatos sem leitor ImageIO configurado (incluindo WebP neste runtime) são rejeitados no lote.
 - Migração V8 acrescenta `work_format` (`MANGA`/`LIGHT_NOVEL`) e `chapter_format` (`IMAGE_PAGES`/`PROSE`) sem alterar V1..V7. Capítulos em prosa existentes seguem legíveis como texto simples; a política de capítulo regular agora normaliza NFC, conta code points Unicode e valida 1.000–30.000 caracteres visíveis no backend em criação/edição. Front mostra contador, recomendação de 6.000–18.000 e aviso abaixo de 3.000. O limite de 2.000.000 caracteres brutos é apenas defesa de processamento, não tamanho editorial. **Formato de blocos versionado (v1) implementado**: `blocks_json` + `blocks_version` na entidade `ChapterEntity`, DTOs `ChapterBlockDto` (text/illustration/separator), política `ChapterBlocksPolicy` valida estrutura, total de caracteres (1.000–30.000), máximo 6 ilustrações intercaladas por capítulo; migração automática de `content_text` legado para blocos v1. **Tipos de capítulo**: `ChapterType` (REGULAR, PROLOGUE, SPECIAL) com validações específicas (prólogo = cap. 0 único, mínimo 300 chars; especial = mínimo 300 chars). **Editor de blocos** com toolbar, drag-and-drop, validação tempo real. **Leitor scroll-only** com barras de progresso e checkpoints 10% (10–100%). **Apresentação visual da obra**: `presentation_json` em `WorkEntity`. Ilustrações de abertura, volumes, CSV de analytics de retenção permanecem pendentes.
 - **Fluxo de light novel separado do mangá (2026-10-23):** `LightNovelChapterWizard` substitui o wizard de 5 etapas apenas para `LIGHT_NOVEL`, em **Detalhes → Escrever → Revisar → Publicar**. Documento único de blocos com inserção por toolbar ou no ponto do texto, upload imediato da ilustração com `alt`, reordenação por arrastar e por teclado, limite `n/6`, autosave local com aviso de saída, prévia fiel, painel de erros e modo edição com banner. O mangá continua no `MangaChapterPublishWizard`, intocado. `ChapterReadResponseDto` passa a devolver `blocksJson` e `chapterType`; as ilustrações do capítulo são registradas em `chapter_files` (herdam o acesso antecipado em vez de vazar como arquivo público). O leitor de prosa ganhou configuração de leitura no header (fonte, tamanho, entrelinha, largura). **V23** cria as colunas (`chapters.chapter_type`, `blocks_json`, `blocks_version`, `works.presentation_json`) com constraints de formato: sem ela o `ddl-auto: validate` derrubava a aplicação e os testes de integração. Volumes, apresentação visual da obra, upload com validação de MIME real e `checkpoint` de retenção seguem pendentes.
+- **Refatoração do Status de Obras para Enum de Domínio (WorkStatus) (2026-10-26):** `WorkStatus` (`DRAFT`, `ONGOING`, `COMPLETED`, `SUSPENDED`, `ARCHIVED_LGPD`) com métodos de domínio `isPublic()` e `isHidden()`, `@JsonCreator fromString` e `@JsonValue`. JPA Converter `WorkStatusConverter` (`autoApply = true`) tolerante a dados legados em lowercase (`ongoing`) e gravação canônica em uppercase (`ONGOING`). **V25** normaliza os registros existentes em PostgreSQL. Mapeadores do frontend em `apiMappers.ts` normalizados para case-insensitivity. Suíte: **433 testes, 0 falhas, 0 erros**.
 - `ChapterFileAccessIntegrationTest` criou um capítulo publicado em PostgreSQL efêmero, gravou um JPEG real do projeto (`shito.jpg`, 1.060.446 bytes) no storage e serviu 100 GETs HTTP com concorrência 10: 100×200, MIME `image/jpeg`, bytes idênticos; medição final: duração total 723 ms, p50 46 ms, p95 190 ms, máximo 191 ms. O volume legado ainda contém referências órfãs; esse problema de dados não invalida a medição controlada.
 
 **Aceite**
+- [x] Status de obras gerenciado por enum tipado `WorkStatus` no domínio, converter JPA e migração V25, eliminando strings literais e comparações manuais.
 - [x] Capítulo publicado aparece para todos; capítulo **programado** aparece na ficha (marcado como antecipado para membros) e só é lido por membro, autor ou moderação — `publicReleaseAt` nunca vaza o conteúdo para quem não é membro.
 - [x] Páginas servidas com `Content-Type` correto, `nosniff` e sem cache compartilhado para páginas de capítulo.
 - [x] Progresso idempotente por `userId + workId`.
@@ -157,6 +159,7 @@ Legenda: ✅ pronto · 🟡 parcial · 🔴 bloqueado/pendente · ⏸️ fora do
 **Objetivo:** doações/membros 83/17, anúncios 58/42, VIP, ledger idempotente e PIX com step-up.
 
 **Estado real**
+- **Decomposição Modular de MercadoPagoService (2026-10-26):** Decomposta a classe monolítica em três especialistas desacoplados: `MercadoPagoWebhookValidator` (HMAC-SHA256, timing attack mitigation, janela de 15m), `MercadoPagoCheckoutService` (preferências Checkout Pro, persistência e locks) e `MercadoPagoPaymentProcessor` (processamento idempotente e conciliação). `MercadoPagoService` atua como fachada (Facade) enxuta mantendo 100% de compatibilidade.
 - Split com `BigDecimal` e constantes de plataforma.
 - Checkout VIP cria preferência persistida e só ativa após webhook assinado, aprovado, em BRL, com valor e referência conferidos; o ledger tem a chave única de idempotência.
 - Os endpoints legados de VIP, doação e membro retornam `410 Gone`: não há crédito nem acesso antecipado sem checkout confirmado.
@@ -436,3 +439,34 @@ Ao concluir um item, atualize **esta tabela** e `AUDITORIA-ATUAL.md` no mesmo co
 > O QA **visual** no navegador (curtida, comentário, sino e retorno pós-login) não foi reexecutado após o rebuild. A
 > moderação de comentários tem API e fila, mas ainda não tem tela dedicada no front. Push real,
 > leitura anônima e progresso de prosa continuam bloqueados pelas decisões já registradas.
+
+### Rodada 2026-10-23 — formato como primeiro eixo (catálogo, home, feed e biblioteca)
+
+| # | Fase | Entrega |
+|---|---|---|
+| 73 | F3/F7 | ✅ `GET /api/catalog` (PostgreSQL, fonte de verdade): filtros de formato, gênero (OR), público, status, busca por obra/autor/gênero, ordenação, paginação e contadores por formato. Valor inválido de formato cai em "tudo" (nunca esconde obra). Suspensa, arquivada por LGPD e rascunho nunca aparecem; 8 testes de integração com Testcontainers |
+| 74 | F3/F7 | ✅ `GET /api/catalog/releases`: timeline de capítulos **já públicos** (agendado não vaza), com formato, `chapterId`, contadores da obra; V24 cria índices de formato/status, ordenação, gênero e `public_release_at` |
+| 75 | F3 | ✅ `/api/feed`, `/feed/trending` e `/feed/fresh` aceitam `formato` validado; `/api/users/me/library` e o progresso de leitura passam a expor `format`/`workSlug` (documentos antigos ficam nulos e o front trata) |
+| 76 | F5 | ✅ `FormatSwitcher` único (Tudo/Mangá/Light novel) com `aria-pressed`, setas do teclado e contadores; `FormatBadge` com ícone + rótulo (amarelo = mangá, papel = novel); `WorkCard` unificado com metadados por formato |
+| 77 | F5 | ✅ Catálogo em três níveis: formato segmentado, chips de gênero múltiplos e drawer (status, público, ordem, "Com ilustrações" só em novel); estado na URL (`?formato=&genero=&status=&ordem=&q=&pagina=`), pílulas com ✕, limpar tudo, contador dinâmico, skeleton/erro/vazio, paginação e CTA de cold start |
+| 78 | F5 | ✅ Home com switcher (`?inicio=`), "Novos capítulos" agrupados por obra (até 3 capítulos + tempo relativo), "Em alta" separado por formato (rail só com ≥4 obras e CTA para autor logado), "Continuar lendo" com progresso real e timeline de lançamentos por dia. Biblioteca com as mesmas abas de formato; ficha com badge e leitor correto por capítulo |
+| 79 | F7 | ✅ Verificação: `mvn -o test` **434 testes, 0 falhas/0 erros**; `npm.cmd run build` verde; stack recompilada; `GET /api/catalog` e `/api/catalog/releases` conferidos via HTTP real |
+
+> **Pendências honestas (rodada 2026-10-23):** volumes ainda **não** são entidade do domínio, então o
+> rótulo é `N caps` (o ponto de extensão `chapterLabel`/`Vol. X` está isolado); "Com ilustrações" filtra
+> por `presentation_json` (apresentação ilustrada), não por ilustrações internas de capítulo; o progresso
+> de prosa continua sem percentual real de scroll (o leitor envia `page=1/totalPages=1`), então a
+> biblioteca/home mostram "cap. N · em andamento" em vez de inventar 100%; onboarding de uma pergunta
+> não foi implementado; não há runner de teste no frontend (a verificação é `tsc` + build).
+
+
+### Rodada 2026-10-26 — Higiene Arquitetural, Purga de Mocks e Decomposição SRP
+
+| # | Fase | Entrega |
+|---|---|---|
+| 80 | F1/F3 | ✅ TASK-BACKEND-CLEANUP-001: Decomposição de WorkApplicationService em ChapterApplicationService, blindagem estrita de /api/auth/** no SecurityConfig, eliminação de retorno de @Entity nos controllers, tratamento de views no delete de capítulo e higienização de conversões em MercadoPagoService |
+| 81 | F5 | ✅ TASK-FRONTEND-MOCKS-PURGE: Expurgo definitivo de mockData.ts em WorkDetailPage.tsx, CreatorWorkspacePage.tsx e ReaderProfilePage.tsx, eliminando dados fabricados em ambiente de desenvolvimento |
+| 82 | F3/F5 | ✅ TASK-FRONTEND-DECOMPOSE-WIZARD: Decomposição de LightNovelChapterWizard.tsx (1.443 linhas) no hook useLightNovelEditor e submódulos em novel/, e desacoplamento de ReaderPage.tsx (1.129 linhas) em MangaReaderView, ProseReaderView, ReaderProseSettingsBar, ChapterEndPanel e useReaderTelemetry |
+| 83 | F1/F3/F5 | ✅ AUDITORIA-PENTE-FINO: Blindagem de visibilidade cautelar em ChapterApplicationService.readChapter (obras suspensas/LGPD bloqueiam capítulos), injeção de ObjectMapper singleton em ReadingProgressService (evitando alocação massiva por view), fix de onClickFileInput em NovelBlockItem, eliminação de XSS em ProseReaderView sem dangerouslySetInnerHTML, harmonização de glifos de separadores (getSeparatorGlyph), blindagem de schema do localStorage (sanitizeRestoredBlocks), validação estrita de MIME types (JPEG/PNG/WebP) e unificação completa de design tokens CSS nos componentes do leitor |
+
+> **Diagnóstico & Especificação:** ver docs/orquestracao/AUDITORIA-ARQUITETURA-REVISAO-GERAL.md para a análise completa linha a linha.

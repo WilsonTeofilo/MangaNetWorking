@@ -2,6 +2,7 @@ package com.manganetworking.domain.relational;
 
 import com.manganetworking.domain.enums.Genre;
 import com.manganetworking.domain.enums.WorkFormat;
+import com.manganetworking.domain.enums.WorkStatus;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -50,7 +51,7 @@ public class WorkEntity {
     private List<Genre> genres = new ArrayList<>();
 
     @Column(nullable = false, length = 20)
-    private String status = "ongoing";
+    private WorkStatus status = WorkStatus.ONGOING;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "work_format", nullable = false, length = 20)
@@ -112,8 +113,8 @@ public class WorkEntity {
     public List<Genre> getGenres() { return genres; }
     public void setGenres(List<Genre> genres) { this.genres = genres; }
 
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
+    public WorkStatus getStatus() { return status; }
+    public void setStatus(WorkStatus status) { this.status = status; }
 
     public WorkFormat getFormat() { return format; }
     public void setFormat(WorkFormat format) { this.format = format; }

@@ -30,6 +30,19 @@ public interface WorkFeedMongoRepository extends MongoRepository<WorkFeedDocumen
     // Lançamentos Recentes (Novos Capítulos), excluindo estados ocultos na consulta
     List<WorkFeedDocument> findAllByStatusNotInOrderByUpdatedAtDesc(Collection<String> statuses, Pageable pageable);
 
+    // Feed filtrado pelo formato (primeiro eixo de navegação: mangá vs light novel).
+    List<WorkFeedDocument> findAllByFormatAndStatusNotInOrderByDiscoveryScoreDesc(
+            String format, Collection<String> statuses, Pageable pageable);
+
+    List<WorkFeedDocument> findAllByFormatAndStatusNotInOrderByTrendingScoreDesc(
+            String format, Collection<String> statuses, Pageable pageable);
+
+    List<WorkFeedDocument> findAllByFormatAndStatusNotInOrderByUpdatedAtDesc(
+            String format, Collection<String> statuses, Pageable pageable);
+
+    List<WorkFeedDocument> findAllByGenresContainingAndFormatAndStatusNotInOrderByDiscoveryScoreDesc(
+            String genre, String format, Collection<String> statuses, Pageable pageable);
+
     // Remoção imediata do Feed em caso de suspensão cautelar ou arquivamento por LGPD
     void deleteByWorkId(String workId);
 }

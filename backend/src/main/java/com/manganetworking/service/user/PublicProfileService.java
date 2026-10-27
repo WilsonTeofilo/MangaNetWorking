@@ -3,6 +3,7 @@ package com.manganetworking.service.user;
 import com.manganetworking.config.exception.ResourceNotFoundException;
 import com.manganetworking.domain.relational.CreatorEntity;
 import com.manganetworking.domain.relational.UserEntity;
+import com.manganetworking.domain.enums.WorkStatus;
 import com.manganetworking.domain.relational.WorkEntity;
 import com.manganetworking.repository.jpa.CreatorFollowRepository;
 import com.manganetworking.repository.jpa.CreatorRepository;
@@ -84,8 +85,7 @@ public class PublicProfileService {
     private long countPublicWorks(UUID creatorId) {
         List<WorkEntity> works = workRepository.findAllByAuthorId(creatorId);
         return works.stream()
-                .filter(work -> !"archived_lgpd".equalsIgnoreCase(work.getStatus()))
-                .filter(work -> !"suspended".equalsIgnoreCase(work.getStatus()))
+                .filter(work -> work.getStatus() != null && !work.getStatus().isHidden())
                 .count();
     }
 }

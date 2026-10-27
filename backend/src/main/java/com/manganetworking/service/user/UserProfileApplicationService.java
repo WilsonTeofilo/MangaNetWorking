@@ -3,6 +3,7 @@ package com.manganetworking.service.user;
 import com.manganetworking.config.exception.AccessDeniedException;
 import com.manganetworking.config.exception.ResourceNotFoundException;
 import com.manganetworking.domain.relational.CreatorEntity;
+import com.manganetworking.domain.enums.WorkStatus;
 import com.manganetworking.domain.relational.UserEntity;
 import com.manganetworking.domain.relational.WorkEntity;
 import com.manganetworking.repository.jpa.CreatorRepository;
@@ -184,7 +185,8 @@ public class UserProfileApplicationService {
                                 : "",
                         work.getAuthor() != null ? work.getAuthor().getHandle() : "",
                         work.getTotalChapters() == null ? 0 : work.getTotalChapters(),
-                        work.getStatus()
+                        work.getStatus() != null ? work.getStatus().name() : null,
+                        work.getFormat() == null ? "MANGA" : work.getFormat().name()
                 ))
                 .sorted(Comparator.comparing(LibraryWorkDto::title, String.CASE_INSENSITIVE_ORDER))
                 .toList();
@@ -365,7 +367,7 @@ public class UserProfileApplicationService {
         // Interrompe a distribuição pública das obras criadas pelo autor excluído
         List<WorkEntity> authorWorks = workRepository.findAllByAuthorId(creator.getId());
         for (WorkEntity work : authorWorks) {
-            work.setStatus("archived_lgpd");
+            work.setStatus(WorkStatus.ARCHIVED_LGPD);
             workRepository.save(work);
             log.info("[LGPD] Obra '{}' ({}) arquivada após exclusão de conta do autor.", work.getTitle(), work.getId());
         }

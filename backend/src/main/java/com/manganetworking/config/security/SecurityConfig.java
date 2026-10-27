@@ -115,7 +115,19 @@ public class SecurityConfig {
                                 || hasModeratorRole(authentication)
                 ))
                         // Endpoints Públicos de Autenticação
-                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers(
+                                "/api/auth/register",
+                                "/api/auth/login",
+                                "/api/auth/google",
+                                "/api/auth/2fa/verify",
+                                "/api/auth/policy",
+                                "/api/auth/password-reset/**"
+                        ).permitAll()
+                        .requestMatchers(
+                                "/api/auth/me",
+                                "/api/auth/logout",
+                                "/api/auth/2fa/request"
+                        ).authenticated()
                         // Documentos legais públicos (Política de Privacidade publicada)
                         .requestMatchers(HttpMethod.GET, "/api/legal/**").permitAll()
                         // Webhook assinado do Mercado Pago para confirmação de pagamentos
@@ -131,6 +143,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/storage/upload", "/api/storage/upload/batch",
                                 "/api/uploads/upload", "/api/uploads/upload/batch").hasRole("CREATOR")
                         .requestMatchers(HttpMethod.GET, "/api/feed/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/catalog/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/feed/sync").hasRole("MODERATOR")
                         // As obras do proprio autor: dados privados do painel.
                         .requestMatchers(HttpMethod.GET, "/api/works/mine").hasRole("CREATOR")

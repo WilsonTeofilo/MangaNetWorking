@@ -21,6 +21,10 @@ public class ReadingProgressDocument {
     private String workId;
     private String workTitle;
     private String workCoverUrl;
+    /** Slug da obra para reabrir o leitor direto da home. Nulo em documentos antigos. */
+    private String workSlug;
+    /** Formato da obra no momento da leitura: `MANGA` ou `LIGHT_NOVEL`. Nulo em documentos antigos. */
+    private String workFormat;
 
     private String chapterId;
     private Integer chapterNumber;
@@ -50,6 +54,12 @@ public class ReadingProgressDocument {
 
     public String getWorkCoverUrl() { return workCoverUrl; }
     public void setWorkCoverUrl(String workCoverUrl) { this.workCoverUrl = workCoverUrl; }
+
+    public String getWorkFormat() { return workFormat; }
+    public void setWorkFormat(String workFormat) { this.workFormat = workFormat; }
+
+    public String getWorkSlug() { return workSlug; }
+    public void setWorkSlug(String workSlug) { this.workSlug = workSlug; }
 
     public String getChapterId() { return chapterId; }
     public void setChapterId(String chapterId) { this.chapterId = chapterId; }

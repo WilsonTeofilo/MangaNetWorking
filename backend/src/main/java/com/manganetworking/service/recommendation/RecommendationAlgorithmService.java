@@ -3,6 +3,7 @@ package com.manganetworking.service.recommendation;
 import com.manganetworking.domain.nosql.WorkFeedDocument;
 import com.manganetworking.domain.relational.ChapterEntity;
 import com.manganetworking.domain.relational.CreatorEntity;
+import com.manganetworking.domain.enums.WorkStatus;
 import com.manganetworking.domain.relational.WorkEntity;
 import com.manganetworking.repository.jpa.ChapterRepository;
 import com.manganetworking.repository.jpa.WorkRepository;
@@ -41,11 +42,9 @@ public class RecommendationAlgorithmService {
     private static final double MAX_CREATOR_BOOST = 2.5;
     private static final long MIN_VIEWS_FOR_QUALITY = 40;
 
-    /** Obra suspensa cautelarmente ou arquivada por exclusão LGPD: não pode existir no feed. */
-    private static final String SUSPENDED_STATUS = "suspended";
-    private static final String ARCHIVED_LGPD_STATUS = "archived_lgpd";
-    private static final java.util.Set<String> HIDDEN_STATUSES =
-            java.util.Set.of(SUSPENDED_STATUS, ARCHIVED_LGPD_STATUS);
+    
+    
+    
 
     private final WorkRepository workRepository;
     private final ChapterRepository chapterRepository;
@@ -174,7 +173,7 @@ public class RecommendationAlgorithmService {
         doc.setSynopsis(work.getSynopsis());
         doc.setCoverUrl(work.getCoverUrl());
         doc.setBannerUrl(work.getBannerUrl());
-        doc.setStatus(work.getStatus());
+        doc.setStatus(work.getStatus() != null ? work.getStatus().name() : null);
         doc.setFormat(work.getFormat() != null ? work.getFormat().name() : "MANGA");
         doc.setGenres(work.getGenres().stream().map(Enum::name).toList());
         doc.setTotalChapters(work.getTotalChapters());
@@ -226,8 +225,7 @@ public class RecommendationAlgorithmService {
     }
 
     private boolean isHidden(WorkEntity work) {
-        return work.getStatus() != null
-                && HIDDEN_STATUSES.stream().anyMatch(status -> status.equalsIgnoreCase(work.getStatus()));
+        return work.getStatus() != null && work.getStatus().isHidden();
     }
 
     /** Compressão logarítmica dos contadores; sinais de vaidade não dominam a fila. */

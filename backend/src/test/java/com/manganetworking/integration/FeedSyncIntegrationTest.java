@@ -15,6 +15,8 @@ import com.manganetworking.service.feed.dto.FeedWorkResponseDto;
 import com.manganetworking.service.moderation.ModerationApplicationService;
 import com.manganetworking.service.recommendation.RecommendationAlgorithmService;
 import com.manganetworking.service.work.WorkApplicationService;
+import com.manganetworking.service.work.ChapterApplicationService;
+import com.manganetworking.service.work.dto.WorkDetailsResponseDto;
 import com.manganetworking.service.work.dto.CreateChapterRequestDto;
 import com.manganetworking.service.work.dto.CreateWorkRequestDto;
 import org.junit.jupiter.api.DisplayName;
@@ -77,6 +79,9 @@ class FeedSyncIntegrationTest {
     private WorkApplicationService workApplicationService;
 
     @Autowired
+    private ChapterApplicationService chapterApplicationService;
+
+    @Autowired
     private ModerationApplicationService moderationApplicationService;
 
     @Autowired
@@ -128,7 +133,7 @@ class FeedSyncIntegrationTest {
         WorkEntity work = newWork(creator.getId());
 
         LocalDateTime releaseAt = LocalDateTime.now().plusDays(2);
-        workApplicationService.createChapter(creator.getId(), work.getId(),
+        chapterApplicationService.createChapter(creator.getId(), work.getId(),
                 new CreateChapterRequestDto(1, "Capítulo 1", null, List.of("p1.png", "p2.png"), releaseAt));
 
         WorkFeedDocument feed = workFeedMongoRepository.findByWorkId(work.getId().toString()).orElseThrow();
@@ -249,6 +254,7 @@ class FeedSyncIntegrationTest {
                 List.of(Genre.ACAO),
                 true
         );
-        return workApplicationService.createWork(creatorId, dto);
+        WorkDetailsResponseDto created = workApplicationService.createWork(creatorId, dto);
+        return workRepository.findById(created.id()).orElseThrow();
     }
 }

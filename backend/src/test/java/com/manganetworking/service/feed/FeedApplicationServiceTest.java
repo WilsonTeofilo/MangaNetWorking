@@ -29,14 +29,14 @@ class FeedApplicationServiceTest {
     void excludesHiddenInQuery() {
         WorkFeedDocument active = feedDoc("active-work", "ongoing");
         when(repository.findAllByStatusNotInOrderByDiscoveryScoreDesc(
-                eq(List.of("suspended", "archived_lgpd")), any(Pageable.class)))
+                eq(FeedApplicationService.HIDDEN_STATUSES), any(Pageable.class)))
                 .thenReturn(List.of(active));
 
         List<FeedWorkResponseDto> results = service.getFeed("recommended", null, 0, 20);
 
         assertEquals(List.of("active-work"), results.stream().map(FeedWorkResponseDto::workId).toList());
         verify(repository).findAllByStatusNotInOrderByDiscoveryScoreDesc(
-                eq(List.of("suspended", "archived_lgpd")), any(Pageable.class));
+                eq(FeedApplicationService.HIDDEN_STATUSES), any(Pageable.class));
     }
 
     @Test
@@ -45,7 +45,7 @@ class FeedApplicationServiceTest {
         WorkFeedDocument suspended = feedDoc("suspended-work", "SUSPENDED");
         WorkFeedDocument archived = feedDoc("archived-work", "Archived_LGPD");
         when(repository.findAllByStatusNotInOrderByDiscoveryScoreDesc(
-                eq(List.of("suspended", "archived_lgpd")), any(Pageable.class)))
+                eq(FeedApplicationService.HIDDEN_STATUSES), any(Pageable.class)))
                 .thenReturn(List.of(suspended, archived));
 
         List<FeedWorkResponseDto> results = service.getFeed("recommended", null, 0, 20);
@@ -57,32 +57,32 @@ class FeedApplicationServiceTest {
     @DisplayName("Ordenações trending/fresh também excluem estados ocultos na consulta")
     void trendingAndFreshExcludeHiddenInQuery() {
         when(repository.findAllByStatusNotInOrderByTrendingScoreDesc(
-                eq(List.of("suspended", "archived_lgpd")), any(Pageable.class)))
+                eq(FeedApplicationService.HIDDEN_STATUSES), any(Pageable.class)))
                 .thenReturn(List.of());
         when(repository.findAllByStatusNotInOrderByUpdatedAtDesc(
-                eq(List.of("suspended", "archived_lgpd")), any(Pageable.class)))
+                eq(FeedApplicationService.HIDDEN_STATUSES), any(Pageable.class)))
                 .thenReturn(List.of());
 
         service.getFeed("trending", null, 0, 10);
         service.getFeed("fresh", null, 0, 10);
 
         verify(repository).findAllByStatusNotInOrderByTrendingScoreDesc(
-                eq(List.of("suspended", "archived_lgpd")), any(Pageable.class));
+                eq(FeedApplicationService.HIDDEN_STATUSES), any(Pageable.class));
         verify(repository).findAllByStatusNotInOrderByUpdatedAtDesc(
-                eq(List.of("suspended", "archived_lgpd")), any(Pageable.class));
+                eq(FeedApplicationService.HIDDEN_STATUSES), any(Pageable.class));
     }
 
     @Test
     @DisplayName("Feed por gênero exclui estados ocultos na consulta (gênero normalizado)")
     void genreFeedExcludesHiddenInQuery() {
         when(repository.findAllByGenresContainingAndStatusNotInOrderByDiscoveryScoreDesc(
-                eq("ACAO"), eq(List.of("suspended", "archived_lgpd")), any(Pageable.class)))
+                eq("ACAO"), eq(FeedApplicationService.HIDDEN_STATUSES), any(Pageable.class)))
                 .thenReturn(List.of());
 
         service.getFeed("recommended", "Ação", 0, 10);
 
         verify(repository).findAllByGenresContainingAndStatusNotInOrderByDiscoveryScoreDesc(
-                eq("ACAO"), eq(List.of("suspended", "archived_lgpd")), any(Pageable.class));
+                eq("ACAO"), eq(FeedApplicationService.HIDDEN_STATUSES), any(Pageable.class));
     }
 
     private WorkFeedDocument feedDoc(String workId, String status) {

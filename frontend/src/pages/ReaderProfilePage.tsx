@@ -1,9 +1,8 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { Globe, Lock, Heart, Shield, Download, Trash2, Crown, Sparkles, CheckCircle2, Upload } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useModals } from '../context/ModalContext';
 import { userApi } from '../api/authApi';
-import { MOCK_WORKS } from '../data/mockData';
 import { Work } from '../types';
 import { WorkCard } from '../components/ui/WorkCard';
 import { Button } from '../components/ui/Button';
@@ -76,8 +75,44 @@ export function ReaderProfilePage({ onSelectWork }: ReaderProfilePageProps) {
   };
 
   // Obras favoritadas pelo leitor
-  const likedWorks = (import.meta.env.DEV ? MOCK_WORKS : []).filter((w: Work) => user.favorites.includes(w.id));
+  const [libraryWorks, setLibraryWorks] = useState<Work[]>([]);
 
+  useEffect(() => {
+    let active = true;
+    userApi.getLibrary()
+      .then((items) => {
+        if (!active || !Array.isArray(items)) return;
+        setLibraryWorks(items.map((item) => ({
+          id: item.id,
+          title: item.title,
+          slug: item.slug,
+          coverUrl: item.coverUrl ?? '',
+          bannerUrl: item.coverUrl ?? '',
+          synopsis: '',
+          authorId: '',
+          authorName: item.authorName,
+          authorHandle: item.authorHandle,
+          authorAvatarUrl: '',
+          genres: [],
+          status: (item.status as 'ongoing' | 'completed' | 'hiatus') ?? 'ongoing',
+          format: (item.format as 'MANGA' | 'LIGHT_NOVEL') ?? 'MANGA',
+          totalViews: 0,
+          totalLikes: 0,
+          totalFavorites: 0,
+          totalComments: 0,
+          totalChapters: item.totalChapters ?? 0,
+          rating: 5,
+          createdAt: '',
+          updatedAt: '',
+        })));
+      })
+      .catch(() => {
+        if (active) setLibraryWorks([]);
+      });
+    return () => { active = false; };
+  }, []);
+
+  const likedWorks = libraryWorks;
   const handleExportData = async () => {
     try {
       const data = await userApi.exportMyData();
