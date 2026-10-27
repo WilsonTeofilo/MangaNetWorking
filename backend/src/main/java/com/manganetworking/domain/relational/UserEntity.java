@@ -1,6 +1,7 @@
 package com.manganetworking.domain.relational;
 
 import com.manganetworking.domain.enums.Sex;
+import com.manganetworking.config.security.AesCryptoConverter;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -53,6 +54,7 @@ public class UserEntity {
 
     private LocalDateTime emailVerifiedAt;
 
+    @Convert(converter = AesCryptoConverter.class)
     private String twoFactorSecret;
 
     @Column(nullable = false)
