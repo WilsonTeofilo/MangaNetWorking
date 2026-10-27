@@ -493,12 +493,7 @@ public class ChapterApplicationService {
             throw new ResourceNotFoundException("Obra não encontrada.");
         }
         if (work.getStatus() == WorkStatus.SUSPENDED) {
-            SessionService.UserSession session = SecurityContextUtils.getCurrentSession().orElse(null);
-            boolean isModerator = session != null && session.isModerator();
-            boolean isAuthor = currentUserId != null
-                    && work.getAuthor() != null
-                    && currentUserId.equals(work.getAuthor().getId());
-            if (!isAuthor && !isModerator) {
+            if (!isAuthorOrModerator(work, currentUserId)) {
                 throw new AccessDeniedException("Esta obra está suspensa cautelarmente e indisponível.");
             }
         }

@@ -30,7 +30,6 @@ import { EarlyAccessModal } from './components/modals/EarlyAccessModal';
 import { VipModal } from './components/modals/VipModal';
 import { ReportModal } from './components/modals/ReportModal';
 import { Work, Chapter } from './types';
-import { MOCK_CHAPTERS } from './data/mockData';
 import { workApi } from './api/workApi';
 import { authApi, userApi } from './api/authApi';
 import { mapChapterSummary, mapWorkDetailsToWork } from './utils/apiMappers';
@@ -229,28 +228,18 @@ function AppContent() {
     if (!selectedWork) return;
     setReadingStartPage(undefined);
 
-    const fallbackToMock = () => {
-      if (!import.meta.env.DEV) return;
-      const nextCap = MOCK_CHAPTERS.find(
-        (c) => c.workId === selectedWork.id && c.number === nextNumber
-      );
-      if (nextCap) {
-        setReadingChapter(nextCap);
-      }
-    };
-
-    // Tenta resolver o capítulo na obra real (API); cai no mock se indisponível.
+    // Tenta resolver o capítulo na obra real (API).
     workApi
       .getWorkBySlug(selectedWork.slug)
       .then((dto) => {
         const found = (dto.chapters ?? []).find((c) => c.chapterNumber === nextNumber);
         if (found) {
           setReadingChapter(mapChapterSummary(found, dto.id));
-        } else {
-          fallbackToMock();
         }
       })
-      .catch(() => fallbackToMock());
+      .catch((err) => {
+        console.warn('[App] Capítulo não encontrado ou erro de rede:', err);
+      });
   };
 
   const handleSwitchTab = (tab: AppTab) => {
