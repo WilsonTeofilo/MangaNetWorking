@@ -8,6 +8,7 @@ import com.manganetworking.repository.jpa.WorkRepository;
 import com.manganetworking.service.monetization.dto.CheckoutResponseDto;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
@@ -39,6 +40,7 @@ public class MercadoPagoService {
     /** Referência reflexiva mantida para compatibilidade com MockRestServiceServer nos testes legados. */
     private RestClient restClient;
 
+    @Autowired
     public MercadoPagoService(
             MercadoPagoWebhookValidator webhookValidator,
             MercadoPagoCheckoutService checkoutService,
