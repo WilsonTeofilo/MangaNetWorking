@@ -131,7 +131,7 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         if (!"POST".equalsIgnoreCase(method)) {
             return false;
         }
-        return path.startsWith(COMMENTS_PATH_PREFIX) && path.endsWith("/comments");
+        return path.startsWith(COMMENTS_PATH_PREFIX) && path.contains("/comments");
     }
 
     /** Preflight CORS e entrega de binários não contam contra o throttling de API. */

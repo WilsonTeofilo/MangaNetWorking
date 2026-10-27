@@ -227,12 +227,12 @@ export function HomePage({
       <button
         type="button"
         onClick={onPublishWork}
-        className="w-full flex items-center gap-3 border-2 border-dashed border-[#55524A] hover:border-[#FFD400] hover:bg-[#151517] px-4 py-5 text-left transition-colors"
+        className="w-full flex items-center gap-3 border-2 border-dashed border-[var(--mn-line)] hover:border-[var(--mn-yellow)] hover:bg-[var(--mn-ink-2)] px-4 py-5 text-left transition-colors"
       >
-        <PenLine size={20} className="text-[#FFD400] shrink-0" aria-hidden="true" />
+        <PenLine size={20} className="text-[var(--mn-yellow)] shrink-0" aria-hidden="true" />
         <span>
-          <span className="font-display text-lg text-[#F4EFE3] uppercase block leading-tight">{label}</span>
-          <span className="font-body text-xs text-[#A9A59A]">
+          <span className="font-display text-lg text-[var(--mn-paper)] uppercase block leading-tight">{label}</span>
+          <span className="font-body text-xs text-[var(--mn-mute)]">
             Ainda há poucas obras aqui. Publique a sua e ocupe este espaço.
           </span>
         </span>
@@ -242,10 +242,10 @@ export function HomePage({
   if (discovery.loading && discovery.hero.length === 0) {
     return (
       <div className="mn-container py-16 space-y-6" role="status" aria-label="Carregando a home">
-        <div className="h-56 bg-[#151517] animate-pulse border-2 border-[#232326]" />
+        <div className="h-56 bg-[var(--mn-ink-2)] animate-pulse border-2 border-[var(--mn-line)]" />
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, index) => (
-            <div key={index} className="aspect-[2/3] bg-[#151517] animate-pulse" />
+            <div key={index} className="aspect-[2/3] bg-[var(--mn-ink-2)] animate-pulse" />
           ))}
         </div>
       </div>
@@ -256,7 +256,7 @@ export function HomePage({
     <div className="w-full space-y-12 select-none pb-12">
       {/* 1. HERO */}
       {currentHero ? (
-        <section className="relative w-full bg-[#FFD400] text-[#0B0B0C] border-b-2 border-[#0B0B0C] mn-grain mn-cut pt-10 pb-16 overflow-hidden">
+        <section className="relative w-full bg-[var(--mn-yellow)] text-[var(--mn-ink)] border-b-2 border-[var(--mn-ink)] mn-grain mn-cut pt-10 pb-16 overflow-hidden">
           <div className="absolute inset-0 mn-halftone pointer-events-none opacity-20" />
           <div className="absolute top-0 right-0 w-80 h-full mn-stripes opacity-15 pointer-events-none" />
 
@@ -265,16 +265,16 @@ export function HomePage({
               <div className="flex items-center gap-3 flex-wrap">
                 <Sticker kind="new" label="DESTAQUE AGORA" rotate={-2} />
                 <FormatBadge format={currentHero.format} size="md" />
-                <span className="font-pixel text-[12px] tracking-wider text-[#0B0B0C] font-bold">
+                <span className="font-pixel text-[12px] tracking-wider text-[var(--mn-ink)] font-bold">
                   POR {currentHero.authorName}
                 </span>
               </div>
 
-              <h1 className="font-display text-4xl sm:text-6xl md:text-7xl leading-[1.05] pt-1.5 uppercase text-[#0B0B0C] tracking-tight">
+              <h1 className="font-display text-4xl sm:text-6xl md:text-7xl leading-[1.05] pt-1.5 uppercase text-[var(--mn-ink)] tracking-tight">
                 {currentHero.title}
               </h1>
 
-              <p className="font-body text-base sm:text-lg text-[#0B0B0C] line-clamp-3 leading-snug font-medium max-w-xl">
+              <p className="font-body text-base sm:text-lg text-[var(--mn-ink)] line-clamp-3 leading-snug font-medium max-w-xl">
                 {currentHero.synopsis || 'Sinopse em breve.'}
               </p>
 
@@ -282,7 +282,7 @@ export function HomePage({
                 <button
                   type="button"
                   onClick={() => void handleReadNow(currentHero)}
-                  className="px-6 py-3 font-display text-lg tracking-wider uppercase bg-[#0B0B0C] text-[#FFD400] border-2 border-[#0B0B0C] shadow-[4px_4px_0_#F4EFE3] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_#F4EFE3] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all cursor-pointer"
+                  className="px-6 py-3 font-display text-lg tracking-wider uppercase bg-[var(--mn-ink)] text-[var(--mn-yellow)] border-2 border-[var(--mn-ink)] shadow-[4px_4px_0_var(--mn-paper)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_var(--mn-paper)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all cursor-pointer"
                 >
                   LER AGORA
                 </button>
@@ -290,7 +290,7 @@ export function HomePage({
                 <button
                   type="button"
                   onClick={() => onSelectWork(currentHero)}
-                  className="px-6 py-3 font-display text-lg tracking-wider uppercase bg-transparent text-[#0B0B0C] border-2 border-[#0B0B0C] shadow-[4px_4px_0_#0B0B0C] hover:bg-[rgba(11,11,12,0.08)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_#0B0B0C] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all cursor-pointer"
+                  className="px-6 py-3 font-display text-lg tracking-wider uppercase bg-transparent text-[var(--mn-ink)] border-2 border-[var(--mn-ink)] shadow-[4px_4px_0_var(--mn-ink)] hover:bg-[rgba(11,11,12,0.08)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_var(--mn-ink)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all cursor-pointer"
                 >
                   VER OBRA
                 </button>
@@ -303,22 +303,22 @@ export function HomePage({
                       key={idx}
                       onClick={() => setHeroIndex(idx)}
                       aria-label={`Destaque ${idx + 1}`}
-                      className={`w-3.5 h-3.5 border-2 border-[#0B0B0C] transition-all ${
-                        heroIndex === idx ? 'bg-[#0B0B0C]' : 'bg-transparent'
+                      className={`w-3.5 h-3.5 border-2 border-[var(--mn-ink)] transition-all ${
+                        heroIndex === idx ? 'bg-[var(--mn-ink)]' : 'bg-transparent'
                       }`}
                     />
                   ))}
                   <div className="flex gap-1 ml-3">
                     <button
                       onClick={() => setHeroIndex((prev) => (prev - 1 + heroWorks.length) % heroWorks.length)}
-                      className="w-7 h-7 border-2 border-[#0B0B0C] bg-[#FFD400] flex items-center justify-center font-bold hover:bg-[#0B0B0C] hover:text-[#FFD400] transition-colors"
+                      className="w-7 h-7 border-2 border-[var(--mn-ink)] bg-[var(--mn-yellow)] flex items-center justify-center font-bold hover:bg-[var(--mn-ink)] hover:text-[var(--mn-yellow)] transition-colors"
                       aria-label="Anterior"
                     >
                       <ChevronLeft size={16} />
                     </button>
                     <button
                       onClick={() => setHeroIndex((prev) => (prev + 1) % heroWorks.length)}
-                      className="w-7 h-7 border-2 border-[#0B0B0C] bg-[#FFD400] flex items-center justify-center font-bold hover:bg-[#0B0B0C] hover:text-[#FFD400] transition-colors"
+                      className="w-7 h-7 border-2 border-[var(--mn-ink)] bg-[var(--mn-yellow)] flex items-center justify-center font-bold hover:bg-[var(--mn-ink)] hover:text-[var(--mn-yellow)] transition-colors"
                       aria-label="Próximo"
                     >
                       <ChevronRight size={16} />
@@ -329,10 +329,10 @@ export function HomePage({
             </div>
 
             <div className="relative flex justify-center lg:justify-end">
-              <div className="absolute w-56 sm:w-64 aspect-[2/3] border-2 border-[#0B0B0C] bg-[#F4EFE3] -rotate-3 translate-x-4 translate-y-3 pointer-events-none opacity-80" />
+              <div className="absolute w-56 sm:w-64 aspect-[2/3] border-2 border-[var(--mn-ink)] bg-[var(--mn-paper)] -rotate-3 translate-x-4 translate-y-3 pointer-events-none opacity-80" />
               <div
                 onClick={() => onSelectWork(currentHero)}
-                className="relative w-56 sm:w-64 aspect-[2/3] border-2 border-[#0B0B0C] shadow-[8px_8px_0_#0B0B0C] rotate-2 hover:rotate-0 transition-transform duration-150 cursor-pointer overflow-hidden z-10"
+                className="relative w-56 sm:w-64 aspect-[2/3] border-2 border-[var(--mn-ink)] shadow-[8px_8px_0_var(--mn-ink)] rotate-2 hover:rotate-0 transition-transform duration-150 cursor-pointer overflow-hidden z-10"
               >
                 <Cover src={currentHero.coverUrl} title={currentHero.title} aspectRatio="2/3" dropShadow={false} />
               </div>
@@ -341,16 +341,16 @@ export function HomePage({
         </section>
       ) : (
         <section className="mn-container pt-10">
-          <div className="border-2 border-dashed border-[#34343A] bg-[#151517] p-8 text-center space-y-3">
-            <h1 className="font-display text-3xl text-[#FFD400] uppercase">A banca está começando</h1>
-            <p className="font-body text-sm text-[#A9A59A]">
+          <div className="border-2 border-dashed border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-8 text-center space-y-3">
+            <h1 className="font-display text-3xl text-[var(--mn-yellow)] uppercase">A banca está começando</h1>
+            <p className="font-body text-sm text-[var(--mn-mute)]">
               Ainda não há obras publicadas neste formato. Enquanto isso, explore o catálogo completo.
             </p>
             {onNavigateToCatalog && (
               <button
                 type="button"
                 onClick={onNavigateToCatalog}
-                className="px-4 py-2 bg-[#FFD400] text-[#0B0B0C] font-pixel text-[12px] uppercase border-2 border-[#0B0B0C] shadow-[3px_3px_0_#0B0B0C]"
+                className="px-4 py-2 bg-[var(--mn-yellow)] text-[var(--mn-ink)] font-pixel text-[12px] uppercase border-2 border-[var(--mn-ink)] shadow-[3px_3px_0_var(--mn-ink)]"
               >
                 Ver catálogo
               </button>
@@ -360,9 +360,9 @@ export function HomePage({
       )}
 
       {/* 2. EIXO 1: FORMATO (sempre visível, com o mesmo componente do catálogo) */}
-      <section className="border-b-2 border-[#34343A] bg-[#0B0B0C] py-3 sticky top-[70px] md:top-[82px] z-30">
+      <section className="border-b-2 border-[var(--mn-line)] bg-[var(--mn-ink)] py-3 sticky top-[70px] md:top-[82px] z-30">
         <div className="mn-container flex flex-col sm:flex-row sm:items-center gap-3">
-          <span className="font-pixel text-[12px] tracking-wider uppercase text-[#A9A59A]">
+          <span className="font-pixel text-[12px] tracking-wider uppercase text-[var(--mn-mute)]">
             Ver por formato
           </span>
           <FormatSwitcher value={formato} onChange={applyFormat} />
@@ -370,7 +370,7 @@ export function HomePage({
             <button
               type="button"
               onClick={onNavigateToCatalog}
-              className="sm:ml-auto font-pixel text-[12px] text-[#FFD400] hover:underline inline-flex items-center gap-1"
+              className="sm:ml-auto font-pixel text-[12px] text-[var(--mn-yellow)] hover:underline inline-flex items-center gap-1"
             >
               CATÁLOGO COMPLETO <ArrowRight size={13} aria-hidden="true" />
             </button>
@@ -384,33 +384,33 @@ export function HomePage({
         {/* 3. CONTINUAR LENDO (dados reais de progresso) */}
         {progress && progressWork && progressChapter && (
           <section className="space-y-3 max-w-xl">
-            <h2 className="font-display text-2xl text-[#F4EFE3] uppercase tracking-wide">CONTINUAR LENDO</h2>
+            <h2 className="font-display text-2xl text-[var(--mn-paper)] uppercase tracking-wide">CONTINUAR LENDO</h2>
             <Win title="CONTINUAR_LENDO.EXE">
               <div className="flex items-center gap-4">
-                <div className="w-[68px] h-[102px] shrink-0 border border-[#34343A]">
+                <div className="w-[68px] h-[102px] shrink-0 border border-[var(--mn-line)]">
                   <Cover src={progressWork.coverUrl} title={progressWork.title} aspectRatio="2/3" dropShadow={false} />
                 </div>
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <FormatBadge format={progressWork.format} />
-                    <span className="font-pixel text-[12px] text-[#FFD400] block uppercase tracking-wider">
+                    <span className="font-pixel text-[12px] text-[var(--mn-yellow)] block uppercase tracking-wider">
                       {isLightNovel(progressWork.format)
                         ? `CAP. ${progress.chapterNumber ?? 1}`
                         : `PÁG. ${progress.page ?? 1}/${progress.totalPages ?? 1}`}
                     </span>
                   </div>
-                  <h4 className="font-display text-lg text-[#F4EFE3] truncate uppercase mt-1">
+                  <h4 className="font-display text-lg text-[var(--mn-paper)] truncate uppercase mt-1">
                     {progressWork.title}
                   </h4>
-                  <p className="font-body text-xs text-[#A9A59A] truncate">
+                  <p className="font-body text-xs text-[var(--mn-mute)] truncate">
                     {chapterLabel(progressWork.format, progress.chapterNumber ?? 1)} — {progress.chapterTitle}
                   </p>
 
                   {(progress.totalPages ?? 0) > 1 && (
-                    <div className="mt-2 h-1.5 w-full bg-[#232326] border border-[#34343A]" aria-hidden="true">
+                    <div className="mt-2 h-1.5 w-full bg-[var(--mn-line)] border border-[var(--mn-line)]" aria-hidden="true">
                       <div
-                        className="h-full bg-[#FFD400]"
+                        className="h-full bg-[var(--mn-yellow)]"
                         style={{
                           width: `${Math.min(
                             100,
@@ -426,14 +426,14 @@ export function HomePage({
                   <button
                     type="button"
                     onClick={() => onOpenChapter(progressWork, progressChapter, progress.page ?? undefined)}
-                    className="px-3.5 py-2 bg-[#FFD400] text-[#0B0B0C] font-pixel text-[12px] uppercase border-2 border-[#0B0B0C] shadow-[3px_3px_0_#0B0B0C]"
+                    className="px-3.5 py-2 bg-[var(--mn-yellow)] text-[var(--mn-ink)] font-pixel text-[12px] uppercase border-2 border-[var(--mn-ink)] shadow-[3px_3px_0_var(--mn-ink)]"
                   >
                     CONTINUAR
                   </button>
                   <button
                     type="button"
                     onClick={() => onSelectWork(progressWork)}
-                    className="px-3.5 py-1 font-pixel text-[12px] uppercase text-[#A9A59A] hover:text-[#FFD400]"
+                    className="px-3.5 py-1 font-pixel text-[12px] uppercase text-[var(--mn-mute)] hover:text-[var(--mn-yellow)]"
                   >
                     FICHA
                   </button>
@@ -445,12 +445,12 @@ export function HomePage({
 
         {/* 4. NOVOS CAPÍTULOS (agrupados por obra, até 3 capítulos por obra) */}
         <section className="space-y-4">
-          <div className="flex items-end justify-between border-b-2 border-[#34343A] pb-3">
+          <div className="flex items-end justify-between border-b-2 border-[var(--mn-line)] pb-3">
             <div>
-              <h2 className="font-display text-3xl sm:text-4xl text-[#F4EFE3] uppercase tracking-wide">
+              <h2 className="font-display text-3xl sm:text-4xl text-[var(--mn-paper)] uppercase tracking-wide">
                 NOVOS CAPÍTULOS
               </h2>
-              <span className="font-body text-xs text-[#A9A59A]">
+              <span className="font-body text-xs text-[var(--mn-mute)]">
                 Lançamentos independentes publicados direto pelos criadores
               </span>
             </div>
@@ -458,7 +458,7 @@ export function HomePage({
               <button
                 type="button"
                 onClick={onNavigateToCatalog}
-                className="font-pixel text-[12px] text-[#FFD400] hover:underline whitespace-nowrap"
+                className="font-pixel text-[12px] text-[var(--mn-yellow)] hover:underline whitespace-nowrap"
               >
                 CATÁLOGO COMPLETO →
               </button>
@@ -476,7 +476,7 @@ export function HomePage({
                   analyticsSurface="FEED"
                   analyticsEnabled={isAuthenticated}
                   footer={
-                    <ul className="space-y-1 border-t border-[#34343A] pt-1.5">
+                    <ul className="space-y-1 border-t border-[var(--mn-line)] pt-1.5">
                       {group.chapters.map((chapter) => (
                         <li key={chapter.chapterId}>
                           <button
@@ -485,7 +485,7 @@ export function HomePage({
                               event.stopPropagation();
                               openRelease(chapter);
                             }}
-                            className="w-full flex items-center justify-between gap-2 text-left font-body text-[11px] text-[#A9A59A] hover:text-[#FFD400]"
+                            className="w-full flex items-center justify-between gap-2 text-left font-body text-[11px] text-[var(--mn-mute)] hover:text-[var(--mn-yellow)]"
                           >
                             <span className="truncate">
                               {chapterLabel(chapter.format, chapter.chapterNumber)} · {chapter.chapterTitle}
@@ -501,7 +501,7 @@ export function HomePage({
             </div>
           ) : (
             coldStartCta('Publique o primeiro capítulo') ?? (
-              <p className="font-body text-sm text-[#A9A59A]">
+              <p className="font-body text-sm text-[var(--mn-mute)]">
                 Nenhum capítulo publicado neste formato ainda.
               </p>
             )
@@ -512,15 +512,15 @@ export function HomePage({
         {showMangaRail &&
           (discovery.trendingManga.length >= MIN_RAIL_SIZE ? (
             <section className="space-y-4">
-              <div className="flex items-center justify-between border-b-2 border-[#34343A] pb-3">
-                <h2 className="font-display text-3xl sm:text-4xl text-[#F4EFE3] uppercase tracking-wide">
+              <div className="flex items-center justify-between border-b-2 border-[var(--mn-line)] pb-3">
+                <h2 className="font-display text-3xl sm:text-4xl text-[var(--mn-paper)] uppercase tracking-wide">
                   MANGÁS EM ALTA
                 </h2>
                 {onNavigateToCatalog && (
                   <button
                     type="button"
                     onClick={onNavigateToCatalog}
-                    className="flex items-center gap-1 font-pixel text-[12px] text-[#FFD400] hover:underline"
+                    className="flex items-center gap-1 font-pixel text-[12px] text-[var(--mn-yellow)] hover:underline"
                   >
                     VER TODOS <ArrowRight size={13} aria-hidden="true" />
                   </button>
@@ -539,15 +539,15 @@ export function HomePage({
         {showNovelRail &&
           (discovery.trendingLightNovel.length >= MIN_RAIL_SIZE ? (
             <section className="space-y-4">
-              <div className="flex items-center justify-between border-b-2 border-[#34343A] pb-3">
-                <h2 className="font-display text-3xl sm:text-4xl text-[#F4EFE3] uppercase tracking-wide">
+              <div className="flex items-center justify-between border-b-2 border-[var(--mn-line)] pb-3">
+                <h2 className="font-display text-3xl sm:text-4xl text-[var(--mn-paper)] uppercase tracking-wide">
                   LIGHT NOVELS EM ALTA
                 </h2>
                 {onNavigateToCatalog && (
                   <button
                     type="button"
                     onClick={onNavigateToCatalog}
-                    className="flex items-center gap-1 font-pixel text-[12px] text-[#FFD400] hover:underline"
+                    className="flex items-center gap-1 font-pixel text-[12px] text-[var(--mn-yellow)] hover:underline"
                   >
                     VER TODAS <ArrowRight size={13} aria-hidden="true" />
                   </button>
@@ -566,11 +566,11 @@ export function HomePage({
         {/* 6. FEED & LANÇAMENTOS (timeline por dia) */}
         {timeline.length > 0 && (
           <section className="space-y-4">
-            <div className="border-b-2 border-[#34343A] pb-3">
-              <h2 className="font-display text-3xl sm:text-4xl text-[#F4EFE3] uppercase tracking-wide">
+            <div className="border-b-2 border-[var(--mn-line)] pb-3">
+              <h2 className="font-display text-3xl sm:text-4xl text-[var(--mn-paper)] uppercase tracking-wide">
                 LANÇAMENTOS
               </h2>
-              <span className="font-body text-xs text-[#A9A59A]">
+              <span className="font-body text-xs text-[var(--mn-mute)]">
                 Tudo o que ficou público, agrupado por dia
               </span>
             </div>
@@ -578,30 +578,30 @@ export function HomePage({
             <div className="space-y-6">
               {timeline.map(([day, releases]) => (
                 <div key={day} className="space-y-2">
-                  <h3 className="font-pixel text-[12px] uppercase tracking-wider text-[#FFD400]">{day}</h3>
-                  <ul className="divide-y divide-[#232326] border-2 border-[#232326] bg-[#151517]">
+                  <h3 className="font-pixel text-[12px] uppercase tracking-wider text-[var(--mn-yellow)]">{day}</h3>
+                  <ul className="divide-y divide-[var(--mn-line)] border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)]">
                     {releases.map((release) => (
                       <li key={release.chapterId}>
                         <button
                           type="button"
                           onClick={() => openRelease(release)}
-                          className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[#1D1D20] transition-colors"
+                          className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[var(--mn-ink)] transition-colors"
                         >
-                          <div className="w-9 h-[54px] shrink-0 border border-[#34343A] overflow-hidden">
+                          <div className="w-9 h-[54px] shrink-0 border border-[var(--mn-line)] overflow-hidden">
                             <Cover src={release.coverUrl} title={release.workTitle} aspectRatio="2/3" dropShadow={false} />
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
                               <FormatBadge format={release.format} />
-                              <span className="font-display text-sm text-[#F4EFE3] uppercase truncate">
+                              <span className="font-display text-sm text-[var(--mn-paper)] uppercase truncate">
                                 {release.workTitle}
                               </span>
                             </div>
-                            <p className="font-body text-xs text-[#A9A59A] truncate">
+                            <p className="font-body text-xs text-[var(--mn-mute)] truncate">
                               {chapterLabel(release.format, release.chapterNumber)} · {release.chapterTitle}
                             </p>
                           </div>
-                          <span className="shrink-0 font-body text-[11px] text-[#A9A59A] tabular-nums">
+                          <span className="shrink-0 font-body text-[11px] text-[var(--mn-mute)] tabular-nums">
                             {relativeTime(release.publishedAt)}
                           </span>
                         </button>
