@@ -63,8 +63,8 @@ export function BecomeWriterPage({ onBackToAccount }: { onBackToAccount: () => v
         // O navegador não recebeu o cookie novo: pede a reconexão com aviso.
         setNeedRelogin(true);
       }
-    } catch (err: any) {
-      setError(err?.message || 'Não foi possível criar o perfil de escritor.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Não foi possível criar o perfil de escritor.');
     } finally {
       setApplying(false);
     }

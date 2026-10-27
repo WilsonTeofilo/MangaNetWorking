@@ -1,5 +1,6 @@
 package com.manganetworking.repository.jpa;
 
+import com.manganetworking.domain.enums.CommentReportStatus;
 import com.manganetworking.domain.relational.CommentReportEntity;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -15,5 +16,5 @@ public interface CommentReportRepository extends JpaRepository<CommentReportEnti
     boolean existsByComment_IdAndReporter_Id(UUID commentId, UUID reporterId);
 
     @EntityGraph(attributePaths = {"comment", "comment.user", "reporter"})
-    List<CommentReportEntity> findAllByStatusOrderByCreatedAtAsc(String status, Pageable pageable);
+    List<CommentReportEntity> findAllByStatusOrderByCreatedAtAsc(CommentReportStatus status, Pageable pageable);
 }

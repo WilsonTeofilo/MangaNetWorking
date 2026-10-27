@@ -1,7 +1,10 @@
 package com.manganetworking.domain.relational;
 
+import com.manganetworking.domain.enums.CommentReportStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -40,8 +43,9 @@ public class CommentReportEntity {
     @Column(length = 500)
     private String details;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private String status = "PENDING";
+    private CommentReportStatus status = CommentReportStatus.PENDING;
 
     @Column(name = "resolution_notes", length = 500)
     private String resolutionNotes;
@@ -65,8 +69,8 @@ public class CommentReportEntity {
     public void setReason(String reason) { this.reason = reason; }
     public String getDetails() { return details; }
     public void setDetails(String details) { this.details = details; }
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
+    public CommentReportStatus getStatus() { return status; }
+    public void setStatus(CommentReportStatus status) { this.status = status; }
     public String getResolutionNotes() { return resolutionNotes; }
     public void setResolutionNotes(String resolutionNotes) { this.resolutionNotes = resolutionNotes; }
     public LocalDateTime getCreatedAt() { return createdAt; }

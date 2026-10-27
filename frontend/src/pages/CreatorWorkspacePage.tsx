@@ -110,8 +110,8 @@ export function CreatorWorkspacePage({ section = 'dashboard', onOpenPublicProfil
       await refreshSession();
       setAvatarCropSource(null);
       setSaveError(null);
-    } catch (err: any) {
-      setSaveError(err?.message || 'Não foi possível salvar o avatar.');
+    } catch (err: unknown) {
+      setSaveError(err instanceof Error ? err.message : 'Não foi possível salvar o avatar.');
     } finally {
       setIsUploadingAvatar(false);
     }
@@ -131,8 +131,8 @@ export function CreatorWorkspacePage({ section = 'dashboard', onOpenPublicProfil
       }
       setIsSaved(true);
       setTimeout(() => setIsSaved(false), 2500);
-      } catch (err: any) {
-        setSaveError(err?.message || 'Não foi possível salvar no servidor. Verifique a sessão e tente novamente.');
+      } catch (err: unknown) {
+        setSaveError(err instanceof Error ? err.message : 'Não foi possível salvar no servidor. Verifique a sessão e tente novamente.');
     } finally {
       setIsSaving(false);
     }

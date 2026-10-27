@@ -11,6 +11,7 @@ import com.manganetworking.domain.enums.WorkStatus;
 import com.manganetworking.domain.relational.UserEntity;
 import com.manganetworking.domain.relational.WorkEntity;
 import com.manganetworking.repository.jpa.ChapterRepository;
+import com.manganetworking.domain.enums.MembershipStatus;
 import com.manganetworking.repository.jpa.MembershipSubscriptionRepository;
 import com.manganetworking.repository.jpa.UserRepository;
 import com.manganetworking.service.mobile.dto.OfflineDownloadManifestDto;
@@ -86,7 +87,7 @@ public class MobileOfflineApplicationService {
             boolean isMember = false;
             if (author != null) {
                 isMember = membershipRepository.existsBySubscriberIdAndCreatorIdAndStatusAndExpiresAtAfter(
-                        currentUserId, author.getId(), "ACTIVE", LocalDateTime.now()
+                        currentUserId, author.getId(), MembershipStatus.ACTIVE, LocalDateTime.now()
                 );
             }
 

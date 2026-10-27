@@ -1,4 +1,5 @@
 package com.manganetworking.service.work;
+import com.manganetworking.domain.enums.CommentStatus;
 import com.manganetworking.domain.enums.WorkStatus;
 
 import com.manganetworking.config.exception.AccessDeniedException;
@@ -109,14 +110,14 @@ class WorkCommentServiceTest {
         comment.setChapter(chapter);
         comment.setUser(owner);
         comment.setBody("comentário");
-        comment.setStatus("VISIBLE");
+        comment.setStatus(CommentStatus.VISIBLE);
 
         when(commentRepository.findByIdAndWorkId(commentId, workId)).thenReturn(Optional.of(comment));
-        when(commentRepository.countByParentIdAndStatus(commentId, "VISIBLE")).thenReturn(1L);
+        when(commentRepository.countByParentIdAndStatus(commentId, CommentStatus.VISIBLE)).thenReturn(1L);
 
         service.deleteComment(userId, workId, commentId);
 
-        assertThat(comment.getStatus()).isEqualTo("DELETED");
+        assertThat(comment.getStatus()).isEqualTo(CommentStatus.DELETED);
         assertThat(comment.getBody()).isEqualTo("[comentário excluído]");
         assertThat(comment.getDeletedAt()).isNotNull();
         verify(workRepository).decrementTotalComments(workId);
@@ -131,10 +132,10 @@ class WorkCommentServiceTest {
         comment.setWork(work);
         comment.setUser(owner);
         comment.setBody("comentário");
-        comment.setStatus("VISIBLE");
+        comment.setStatus(CommentStatus.VISIBLE);
 
         when(commentRepository.findByIdAndWorkId(commentId, workId)).thenReturn(Optional.of(comment));
-        when(commentRepository.countByParentIdAndStatus(commentId, "VISIBLE")).thenReturn(0L);
+        when(commentRepository.countByParentIdAndStatus(commentId, CommentStatus.VISIBLE)).thenReturn(0L);
 
         service.deleteComment(userId, workId, commentId);
 
@@ -150,7 +151,7 @@ class WorkCommentServiceTest {
         comment.setWork(work);
         comment.setUser(owner);
         comment.setBody("comentário");
-        comment.setStatus("VISIBLE");
+        comment.setStatus(CommentStatus.VISIBLE);
         comment.setLikesCount(5L);
 
         when(commentRepository.findByIdAndWorkId(commentId, workId)).thenReturn(Optional.of(comment));
@@ -175,7 +176,7 @@ class WorkCommentServiceTest {
         comment.setWork(work);
         comment.setUser(owner);
         comment.setBody("comentário");
-        comment.setStatus("VISIBLE");
+        comment.setStatus(CommentStatus.VISIBLE);
 
         when(commentRepository.findByIdAndWorkId(commentId, workId)).thenReturn(Optional.of(comment));
 

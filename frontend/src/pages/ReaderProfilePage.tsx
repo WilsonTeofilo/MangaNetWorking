@@ -145,21 +145,21 @@ export function ReaderProfilePage({ onSelectWork }: ReaderProfilePageProps) {
     <div className="mn-container py-8 space-y-10 select-none pb-20">
       
       {/* 1. Header do Perfil do Leitor (Novo Design System) */}
-      <div className="border-2 border-[#34343A] bg-[#151517] shadow-[6px_6px_0_#F4EFE3] p-6 sm:p-8 space-y-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 border-b-2 border-[#34343A] pb-6">
+      <div className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] shadow-[6px_6px_0_var(--mn-paper)] p-6 sm:p-8 space-y-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 border-b-2 border-[var(--mn-line)] pb-6">
           
           {/* Avatar com Borda de Adesivo Off-White Ampliada (~30px maior) */}
           <div className="flex items-center gap-6">
-            <div className="relative p-1.5 bg-[#F4EFE3] border-[3px] border-[#0B0B0C] shadow-[6px_6px_0_#FFD400] -rotate-1 shrink-0">
+            <div className="relative p-1.5 bg-[var(--mn-paper)] border-[3px] border-[var(--mn-ink)] shadow-[6px_6px_0_var(--mn-yellow)] -rotate-1 shrink-0">
               <img
                 src={user.avatarUrl}
                 alt={user.name}
-                className="w-24 h-24 sm:w-28 sm:h-28 object-cover border-2 border-[#0B0B0C]"
+                className="w-24 h-24 sm:w-28 sm:h-28 object-cover border-2 border-[var(--mn-ink)]"
               />
             </div>
 
             <div className="space-y-2">
-              <label className={`inline-flex cursor-pointer items-center gap-2 border border-[#34343A] px-3 py-2 font-pixel text-[10px] text-[#F4EFE3] ${!isAuthenticated || isUploadingAvatar ? 'opacity-50' : ''}`}>
+              <label className={`inline-flex cursor-pointer items-center gap-2 border border-[var(--mn-line)] px-3 py-2 font-pixel text-[10px] text-[var(--mn-paper)] ${!isAuthenticated || isUploadingAvatar ? 'opacity-50' : ''}`}>
                 <Upload size={12} />
                 {isUploadingAvatar ? 'ENVIANDO…' : 'TROCAR AVATAR'}
                 <input type="file" accept="image/jpeg,image/png" disabled={!isAuthenticated || isUploadingAvatar} onChange={handleAvatarUpload} className="sr-only" />
@@ -169,25 +169,25 @@ export function ReaderProfilePage({ onSelectWork }: ReaderProfilePageProps) {
 
             <div className="space-y-0.5">
               <div className="flex items-center gap-2">
-                <span className="font-pixel text-[12px] tracking-widest text-[#FFD400] block uppercase font-bold">
+                <span className="font-pixel text-[12px] tracking-widest text-[var(--mn-yellow)] block uppercase font-bold">
                   LEITOR OFICIAL
                 </span>
                 {user.isVip && (
-                  <span className="px-1.5 py-0.5 bg-[#FFD400] text-[#0B0B0C] font-pixel text-[12px] uppercase font-bold flex items-center gap-1">
-                    <Crown size={10} className="fill-[#0B0B0C]" />
+                  <span className="px-1.5 py-0.5 bg-[var(--mn-yellow)] text-[var(--mn-ink)] font-pixel text-[12px] uppercase font-bold flex items-center gap-1">
+                    <Crown size={10} className="fill-[var(--mn-ink)]" />
                     VIP
                   </span>
                 )}
               </div>
-              <h1 className="font-display text-3xl sm:text-4xl text-[#F4EFE3] uppercase">
+              <h1 className="font-display text-3xl sm:text-4xl text-[var(--mn-paper)] uppercase">
                 {user.name}
               </h1>
             </div>
           </div>
 
           {/* Switch de Visibilidade Oficial (Conformidade LGPD) */}
-          <div className="flex items-center gap-3 bg-[#0B0B0C] border-2 border-[#34343A] p-2">
-            <span className="font-pixel text-[12px] text-[#A9A59A] uppercase tracking-wider pl-1">
+          <div className="flex items-center gap-3 bg-[var(--mn-ink)] border-2 border-[var(--mn-line)] p-2">
+            <span className="font-pixel text-[12px] text-[var(--mn-mute)] uppercase tracking-wider pl-1">
               VISIBILIDADE:
             </span>
             <button
@@ -200,8 +200,8 @@ export function ReaderProfilePage({ onSelectWork }: ReaderProfilePageProps) {
                 : `Perfil ${isPublic ? 'público' : 'privado'}`}
               className={`px-3 py-1 font-pixel text-[12px] tracking-wider uppercase border-2 transition-all flex items-center gap-1.5 ${
                 isPublic === true
-                  ? 'bg-[#FFD400] text-[#0B0B0C] border-[#0B0B0C] shadow-[2px_2px_0_#0B0B0C]'
-                  : 'bg-[#212125] text-[#F4EFE3] border-[#34343A]'
+                  ? 'bg-[var(--mn-yellow)] text-[var(--mn-ink)] border-[var(--mn-ink)] shadow-[2px_2px_0_var(--mn-ink)]'
+                  : 'bg-[var(--mn-ink-3)] text-[var(--mn-paper)] border-[var(--mn-line)]'
               }`}
             >
               {isPublic === true ? <Globe size={12} /> : <Lock size={12} />}
@@ -217,10 +217,10 @@ export function ReaderProfilePage({ onSelectWork }: ReaderProfilePageProps) {
         {/* 2. Destaque Monumental: 1 Número de Destaque Oficial */}
         <div className="flex flex-col sm:flex-row sm:items-baseline gap-4 pt-2">
           <div className="flex items-baseline gap-3">
-            <span className="font-display text-6xl sm:text-7xl text-[#FFD400] leading-none tabular-nums">
+            <span className="font-display text-6xl sm:text-7xl text-[var(--mn-yellow)] leading-none tabular-nums">
               {likedWorks.length}
             </span>
-            <span className="font-display text-2xl text-[#F4EFE3] uppercase tracking-wider">
+            <span className="font-display text-2xl text-[var(--mn-paper)] uppercase tracking-wider">
               OBRAS CURTIDAS
             </span>
           </div>
@@ -228,7 +228,7 @@ export function ReaderProfilePage({ onSelectWork }: ReaderProfilePageProps) {
         </div>
 
         {/* Texto de Apoio de Privacidade LGPD */}
-        <p className="font-body text-xs text-[#A9A59A] border-t border-[#34343A] pt-4 leading-relaxed">
+        <p className="font-body text-xs text-[var(--mn-mute)] border-t border-[var(--mn-line)] pt-4 leading-relaxed">
           Em conformidade com a LGPD, seu perfil só fica visível publicamente
           para outros leitores quando a opção "Público" estiver selecionada. Seus
           dados estão protegidos.
@@ -236,24 +236,24 @@ export function ReaderProfilePage({ onSelectWork }: ReaderProfilePageProps) {
       </div>
 
       {/* 3. Assinatura VIP MangaNetWorking */}
-      <section className="border-2 border-[#FFD400] bg-[#151517] p-6 space-y-4 shadow-[4px_4px_0_#FFD400]">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#34343A] pb-4">
+      <section className="border-2 border-[var(--mn-yellow)] bg-[var(--mn-ink-2)] p-6 space-y-4 shadow-[4px_4px_0_var(--mn-yellow)]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[var(--mn-line)] pb-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-[#FFD400] text-[#0B0B0C] border-2 border-[#0B0B0C]">
-              <Crown size={22} className="fill-[#0B0B0C]" />
+            <div className="p-2 bg-[var(--mn-yellow)] text-[var(--mn-ink)] border-2 border-[var(--mn-ink)]">
+              <Crown size={22} className="fill-[var(--mn-ink)]" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-display text-2xl text-[#F4EFE3] uppercase">
+                <h3 className="font-display text-2xl text-[var(--mn-paper)] uppercase">
                   ASSINATURA VIP DA PLATAFORMA
                 </h3>
                 {user.isVip && (
-                  <span className="px-2 py-0.5 bg-[#3DDC84] text-[#0B0B0C] font-pixel text-[12px] uppercase font-bold">
+                  <span className="px-2 py-0.5 bg-[var(--mn-ok)] text-[var(--mn-ink)] font-pixel text-[12px] uppercase font-bold">
                     ATIVO
                   </span>
                 )}
               </div>
-              <p className="font-body text-xs text-[#A9A59A]">
+              <p className="font-body text-xs text-[var(--mn-mute)]">
                 {user.isVip
                   ? user.vipExpiresAt
                     ? `Válido até ${new Date(user.vipExpiresAt).toLocaleDateString('pt-BR')} · sem anúncios`
@@ -265,7 +265,7 @@ export function ReaderProfilePage({ onSelectWork }: ReaderProfilePageProps) {
 
           <div>
             {user.isVip ? (
-              <div className="flex items-center gap-2 text-[#3DDC84] font-pixel text-[12px] uppercase">
+              <div className="flex items-center gap-2 text-[var(--mn-ok)] font-pixel text-[12px] uppercase">
                 <CheckCircle2 size={16} />
                 <span>BENEFÍCIOS ATIVOS</span>
               </div>
@@ -282,26 +282,26 @@ export function ReaderProfilePage({ onSelectWork }: ReaderProfilePageProps) {
           </div>
         </div>
 
-        <p className="font-body text-xs text-[#A9A59A] leading-relaxed">
+        <p className="font-body text-xs text-[var(--mn-mute)] leading-relaxed">
           O VIP MangaNetWorking remove 100% da publicidade na plataforma e habilita o download de capítulos no futuro app móvel. <strong>Importante:</strong> Esta assinatura apoia a plataforma e não substitui os Clubes de Membros individuais dos criadores, mantendo os 83% de repasse líquido para os quadrinistas independentes.
         </p>
       </section>
 
       {/* 4. Obras Favoritadas pelo Leitor */}
       <section className="space-y-4">
-        <div className="flex items-center justify-between border-b-2 border-[#34343A] pb-3">
-          <h2 className="font-display text-2xl sm:text-3xl text-[#F4EFE3] uppercase tracking-wide flex items-center gap-2">
-            <Heart size={20} className="fill-[#FFD400] text-[#FFD400]" />
+        <div className="flex items-center justify-between border-b-2 border-[var(--mn-line)] pb-3">
+          <h2 className="font-display text-2xl sm:text-3xl text-[var(--mn-paper)] uppercase tracking-wide flex items-center gap-2">
+            <Heart size={20} className="fill-[var(--mn-yellow)] text-[var(--mn-yellow)]" />
             OBRAS NA BANCA DO LEITOR
           </h2>
-          <span className="font-pixel text-[12px] text-[#FFD400] tabular-nums">
+          <span className="font-pixel text-[12px] text-[var(--mn-yellow)] tabular-nums">
             {likedWorks.length} TÍTULOS
           </span>
         </div>
 
         {likedWorks.length === 0 ? (
-          <div className="p-8 text-center border-2 border-dashed border-[#34343A] bg-[#151517] space-y-2">
-            <p className="font-body text-sm text-[#A9A59A]">
+          <div className="p-8 text-center border-2 border-dashed border-[var(--mn-line)] bg-[var(--mn-ink-2)] space-y-2">
+            <p className="font-body text-sm text-[var(--mn-mute)]">
               Você ainda não curtiu nenhum mangá. Explore o Catálogo para favoritar seus títulos favoritos.
             </p>
           </div>
@@ -322,15 +322,15 @@ export function ReaderProfilePage({ onSelectWork }: ReaderProfilePageProps) {
       </section>
 
       {/* 5. Direitos do Titular LGPD (Ações Transparentes) */}
-      <section className="border-2 border-[#34343A] bg-[#151517] p-6 space-y-4">
-        <div className="flex items-center gap-2 border-b border-[#34343A] pb-3">
-          <Shield size={18} className="text-[#FFD400]" />
-          <h3 className="font-display text-xl text-[#F4EFE3] uppercase">
+      <section className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-6 space-y-4">
+        <div className="flex items-center gap-2 border-b border-[var(--mn-line)] pb-3">
+          <Shield size={18} className="text-[var(--mn-yellow)]" />
+          <h3 className="font-display text-xl text-[var(--mn-paper)] uppercase">
             PRIVACIDADE E DADOS DO TITULAR (LGPD)
           </h3>
         </div>
 
-        <p className="font-body text-xs text-[#A9A59A] leading-relaxed">
+        <p className="font-body text-xs text-[var(--mn-mute)] leading-relaxed">
           Nos termos da Lei Geral de Proteção de Dados (Lei nº 13.709/2018), você
           tem o direito de solicitar a exportação completa de todos os seus dados
           armazenados ou a exclusão irreversível da sua conta.

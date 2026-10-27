@@ -1,5 +1,6 @@
 package com.manganetworking.repository.jpa;
 
+import com.manganetworking.domain.enums.MembershipStatus;
 import com.manganetworking.domain.relational.MembershipSubscriptionEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -18,7 +19,7 @@ public interface MembershipSubscriptionRepository extends JpaRepository<Membersh
     boolean existsBySubscriberIdAndCreatorIdAndStatusAndExpiresAtAfter(
         UUID subscriberId, 
         UUID creatorId, 
-        String status, 
+        MembershipStatus status, 
         LocalDateTime now
     );
 
@@ -26,7 +27,7 @@ public interface MembershipSubscriptionRepository extends JpaRepository<Membersh
     @Query("""
         select s.subscriber.id from MembershipSubscriptionEntity s
         where s.creator.id = :creatorId
-          and s.status = 'ACTIVE'
+          and s.status = com.manganetworking.domain.enums.MembershipStatus.ACTIVE
           and s.expiresAt > :now
         """)
     Set<UUID> findActiveSubscriberIds(

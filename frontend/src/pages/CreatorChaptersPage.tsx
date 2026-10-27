@@ -144,8 +144,8 @@ export function CreatorChaptersPage() {
       setChapters((current) => current.filter((item) => item.chapterNumber !== chapter.chapterNumber));
       setEditing(null);
       reloadWorks();
-    } catch (err: any) {
-      setError(err?.message || 'Não foi possível excluir o capítulo.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Não foi possível excluir o capítulo.');
     }
   };
 

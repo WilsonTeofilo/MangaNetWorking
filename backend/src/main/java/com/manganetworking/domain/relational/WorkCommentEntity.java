@@ -1,7 +1,10 @@
 package com.manganetworking.domain.relational;
 
+import com.manganetworking.domain.enums.CommentStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -52,8 +55,9 @@ public class WorkCommentEntity {
     private Long likesCount = 0L;
 
     /** VISIBLE, DELETED (lógico, preserva respostas) ou HIDDEN (moderação). */
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private String status = "VISIBLE";
+    private CommentStatus status = CommentStatus.VISIBLE;
 
     @Column(name = "edited_at")
     private LocalDateTime editedAt;
@@ -82,13 +86,13 @@ public class WorkCommentEntity {
     public void setParent(WorkCommentEntity parent) { this.parent = parent; }
     public Long getLikesCount() { return likesCount; }
     public void setLikesCount(Long likesCount) { this.likesCount = likesCount; }
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
+    public CommentStatus getStatus() { return status; }
+    public void setStatus(CommentStatus status) { this.status = status; }
     public LocalDateTime getEditedAt() { return editedAt; }
     public void setEditedAt(LocalDateTime editedAt) { this.editedAt = editedAt; }
     public LocalDateTime getDeletedAt() { return deletedAt; }
     public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
     public LocalDateTime getCreatedAt() { return createdAt; }
-    public boolean isVisible() { return "VISIBLE".equalsIgnoreCase(status); }
-    public boolean isDeleted() { return "DELETED".equalsIgnoreCase(status); }
+    public boolean isVisible() { return status == CommentStatus.VISIBLE; }
+    public boolean isDeleted() { return status == CommentStatus.DELETED; }
 }

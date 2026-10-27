@@ -5,6 +5,9 @@ import com.manganetworking.domain.relational.ChapterEntity;
 import com.manganetworking.domain.relational.CommentReportEntity;
 import com.manganetworking.domain.relational.UserEntity;
 import com.manganetworking.domain.relational.WorkCommentEntity;
+import com.manganetworking.domain.enums.CommentReportStatus;
+import com.manganetworking.domain.enums.CommentStatus;
+import com.manganetworking.domain.enums.MembershipStatus;
 import com.manganetworking.domain.enums.WorkStatus;
 import com.manganetworking.domain.relational.WorkEntity;
 import com.manganetworking.repository.jpa.ChapterRepository;
@@ -54,7 +57,7 @@ public class WorkCommentService {
     private static final int MIN_PAGE_SIZE = 1;
     private static final int MAX_COMMENTS_PER_MINUTE = 5;
     private static final String DELETED_BODY = "[comentário excluído]";
-    private static final List<String> PUBLIC_STATUSES = List.of("VISIBLE", "DELETED");
+    private static final List<CommentStatus> PUBLIC_STATUSES = List.of(CommentStatus.VISIBLE, CommentStatus.DELETED);
 
     private final WorkCommentRepository commentRepository;
     private final CommentLikeRepository commentLikeRepository;
@@ -255,10 +258,10 @@ public class WorkCommentService {
             return;
         }
         boolean hasVisibleReplies = commentRepository
-                .countByParentIdAndStatus(commentId, "VISIBLE") > 0;
+                .countByParentIdAndStatus(commentId, CommentStatus.VISIBLE) > 0;
         if (hasVisibleReplies) {
             // Preserva a conversa: o comentário raiz vira um marcador e as respostas continuam.
-            comment.setStatus("DELETED");
+            comment.setStatus(CommentStatus.DELETED);
             comment.setBody(DELETED_BODY);
             comment.setDeletedAt(LocalDateTime.now());
             commentRepository.save(comment);
@@ -267,7 +270,7 @@ public class WorkCommentService {
             WorkCommentEntity parent = comment.getParent();
             commentRepository.delete(comment);
             if (parent != null && !parent.isVisible()
-                    && commentRepository.countByParentIdAndStatus(parent.getId(), "VISIBLE") == 0) {
+                    && commentRepository.countByParentIdAndStatus(parent.getId(), CommentStatus.VISIBLE) == 0) {
                 commentRepository.delete(parent);
             }
         }
@@ -344,7 +347,7 @@ public class WorkCommentService {
     @Transactional(readOnly = true)
     public List<CommentReportResponseDto> listPendingReports() {
         return commentReportRepository
-                .findAllByStatusOrderByCreatedAtAsc("PENDING", PageRequest.of(0, 100))
+                .findAllByStatusOrderByCreatedAtAsc(CommentReportStatus.PENDING, PageRequest.of(0, 100))
                 .stream()
                 .map(this::toReportResponse)
                 .toList();
@@ -354,7 +357,7 @@ public class WorkCommentService {
     public void moderateReport(UUID reportId, String action, String notes) {
         CommentReportEntity report = commentReportRepository.findById(reportId)
                 .orElseThrow(() -> new ResourceNotFoundException("Denúncia não encontrada"));
-        if (!"PENDING".equalsIgnoreCase(report.getStatus())) {
+        if (report.getStatus() != CommentReportStatus.PENDING) {
             throw new IllegalArgumentException("Esta denúncia já foi analisada.");
         }
         String normalized = action == null ? "" : action.trim().toUpperCase();
@@ -365,15 +368,15 @@ public class WorkCommentService {
         if ("HIDE".equals(normalized)) {
             WorkCommentEntity comment = report.getComment();
             if (comment != null && comment.isVisible()) {
-                comment.setStatus("HIDDEN");
+                comment.setStatus(CommentStatus.HIDDEN);
                 comment.setBody(DELETED_BODY);
                 comment.setDeletedAt(LocalDateTime.now());
                 commentRepository.save(comment);
                 decrementCommentCounters(comment);
             }
-            report.setStatus("RESOLVED");
+            report.setStatus(CommentReportStatus.RESOLVED);
         } else {
-            report.setStatus("DISMISSED");
+            report.setStatus(CommentReportStatus.DISMISSED);
         }
         report.setResolutionNotes(notes == null ? null : sanitizeShortText(notes, 500));
         report.setResolvedAt(LocalDateTime.now());
@@ -429,7 +432,7 @@ public class WorkCommentService {
             return false;
         }
         return membershipSubscriptionRepository.existsBySubscriberIdAndCreatorIdAndStatusAndExpiresAtAfter(
-                userId, work.getAuthor().getId(), "ACTIVE", LocalDateTime.now());
+                userId, work.getAuthor().getId(), MembershipStatus.ACTIVE, LocalDateTime.now());
     }
 
     private Set<UUID> likedCommentIds(UUID viewerId, Collection<WorkCommentEntity> comments) {
@@ -496,7 +499,7 @@ public class WorkCommentService {
                 report.getReporter() != null ? report.getReporter().getUsername() : "",
                 report.getReason(),
                 report.getDetails(),
-                report.getStatus(),
+                report.getStatus() != null ? report.getStatus().name() : null,
                 report.getCreatedAt());
     }
 }

@@ -1,5 +1,6 @@
 package com.manganetworking.repository.jpa;
 
+import com.manganetworking.domain.enums.CommentStatus;
 import com.manganetworking.domain.relational.WorkCommentEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -17,9 +18,6 @@ import java.util.UUID;
 
 @Repository
 public interface WorkCommentRepository extends JpaRepository<WorkCommentEntity, UUID> {
-
-    String VISIBLE = "VISIBLE";
-    String DELETED = "DELETED";
 
     Optional<WorkCommentEntity> findByIdAndWorkId(UUID id, UUID workId);
 
@@ -78,24 +76,24 @@ public interface WorkCommentRepository extends JpaRepository<WorkCommentEntity, 
             Pageable pageable);
 
     List<WorkCommentEntity> findByParentIdAndStatusInOrderByCreatedAtAscIdAsc(
-            UUID parentId, Collection<String> statuses);
+            UUID parentId, Collection<CommentStatus> statuses);
 
     List<WorkCommentEntity> findByParentIdInAndStatusInOrderByParentIdAscCreatedAtAscIdAsc(
-            Collection<UUID> parentIds, Collection<String> statuses);
+            Collection<UUID> parentIds, Collection<CommentStatus> statuses);
 
-    long countByParentIdAndStatus(UUID parentId, String status);
+    long countByParentIdAndStatus(UUID parentId, CommentStatus status);
 
-    long countByWorkIdAndParentIsNullAndStatusIn(UUID workId, Collection<String> statuses);
+    long countByWorkIdAndParentIsNullAndStatusIn(UUID workId, Collection<CommentStatus> statuses);
 
     long countByWorkIdAndChapterIdAndParentIsNullAndStatusIn(
-            UUID workId, UUID chapterId, Collection<String> statuses);
+            UUID workId, UUID chapterId, Collection<CommentStatus> statuses);
 
     long countByUserIdAndCreatedAtAfter(UUID userId, LocalDateTime after);
 
     @Query("""
             select r.parent.id, count(r)
             from WorkCommentEntity r
-            where r.parent.id in :parentIds and r.status = 'VISIBLE'
+            where r.parent.id in :parentIds and r.status = com.manganetworking.domain.enums.CommentStatus.VISIBLE
             group by r.parent.id
             """)
     List<Object[]> countVisibleRepliesByParentIds(@Param("parentIds") Collection<UUID> parentIds);

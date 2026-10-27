@@ -64,22 +64,22 @@ export function ModerationBackofficePage({ onBack }: ModerationBackofficePagePro
   return (
     <div className="mn-container py-8 space-y-8 select-none pb-24">
       {/* Header da Moderação */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b-2 border-[#34343A] pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b-2 border-[var(--mn-line)] pb-4">
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={onBack}
-            className="p-2 bg-[#151517] border-2 border-[#34343A] text-[#A9A59A] hover:text-[#FFD400] hover:border-[#FFD400] transition-colors"
+            className="p-2 bg-[var(--mn-ink-2)] border-2 border-[var(--mn-line)] text-[var(--mn-mute)] hover:text-[var(--mn-yellow)] hover:border-[var(--mn-yellow)] transition-colors"
           >
             <ArrowLeft size={18} />
           </button>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-pixel text-[12px] uppercase tracking-widest text-[#E8402F] font-bold">
+              <span className="font-pixel text-[12px] uppercase tracking-widest text-[var(--mn-red)] font-bold">
                 CANAL RESTRITO DE INVESTIGAÇÃO
               </span>
             </div>
-            <h1 className="font-display text-3xl sm:text-4xl text-[#F4EFE3] uppercase">
+            <h1 className="font-display text-3xl sm:text-4xl text-[var(--mn-paper)] uppercase">
               MESA DE MODERAÇÃO EDITORIAL
             </h1>
           </div>
@@ -99,13 +99,13 @@ export function ModerationBackofficePage({ onBack }: ModerationBackofficePagePro
       </div>
 
       {loadError && (
-        <div role="alert" className="p-4 bg-[#E8402F] text-[#F4EFE3] border-2 border-[#0B0B0C] font-body text-sm">
+        <div role="alert" className="p-4 bg-[var(--mn-red)] text-[var(--mn-paper)] border-2 border-[var(--mn-ink)] font-body text-sm">
           {loadError}
         </div>
       )}
 
       {actionMessage && (
-        <div role={actionError ? 'alert' : 'status'} className={`p-4 border-2 border-[#0B0B0C] shadow-[4px_4px_0_#0B0B0C] font-display text-sm uppercase flex items-center gap-2 ${actionError ? 'bg-[#E8402F] text-[#F4EFE3]' : 'bg-[#FFD400] text-[#0B0B0C]'}`}>
+        <div role={actionError ? 'alert' : 'status'} className={`p-4 border-2 border-[var(--mn-ink)] shadow-[4px_4px_0_var(--mn-ink)] font-display text-sm uppercase flex items-center gap-2 ${actionError ? 'bg-[var(--mn-red)] text-[var(--mn-paper)]' : 'bg-[var(--mn-yellow)] text-[var(--mn-ink)]'}`}>
           {actionError ? <AlertTriangle size={18} /> : <CheckCircle2 size={18} />}
           <span>{actionMessage}</span>
         </div>
@@ -113,75 +113,75 @@ export function ModerationBackofficePage({ onBack }: ModerationBackofficePagePro
 
       {/* Estatísticas Rápidas */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="border-2 border-[#34343A] bg-[#151517] p-4">
-          <span className="font-pixel text-[12px] text-[#A9A59A] uppercase block">DENÚNCIAS PENDENTES</span>
-          <span className="font-display text-3xl text-[#FFD400]">{reports.length}</span>
+        <div className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-4">
+          <span className="font-pixel text-[12px] text-[var(--mn-mute)] uppercase block">DENÚNCIAS PENDENTES</span>
+          <span className="font-display text-3xl text-[var(--mn-yellow)]">{reports.length}</span>
         </div>
-        <div className="border-2 border-[#E8402F] bg-[#151517] p-4">
-          <span className="font-pixel text-[12px] text-[#E8402F] uppercase block">PIRATARIA & SCANLATION</span>
-          <span className="font-display text-3xl text-[#E8402F]">
+        <div className="border-2 border-[var(--mn-red)] bg-[var(--mn-ink-2)] p-4">
+          <span className="font-pixel text-[12px] text-[var(--mn-red)] uppercase block">PIRATARIA & SCANLATION</span>
+          <span className="font-display text-3xl text-[var(--mn-red)]">
             {reports.filter(r => r.reason.includes('PIRACY') || r.reason.includes('COPYRIGHT')).length}
           </span>
         </div>
-        <div className="border-2 border-[#34343A] bg-[#151517] p-4">
-          <span className="font-pixel text-[12px] text-[#A9A59A] uppercase block">SLA DE RESPOSTA</span>
-          <span className="font-display text-3xl text-[#3DDC84]">&lt; 24H</span>
+        <div className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-4">
+          <span className="font-pixel text-[12px] text-[var(--mn-mute)] uppercase block">SLA DE RESPOSTA</span>
+          <span className="font-display text-3xl text-[var(--mn-ok)]">&lt; 24H</span>
         </div>
       </div>
 
       {/* Lista de Casos em Triagem */}
       <div className="space-y-4">
-        <h2 className="font-display text-xl text-[#F4EFE3] uppercase flex items-center gap-2">
-          <ShieldAlert size={18} className="text-[#E8402F]" />
+        <h2 className="font-display text-xl text-[var(--mn-paper)] uppercase flex items-center gap-2">
+          <ShieldAlert size={18} className="text-[var(--mn-red)]" />
           <span>FILA DE INVESTIGAÇÃO DE OBRAS</span>
         </h2>
 
-        {isLoading && <p role="status" className="font-body text-sm text-[#A9A59A]">Carregando a fila...</p>}
+        {isLoading && <p role="status" className="font-body text-sm text-[var(--mn-mute)]">Carregando a fila...</p>}
         {reports.length === 0 && !isLoading && !loadError ? (
-          <div className="p-10 border-2 border-dashed border-[#34343A] text-center space-y-2 bg-[#151517]">
-            <CheckCircle2 size={32} className="text-[#3DDC84] mx-auto" />
-            <h4 className="font-display text-lg text-[#F4EFE3] uppercase">NENHUMA DENÚNCIA PENDENTE</h4>
-            <p className="font-body text-xs text-[#A9A59A]">A fila está vazia no momento; novas denúncias aparecerão aqui.</p>
+          <div className="p-10 border-2 border-dashed border-[var(--mn-line)] text-center space-y-2 bg-[var(--mn-ink-2)]">
+            <CheckCircle2 size={32} className="text-[var(--mn-ok)] mx-auto" />
+            <h4 className="font-display text-lg text-[var(--mn-paper)] uppercase">NENHUMA DENÚNCIA PENDENTE</h4>
+            <p className="font-body text-xs text-[var(--mn-mute)]">A fila está vazia no momento; novas denúncias aparecerão aqui.</p>
           </div>
         ) : (
           <div className="space-y-4">
             {reports.map((rep) => (
               <div
                 key={rep.id}
-                className="border-2 border-[#34343A] bg-[#151517] p-5 shadow-[4px_4px_0_#34343A] flex flex-col md:flex-row gap-6 items-start justify-between"
+                className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-5 shadow-[4px_4px_0_var(--mn-line)] flex flex-col md:flex-row gap-6 items-start justify-between"
               >
                 <div className="flex gap-4 items-start">
                   {rep.workCoverUrl && (
                     <img
                       src={rep.workCoverUrl}
                       alt={rep.workTitle}
-                      className="w-16 h-24 object-cover border-2 border-[#0B0B0C] shrink-0"
+                      className="w-16 h-24 object-cover border-2 border-[var(--mn-ink)] shrink-0"
                     />
                   )}
                   <div className="space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="px-2 py-0.5 bg-[#E8402F] text-[#F4EFE3] font-pixel text-[12px] uppercase font-bold">
+                      <span className="px-2 py-0.5 bg-[var(--mn-red)] text-[var(--mn-paper)] font-pixel text-[12px] uppercase font-bold">
                         {rep.reason}
                       </span>
                       {rep.chapterNumber && (
-                        <span className="px-2 py-0.5 bg-[#0B0B0C] border border-[#34343A] text-[#FFD400] font-pixel text-[12px]">
+                        <span className="px-2 py-0.5 bg-[var(--mn-ink)] border border-[var(--mn-line)] text-[var(--mn-yellow)] font-pixel text-[12px]">
                           CAP. #{rep.chapterNumber}
                         </span>
                       )}
-                      <span className="font-body text-[12px] text-[#A9A59A]">
+                      <span className="font-body text-[12px] text-[var(--mn-mute)]">
                         Recebido em {new Date(rep.createdAt).toLocaleString('pt-BR')}
                       </span>
                     </div>
 
-                    <h3 className="font-display text-2xl text-[#F4EFE3] uppercase">
+                    <h3 className="font-display text-2xl text-[var(--mn-paper)] uppercase">
                       {rep.workTitle}
                     </h3>
 
-                    <div className="bg-[#0B0B0C] border border-[#34343A] p-3 max-w-2xl">
-                      <span className="font-pixel text-[12px] text-[#A9A59A] uppercase block mb-1">
+                    <div className="bg-[var(--mn-ink)] border border-[var(--mn-line)] p-3 max-w-2xl">
+                      <span className="font-pixel text-[12px] text-[var(--mn-mute)] uppercase block mb-1">
                         EVIDÊNCIAS APRESENTADAS PELO DENUNCIANTE:
                       </span>
-                      <p className="font-body text-xs text-[#F4EFE3] leading-relaxed break-words">
+                      <p className="font-body text-xs text-[var(--mn-paper)] leading-relaxed break-words">
                         {rep.description}
                       </p>
                     </div>

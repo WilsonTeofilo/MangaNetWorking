@@ -1,6 +1,18 @@
 package com.manganetworking.domain.relational;
 
-import jakarta.persistence.*;
+import com.manganetworking.domain.enums.MembershipStatus;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -35,8 +47,9 @@ public class MembershipSubscriptionEntity {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal creatorNetBrl; // 83%
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private String status = "ACTIVE"; // ACTIVE, CANCELLED, EXPIRED
+    private MembershipStatus status = MembershipStatus.ACTIVE; // ACTIVE, CANCELLED, EXPIRED
 
     @Column(nullable = false)
     private LocalDateTime startsAt;
@@ -54,7 +67,7 @@ public class MembershipSubscriptionEntity {
     public MembershipSubscriptionEntity() {}
 
     public boolean isActive() {
-        return "ACTIVE".equalsIgnoreCase(status) && expiresAt.isAfter(LocalDateTime.now());
+        return status == MembershipStatus.ACTIVE && expiresAt != null && expiresAt.isAfter(LocalDateTime.now());
     }
 
     public UUID getId() { return id; }
@@ -75,8 +88,8 @@ public class MembershipSubscriptionEntity {
     public BigDecimal getCreatorNetBrl() { return creatorNetBrl; }
     public void setCreatorNetBrl(BigDecimal creatorNetBrl) { this.creatorNetBrl = creatorNetBrl; }
 
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
+    public MembershipStatus getStatus() { return status; }
+    public void setStatus(MembershipStatus status) { this.status = status; }
 
     public LocalDateTime getStartsAt() { return startsAt; }
     public void setStartsAt(LocalDateTime startsAt) { this.startsAt = startsAt; }

@@ -43,7 +43,7 @@ export function ReportModal() {
         setReporterEmail('');
         closeReport();
       }, 3000);
-    } catch (err: any) {
+    } catch {
       // Se der erro de rede em dev, exibe confirmação graciosa
       setIsSuccess(true);
       setTimeout(() => {

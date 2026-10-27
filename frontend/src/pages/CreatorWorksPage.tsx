@@ -155,8 +155,8 @@ export function CreatorWorksPage() {
       resetForm();
       setFormOpen(works.length === 0);
       loadWorks();
-    } catch (err: any) {
-      setError(err?.message || 'Não foi possível salvar a obra.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Não foi possível salvar a obra.');
     } finally {
       setSaving(false);
     }
@@ -168,8 +168,8 @@ export function CreatorWorksPage() {
       await workApi.deleteWork(work.id);
       setMessage('Obra removida.');
       loadWorks();
-    } catch (err: any) {
-      setError(err?.message || 'Não foi possível remover a obra.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Não foi possível remover a obra.');
     }
   };
 

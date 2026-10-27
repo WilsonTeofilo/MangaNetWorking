@@ -10,6 +10,7 @@ import com.manganetworking.repository.jpa.ChapterRepository;
 import com.manganetworking.repository.jpa.MembershipSubscriptionRepository;
 import com.manganetworking.repository.jpa.UserRepository;
 import com.manganetworking.service.mobile.dto.OfflineDownloadManifestDto;
+import com.manganetworking.domain.enums.MembershipStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -135,7 +136,7 @@ class MobileOfflineApplicationServiceTest {
         when(userRepository.findById(userId)).thenReturn(Optional.of(vipUser));
         when(chapterRepository.findById(chapterId)).thenReturn(Optional.of(earlyAccessChapter));
         when(membershipRepository.existsBySubscriberIdAndCreatorIdAndStatusAndExpiresAtAfter(
-                eq(userId), eq(creatorId), eq("ACTIVE"), any(LocalDateTime.class)
+                eq(userId), eq(creatorId), eq(MembershipStatus.ACTIVE), any(LocalDateTime.class)
         )).thenReturn(false);
 
         AccessDeniedException ex = assertThrows(AccessDeniedException.class, () ->
@@ -150,7 +151,7 @@ class MobileOfflineApplicationServiceTest {
         when(userRepository.findById(userId)).thenReturn(Optional.of(vipUser));
         when(chapterRepository.findById(chapterId)).thenReturn(Optional.of(earlyAccessChapter));
         when(membershipRepository.existsBySubscriberIdAndCreatorIdAndStatusAndExpiresAtAfter(
-                eq(userId), eq(creatorId), eq("ACTIVE"), any(LocalDateTime.class)
+                eq(userId), eq(creatorId), eq(MembershipStatus.ACTIVE), any(LocalDateTime.class)
         )).thenReturn(true);
 
         OfflineDownloadManifestDto manifest = mobileService.generateOfflineManifest(userId, chapterId);

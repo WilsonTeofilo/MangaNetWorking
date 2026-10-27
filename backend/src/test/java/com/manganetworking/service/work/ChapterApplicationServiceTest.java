@@ -5,6 +5,7 @@ import com.manganetworking.config.exception.AccessDeniedException;
 import com.manganetworking.config.exception.ResourceNotFoundException;
 import com.manganetworking.config.properties.PlatformProperties;
 import com.manganetworking.domain.enums.ChapterFormat;
+import com.manganetworking.domain.enums.MembershipStatus;
 import com.manganetworking.domain.enums.ChapterType;
 import com.manganetworking.domain.enums.WorkFormat;
 import com.manganetworking.domain.relational.ChapterEntity;
@@ -268,7 +269,7 @@ class ChapterApplicationServiceTest {
         when(workRepository.findBySlug("cronicas-de-cyberpunk")).thenReturn(Optional.of(work));
         when(chapterRepository.findByWorkIdAndChapterNumber(workId, 5)).thenReturn(Optional.of(ch));
         when(membershipRepository.existsBySubscriberIdAndCreatorIdAndStatusAndExpiresAtAfter(
-                any(), any(), eq("ACTIVE"), any()
+                any(), any(), eq(MembershipStatus.ACTIVE), any()
         )).thenReturn(false);
 
         UUID nonMemberUserId = UUID.randomUUID();

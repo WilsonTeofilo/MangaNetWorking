@@ -1,6 +1,7 @@
 package com.manganetworking.service.monetization;
 
 import com.manganetworking.config.properties.PlatformProperties;
+import com.manganetworking.domain.enums.MembershipStatus;
 import com.manganetworking.domain.enums.PaymentStatus;
 import com.manganetworking.domain.enums.TransactionType;
 import com.manganetworking.domain.relational.*;
@@ -178,7 +179,7 @@ public class MonetizationService {
         sub.setMonthlyPriceBrl(monthlyPrice);
         sub.setPlatformFeeBrl(platformFee);
         sub.setCreatorNetBrl(creatorNet);
-        sub.setStatus("ACTIVE");
+        sub.setStatus(MembershipStatus.ACTIVE);
         LocalDateTime currentExpiry = sub.getExpiresAt();
         sub.setExpiresAt((currentExpiry != null && currentExpiry.isAfter(now) ? currentExpiry : now).plusDays(30));
         membershipRepository.save(sub);

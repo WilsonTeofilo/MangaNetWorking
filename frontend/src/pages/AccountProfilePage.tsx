@@ -90,8 +90,8 @@ export function AccountProfilePage({
       await userApi.updateProfile({ username: check.value });
       await refreshSession();
       setMessage('Username definido. Ele não muda mais.');
-    } catch (err: any) {
-      setError(err?.message || 'Não foi possível definir o username.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Não foi possível definir o username.');
     } finally {
       setSaving(false);
     }
@@ -109,8 +109,8 @@ export function AccountProfilePage({
       setCropSource(null);
       setMessage('Foto de perfil atualizada.');
       onSaved?.();
-    } catch (err: any) {
-      setError(err?.message || 'Não foi possível enviar a foto. Tente outra imagem.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Não foi possível enviar a foto. Tente outra imagem.');
     } finally {
       setUploading(false);
     }

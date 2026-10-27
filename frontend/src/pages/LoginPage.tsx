@@ -235,31 +235,31 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-[#0B0B0C] flex flex-col justify-center items-center p-4 sm:p-6 select-none relative">
+    <div className="min-h-screen bg-[var(--mn-ink)] flex flex-col justify-center items-center p-4 sm:p-6 select-none relative">
       
       {/* Botão de Voltar ao Feed */}
       <button
         type="button"
         onClick={onBackToFeed}
-        className="absolute top-6 left-6 flex items-center gap-2 font-display text-xs tracking-wider uppercase text-[#F4EFE3] hover:text-[#FFD400] transition-colors z-20"
+        className="absolute top-6 left-6 flex items-center gap-2 font-display text-xs tracking-wider uppercase text-[var(--mn-paper)] hover:text-[var(--mn-yellow)] transition-colors z-20"
       >
         <ArrowLeft size={16} />
         <span>VOLTAR AO INÍCIO</span>
       </button>
 
       {/* Container Principal de 2 Colunas (Seção 9.9) */}
-      <div className="w-full max-w-4xl border-2 border-[#0B0B0C] shadow-[8px_8px_0_#FFD400] overflow-hidden grid grid-cols-1 md:grid-cols-2">
+      <div className="w-full max-w-4xl border-2 border-[var(--mn-ink)] shadow-[8px_8px_0_var(--mn-yellow)] overflow-hidden grid grid-cols-1 md:grid-cols-2">
         
-        {/* Coluna Esquerda: Bloco Amarelo (#FFD400) com Mascote e Manifesto */}
-        <div className="bg-[#FFD400] text-[#0B0B0C] p-8 sm:p-12 flex flex-col justify-between border-b-2 md:border-b-0 md:border-r-2 border-[#0B0B0C] relative overflow-hidden mn-grain">
+        {/* Coluna Esquerda: Bloco Amarelo (var(--mn-yellow)) com Mascote e Manifesto */}
+        <div className="bg-[var(--mn-yellow)] text-[var(--mn-ink)] p-8 sm:p-12 flex flex-col justify-between border-b-2 md:border-b-0 md:border-r-2 border-[var(--mn-ink)] relative overflow-hidden mn-grain">
           <div className="absolute inset-0 mn-halftone opacity-15 pointer-events-none" />
 
           <div className="relative z-10 space-y-4">
-            <span className="font-pixel text-[12px] text-[#0B0B0C] font-bold tracking-widest block">
+            <span className="font-pixel text-[12px] text-[var(--mn-ink)] font-bold tracking-widest block">
               PORTAL EDITORIAL INDEPENDENTE
             </span>
             <img src={logoWordmark} alt="MangaNetWorking" className="w-56 -rotate-1" />
-            <p className="font-body text-sm text-[#0B0B0C] font-medium leading-relaxed mt-2">
+            <p className="font-body text-sm text-[var(--mn-ink)] font-medium leading-relaxed mt-2">
               A banca digital onde você lê direto dos criadores e apoia as
               produções independentes nacionais com transparência.
             </p>
@@ -271,44 +271,44 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
               alt="Mascote Nanquim"
               className="w-32 h-36 object-contain -rotate-3 hover:rotate-0 transition-transform duration-200"
             />
-            <span className="font-pixel text-[12px] text-[#0B0B0C] font-bold mt-2">
+            <span className="font-pixel text-[12px] text-[var(--mn-ink)] font-bold mt-2">
               NANQUIM · MASCOTE OFICIAL
             </span>
           </div>
 
-          <div className="relative z-10 border-t-2 border-[#0B0B0C] pt-3 font-pixel text-[12px] text-[#0B0B0C]">
+          <div className="relative z-10 border-t-2 border-[var(--mn-ink)] pt-3 font-pixel text-[12px] text-[var(--mn-ink)]">
             AUTORIA PROTEGIDA · ZERO PIRATARIA
           </div>
         </div>
 
-        {/* Coluna Direita: Formulário Ink (#151517) */}
-        <div className="bg-[#151517] text-[#F4EFE3] p-8 sm:p-12 flex flex-col justify-center space-y-6">
+        {/* Coluna Direita: Formulário Ink (var(--mn-ink-2)) */}
+        <div className="bg-[var(--mn-ink-2)] text-[var(--mn-paper)] p-8 sm:p-12 flex flex-col justify-center space-y-6">
           
           {passwordRecoveryStep === 'request' ? (
             <form onSubmit={handlePasswordResetRequest} className="space-y-6">
               <div>
-                <h2 className="font-display text-3xl text-[#F4EFE3] uppercase">RECUPERAR SENHA</h2>
-              <p className="font-body text-xs text-[#A9A59A] mt-1">Se o e-mail estiver cadastrado, enviaremos um link de recuperação.</p>
+                <h2 className="font-display text-3xl text-[var(--mn-paper)] uppercase">RECUPERAR SENHA</h2>
+              <p className="font-body text-xs text-[var(--mn-mute)] mt-1">Se o e-mail estiver cadastrado, enviaremos um link de recuperação.</p>
               </div>
               <Field label="E-MAIL" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-              {errorMessage && <p role="alert" className="font-body text-xs text-[#E8402F]">{errorMessage}</p>}
+              {errorMessage && <p role="alert" className="font-body text-xs text-[var(--mn-red)]">{errorMessage}</p>}
               <Button type="submit" variant="primary" disabled={isLoading} className="w-full !min-h-[48px]">{isLoading ? 'ENVIANDO…' : 'ENVIAR LINK'}</Button>
-              <button type="button" onClick={() => { setPasswordRecoveryStep('none'); setErrorMessage(''); }} className="w-full font-pixel text-[10px] text-[#A9A59A]">VOLTAR AO LOGIN</button>
+              <button type="button" onClick={() => { setPasswordRecoveryStep('none'); setErrorMessage(''); }} className="w-full font-pixel text-[10px] text-[var(--mn-mute)]">VOLTAR AO LOGIN</button>
             </form>
           ) : passwordRecoveryStep === 'sent' ? (
             <section className="space-y-6" aria-live="polite">
-              <h2 className="font-display text-3xl text-[#F4EFE3] uppercase">CONFIRA SEU E-MAIL</h2>
-              <p className="font-body text-sm text-[#A9A59A]">Se o endereço estiver cadastrado, você receberá um link de validade limitada para redefinir sua senha.</p>
-              <button type="button" onClick={() => { setPasswordRecoveryStep('none'); setErrorMessage(''); }} className="w-full font-pixel text-[10px] text-[#A9A59A]">VOLTAR AO LOGIN</button>
+              <h2 className="font-display text-3xl text-[var(--mn-paper)] uppercase">CONFIRA SEU E-MAIL</h2>
+              <p className="font-body text-sm text-[var(--mn-mute)]">Se o endereço estiver cadastrado, você receberá um link de validade limitada para redefinir sua senha.</p>
+              <button type="button" onClick={() => { setPasswordRecoveryStep('none'); setErrorMessage(''); }} className="w-full font-pixel text-[10px] text-[var(--mn-mute)]">VOLTAR AO LOGIN</button>
             </section>
           ) : step === 'credentials' ? (
             /* Passo 1: Credenciais e Escolha de Papel */
             <form onSubmit={handleCredentialsSubmit} className="space-y-6">
               <div>
-                <h2 className="font-display text-3xl sm:text-4xl text-[#F4EFE3] uppercase tracking-wide">
+                <h2 className="font-display text-3xl sm:text-4xl text-[var(--mn-paper)] uppercase tracking-wide">
                   {mode === 'login' ? 'ENTRAR NA CONTA' : 'CRIAR CONTA'}
                 </h2>
-                <p className="font-body text-xs text-[#A9A59A] mt-1">
+                <p className="font-body text-xs text-[var(--mn-mute)] mt-1">
                   {mode === 'login'
                     ? 'Acesse com seu e-mail e senha. O 2FA é obrigatório.'
                     : 'Cadastro com verificação em 2 etapas obrigatória.'}
@@ -316,14 +316,14 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
               </div>
 
               {/* Alternar entre Entrar e Criar Conta */}
-              <div className="grid grid-cols-2 border-2 border-[#34343A]">
+              <div className="grid grid-cols-2 border-2 border-[var(--mn-line)]">
                 <button
                   type="button"
                   onClick={() => switchMode('login')}
                   className={`py-2 font-pixel text-[12px] uppercase tracking-wider transition-all ${
                     mode === 'login'
-                      ? 'bg-[#F4EFE3] text-[#0B0B0C]'
-                      : 'bg-[#212125] text-[#A9A59A] hover:text-[#F4EFE3]'
+                      ? 'bg-[var(--mn-paper)] text-[var(--mn-ink)]'
+                      : 'bg-[var(--mn-ink-3)] text-[var(--mn-mute)] hover:text-[var(--mn-paper)]'
                   }`}
                 >
                   ENTRAR
@@ -331,10 +331,10 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
                 <button
                   type="button"
                   onClick={() => switchMode('register')}
-                  className={`py-2 font-pixel text-[12px] uppercase tracking-wider border-l-2 border-[#34343A] transition-all ${
+                  className={`py-2 font-pixel text-[12px] uppercase tracking-wider border-l-2 border-[var(--mn-line)] transition-all ${
                     mode === 'register'
-                      ? 'bg-[#F4EFE3] text-[#0B0B0C]'
-                      : 'bg-[#212125] text-[#A9A59A] hover:text-[#F4EFE3]'
+                      ? 'bg-[var(--mn-paper)] text-[var(--mn-ink)]'
+                      : 'bg-[var(--mn-ink-3)] text-[var(--mn-mute)] hover:text-[var(--mn-paper)]'
                   }`}
                 >
                   CRIAR CONTA
@@ -343,11 +343,11 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
 
               {/* Botões Grandes de Seleção de Papel (apenas no cadastro) */}
               {mode === 'register' && (
-                <div className="space-y-2 border-2 border-[#34343A] bg-[#212125] p-3">
-                  <span className="font-pixel text-[12px] text-[#A9A59A] tracking-wider uppercase block">
+                <div className="space-y-2 border-2 border-[var(--mn-line)] bg-[var(--mn-ink-3)] p-3">
+                  <span className="font-pixel text-[12px] text-[var(--mn-mute)] tracking-wider uppercase block">
                     TODAS AS CONTAS COMEÇAM COMO LEITOR
                   </span>
-                  <p className="font-body text-xs text-[#A9A59A] leading-relaxed">
+                  <p className="font-body text-xs text-[var(--mn-mute)] leading-relaxed">
                     Leitor lê, curte, comenta e usa a biblioteca. Depois do 2FA você escolhe a foto, a
                     visibilidade do perfil e, se quiser publicar, vira escritor em &quot;Minha conta&quot;
                     (é preciso declarar um link social: Instagram, YouTube ou portfólio).
@@ -378,7 +378,7 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
                     />
 
                     {username.length > 0 && !usernameValidation.valid && (
-                      <p className="font-body text-xs text-[#E8402F]" role="alert">
+                      <p className="font-body text-xs text-[var(--mn-red)]" role="alert">
                         {usernameValidation.message}
                       </p>
                     )}
@@ -387,10 +387,10 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
                       <p
                         className={`font-pixel text-[11px] uppercase ${
                           usernameStatus === 'free'
-                            ? 'text-[#45A29E]'
+                            ? 'text-[var(--mn-teal)]'
                             : usernameStatus === 'taken'
-                              ? 'text-[#E8402F]'
-                              : 'text-[#A9A59A]'
+                              ? 'text-[var(--mn-red)]'
+                              : 'text-[var(--mn-mute)]'
                         }`}
                       >
                         {usernameStatus === 'checking' && 'verificando...'}
@@ -417,7 +417,7 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
                   placeholder={mode === 'register' ? 'seu.email@exemplo.com' : 'seu.email@exemplo.com ou seu username'}
                   helperText={mode === 'register' ? undefined : 'Entre com o e-mail ou com o username que você criou.'}
                   required
-                  childrenRight={<Mail size={16} className="text-[#A9A59A]" />}
+                  childrenRight={<Mail size={16} className="text-[var(--mn-mute)]" />}
                 />
 
                 <PasswordInput
@@ -432,7 +432,7 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
 
                 {mode === 'register' && (
                   <>
-                    <p id="password-policy" className="font-body text-xs text-[#A9A59A]">Use de 8 a 64 caracteres. Espaços, símbolos, acentos e emojis são aceitos.</p>
+                    <p id="password-policy" className="font-body text-xs text-[var(--mn-mute)]">Use de 8 a 64 caracteres. Espaços, símbolos, acentos e emojis são aceitos.</p>
                     <PasswordInput
                       label="CONFIRMAR SENHA"
                       value={confirmPassword}
@@ -455,14 +455,14 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
                     />
 
                     <div className="space-y-2">
-                      <label htmlFor="sex" className="font-pixel text-[12px] text-[#A9A59A] tracking-wider uppercase block">
+                      <label htmlFor="sex" className="font-pixel text-[12px] text-[var(--mn-mute)] tracking-wider uppercase block">
                         SEXO
                       </label>
                       <select
                         id="sex"
                         value={sex}
                         onChange={(e) => setSex(e.target.value as typeof sex)}
-                        className="w-full bg-[#212125] border-2 border-[#34343A] px-3 py-3 font-body text-sm text-[#F4EFE3] focus:border-[#FFD400] focus:outline-none"
+                        className="w-full bg-[var(--mn-ink-3)] border-2 border-[var(--mn-line)] px-3 py-3 font-body text-sm text-[var(--mn-paper)] focus:border-[var(--mn-yellow)] focus:outline-none"
                       >
                         <option value="NAO_INFORMADO">Prefiro nao informar</option>
                         <option value="MASCULINO">Masculino</option>
@@ -477,11 +477,11 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
                         id="termsAccepted"
                         checked={termsAccepted}
                         onChange={(e) => setTermsAccepted(e.target.checked)}
-                        className="mt-1 h-4 w-4 rounded border-[#34343A] bg-[#212125] text-[#FFD400] focus:ring-0 cursor-pointer"
+                        className="mt-1 h-4 w-4 rounded border-[var(--mn-line)] bg-[var(--mn-ink-3)] text-[var(--mn-yellow)] focus:ring-0 cursor-pointer"
                       />
-                      <label htmlFor="termsAccepted" className="font-body text-xs text-[#A9A59A] leading-relaxed cursor-pointer select-none">
-                        Li e concordo com os <span className="text-[#F4EFE3] underline">Termos de Uso</span> e a{' '}
-                        <span className="text-[#F4EFE3] underline">Política de Privacidade</span> (versão {privacyPolicyVersion || 'carregando'}; LGPD - Lei 13.709/2018).
+                      <label htmlFor="termsAccepted" className="font-body text-xs text-[var(--mn-mute)] leading-relaxed cursor-pointer select-none">
+                        Li e concordo com os <span className="text-[var(--mn-paper)] underline">Termos de Uso</span> e a{' '}
+                        <span className="text-[var(--mn-paper)] underline">Política de Privacidade</span> (versão {privacyPolicyVersion || 'carregando'}; LGPD - Lei 13.709/2018).
                       </label>
                     </div>
                   </>
@@ -489,7 +489,7 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
               </div>
 
               {errorMessage && (
-                <div className="p-2 border-2 border-[#E8402F] bg-[#E8402F]/10 font-body text-xs text-[#E8402F]">
+                <div className="p-2 border-2 border-[var(--mn-red)] bg-[var(--mn-red)]/10 font-body text-xs text-[var(--mn-red)]">
                   {errorMessage}
                 </div>
               )}
@@ -508,7 +508,7 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
                     : 'CONTINUAR COM 2FA'}
               </Button>
               {mode === 'login' && (
-                <button type="button" onClick={() => { setPasswordRecoveryStep('request'); setErrorMessage(''); }} className="w-full font-pixel text-[10px] text-[#A9A59A] hover:text-[#FFD400]">
+                <button type="button" onClick={() => { setPasswordRecoveryStep('request'); setErrorMessage(''); }} className="w-full font-pixel text-[10px] text-[var(--mn-mute)] hover:text-[var(--mn-yellow)]">
                   ESQUECI MINHA SENHA
                 </button>
               )}
@@ -517,15 +517,15 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
             /* Passo 2: 2FA com OTP de 6 Caixas */
             <form onSubmit={handleTwoFactorSubmit} className="space-y-6">
               <div>
-                <span className="font-pixel text-[12px] text-[#FFD400] tracking-wider block font-bold">
+                <span className="font-pixel text-[12px] text-[var(--mn-yellow)] tracking-wider block font-bold">
                   AUTENTICAÇÃO EM 2 ETAPAS (2FA)
                 </span>
-                <h2 className="font-display text-3xl text-[#F4EFE3] uppercase">
+                <h2 className="font-display text-3xl text-[var(--mn-paper)] uppercase">
                   DIGITE O CÓDIGO
                 </h2>
-                <p className="font-body text-xs text-[#A9A59A] mt-1">
+                <p className="font-body text-xs text-[var(--mn-mute)] mt-1">
                   Enviamos um código de segurança de 6 dígitos para o e-mail{' '}
-                  <strong className="text-[#F4EFE3]">{email}</strong>.
+                  <strong className="text-[var(--mn-paper)]">{email}</strong>.
                 </p>
               </div>
 
@@ -540,7 +540,7 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
               </div>
 
               {errorMessage && (
-                <div className="p-2 border-2 border-[#E8402F] bg-[#E8402F]/10 font-body text-xs text-[#E8402F]">
+                <div className="p-2 border-2 border-[var(--mn-red)] bg-[var(--mn-red)]/10 font-body text-xs text-[var(--mn-red)]">
                   {errorMessage}
                 </div>
               )}
@@ -569,11 +569,11 @@ export function LoginPage({ onBackToFeed, onLoginSuccess }: LoginPageProps) {
               {devOtpHint && (
                 <Win title="DEV_OUTBOX.EXE" className="mt-4">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-pixel text-[#A9A59A]">CÓDIGO DE TESTE:</span>
+                    <span className="font-pixel text-[var(--mn-mute)]">CÓDIGO DE TESTE:</span>
                     <button
                       type="button"
                       onClick={() => setTwoFactorCode(devOtpHint)}
-                      className="font-display text-base text-[#FFD400] hover:underline"
+                      className="font-display text-base text-[var(--mn-yellow)] hover:underline"
                       title="Clique para preencher automaticamente"
                     >
                       {devOtpHint} (COLAR)

@@ -11,6 +11,7 @@ import com.manganetworking.config.security.SecurityContextUtils;
 import com.manganetworking.service.session.SessionService;
 import com.manganetworking.domain.enums.ChapterFormat;
 import com.manganetworking.domain.enums.ChapterType;
+import com.manganetworking.domain.enums.MembershipStatus;
 import com.manganetworking.domain.enums.WorkStatus;
 import com.manganetworking.domain.relational.ChapterEntity;
 import com.manganetworking.domain.relational.ChapterFileEntity;
@@ -324,7 +325,7 @@ public class ChapterApplicationService {
 
 
     /** Status de assinatura ativa de membro. Deve coincidir com MembershipSubscriptionEntity.status. */
-    private static final String MEMBERSHIP_STATUS_ACTIVE   = "ACTIVE";
+    // MembershipStatus enum utilizado
 
     @Transactional
     public ChapterReadResponseDto readChapter(String slug, Integer chapterNumber, UUID currentUserId) {
@@ -345,7 +346,7 @@ public class ChapterApplicationService {
             boolean isMember = false;
             if (currentUserId != null && author != null) {
                 isMember = membershipRepository.existsBySubscriberIdAndCreatorIdAndStatusAndExpiresAtAfter(
-                        currentUserId, author.getId(), MEMBERSHIP_STATUS_ACTIVE, LocalDateTime.now()
+                        currentUserId, author.getId(), MembershipStatus.ACTIVE, LocalDateTime.now()
                 );
             }
 

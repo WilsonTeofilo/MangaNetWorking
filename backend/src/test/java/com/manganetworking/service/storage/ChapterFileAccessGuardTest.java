@@ -10,6 +10,7 @@ import com.manganetworking.repository.jpa.ChapterRepository;
 import com.manganetworking.repository.jpa.MembershipSubscriptionRepository;
 import com.manganetworking.service.session.SessionService;
 import org.junit.jupiter.api.AfterEach;
+import com.manganetworking.domain.enums.MembershipStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -156,7 +157,7 @@ class ChapterFileAccessGuardTest {
         authenticateAs(userId, null, false);
         chapterFilePointsTo("page.jpg", chapterReleasingAt(LocalDateTime.now().plusDays(5)));
         when(membershipRepository.existsBySubscriberIdAndCreatorIdAndStatusAndExpiresAtAfter(
-                eq(userId), eq(authorCreatorId), eq("ACTIVE"), any(LocalDateTime.class)))
+                eq(userId), eq(authorCreatorId), eq(MembershipStatus.ACTIVE), any(LocalDateTime.class)))
                 .thenReturn(true);
 
         assertTrue(guard.canRead("page.jpg"));
@@ -169,7 +170,7 @@ class ChapterFileAccessGuardTest {
         authenticateAs(userId, null, false);
         chapterFilePointsTo("page.jpg", chapterReleasingAt(LocalDateTime.now().plusDays(5)));
         when(membershipRepository.existsBySubscriberIdAndCreatorIdAndStatusAndExpiresAtAfter(
-                eq(userId), eq(authorCreatorId), eq("ACTIVE"), any(LocalDateTime.class)))
+                eq(userId), eq(authorCreatorId), eq(MembershipStatus.ACTIVE), any(LocalDateTime.class)))
                 .thenReturn(false);
 
         assertFalse(guard.canRead("page.jpg"));

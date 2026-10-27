@@ -8,6 +8,7 @@ import com.manganetworking.domain.relational.CreatorEntity;
 import com.manganetworking.domain.relational.WorkEntity;
 import com.manganetworking.repository.jpa.ChapterFileRepository;
 import com.manganetworking.repository.jpa.ChapterRepository;
+import com.manganetworking.domain.enums.MembershipStatus;
 import com.manganetworking.repository.jpa.MembershipSubscriptionRepository;
 import com.manganetworking.service.session.SessionService;
 import org.springframework.stereotype.Service;
@@ -107,7 +108,7 @@ public class ChapterFileAccessGuard {
                 return new AccessDecision(false, true);
             }
             boolean isActiveMember = membershipRepository.existsBySubscriberIdAndCreatorIdAndStatusAndExpiresAtAfter(
-                    userId, author.getId(), "ACTIVE", LocalDateTime.now());
+                    userId, author.getId(), MembershipStatus.ACTIVE, LocalDateTime.now());
             return new AccessDecision(isActiveMember, true);
         }
 
