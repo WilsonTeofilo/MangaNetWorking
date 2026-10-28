@@ -1121,6 +1121,47 @@ biblioteca não tinha eixo de formato e o "continuar lendo" só existia em `DEV`
   para prosa, onboarding de uma pergunta e teste automatizado de UI (não há runner no frontend).
 
 
+## 7.44 Correção regressiva: enums e vazamento pós-V25 no catálogo (2026-10-27)
+
+**Sintoma:** após a migração dos status para o enum `WorkStatus` (V25/V26, coluna em maiúsculo),
+`CatalogIntegrationTest` passou a reprovar 3 cenários — obras em `DRAFT`/`SUSPENDED` voltaram a
+aparecer no catálogo e a query de lançamentos continuava filtrando por literais minúsculos
+(`'suspended', 'archived_lgpd', 'draft'`), que nunca casam com a coluna canonizada em maiúsculo.
+
+**Causa raiz:** o `CriteriaBuilder` não aplica o `@Converter(autoApply = true)` de `WorkStatus`
+quando o predicado usa `root.get("status").in(enumList)`: os valores não casam com a coluna
+`character varying` (era isso que fazia o `not in (...)` ficar sempre verdadeiro).
+
+**Correção (3 arquivos):**
+- `CatalogQueryService`: predicados do catálogo comparam a **string canônica** via
+  `root.get("status").as(String.class)` (`.in(nomes ocultos)` e `equal(status.name())`);
+  filtro `?status=` normaliza a caixa (minúsculo do front → maiúsculo da V25) em vez de ser
+  ignorado silenciosamente quando não casava com a allow-list em maiúsculo;
+- `ChapterRepository.findRecentReleases`: literals trocados por binding de enum
+  (`@Param("hidden") Collection<WorkStatus>`), convertidos pelo Hibernate via converter;
+- chamada do service passa `HIDDEN_STATUSES` (enum).
+
+**Evidência:** `mvn -o test` → **447 testes, 0 falhas, 0 erros**; `CatalogIntegrationTest` 8/8
+(inclui `search_hidesDraftWork`, `search_hidesSuspendedWork`, `releases_onlyPublic...`); smoke na
+stack local: `/api/catalog?formato=manga` devolve apenas as 2 obras `ONGOING` (3 `ARCHIVED_LGPD`
+deixaram de vazar), `/api/catalog/releases` só capítulo público, `?status=completed` e
+`?status=ONGOING` respondem consistentemente.
+
+**Registro:** itens #40/44/47/48/49 do roadmap atualizados conforme o commit `dc3aaf3`
+(como pendências externas honestas: certificado Google real, DPO, canal institucional, rotação
+em produção). **Boot `prod` (#41) executado com sucesso**, com autorização do usuário para
+recriar os volumes de teste de 19/10 (inicializados com credenciais desconhecidas;
+`MONGO_INITDB_*` só atua em volume vazio): `deploy-prod.ps1 -Apply` subiu postgres/mongo/redis/
+backend `prod` todos Healthy, Flyway aplicou V1..V26 do zero, smoke manual por baixo do nginx
+prod (`:80`): catálogo 200 vazio, `register` sem consentimento = 400, feed 200. Suíte E2E
+completa 12/12 na stack dev depois de sanear o envenenamento de env: `deploy-prod.ps1` carrega
+as variáveis do `.env` de produção no processo e o smoke dele roda `docker compose up
+--force-recreate backend` **sem `--no-deps`**, recriando as dependências com a senha de prod —
+postgres+backend dev recriados com o `.env` de dev (processo limpo) voltaram ao normal.
+Pendências registradas: `-Apply` deveria rodar o smoke com `--no-deps` e contra a URL da stack
+prod (hoje está fixo em `8085`); o `trap` do `smoke_test_e2e.ps1` pode falhar antes das funções
+estarem definidas (linha 14, erro para geração de diagnóstico).
+
 ## 7.39 Engajamento real, comentários, notificações e ranking (2026-10-22)
 
 **Causa das views baixas:** o `VIEW` era deduplicado para sempre por `(userId, chapterId, eventType)`;

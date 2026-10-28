@@ -147,7 +147,8 @@ public class PrivacyPolicyPublicationService {
             return null;
         }
 
-        String resourcePath = classpathDirectory + "/" + version + ".md";
+        String prefix = classpathDirectory.startsWith("classpath:") ? "" : "classpath:";
+        String resourcePath = prefix + classpathDirectory + "/" + version + ".md";
         Resource resource = resourceLoader.getResource(resourcePath);
         if (!resource.exists()) {
             return null;

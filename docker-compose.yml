@@ -113,10 +113,12 @@ services:
       METRICS_SCRAPE_TOKEN: ${METRICS_SCRAPE_TOKEN:-}
       EMAIL_WEBHOOK_SECRET: ${EMAIL_WEBHOOK_SECRET:-}
       UPLOAD_DIR: /data/uploads
+      PRIVACY_POLICY_DOCUMENT: /app/legal/privacy-policy/2026-10-v1.md
     ports:
       - "127.0.0.1:8085:8085"
     volumes:
       - manganetworking_uploads:/data/uploads
+      - ./backend/src/main/resources/legal/privacy-policy:/app/legal/privacy-policy:ro
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8085/actuator/health/readiness || exit 1"]
       interval: 15s

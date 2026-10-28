@@ -2,6 +2,7 @@ package com.manganetworking.service.catalog;
 
 import com.manganetworking.domain.enums.Genre;
 import com.manganetworking.domain.enums.WorkFormat;
+import com.manganetworking.domain.enums.WorkStatus;
 import com.manganetworking.domain.relational.ChapterEntity;
 import com.manganetworking.domain.relational.CreatorEntity;
 import com.manganetworking.domain.relational.WorkEntity;
@@ -42,8 +43,8 @@ import java.util.Set;
 @Service
 public class CatalogQueryService {
 
-    private static final List<String> HIDDEN_STATUSES = List.of("suspended", "archived_lgpd", "draft");
-    private static final Set<String> VISIBLE_STATUSES = Set.of("ongoing", "completed", "hiatus");
+    private static final List<WorkStatus> HIDDEN_STATUSES = List.of(WorkStatus.SUSPENDED, WorkStatus.ARCHIVED_LGPD, WorkStatus.DRAFT);
+    private static final Set<String> VISIBLE_STATUSES = Set.of("ONGOING", "COMPLETED", "HIATUS");
     private static final Set<String> ALLOWED_SORTS = Set.of("relevance", "recent", "updated", "views", "title");
     private static final int MAX_PAGE_SIZE = 48;
     /** Teto de página: evita deep offset acidental (48 × 200 = 9.600 obras por recorte). */
@@ -72,7 +73,10 @@ public class CatalogQueryService {
     ) {
         WorkFormat format = parseFormat(formatRaw);
         List<Genre> genres = parseGenres(genreRaw);
-        String status = VISIBLE_STATUSES.contains(normalize(statusRaw)) ? normalize(statusRaw) : null;
+        // Allow-list em maiúsculo (canônico após V25): entrada em qualquer caixa é aceita,
+        // e desconhecida é ignorada em vez de derrubar a consulta.
+        String statusKey = normalize(statusRaw).toUpperCase(Locale.ROOT);
+        WorkStatus status = VISIBLE_STATUSES.contains(statusKey) ? WorkStatus.valueOf(statusKey) : null;
         Genre audience = parseAudience(audienceRaw);
 
         Specification<WorkEntity> base = baseSpec(term, genres, status, audience, withPresentation);
@@ -105,7 +109,7 @@ public class CatalogQueryService {
         WorkFormat format = parseFormat(formatRaw);
         int safeLimit = Math.min(Math.max(limit, 1), MAX_RELEASES);
         List<ChapterEntity> chapters = chapterRepository.findRecentReleases(
-                LocalDateTime.now(), format, PageRequest.of(0, safeLimit));
+                LocalDateTime.now(), format, HIDDEN_STATUSES, PageRequest.of(0, safeLimit));
         return chapters.stream().map(this::toReleaseDto).toList();
     }
 
@@ -114,7 +118,7 @@ public class CatalogQueryService {
     private Specification<WorkEntity> baseSpec(
             String term,
             List<Genre> genres,
-            String status,
+            WorkStatus status,
             Genre audience,
             boolean withPresentation
     ) {
@@ -122,10 +126,14 @@ public class CatalogQueryService {
 
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
-            predicates.add(cb.not(root.get("status").in(HIDDEN_STATUSES)));
+            // Comparação por string canônica (maiuscula, pós-V25): o CriteriaBuilder não
+            // aplica o WorkStatusConverter no in(...)/equal com enum, e literal em
+            // minúsculo deixaria obra em rascunho/suspensa/arquivada vazar no catálogo.
+            List<String> hiddenNames = HIDDEN_STATUSES.stream().map(Enum::name).toList();
+            predicates.add(cb.not(root.get("status").as(String.class).in(hiddenNames)));
 
             if (status != null) {
-                predicates.add(cb.equal(root.get("status"), status));
+                predicates.add(cb.equal(root.get("status").as(String.class), status.name()));
             }
             if (audience != null) {
                 predicates.add(genreExists(query, cb, root, List.of(audience)));

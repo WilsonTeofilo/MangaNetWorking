@@ -55,7 +55,9 @@ public interface ChapterRepository extends JpaRepository<ChapterEntity, UUID> {
      * Lançamentos já públicos para a timeline do catálogo/home.
      *
      * <p>Só entra capítulo com {@code public_release_at <= agora} (agendado ou em acesso
-     * antecipado não vaza) e de obra não suspensa, não arquivada por LGPD e não em rascunho.</p>
+     * antecipado não vaza) e de obra não suspensa, não arquivada por LGPD e não em rascunho.
+     * Os status ocultos chegam como enum: a coluna pode estar em maiúsculo (V25) e comparação
+     * com literal minúsculo deixaria obra oculta vazar na timeline.</p>
      */
     @Query("""
             select c from ChapterEntity c
@@ -64,11 +66,12 @@ public interface ChapterRepository extends JpaRepository<ChapterEntity, UUID> {
             where c.publicReleaseAt is not null
               and c.publicReleaseAt <= :now
               and (:format is null or w.format = :format)
-              and w.status not in ('suspended', 'archived_lgpd', 'draft')
+              and w.status not in :hidden
             order by c.publicReleaseAt desc
             """)
     List<ChapterEntity> findRecentReleases(
             @Param("now") java.time.LocalDateTime now,
             @Param("format") com.manganetworking.domain.enums.WorkFormat format,
+            @Param("hidden") java.util.Collection<com.manganetworking.domain.enums.WorkStatus> hidden,
             org.springframework.data.domain.Pageable pageable);
 }

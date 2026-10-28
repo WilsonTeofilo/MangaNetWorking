@@ -5,6 +5,7 @@ import com.manganetworking.domain.enums.PixKeyType;
 import com.manganetworking.domain.nosql.WorkFeedDocument;
 import com.manganetworking.domain.relational.CreatorEntity;
 import com.manganetworking.domain.relational.UserEntity;
+import com.manganetworking.domain.enums.WorkStatus;
 import com.manganetworking.domain.relational.WorkEntity;
 import com.manganetworking.repository.jpa.CreatorRepository;
 import com.manganetworking.repository.jpa.UserRepository;
@@ -179,7 +180,7 @@ class FeedSyncIntegrationTest {
         moderationApplicationService.suspendWork(work.getId(), "Teste de integração");
 
         // ...e a suspensão remove o documento no afterCommit, além de marcar o status relacional.
-        assertThat(workRepository.findById(work.getId()).orElseThrow().getStatus()).isEqualTo("suspended");
+        assertThat(workRepository.findById(work.getId()).orElseThrow().getStatus()).isEqualTo(WorkStatus.SUSPENDED);
         assertThat(workFeedMongoRepository.findByWorkId(workId)).isEmpty();
     }
 

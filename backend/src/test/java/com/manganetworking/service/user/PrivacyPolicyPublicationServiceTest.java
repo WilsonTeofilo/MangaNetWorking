@@ -27,7 +27,7 @@ class PrivacyPolicyPublicationServiceTest {
     void doesNotPublishWhenDocumentIsMissing() {
         when(privacyComplianceService.currentPolicyVersion()).thenReturn(VERSION);
         PrivacyPolicyPublicationService service = new PrivacyPolicyPublicationService(
-                privacyComplianceService, new DefaultResourceLoader(), "", "legal/privacy-policy");
+                privacyComplianceService, new DefaultResourceLoader(), "", "legal/privacy-policy-test-missing");
 
         Optional<PrivacyPolicyDocumentDto> document = service.publishedDocument();
 

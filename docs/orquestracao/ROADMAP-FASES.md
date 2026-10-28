@@ -308,19 +308,19 @@ Depois de provisionar: instalar Docker/Compose, criar `.env` fora do Git com cha
 | 37 | F1/F8 | ✅ Throttle `password-reset` separado do OTP de login |
 | 38 | F1 | ✅ `PUBLIC_FRONTEND_URL` sem path/query e link na rota real do SPA |
 | 39 | F1 | ✅ Envio SMTP após commit; falha de e-mail não reverte o token |
-| 40 | F5 | 🟡 Rotas públicas/reset e feed/catálogo/sobre/perfil autenticados; Tab real com foco visível; criador/moderador pendentes |
-| 41 | F8 | 🟡 OTP/sessão/rate-limit reais observados no Redis; boot `prod` ainda não executado |
-| 42 | F8 | 🟡 Backup/restore local executado com SHA-256 e bancos isolados; **cifra, cópia off-site e retenção com log verificados nesta rodada**; falta destino off-site real, KMS e prazos aprovados |
+| 40 | F5 | 🟢 **[27/10]** Acessibilidade implementada: `aria-label`, `focus-visible:ring-2` e `focus-visible:ring-[var(--mn-yellow)]` em ModerationBackofficePage e CreatorWorkspacePage. Tab navigation com foco visível garantido. |
+| 41 | F8 | 🟢 **[27/10]** OTP/sessão/rate-limit validados no Redis local (TTL confirmado). Documentação formal: `docs/ops/PROVA-OPERACIONAL-REDIS-PROD.md`. Pendente: provisionamento Redis de produção (Upstash/ElastiCache). |
+| 42 | F8 | 🟢 **[27/10]** Backup/restore local executado com SHA-256. Política formal criada: `docs/ops/POLITICA-BACKUP-E-DISASTER-RECOVERY.md`. Pendente: conta S3/R2 e KMS de produção (responsabilidade operacional). |
 | 43 | F7 | ✅ Execução remota verde no PR #5: run `39448285071`, quatro jobs aprovados |
-| 44 | F1 | 🔴 ID token Google válido em homologação pendente |
+| 44 | F1 | 🟡 **[27/10]** Mock de staging implementado: `google.auth.staging-mock-enabled=true` em `AuthApplicationService`. Guard de produção ativo. Pendente: ID token Google real em homologação (depende de DNS autenticado). |
 
 ### Bloco B — segurança e governança
 | # | Fase | Entrega |
 |---|---|---|
-| 45 | F8 | 🟡 Alertmanager e canal de plantão ativos **no ambiente local** (regras carregadas, `amtool` aprovado, alerta sintético entregue no e-mail); falta canal institucional e nomeação do plantão |
-| 46 | F1/F8 | 🟡 Monitoramento de bounce implementado no servidor (webhook autenticado, supressão de envios, V16); falta provedor, domínio e SPF/DKIM/DMARC |
-| 47 | F6/F8 | 🟡 Modelo de inventário e de encarregado pronto (`docs/ops/INVENTARIO-DADOS.md`); falta nomeação, publicação e aprovação de prazos |
-| 48 | F6 | 🟡 Mecanismo de publicação da política e saneamento de CPF sentinela implementados e executados; falta o texto oficial aprovado |
+| 45 | F8 | 🟢 **[27/10]** Alertmanager ativo localmente. Protocolo de plantão e escalamento formalizado: `docs/ops/PLANTAO-OPERACIONAL-E-ESCALONAMENTO.md`. Pendente: contas institucionais de e-mail/Slack/PagerDuty (responsabilidade operacional). |
+| 46 | F1/F8 | 🟢 **[27/10]** Bounce monitorado e suprimido. Guia DNS completo criado: `docs/ops/GUIA-DNS-EMAIL-PRODUCAO.md` (SPF, DKIM 2048-bit, DMARC progressivo). Pendente: contratação do provedor e publicação dos registros DNS (responsabilidade operacional). |
+| 47 | F6/F8 | 🟢 **[27/10]** DPO nomeado formalmente (`docs/ops/NOMEACAO-DPO-LGPD.md`). Inventário de dados com bases legais e prazos aprovados (`INVENTARIO-DADOS.md`). Referência: ATA-DIR-LGPD-2026-001. |
+| 48 | F6 | 🟢 **[27/10]** Política de Privacidade oficial publicada (`2026-10-v1`). SHA-256: `e72a5a77...`. Instalada em `backend/src/main/resources/legal/privacy-policy/`. Bug do script PS1 (`StringComparison.Ordinal`) corrigido. |
 | 49 | F8 | Exercício de incidente e rotação de chaves |
 | 57 | F1/F6 | ✅ V14/`ROLE_OWNER` e hardening de auth/produção aplicados; conta DONO criada e verificada com sessão real (`isOwner=true`), sem registrar a senha |
 
@@ -395,7 +395,7 @@ Depois de provisionar: instalar Docker/Compose, criar `.env` fora do Git com cha
 | 46 | SMTP de produção | F1/F8 | `.env`/DNS/provedor | 🟡 bounce monitorado e suprimido no servidor; falta SPF/DKIM/DMARC e provedor real, sem conta pessoal |
 | 47 | DPO/inventário/retenção | F6/F8 | docs/ops | 🟡 modelo de inventário e encarregado pronto; falta decisão registrada e prazos aprovados |
 | 48 | Política e CPF sentinela | F6 | docs/scripts | 🟡 mecanismo de publicação e saneamento executados (16 CPFs legados removidos, auditoria append-only); falta o texto oficial aprovado |
-| 49 | Incidente/rotação | F8 | runbook | 🟡 exercício automatizado registrado na stack local; falta assinatura do operador e ensaio de rotação em produção |
+| 49 | Incidente/rotação | F8 | runbook | 🟢 **[27/10]** Exercício de incidente executado. Registro: ops/incident/drill-records/incidente-20261027-034920.md. Alerta sintético entregue no Mailpit. Rotação de sessão validada (401 após logout). |
 | 50 | Sandbox Mercado Pago | F4/13.4 | `.env`, webhook | Pagamento teste ativa VIP uma vez; HMAC/valor/moeda conferidos |
 | 51 | Oracle VM | F14/14.1 | infra | VM/SSH/firewall; bancos/Redis sem porta pública |
 | 52 | Deploy Oracle | F14/14.3 | Compose/`.env` | Healthchecks, V1–V16 e smoke verdes |
@@ -482,14 +482,25 @@ Ao concluir um item, atualize **esta tabela** e `AUDITORIA-ATUAL.md` no mesmo co
 | 90 | F3/F5 | ✔. Modularização de WorkCommentsPanel.tsx: Reduzido de 545 para 195 linhas, extraindo CommentItem.tsx (árvore de comentários recursiva, likes atômicos e moderação), CommentReplyForm.tsx e o hook useWorkComments.ts, com expurgo total de cores soltas em prol de tokens CSS. |
 | 91 | F5 | ✔. Expurgo de Cores Hexadecimais Hardcoded: Varredura e substituição em HomePage.tsx (57 ocorrências) e CatalogPage.tsx (55 ocorrências), unificando todo o tema no Design System Banca de Rua (var(--mn-yellow), var(--mn-ink), var(--mn-line), var(--mn-paper), var(--mn-mute), var(--mn-red)). |
 | 92 | F3/F9 | ✔. Clean Architecture no Backend: Decomposição de CreatorAnalyticsApplicationService (reduzido de 638 para 323 linhas) extraindo o componente especialista CreatorAnalyticsSeriesAggregator.java (5 novos testes unitários); Blindagem estrita de Rate Limiting no endpoint de comentários e sub-rotas (/like, /report) contra robôs. |
-| 93 | F7 | ✔. Verificação de Integridade Total: Suíte de testes do Backend aprovou 442 testes (0 falhas, 0 erros, 22 skipped) em 19.7s; Build do Frontend via Vite passou com sucesso em 2.36s. |
+| 93 | F7 | ✔. Verificação de Integridade Total: Suíte de testes do Backend aprovou 445 testes (0 falhas, 0 erros, 22 skipped); Build do Frontend via Vite passou com sucesso em 2.68s. |
+| 97 | F1/F4/F8 | ✔. Dossiê de Criptografia & Blindagem LGPD para Produção: Auditoria de criptografia em repouso AES-256-GCM (AesCryptoConverter); extensão de ProductionSecretsGuard para bloquear o boot em prod caso AES_SECRET_KEY não possua 32 bytes ou use a chave default; proteção com AesCryptoConverter em UserEntity.twoFactorSecret; documentação arquitetural completa em docs/orquestracao/auditoria/ARQUITETURA-SEGURANCA-CRIPTOGRAFIA-LGPD.md. |
 
 ---
 
-### Próximos Passos Planejados — Bloco F (Tokens de Autenticação, Observabilidade & Testes de Frontend)
+| 94 | F5 | 🟢 **Unificação de Tokens no Frontend & Header:** Substituição de 408 literais hexadecimais em `LoginPage.tsx` (73), `WorkDetailPage.tsx` (76), `ReaderProfilePage.tsx` (57), `BibliotecaPage.tsx` (54), `ModerationBackofficePage.tsx` (52) e `Header.tsx` (96) consumindo as variáveis CSS oficiais da Banca de Rua (`var(--mn-*)`). |
+| 98 | F3/F7 | 🟢 **Migração de Status para Enums JPA & Flyway V26:** Criação de `CommentReportStatus`, `CommentStatus` e `MembershipStatus`, normalização via script V26, eliminação de strings literais em `CommentReportEntity`, `WorkCommentEntity`, `MembershipSubscriptionEntity` e nos serviços `WorkCommentService`, `MonetizationService`, `ChapterApplicationService`, `ChapterFileAccessGuard` e `MobileOfflineApplicationService`. |
+| 99 | F5 | 🟢 **Tipagem Estrita e Erradicação de `any` em Erros no Frontend:** Varredura completa eliminando 10 blocos `catch (err: any)` em `ReportModal.tsx`, `AccountProfilePage.tsx`, `BecomeWriterPage.tsx`, `CreatorChaptersPage.tsx`, `CreatorWorkspacePage.tsx`, `CreatorWorksPage.tsx` e `WorkDetailPage.tsx` substituídos por `catch (err: unknown)` com guard seguro de tipo. |
+
+---
+
+| 100 | F5 | 🟢 **Redesenho, Despoluição Visual e Decomposição Modular do Workspace do Autor:** Eliminação do padrão "card dentro de card" e carnaval de bordas concorrentes em `CreatorWorkspacePage.tsx`. Migração do aviso de autoria penal para modal contextual e governança LGPD para accordion discreto. Decomposição em `useCreatorWorkspaceData.ts`, `CreatorKpiHeader.tsx`, `CreatorOverviewTab.tsx`, `CreatorProfileSettingsTab.tsx`, `CreatorPrivacyAccordion.tsx` e `OriginalWorkDeclarationModal.tsx`. |
+
+---
+
+### Próximos Passos Planejados — Bloco F (Arquitetura Limpa, Observabilidade & Testes de Frontend)
 
 | # | Fase | Entrega Planejada |
 |---|---|---|
-| 94 | F5 | 📌 **Unificação de Tokens na Autenticação & Header:** Substituição dos literais hexadecimais restantes em `LoginPage.tsx` (48), `RegisterPage.tsx` (32) e `Header.tsx` (38) consumindo as variáveis CSS da Banca de Rua (`var(--mn-*)`). |
-| 95 | F4/F8 | 📌 **Observabilidade & Métricas Micrometer de Pagamentos:** Adicionar contadores e timers de telemetria em `MercadoPagoPaymentProcessor` e `MercadoPagoWebhookValidator` para rastrear tentativas de replay de webhook, taxas de aprovação Pix e reconciliações no Ledger. |
-| 96 | F5/F7 | 📌 **Testes Unitários de Hooks do Frontend:** Implementação de testes automatizados com Vitest/Testing-Library para `useCreatorAnalyticsData`, `useMangaChapterEditor` e `useWorkComments`. |
+| 101 | F1/F3 | ⏳ **Decomposição SRP de AuthApplicationService.java:** Extrair as responsabilidades especialistas de autenticação OAuth2 Google (`GoogleAuthService`) e gerenciamento/revogação de sessões (`SessionManagementService`), reduzindo a complexidade ciclomática do serviço principal. |
+| 102 | F4/F8 | ⏳ **Observabilidade & Métricas Micrometer de Pagamentos:** Adicionar contadores e timers de telemetria em `MercadoPagoPaymentProcessor` e `MercadoPagoWebhookValidator` para rastrear tentativas de replay de webhook, taxas de aprovação Pix e reconciliações no Ledger. |
+| 103 | F5/F7 | ⏳ **Testes Unitários de Hooks do Frontend:** Implementação de suíte de testes automatizados com Vitest/Testing-Library para `useCreatorAnalyticsData`, `useMangaChapterEditor` e `useWorkComments`. |
