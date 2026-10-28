@@ -493,7 +493,7 @@ Ao concluir um item, atualize **esta tabela** e `AUDITORIA-ATUAL.md` no mesmo co
 
 ---
 
-| 100 | F5 | 🟢 **Redesenho, Despoluição Visual e Decomposição Modular do Workspace do Autor:** Eliminação do padrão "card dentro de card" e carnaval de bordas concorrentes em `CreatorWorkspacePage.tsx`. Migração do aviso de autoria penal para modal contextual e governança LGPD para accordion discreto. Decomposição em `useCreatorWorkspaceData.ts`, `CreatorKpiHeader.tsx`, `CreatorOverviewTab.tsx`, `CreatorProfileSettingsTab.tsx`, `CreatorPrivacyAccordion.tsx` e `OriginalWorkDeclarationModal.tsx`. |
+| 100 | F5 | 🟢 **Redesenho, Despoluição Visual e Decomposição Modular do Workspace do Autor:** Eliminação do padrão "card dentro de card" e carnaval de bordas concorrentes em `CreatorWorkspacePage.tsx`. Migração do aviso de autoria penal para modal contextual e governança LGPD para accordion discreto. Decomposição em `useCreatorWorkspaceData.ts`, `CreatorKpiHeader.tsx`, `CreatorOverviewTab.tsx`, `CreatorProfileSettingsTab.tsx`, `CreatorPrivacyAccordion.tsx` e `OriginalWorkDeclarationModal.tsx`. **Evidências (2026-10-28):** 420 → 129 linhas; `mvn -o clean test` → 447 tests, 0 failures, BUILD SUCCESS; `npm run build` → 0 erros TS, built in 2.86s; commit `12e73a3` em main/develop. |
 
 ---
 
