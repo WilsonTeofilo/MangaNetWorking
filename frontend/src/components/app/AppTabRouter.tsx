@@ -4,7 +4,6 @@ import { HomePage } from '../../pages/HomePage';
 import { CatalogPage } from '../../pages/CatalogPage';
 import { SobrePage } from '../../pages/SobrePage';
 import { BibliotecaPage } from '../../pages/BibliotecaPage';
-import { ReaderProfilePage } from '../../pages/ReaderProfilePage';
 import { AccountProfilePage } from '../../pages/AccountProfilePage';
 import { BecomeWriterPage } from '../../pages/BecomeWriterPage';
 import { OnboardingPage } from '../../pages/OnboardingPage';
@@ -75,14 +74,15 @@ export function AppTabRouter({
       );
 
     case 'reader-profile':
-      return <ReaderProfilePage onSelectWork={onSelectWork} />;
-
     case 'account':
       return (
         <AccountProfilePage
           onOpenPublicProfile={onOpenPublicProfile}
-          onOpenReaderPanel={() => onSwitchTab('reader-profile')}
           onBecomeWriter={() => onSwitchTab('become-writer')}
+          onSelectWork={onSelectWork}
+          onOpenChapter={onOpenChapter}
+          onExploreCatalog={() => onSwitchTab('works')}
+          onSaved={onProfileSaved}
         />
       );
 
