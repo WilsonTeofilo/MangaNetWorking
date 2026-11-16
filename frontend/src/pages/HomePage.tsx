@@ -130,7 +130,6 @@ export function HomePage({
           onOpenRelease={openRelease}
           favorites={user?.favorites}
           isAuthenticated={isAuthenticated}
-          coldStartCta={coldStartCta}
         />
 
         {/* 5. RANKINGS EM ALTA POR FORMATO */}
