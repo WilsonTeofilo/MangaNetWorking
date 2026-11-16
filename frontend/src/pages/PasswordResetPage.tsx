@@ -49,18 +49,18 @@ export function PasswordResetPage({ token, onBackToLogin }: PasswordResetPagePro
   };
 
   return (
-    <main className="min-h-screen bg-[#0B0B0C] p-4 text-[#F4EFE3] sm:p-6">
-      <section className="mx-auto mt-12 max-w-lg space-y-6 border-2 border-[var(--mn-yellow)] bg-[#151517] p-6 shadow-[6px_6px_0_var(--mn-yellow)] sm:mt-24 sm:p-10">
+    <main className="min-h-screen bg-[var(--mn-ink)] p-4 text-[var(--mn-paper)] sm:p-6">
+      <section className="mx-auto mt-12 max-w-lg space-y-6 border-2 border-[var(--mn-yellow)] bg-[var(--mn-ink-2)] p-6 shadow-[6px_6px_0_var(--mn-yellow)] sm:mt-24 sm:p-10">
         <p className="font-pixel text-xs text-[var(--mn-yellow)]">MANGANETWORKING</p>
         <h1 className="font-display text-3xl uppercase">{complete ? 'Senha atualizada' : 'Criar nova senha'}</h1>
         {complete ? (
           <div className="space-y-5" role="status">
-            <p className="font-body text-sm text-[#A9A59A]">Sua senha foi alterada. Entre novamente com a nova senha; a verificação em duas etapas continuará ativa.</p>
+            <p className="font-body text-sm text-[var(--mn-mute)]">Sua senha foi alterada. Entre novamente com a nova senha; a verificação em duas etapas continuará ativa.</p>
             <Button type="button" variant="primary" onClick={onBackToLogin}>VOLTAR AO LOGIN</Button>
           </div>
         ) : (
           <form onSubmit={submit} className="space-y-5" noValidate>
-            <p className="font-body text-sm text-[#A9A59A]">Use uma senha média ou forte. Ela deve ter entre 8 e 64 caracteres.</p>
+            <p className="font-body text-sm text-[var(--mn-mute)]">Use uma senha média ou forte. Ela deve ter entre 8 e 64 caracteres.</p>
             <PasswordInput label="NOVA SENHA" value={password} onChange={(event) => setPassword(limitPasswordLength(event.target.value))} autoComplete="new-password" showStrength required disabled={loading || !token} />
             <PasswordInput label="CONFIRMAR NOVA SENHA" value={confirmation} onChange={(event) => setConfirmation(limitPasswordLength(event.target.value))} autoComplete="new-password" required disabled={loading || !token} />
             {error && <p role="alert" className="font-body text-sm text-[#E8402F]">{error}</p>}

@@ -164,7 +164,7 @@ export function AccountProfilePage({
             <img
               src={avatarUrl || '/avatar-placeholder.png'}
               alt="Foto de perfil"
-              className="w-32 h-32 rounded-full object-cover bg-[#1F2833] border-2 border-[var(--mn-yellow)]"
+              className="w-32 h-32 rounded-full object-cover bg-[var(--mn-ink-2)] border-2 border-[var(--mn-yellow)]"
             />
             <button
               type="button"

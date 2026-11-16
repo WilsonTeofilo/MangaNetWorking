@@ -94,7 +94,7 @@ export function PublicProfilePage({ username }: { username: string }) {
         <img
           src={profile.avatarUrl || '/avatar-placeholder.png'}
           alt={profile.displayName || profile.username}
-          className="w-28 h-28 rounded-full object-cover border-2 border-[var(--mn-yellow)] bg-[#1F2833]"
+          className="w-28 h-28 rounded-full object-cover border-2 border-[var(--mn-yellow)] bg-[var(--mn-ink-2)]"
         />
 
         <div className="flex-1 space-y-3">
