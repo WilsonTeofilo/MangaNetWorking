@@ -222,64 +222,50 @@ describe('TASK-116 — Hub Unificado do Workspace do Autor & Sincronização via
     });
   });
 
-  describe('2. CREATOR_MENU possui os itens essenciais do criador com query params mapeados', () => {
-    it('CREATOR_MENU.length === 7', () => {
-      expect(CREATOR_MENU).toHaveLength(7);
+  describe('2. CREATOR_MENU possui os itens essenciais do criador', () => {
+    it('CREATOR_MENU.length === 6', () => {
+      expect(CREATOR_MENU).toHaveLength(6);
     });
 
-    it('contém Visão Geral apontando para ?aba=visao-geral', () => {
-      expect(CREATOR_MENU.find((i) => i.abaQuery === 'visao-geral')).toMatchObject({
-        label: 'Visão Geral',
+    it('contém Visão Geral apontando para creator-dashboard', () => {
+      expect(CREATOR_MENU.find((i) => i.tab === 'creator-dashboard')).toMatchObject({
+        label: 'Visão Geral (Workspace)',
         tab: 'creator-dashboard',
-        abaQuery: 'visao-geral',
       });
     });
 
-    it('contém Minhas Obras apontando para ?aba=obras', () => {
-      expect(CREATOR_MENU.find((i) => i.abaQuery === 'obras')).toMatchObject({
+    it('contém Minhas Obras apontando para creator-works', () => {
+      expect(CREATOR_MENU.find((i) => i.tab === 'creator-works')).toMatchObject({
         label: 'Minhas Obras',
-        tab: 'creator-dashboard',
-        abaQuery: 'obras',
+        tab: 'creator-works',
       });
     });
 
-    it('contém Capítulos & Lançamento apontando para ?aba=capitulos', () => {
-      expect(CREATOR_MENU.find((i) => i.abaQuery === 'capitulos')).toMatchObject({
+    it('contém Capítulos & Lançamento apontando para creator-chapters', () => {
+      expect(CREATOR_MENU.find((i) => i.tab === 'creator-chapters')).toMatchObject({
         label: 'Capítulos & Lançamento',
-        tab: 'creator-dashboard',
-        abaQuery: 'capitulos',
+        tab: 'creator-chapters',
       });
     });
 
-    it('contém Missões & XP apontando para ?aba=missoes', () => {
-      expect(CREATOR_MENU.find((i) => i.abaQuery === 'missoes')).toMatchObject({
+    it('contém Dashboard & Analytics apontando para creator-analytics', () => {
+      expect(CREATOR_MENU.find((i) => i.tab === 'creator-analytics')).toMatchObject({
+        label: 'Dashboard & Analytics',
+        tab: 'creator-analytics',
+      });
+    });
+
+    it('contém Missões & XP apontando para creator-missions', () => {
+      expect(CREATOR_MENU.find((i) => i.tab === 'creator-missions')).toMatchObject({
         label: 'Missões & XP',
-        tab: 'creator-dashboard',
-        abaQuery: 'missoes',
+        tab: 'creator-missions',
       });
     });
 
-    it('contém Analytics apontando para ?aba=analytics', () => {
-      expect(CREATOR_MENU.find((i) => i.abaQuery === 'analytics')).toMatchObject({
-        label: 'Analytics',
-        tab: 'creator-dashboard',
-        abaQuery: 'analytics',
-      });
-    });
-
-    it('contém Monetização apontando para ?aba=monetizacao', () => {
-      expect(CREATOR_MENU.find((i) => i.abaQuery === 'monetizacao')).toMatchObject({
-        label: 'Monetização',
-        tab: 'creator-dashboard',
-        abaQuery: 'monetizacao',
-      });
-    });
-
-    it('contém Perfil & Ajustes apontando para ?aba=configuracoes', () => {
-      expect(CREATOR_MENU.find((i) => i.abaQuery === 'configuracoes')).toMatchObject({
-        label: 'Perfil & Ajustes',
-        tab: 'creator-dashboard',
-        abaQuery: 'configuracoes',
+    it('contém Monetização & Ganhos apontando para creator-monetization', () => {
+      expect(CREATOR_MENU.find((i) => i.tab === 'creator-monetization')).toMatchObject({
+        label: 'Monetização & Ganhos',
+        tab: 'creator-monetization',
       });
     });
   });

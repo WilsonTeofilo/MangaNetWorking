@@ -9,7 +9,11 @@ import { BecomeWriterPage } from '../../pages/BecomeWriterPage';
 import { OnboardingPage } from '../../pages/OnboardingPage';
 import { PublicProfilePage } from '../../pages/PublicProfilePage';
 import { CreatorDashboardPage } from '../../pages/CreatorDashboardPage';
-import { CreatorWorkspacePage } from '../../pages/CreatorWorkspacePage';
+import { CreatorWorksPage } from '../../pages/CreatorWorksPage';
+import { CreatorChaptersPage } from '../../pages/CreatorChaptersPage';
+import { CreatorAnalyticsPage } from '../../pages/CreatorAnalyticsPage';
+import { CreatorMissionsPage } from '../../pages/CreatorMissionsPage';
+import { CreatorMonetizationPage } from '../../pages/CreatorMonetizationPage';
 import { ModerationBackofficePage } from '../../pages/ModerationBackofficePage';
 
 interface AppTabRouterProps {
@@ -99,19 +103,30 @@ export function AppTabRouter({
       return <CreatorDashboardPage onOpenPublicProfile={onOpenPublicProfile} />;
 
     case 'creator-works':
-      return <CreatorWorkspacePage section="works" onOpenPublicProfile={onOpenPublicProfile} />;
+      return (
+        <CreatorWorksPage
+          onNavigateToChapters={(workId) => {
+            if (workId && typeof window !== 'undefined') {
+              const url = new URL(window.location.href);
+              url.searchParams.set('obra', workId);
+              window.history.replaceState(window.history.state, '', url.pathname + url.search);
+            }
+            onSwitchTab('creator-chapters');
+          }}
+        />
+      );
 
     case 'creator-chapters':
-      return <CreatorWorkspacePage section="chapters" onOpenPublicProfile={onOpenPublicProfile} />;
+      return <CreatorChaptersPage />;
 
     case 'creator-missions':
-      return <CreatorWorkspacePage section="missions" onOpenPublicProfile={onOpenPublicProfile} />;
+      return <CreatorMissionsPage />;
 
     case 'creator-analytics':
-      return <CreatorWorkspacePage section="analytics" onOpenPublicProfile={onOpenPublicProfile} />;
+      return <CreatorAnalyticsPage />;
 
     case 'creator-monetization':
-      return <CreatorWorkspacePage section="monetization" onOpenPublicProfile={onOpenPublicProfile} />;
+      return <CreatorMonetizationPage />;
 
     case 'moderation':
       return <ModerationBackofficePage onBack={() => onSwitchTab('feed')} />;

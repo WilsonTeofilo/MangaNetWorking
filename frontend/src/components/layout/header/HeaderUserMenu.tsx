@@ -8,7 +8,6 @@ import {
   Award,
   BarChart3,
   Coins,
-  Settings,
   LogOut,
   ShieldAlert,
 } from 'lucide-react';
@@ -27,18 +26,16 @@ interface HeaderUserMenuProps {
 export interface CreatorMenuItem {
   label: string;
   tab: AppTab;
-  abaQuery: string;
   icon: typeof LayoutDashboard;
 }
 
 export const CREATOR_MENU: CreatorMenuItem[] = [
-  { label: 'Visão Geral', tab: 'creator-dashboard', abaQuery: 'visao-geral', icon: LayoutDashboard },
-  { label: 'Minhas Obras', tab: 'creator-dashboard', abaQuery: 'obras', icon: BookOpen },
-  { label: 'Capítulos & Lançamento', tab: 'creator-dashboard', abaQuery: 'capitulos', icon: FileText },
-  { label: 'Missões & XP', tab: 'creator-dashboard', abaQuery: 'missoes', icon: Award },
-  { label: 'Analytics', tab: 'creator-dashboard', abaQuery: 'analytics', icon: BarChart3 },
-  { label: 'Monetização', tab: 'creator-dashboard', abaQuery: 'monetizacao', icon: Coins },
-  { label: 'Perfil & Ajustes', tab: 'creator-dashboard', abaQuery: 'configuracoes', icon: Settings },
+  { label: 'Visão Geral (Workspace)', tab: 'creator-dashboard', icon: LayoutDashboard },
+  { label: 'Minhas Obras', tab: 'creator-works', icon: BookOpen },
+  { label: 'Capítulos & Lançamento', tab: 'creator-chapters', icon: FileText },
+  { label: 'Dashboard & Analytics', tab: 'creator-analytics', icon: BarChart3 },
+  { label: 'Missões & XP', tab: 'creator-missions', icon: Award },
+  { label: 'Monetização & Ganhos', tab: 'creator-monetization', icon: Coins },
 ];
 
 export function HeaderUserMenu({
@@ -78,14 +75,9 @@ export function HeaderUserMenu({
     onNavigate('feed');
   };
 
-  const handleCreatorNavigate = (abaQuery: string) => {
+  const handleCreatorNavigate = (tab: AppTab) => {
     setMenuOpen(false);
-    if (typeof window !== 'undefined') {
-      const url = new URL(window.location.href);
-      url.searchParams.set('aba', abaQuery);
-      window.history.replaceState({ tab: 'creator-dashboard', aba: abaQuery }, '', url.pathname + url.search);
-    }
-    onNavigate('creator-dashboard');
+    onNavigate(tab);
   };
 
   return (
@@ -227,28 +219,14 @@ export function HeaderUserMenu({
                     Criador
                   </p>
                   {CREATOR_MENU.map((item) => {
-                    const currentAba =
-                      typeof window !== 'undefined'
-                        ? new URLSearchParams(window.location.search).get('aba')?.toLowerCase()
-                        : null;
-                    const isItemActive =
-                      currentTab === 'creator-dashboard' &&
-                      (currentAba === item.abaQuery ||
-                        (!currentAba && item.abaQuery === 'visao-geral') ||
-                        (item.abaQuery === 'visao-geral' && currentAba === 'overview') ||
-                        (item.abaQuery === 'obras' && currentAba === 'works') ||
-                        (item.abaQuery === 'capitulos' && (currentAba === 'capitulos' || currentAba === 'chapters')) ||
-                        (item.abaQuery === 'missoes' && currentAba === 'missions') ||
-                        (item.abaQuery === 'analytics' && currentAba === 'analytics') ||
-                        (item.abaQuery === 'monetizacao' && (currentAba === 'monetizacao' || currentAba === 'monetization')) ||
-                        (item.abaQuery === 'configuracoes' && currentAba === 'settings'));
+                    const isItemActive = currentTab === item.tab;
 
                     return (
                       <button
-                        key={item.abaQuery}
+                        key={item.tab}
                         type="button"
                         role="menuitem"
-                        onClick={() => handleCreatorNavigate(item.abaQuery)}
+                        onClick={() => handleCreatorNavigate(item.tab)}
                         className={`w-full text-left px-4 py-2.5 flex items-center gap-2 font-body text-sm transition-colors ${
                           isItemActive
                             ? 'bg-[var(--mn-yellow)] text-[var(--mn-ink)] font-semibold'
