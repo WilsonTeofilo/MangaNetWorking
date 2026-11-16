@@ -9,7 +9,6 @@ import { HomeFormatBar } from '../components/home/HomeFormatBar';
 import { HomeContinueReading } from '../components/home/HomeContinueReading';
 import { HomeRecentReleases } from '../components/home/HomeRecentReleases';
 import { HomeTrendingRails } from '../components/home/HomeTrendingRails';
-import { HomeTimeline } from '../components/home/HomeTimeline';
 
 export interface HomePageProps {
   onSelectWork: (work: Work) => void;
@@ -44,7 +43,6 @@ export function HomePage({
     progressWork,
     progressChapter,
     recentGroups,
-    timeline,
     handleReadNow,
     openRelease,
   } = useHomeNavigation({ onSelectWork, onOpenChapter });
@@ -52,19 +50,30 @@ export function HomePage({
   const showMangaRail = formato !== 'LIGHT_NOVEL';
   const showNovelRail = formato !== 'MANGA';
 
-  const coldStartCta = (label: string) =>
-    user?.isCreator && onPublishWork ? (
+  // Notificação de cold-start unificada: 1 único bloco com lógica condicional
+  const totalMangas = discovery.trendingManga.length;
+  const totalNovels = discovery.trendingLightNovel.length;
+
+  const coldStartLabel: string | null = (() => {
+    if (!user?.isCreator || !onPublishWork) return null;
+    if (totalMangas > 10 && totalNovels > 10) return null;
+    if (totalMangas <= 10 && totalNovels <= 10)
+      return 'Poucas obras ainda — publique um mangá ou light novel';
+    if (totalMangas > 10 && totalNovels <= 10)
+      return 'Poucas light novels — publique uma para diversificar';
+    return 'Poucos mangás — publique um para crescer o catálogo';
+  })();
+
+  const coldStartCta =
+    coldStartLabel && onPublishWork ? (
       <button
         type="button"
         onClick={onPublishWork}
-        className="w-full flex items-center gap-3 border-2 border-dashed border-[var(--mn-line)] hover:border-[var(--mn-yellow)] hover:bg-[var(--mn-ink-2)] px-4 py-5 text-left transition-colors"
+        className="w-full flex items-center gap-3 border border-dashed border-[var(--mn-line)] hover:border-[var(--mn-yellow)] hover:bg-[var(--mn-ink-2)] px-4 py-4 text-left transition-colors"
       >
-        <PenLine size={20} className="text-[var(--mn-yellow)] shrink-0" aria-hidden="true" />
-        <span>
-          <span className="font-display text-lg text-[var(--mn-paper)] uppercase block leading-tight">{label}</span>
-          <span className="font-body text-xs text-[var(--mn-mute)]">
-            Ainda há poucas obras aqui. Publique a sua e ocupe este espaço.
-          </span>
+        <PenLine size={18} className="text-[var(--mn-yellow)] shrink-0" aria-hidden="true" />
+        <span className="font-body text-xs text-[var(--mn-mute)] leading-snug">
+          {coldStartLabel}
         </span>
       </button>
     ) : null;
@@ -121,8 +130,7 @@ export function HomePage({
           onOpenRelease={openRelease}
           favorites={user?.favorites}
           isAuthenticated={isAuthenticated}
-          coldStartCta={coldStartCta('Publique o primeiro capítulo')}
-          onNavigateToCatalog={onNavigateToCatalog}
+          coldStartCta={coldStartCta}
         />
 
         {/* 5. RANKINGS EM ALTA POR FORMATO */}
@@ -134,12 +142,9 @@ export function HomePage({
           minRailSize={MIN_RAIL_SIZE}
           onSelectWork={onSelectWork}
           onNavigateToCatalog={onNavigateToCatalog}
-          mangaColdStartCta={coldStartCta('Publique o primeiro mangá')}
-          novelColdStartCta={coldStartCta('Publique a primeira light novel')}
+          mangaColdStartCta={coldStartCta}
+          novelColdStartCta={coldStartCta}
         />
-
-        {/* 6. TIMELINE DE LANÇAMENTOS POR DIA */}
-        <HomeTimeline timeline={timeline} onOpenRelease={openRelease} />
       </div>
     </div>
   );

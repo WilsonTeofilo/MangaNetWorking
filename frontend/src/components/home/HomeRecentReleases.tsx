@@ -11,7 +11,6 @@ export interface HomeRecentReleasesProps {
   favorites?: string[];
   isAuthenticated: boolean;
   coldStartCta?: React.ReactNode;
-  onNavigateToCatalog?: () => void;
 }
 
 export function HomeRecentReleases({
@@ -21,28 +20,16 @@ export function HomeRecentReleases({
   favorites = [],
   isAuthenticated,
   coldStartCta,
-  onNavigateToCatalog,
 }: HomeRecentReleasesProps) {
   return (
     <section className="space-y-4">
-      <div className="flex items-end justify-between border-b-2 border-[var(--mn-line)] pb-3">
-        <div>
-          <h2 className="font-display text-3xl sm:text-4xl text-[var(--mn-paper)] uppercase tracking-wide">
-            NOVOS CAPÍTULOS
-          </h2>
-          <span className="font-body text-xs text-[var(--mn-mute)]">
-            Lançamentos independentes publicados direto pelos criadores
-          </span>
-        </div>
-        {onNavigateToCatalog && (
-          <button
-            type="button"
-            onClick={onNavigateToCatalog}
-            className="font-pixel text-[12px] text-[var(--mn-yellow)] hover:underline whitespace-nowrap"
-          >
-            CATÁLOGO COMPLETO →
-          </button>
-        )}
+      <div className="border-b-2 border-[var(--mn-line)] pb-3">
+        <h2 className="font-display text-3xl sm:text-4xl text-[var(--mn-paper)] uppercase tracking-wide">
+          NOVOS CAPÍTULOS
+        </h2>
+        <span className="font-body text-xs text-[var(--mn-mute)]">
+          Lançamentos independentes publicados direto pelos criadores
+        </span>
       </div>
 
       {recentGroups.length > 0 ? (
