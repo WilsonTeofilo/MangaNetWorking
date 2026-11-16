@@ -18,23 +18,23 @@ export function DesignSystemShowcasePage() {
 
   return (
     <div className="mn-container py-10 space-y-12">
-      <header className="border-b-2 border-[#34343A] pb-4 flex items-center justify-between">
+      <header className="border-b-2 border-[var(--mn-line)] pb-4 flex items-center justify-between">
         <div>
-          <span className="font-pixel text-[12px] text-[#FFD400] tracking-widest block">
+          <span className="font-pixel text-[12px] text-[var(--mn-yellow)] tracking-widest block">
             AMBIENTE DE DESENVOLVIMENTO
           </span>
-          <h1 className="font-display text-4xl text-[#F4EFE3] uppercase">
+          <h1 className="font-display text-4xl text-[var(--mn-paper)] uppercase">
             DESIGN SYSTEM SHOWCASE
           </h1>
         </div>
-        <span className="font-pixel text-[12px] bg-[#FFD400] text-[#0B0B0C] px-2 py-1 font-bold">
+        <span className="font-pixel text-[12px] bg-[var(--mn-yellow)] text-[var(--mn-ink)] px-2 py-1 font-bold">
           DEV ONLY
         </span>
       </header>
 
       {/* 1. Botões */}
       <section className="space-y-4">
-        <h2 className="font-display text-2xl text-[#FFD400]">1. BOTÕES</h2>
+        <h2 className="font-display text-2xl text-[var(--mn-yellow)]">1. BOTÕES</h2>
         <div className="flex flex-wrap gap-4 items-center">
           <Button variant="primary">LER AGORA (PRIMARY)</Button>
           <Button variant="secondary">VER DETALHES (SECONDARY)</Button>
@@ -48,12 +48,12 @@ export function DesignSystemShowcasePage() {
 
       {/* 2. Janelas Retrô OS */}
       <section className="space-y-4">
-        <h2 className="font-display text-2xl text-[#FFD400]">
+        <h2 className="font-display text-2xl text-[var(--mn-yellow)]">
           2. JANELAS RETRÔ OS (&lt;Win&gt;)
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Win title="CONTINUAR_LENDO.EXE">
-            <p className="font-body text-sm text-[#F4EFE3]">
+            <p className="font-body text-sm text-[var(--mn-paper)]">
               Você parou na página 12 do Capítulo 4. Deseja continuar a leitura
               de onde parou?
             </p>
@@ -64,7 +64,7 @@ export function DesignSystemShowcasePage() {
           </Win>
 
           <Win title="PREVIEW_PAPEL.EXE" theme="paper">
-            <p className="font-body text-sm text-[#0B0B0C]">
+            <p className="font-body text-sm text-[var(--mn-ink)]">
               Superfície clara de papel off-white com texto nanquim e drop shadow
               preta dura.
             </p>
@@ -77,7 +77,7 @@ export function DesignSystemShowcasePage() {
 
       {/* 3. Selos e Stickers */}
       <section className="space-y-4">
-        <h2 className="font-display text-2xl text-[#FFD400]">
+        <h2 className="font-display text-2xl text-[var(--mn-yellow)]">
           3. SELOS E BADGES (&lt;Sticker&gt;)
         </h2>
         <div className="flex flex-wrap gap-4 items-center">
@@ -91,7 +91,7 @@ export function DesignSystemShowcasePage() {
 
       {/* 4. Patches de Nível e XP */}
       <section className="space-y-4">
-        <h2 className="font-display text-2xl text-[#FFD400]">
+        <h2 className="font-display text-2xl text-[var(--mn-yellow)]">
           4. SEASONS, PATCHES E XP
         </h2>
         <div className="flex flex-wrap gap-4 items-center">
@@ -107,13 +107,13 @@ export function DesignSystemShowcasePage() {
           <div className="flex gap-2 mt-3">
             <button
               onClick={() => setXp((x) => Math.max(0, x - 50))}
-              className="px-2 py-1 text-xs border border-[#34343A] font-pixel text-[#F4EFE3]"
+              className="px-2 py-1 text-xs border border-[var(--mn-line)] font-pixel text-[var(--mn-paper)]"
             >
               -50 XP
             </button>
             <button
               onClick={() => setXp((x) => Math.min(500, x + 50))}
-              className="px-2 py-1 text-xs border border-[#34343A] font-pixel text-[#FFD400]"
+              className="px-2 py-1 text-xs border border-[var(--mn-line)] font-pixel text-[var(--mn-yellow)]"
             >
               +50 XP
             </button>
@@ -123,30 +123,30 @@ export function DesignSystemShowcasePage() {
 
       {/* 5. Capa 2:3 e Fallback */}
       <section className="space-y-4">
-        <h2 className="font-display text-2xl text-[#FFD400]">
+        <h2 className="font-display text-2xl text-[var(--mn-yellow)]">
           5. CAPAS 2:3 COM FALLBACK EDITORIAL
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-2xl">
           <div>
-            <span className="font-pixel text-[12px] text-[#A9A59A] block mb-1">
+            <span className="font-pixel text-[12px] text-[var(--mn-mute)] block mb-1">
               COM IMAGEM
             </span>
             <Cover src={sampleWork.coverUrl} title={sampleWork.title} />
           </div>
           <div>
-            <span className="font-pixel text-[12px] text-[#A9A59A] block mb-1">
+            <span className="font-pixel text-[12px] text-[var(--mn-mute)] block mb-1">
               FALLBACK 1
             </span>
             <Cover title="Kurogane Curse" />
           </div>
           <div>
-            <span className="font-pixel text-[12px] text-[#A9A59A] block mb-1">
+            <span className="font-pixel text-[12px] text-[var(--mn-mute)] block mb-1">
               FALLBACK 2
             </span>
             <Cover title="Neon Tokyo Shinjuku" />
           </div>
           <div>
-            <span className="font-pixel text-[12px] text-[#A9A59A] block mb-1">
+            <span className="font-pixel text-[12px] text-[var(--mn-mute)] block mb-1">
               FALLBACK 3
             </span>
             <Cover title="A Chama Dourada" />
@@ -156,7 +156,7 @@ export function DesignSystemShowcasePage() {
 
       {/* 6. Formulários e OTP 2FA */}
       <section className="space-y-4 max-w-lg">
-        <h2 className="font-display text-2xl text-[#FFD400]">
+        <h2 className="font-display text-2xl text-[var(--mn-yellow)]">
           6. FORMULÁRIOS &amp; OTP 2FA
         </h2>
         <Field label="E-MAIL" placeholder="leitor@manganetworking.com.br" />
@@ -167,7 +167,7 @@ export function DesignSystemShowcasePage() {
         />
 
         <div className="pt-2">
-          <label className="font-body text-sm font-semibold text-[#F4EFE3] block mb-2">
+          <label className="font-body text-sm font-semibold text-[var(--mn-paper)] block mb-2">
             CÓDIGO DE 6 DÍGITOS 2FA:
           </label>
           <OtpInput value={otp} onChange={setOtp} />
@@ -176,10 +176,10 @@ export function DesignSystemShowcasePage() {
 
       {/* 7. Ranking Em Alta */}
       <section className="space-y-4 max-w-2xl">
-        <h2 className="font-display text-2xl text-[#FFD400]">
+        <h2 className="font-display text-2xl text-[var(--mn-yellow)]">
           7. RANKING "EM ALTA" (&lt;RankRow&gt;)
         </h2>
-        <div className="border-t-2 border-[#34343A]">
+        <div className="border-t-2 border-[var(--mn-line)]">
           <RankRow rank={1} work={sampleWork} onSelect={() => {}} />
           <RankRow rank={2} work={MOCK_WORKS[1] || sampleWork} onSelect={() => {}} />
           <RankRow rank={3} work={MOCK_WORKS[2] || sampleWork} onSelect={() => {}} />
@@ -188,7 +188,7 @@ export function DesignSystemShowcasePage() {
 
       {/* 8. Fita Ticker Marquee */}
       <section className="space-y-4">
-        <h2 className="font-display text-2xl text-[#FFD400]">
+        <h2 className="font-display text-2xl text-[var(--mn-yellow)]">
           8. FITA MARQUEE
         </h2>
         <Marquee />
@@ -196,3 +196,5 @@ export function DesignSystemShowcasePage() {
     </div>
   );
 }
+
+export default DesignSystemShowcasePage;
