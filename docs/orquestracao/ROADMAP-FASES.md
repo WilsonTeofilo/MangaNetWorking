@@ -509,6 +509,10 @@ Ao concluir um item, atualize **esta tabela** e `AUDITORIA-ATUAL.md` no mesmo co
 
 ---
 
+| 107 | F5 | 🟢 **Decomposição Modular e Anti-Monólito da HomePage (Feed Editorial):** Decomposição de `HomePage.tsx` (reduzido de 580 → 133 linhas). Criação do pacote `components/home/`: `useHomeNavigation.ts` (197 linhas), `HomeHeroSection.tsx` (139 linhas), `HomeFormatBar.tsx` (34 linhas), `HomeContinueReading.tsx` (84 linhas), `HomeRecentReleases.tsx` (89 linhas), `HomeTrendingRails.tsx` (89 linhas) e `HomeTimeline.tsx` (63 linhas). Preservação de 100% da sincronização por URL, rankings por formato e acessibilidade. **Evidências (2026-11-16):** 0 erros TS, build Vite em 2.60s, relatório TASK-107. |
+
+---
+
 ### Próximos Passos Planejados — Bloco F (Arquitetura Limpa, Observabilidade & Testes de Frontend)
 
 | # | Fase | Entrega Planejada |
