@@ -497,6 +497,10 @@ Ao concluir um item, atualize **esta tabela** e `AUDITORIA-ATUAL.md` no mesmo co
 
 ---
 
+| 104 | F1/F3 | 🟢 **Desacoplamento de Repositórios em Controllers (Clean Architecture):** Eliminação de referências diretas a repositórios JPA (`UserRepository` e `FinancialLedgerRepository`) em `CreatorController` e `MonetizationController`. Consulta de extrato financeiro encapsulada em `MonetizationService.getCreatorLedger` e obtenção de usuário para reemissão de sessão via navegação de domínio `creator.getUser()`. Atualização do slice `@WebMvcTest` em `MonetizationAuthorizationTest`. **Evidências (2026-11-16):** 447 testes passando (0 falhas, 0 erros, BUILD SUCCESS em 01:08 min). |
+
+---
+
 ### Próximos Passos Planejados — Bloco F (Arquitetura Limpa, Observabilidade & Testes de Frontend)
 
 | # | Fase | Entrega Planejada |

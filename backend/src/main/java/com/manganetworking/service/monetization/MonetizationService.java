@@ -14,7 +14,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
+import com.manganetworking.service.monetization.dto.LedgerEntryResponseDto;
 
 @Service
 public class MonetizationService {
@@ -262,5 +264,13 @@ public class MonetizationService {
 
         log.info("[VIP PLATAFORMA] Assinatura VIP ativada para usuário {} até {}", user.getId(), expiresAt);
         return user;
+    }
+
+    @Transactional(readOnly = true)
+    public List<LedgerEntryResponseDto> getCreatorLedger(UUID creatorId) {
+        return ledgerRepository.findAllByCreatorIdOrderByCreatedAtDesc(creatorId)
+                .stream()
+                .map(LedgerEntryResponseDto::from)
+                .toList();
     }
 }

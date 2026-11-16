@@ -1,6 +1,7 @@
 package com.manganetworking.controller;
 
 import com.manganetworking.domain.relational.CreatorEntity;
+import com.manganetworking.domain.relational.UserEntity;
 import com.manganetworking.service.creator.CreatorApplicationService;
 import com.manganetworking.service.creator.dto.*;
 import com.manganetworking.service.work.dto.CreatorWorkSummaryResponseDto;
@@ -21,18 +22,15 @@ import jakarta.servlet.http.HttpServletResponse;
 public class CreatorController {
 
     private final CreatorApplicationService creatorService;
-    private final com.manganetworking.repository.jpa.UserRepository userRepository;
     private final com.manganetworking.service.session.SessionService sessionService;
     private final com.manganetworking.service.creator.CreatorFollowService followService;
 
     public CreatorController(CreatorApplicationService creatorService,
                               com.manganetworking.service.creator.CreatorFollowService followService,
-                              com.manganetworking.repository.jpa.UserRepository userRepository,
                               com.manganetworking.service.session.SessionService sessionService) {
         this.creatorService = creatorService;
-        this.userRepository = userRepository;
-        this.sessionService = sessionService;
         this.followService = followService;
+        this.sessionService = sessionService;
     }
 
     @GetMapping("/{handle}")
@@ -57,7 +55,7 @@ public class CreatorController {
         // A sessao foi criada no login, antes do papel de escritor existir. Sem renovar aqui,
         // a pessoa continuaria com as janelas de leitor e tomaria 403 nos endpoints de autor
         // ate deslogar e logar de novo.
-        var user = userRepository.findById(userId).orElse(null);
+        UserEntity user = creator.getUser();
         if (user != null) {
             sessionService.createSession(user, creator, response);
         }

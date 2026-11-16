@@ -2,7 +2,7 @@ package com.manganetworking.controller;
 
 import com.manganetworking.config.exception.AccessDeniedException;
 import com.manganetworking.config.security.SecurityContextUtils;
-import com.manganetworking.repository.jpa.FinancialLedgerRepository;
+import com.manganetworking.service.monetization.MonetizationService;
 import com.manganetworking.service.monetization.dto.LedgerEntryResponseDto;
 import com.manganetworking.service.monetization.MercadoPagoService;
 import com.manganetworking.service.monetization.dto.DonationCheckoutRequestDto;
@@ -20,11 +20,11 @@ import java.util.UUID;
 @RequestMapping("/api/monetization")
 public class MonetizationController {
 
-    private final FinancialLedgerRepository ledgerRepository;
+    private final MonetizationService monetizationService;
     private final MercadoPagoService mercadoPagoService;
 
-    public MonetizationController(FinancialLedgerRepository ledgerRepository, MercadoPagoService mercadoPagoService) {
-        this.ledgerRepository = ledgerRepository;
+    public MonetizationController(MonetizationService monetizationService, MercadoPagoService mercadoPagoService) {
+        this.monetizationService = monetizationService;
         this.mercadoPagoService = mercadoPagoService;
     }
 
@@ -68,11 +68,6 @@ public class MonetizationController {
                     "Você só pode consultar o extrato financeiro da sua própria conta de autor.");
         }
 
-        List<LedgerEntryResponseDto> ledger = ledgerRepository
-                .findAllByCreatorIdOrderByCreatedAtDesc(creatorId)
-                .stream()
-                .map(LedgerEntryResponseDto::from)
-                .toList();
-        return ResponseEntity.ok(ledger);
+        return ResponseEntity.ok(monetizationService.getCreatorLedger(creatorId));
     }
 }

@@ -5,8 +5,8 @@ import com.manganetworking.config.security.SecurityConfig;
 import com.manganetworking.domain.enums.TransactionType;
 import com.manganetworking.domain.relational.CreatorEntity;
 import com.manganetworking.domain.relational.FinancialLedgerEntity;
-import com.manganetworking.repository.jpa.FinancialLedgerRepository;
 import com.manganetworking.service.monetization.MonetizationService;
+import com.manganetworking.service.monetization.dto.LedgerEntryResponseDto;
 import com.manganetworking.service.monetization.MercadoPagoService;
 import com.manganetworking.service.session.SessionService;
 import org.junit.jupiter.api.DisplayName;
@@ -63,9 +63,6 @@ class MonetizationAuthorizationTest {
 
     @MockitoBean
     private MonetizationService monetizationService;
-
-    @MockitoBean
-    private FinancialLedgerRepository ledgerRepository;
 
     @MockitoBean
     private MercadoPagoService mercadoPagoService;
@@ -139,7 +136,7 @@ class MonetizationAuthorizationTest {
     void ownerReadsLedgerWithoutPersonalData() throws Exception {
         UUID creatorId = UUID.randomUUID();
         FinancialLedgerEntity entry = ledgerEntryWithSensitiveCreator(creatorId);
-        when(ledgerRepository.findAllByCreatorIdOrderByCreatedAtDesc(creatorId)).thenReturn(List.of(entry));
+        when(monetizationService.getCreatorLedger(creatorId)).thenReturn(List.of(LedgerEntryResponseDto.from(entry)));
 
         mockMvc.perform(get("/api/monetization/ledger/{creatorId}", creatorId)
                         .with(authentication(creatorAuth(UUID.randomUUID(), creatorId))))
