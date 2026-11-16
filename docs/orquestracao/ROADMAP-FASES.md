@@ -505,6 +505,10 @@ Ao concluir um item, atualize **esta tabela** e `AUDITORIA-ATUAL.md` no mesmo co
 
 ---
 
+| 106 | F5 | 🟢 **Decomposição Modular e Anti-Monólito de LoginPage (Fluxo de Autenticação e 2FA):** Decomposição de `LoginPage.tsx` (reduzido de 545 → 102 linhas). Criação do pacote `components/auth/`: `LoginBrandingPanel.tsx` (36 linhas), `useAuthForm.ts` (293 linhas), `LoginForm.tsx` (108 linhas), `RegisterForm.tsx` (238 linhas), `TwoFactorStep.tsx` (99 linhas) e `PasswordRecoveryStep.tsx` (82 linhas). Preservação integral das regras de 2FA obrigatório, LGPD, debounce de username e Dev Outbox. **Evidências (2026-11-16):** 0 erros TS, build Vite em 2.52s, relatório TASK-106. |
+
+---
+
 ### Próximos Passos Planejados — Bloco F (Arquitetura Limpa, Observabilidade & Testes de Frontend)
 
 | # | Fase | Entrega Planejada |
