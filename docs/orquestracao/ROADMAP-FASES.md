@@ -501,6 +501,10 @@ Ao concluir um item, atualize **esta tabela** e `AUDITORIA-ATUAL.md` no mesmo co
 
 ---
 
+| 105 | F5 | 🟢 **Decomposição Modular e Despoluição de CreatorWorksPage (Anti-Monólito):** Decomposição de `CreatorWorksPage.tsx` (reduzido de 538 → 92 linhas). Criação dos módulos especialistas em `components/creator/works/`: `useCreatorWorks.ts` (198 linhas), `CreatorWorksList.tsx` (95 linhas) e `CreatorWorkForm.tsx` (230 linhas). Substituição de sombra hardcoded `#0B0B0C` por `var(--mn-ink)`. **Evidências (2026-11-16):** 0 erros TS, build Vite em 2.51s, relatório TASK-105. |
+
+---
+
 ### Próximos Passos Planejados — Bloco F (Arquitetura Limpa, Observabilidade & Testes de Frontend)
 
 | # | Fase | Entrega Planejada |
