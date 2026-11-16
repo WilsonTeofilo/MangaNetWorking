@@ -63,12 +63,12 @@ export function PasswordResetPage({ token, onBackToLogin }: PasswordResetPagePro
             <p className="font-body text-sm text-[var(--mn-mute)]">Use uma senha média ou forte. Ela deve ter entre 8 e 64 caracteres.</p>
             <PasswordInput label="NOVA SENHA" value={password} onChange={(event) => setPassword(limitPasswordLength(event.target.value))} autoComplete="new-password" showStrength required disabled={loading || !token} />
             <PasswordInput label="CONFIRMAR NOVA SENHA" value={confirmation} onChange={(event) => setConfirmation(limitPasswordLength(event.target.value))} autoComplete="new-password" required disabled={loading || !token} />
-            {error && <p role="alert" className="font-body text-sm text-[#E8402F]">{error}</p>}
+            {error && <p role="alert" className="font-body text-sm text-[var(--mn-red)]">{error}</p>}
             <Button type="submit" variant="primary" disabled={loading || !token || !password || !confirmation} className="w-full !min-h-[48px]">
               {loading ? 'ATUALIZANDO…' : 'ATUALIZAR SENHA'}
             </Button>
-            {!token && <p role="alert" className="font-body text-sm text-[#E8402F]">Link inválido ou sem token. Solicite uma nova recuperação pelo login.</p>}
-            <button type="button" onClick={onBackToLogin} className="w-full font-pixel text-[10px] text-[#A9A59A] underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mn-yellow)]">VOLTAR AO LOGIN</button>
+            {!token && <p role="alert" className="font-body text-sm text-[var(--mn-red)]">Link inválido ou sem token. Solicite uma nova recuperação pelo login.</p>}
+            <button type="button" onClick={onBackToLogin} className="w-full font-pixel text-[10px] text-[var(--mn-mute)] underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--mn-yellow)]">VOLTAR AO LOGIN</button>
           </form>
         )}
       </section>

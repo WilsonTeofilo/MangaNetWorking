@@ -529,6 +529,10 @@ Ao concluir um item, atualize **esta tabela** e `AUDITORIA-ATUAL.md` no mesmo co
 
 ---
 
+| 112 | F1/F5 | 🟢 **Auditoria de Pente Fino, Saneamento de Clean Architecture e Purga Total de Tokens:** Encapsulamento de verificação de consentimento LGPD em `PrivacyComplianceService.consentRequiredForUser(UUID)` eliminando injeção direta de `UserRepository` em `PrivacyConsentInterceptor.java`. Purga total dos últimos 3 literais hexadecimais residuais em `PasswordResetPage.tsx` (`var(--mn-red)` e `var(--mn-mute)`). Frontend agora atinge 100% de aderência ao Design System e controllers backend livres de acoplamento direto com repositórios JPA. **Evidências (2026-11-16):** `mvn -o test` com 447 testes passando (BUILD SUCCESS em 1m02s); `npm run build` em 2.60s (0 erros TS). |
+
+---
+
 ### Próximos Passos Planejados — Bloco F (Arquitetura Limpa, Observabilidade & Testes de Frontend)
 
 | # | Fase | Entrega Planejada |
