@@ -521,6 +521,10 @@ Ao concluir um item, atualize **esta tabela** e `AUDITORIA-ATUAL.md` no mesmo co
 
 ---
 
+| 110 | F5 | 🟢 **Decomposição Modular e Anti-Monólito do Catálogo de Obras (CatalogPage.tsx):** Decomposição de `CatalogPage.tsx` (reduzido de 502 → 97 linhas). Criação do pacote `components/catalog/`: `CatalogHeaderSection.tsx` (84 linhas), `CatalogGenreFilterBar.tsx` (112 linhas), `CatalogFilterDrawer.tsx` (139 linhas) e `CatalogWorksGrid.tsx` (198 linhas). Preservação integral do roteamento via URL, paginação no servidor e acessibilidade. **Evidências (2026-11-16):** 0 erros TS, build Vite em 2.57s, relatório TASK-110. |
+
+---
+
 ### Próximos Passos Planejados — Bloco F (Arquitetura Limpa, Observabilidade & Testes de Frontend)
 
 | # | Fase | Entrega Planejada |
