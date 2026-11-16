@@ -513,6 +513,10 @@ Ao concluir um item, atualize **esta tabela** e `AUDITORIA-ATUAL.md` no mesmo co
 
 ---
 
+| 108 | F5 | 🟢 **Decomposição Modular e Anti-Monólito da Ficha da Obra (WorkDetailPage):** Decomposição de `WorkDetailPage.tsx` (reduzido de 560 → 99 linhas). Criação do pacote `components/work/`: `useWorkDetailData.ts` (199 linhas), `WorkDetailHero.tsx` (188 linhas), `WorkChapterList.tsx` (149 linhas) e `WorkCreatorSidebar.tsx` (74 linhas). Preservação integral do leitor offline VIP, contadores de engajamento e retomada de leitura real. **Evidências (2026-11-16):** 0 erros TS, build Vite em 2.62s, relatório TASK-108. |
+
+---
+
 ### Próximos Passos Planejados — Bloco F (Arquitetura Limpa, Observabilidade & Testes de Frontend)
 
 | # | Fase | Entrega Planejada |
