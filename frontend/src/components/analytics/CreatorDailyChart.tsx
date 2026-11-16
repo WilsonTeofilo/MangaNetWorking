@@ -73,7 +73,7 @@ export function CreatorDailyChart({ data, comparison }: CreatorDailyChartProps) 
         </span>
         {comparison && (
           <span className="inline-flex items-center gap-1.5">
-            <span className="h-0.5 w-4 border-t-2 border-dashed border-[var(--mn-teal)]" aria-hidden="true" />
+            <span className="h-0.5 w-4 border-t-2 border-dashed border-[var(--mn-ok)]" aria-hidden="true" />
             Período anterior
           </span>
         )}
@@ -93,7 +93,7 @@ export function CreatorDailyChart({ data, comparison }: CreatorDailyChartProps) 
           }}
         >
           <p className="font-pixel text-[9px] uppercase text-[var(--mn-mute)]">{dateLabel(activeDay.date)}</p>
-          <p className="font-display text-lg leading-tight text-[var(--mn-teal)] tabular-nums">
+          <p className="font-display text-lg leading-tight text-[var(--mn-ok)] tabular-nums">
             {number(activeDay.views)} {activeDay.views === 1 ? 'visualização' : 'visualizações'}
           </p>
           {comparison && (
@@ -160,7 +160,7 @@ export function CreatorDailyChart({ data, comparison }: CreatorDailyChartProps) 
           <path
             d={previousLine}
             fill="none"
-            stroke="var(--mn-teal)"
+            stroke="var(--mn-ok)"
             strokeWidth={1.5}
             strokeDasharray="5 5"
             opacity={0.75}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { Instagram, Youtube, Link2, UserPlus, ShieldCheck, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/Button';
@@ -73,7 +73,7 @@ export function BecomeWriterPage({ onBackToAccount }: { onBackToAccount: () => v
   if (user.isCreator) {
     return (
       <section className="mn-container py-10 space-y-6">
-        <div className="border-2 border-[var(--mn-teal)] bg-[var(--mn-ink-2)] p-6 shadow-[6px_6px_0_var(--mn-teal)]">
+        <div className="border-2 border-[var(--mn-ok)] bg-[var(--mn-ink-2)] p-6 shadow-[6px_6px_0_var(--mn-ok)]">
           <h1 className="font-display text-3xl text-[var(--mn-paper)] uppercase">Você já é escritor</h1>
           <p className="mt-2 text-sm text-[var(--mn-mute)]">
             O painel do autor tem tudo o que é preciso: foto, bio, vínculos e as obras publicadas.
@@ -134,7 +134,7 @@ export function BecomeWriterPage({ onBackToAccount }: { onBackToAccount: () => v
           )}
 
           {done ? (
-            <p role="status" className="border-2 border-[var(--mn-teal)] p-3 font-body text-sm text-[var(--mn-paper)]">
+            <p role="status" className="border-2 border-[var(--mn-ok)] p-3 font-body text-sm text-[var(--mn-paper)]">
               Perfil de escritor criado! Já pode publicar no painel do autor.
             </p>
           ) : (
@@ -149,7 +149,7 @@ export function BecomeWriterPage({ onBackToAccount }: { onBackToAccount: () => v
           )}
         </form>
 
-        <aside className="border-2 border-[var(--mn-teal)] bg-[var(--mn-ink-2)] p-6 space-y-3">
+        <aside className="border-2 border-[var(--mn-ok)] bg-[var(--mn-ink-2)] p-6 space-y-3">
           <h2 className="font-display text-lg text-[var(--mn-paper)] uppercase">O que vai acontecer</h2>
           <ul className="space-y-2 font-body text-xs text-[var(--mn-mute)]">
             <li className="flex items-start gap-2">

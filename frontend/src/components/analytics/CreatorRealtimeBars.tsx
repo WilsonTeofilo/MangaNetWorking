@@ -33,7 +33,7 @@ export function CreatorRealtimeBars({ data }: CreatorRealtimeBarsProps) {
           }}
         >
           <p className="font-pixel text-[9px] uppercase text-[var(--mn-mute)]">{hourRangeLabel(active.hour)}</p>
-          <p className="font-display text-lg leading-tight text-[var(--mn-teal)] tabular-nums">
+          <p className="font-display text-lg leading-tight text-[var(--mn-ok)] tabular-nums">
             {number(Number(active.views))}
           </p>
         </div>

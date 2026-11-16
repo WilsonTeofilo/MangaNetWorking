@@ -53,7 +53,7 @@ export function CreatorRetentionCurve({ rows, sampleReaders }: CreatorRetentionC
               <span className="w-14 shrink-0 font-pixel text-[10px] text-[var(--mn-mute)]">PÁG. {row.page}</span>
               <span className="h-3 min-w-0 flex-1 bg-[var(--mn-ink)]">
                 <span
-                  className="block h-full bg-[var(--mn-teal)]"
+                  className="block h-full bg-[var(--mn-ok)]"
                   style={{ width: `${Math.min(100, row.retentionPercent)}%` }}
                 />
               </span>

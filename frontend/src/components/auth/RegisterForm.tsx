@@ -1,4 +1,4 @@
-import { Mail } from 'lucide-react';
+﻿import { Mail } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Field } from '../ui/Field';
 import { PasswordInput } from '../ui/PasswordInput';
@@ -127,7 +127,7 @@ export function RegisterForm({
           <p
             className={`font-pixel text-[11px] uppercase ${
               usernameStatus === 'free'
-                ? 'text-[var(--mn-teal)]'
+                ? 'text-[var(--mn-ok)]'
                 : usernameStatus === 'taken'
                   ? 'text-[var(--mn-red)]'
                   : 'text-[var(--mn-mute)]'

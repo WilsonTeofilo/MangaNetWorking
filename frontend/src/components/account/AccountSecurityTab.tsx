@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { Eye, EyeOff, ShieldCheck, UserPlus, LogOut, Download, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { userApi, authApi } from '../../api/authApi';
@@ -176,7 +176,7 @@ export function AccountSecurityTab({
       <div className="bg-[var(--mn-ink-2)] p-6 sm:p-7 space-y-4">
         <h2 className="font-display text-xl text-[var(--mn-paper)] uppercase">Visibilidade do perfil</h2>
         {user.isCreator ? (
-          <p className="font-body text-sm text-[var(--mn-mute)] border-2 border-[var(--mn-teal)] p-3">
+          <p className="font-body text-sm text-[var(--mn-mute)] border-2 border-[var(--mn-ok)] p-3">
             <strong className="text-[var(--mn-paper)]">Perfil de escritor é sempre público.</strong> Quem
             publica precisa ser encontrado pelos leitores — a visibilidade privativa é exclusiva para
             conta de leitor.
@@ -213,7 +213,7 @@ export function AccountSecurityTab({
         </div>
       </div>
 
-      {message && <p role="status" className="font-pixel text-xs text-[var(--mn-teal)] uppercase">{message}</p>}
+      {message && <p role="status" className="font-pixel text-xs text-[var(--mn-ok)] uppercase">{message}</p>}
       {error && <p role="alert" className="font-pixel text-xs text-[var(--mn-red)] uppercase">{error}</p>}
 
       {/* Seção de Governança de Dados LGPD */}

@@ -104,7 +104,7 @@ export function CreatorMonetizationPage() {
             </p>
           </div>
 
-          {message && <p role="status" className="font-pixel text-xs text-[var(--mn-teal)] uppercase">{message}</p>}
+          {message && <p role="status" className="font-pixel text-xs text-[var(--mn-ok)] uppercase">{message}</p>}
         </>
       )}
     </section>

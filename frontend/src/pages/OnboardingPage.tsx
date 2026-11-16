@@ -1,4 +1,4 @@
-import { AccountProfilePage } from './AccountProfilePage';
+﻿import { AccountProfilePage } from './AccountProfilePage';
 
 /**
  * Primeira tela depois do cadastro: foto de perfil, escolha de visibilidade (público ou
@@ -14,7 +14,7 @@ export function OnboardingPage({
   return (
     <>
       <section className="mn-container pt-10">
-        <div className="border-2 border-[var(--mn-teal)] bg-[var(--mn-ink-2)] p-6 shadow-[6px_6px_0_var(--mn-teal)]">
+        <div className="border-2 border-[var(--mn-ok)] bg-[var(--mn-ink-2)] p-6 shadow-[6px_6px_0_var(--mn-ok)]">
           <p className="font-pixel text-[11px] tracking-widest text-[var(--mn-mute)] uppercase">Bem-vindo</p>
           <h1 className="font-display text-3xl sm:text-4xl text-[var(--mn-paper)] uppercase mt-1">
             Vamos montar seu perfil

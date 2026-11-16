@@ -127,7 +127,7 @@ export function WorkCommentsPanel({
         </p>
       )}
       {message && (
-        <p role="status" className="font-pixel text-[11px] uppercase text-[var(--mn-teal)]">
+        <p role="status" className="font-pixel text-[11px] uppercase text-[var(--mn-ok)]">
           {message}
         </p>
       )}

@@ -16,7 +16,7 @@ export function MangaChapterWizard(props: UseMangaChapterEditorProps) {
   return (
     <div className="space-y-6">
       {editor.isEditing ? (
-        <p className="flex flex-wrap items-center gap-2 border-2 border-[var(--mn-teal)] bg-[var(--mn-teal)]/15 px-3 py-2 font-pixel text-[11px] uppercase text-[var(--mn-teal)]">
+        <p className="flex flex-wrap items-center gap-2 border-2 border-[var(--mn-ok)] bg-[var(--mn-ok)]/15 px-3 py-2 font-pixel text-[11px] uppercase text-[var(--mn-ok)]">
           <Pencil size={13} /> MODO EDIÇÃO · capítulo {props.draft?.chapterNumber} de “{props.workTitle}” — todas as etapas liberadas
         </p>
       ) : (
@@ -48,7 +48,7 @@ export function MangaChapterWizard(props: UseMangaChapterEditorProps) {
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-pixel text-[11px] uppercase text-[var(--mn-mute)]">{item.id}.</span>
-                    {state?.ok && <Check size={14} className="text-[var(--mn-teal)]" />}
+                    {state?.ok && <Check size={14} className="text-[var(--mn-ok)]" />}
                   </div>
                   <p className="font-display text-xs text-[var(--mn-paper)] uppercase mt-1 truncate">{item.label}</p>
                 </button>
@@ -154,7 +154,7 @@ export function MangaChapterWizard(props: UseMangaChapterEditorProps) {
         </p>
       )}
       {editor.success && (
-        <p role="status" className="border-2 border-[var(--mn-teal)] bg-[var(--mn-ink-2)] p-3 font-body text-sm text-[var(--mn-paper)]">
+        <p role="status" className="border-2 border-[var(--mn-ok)] bg-[var(--mn-ink-2)] p-3 font-body text-sm text-[var(--mn-paper)]">
           {editor.success}
         </p>
       )}

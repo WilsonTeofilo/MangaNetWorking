@@ -266,7 +266,7 @@ export function CreatorWorkForm({
         </p>
       )}
       {message && (
-        <p role="status" className="border-2 border-[var(--mn-teal)] p-3 font-body text-sm text-[var(--mn-paper)]">
+        <p role="status" className="border-2 border-[var(--mn-ok)] p-3 font-body text-sm text-[var(--mn-paper)]">
           {message}
         </p>
       )}

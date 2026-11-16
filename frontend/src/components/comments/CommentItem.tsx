@@ -59,7 +59,7 @@ export function CommentItem({
   return (
     <li
       className={`border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-3 space-y-2 ${
-        isReply ? 'ml-4 sm:ml-6 border-l-4 border-l-[var(--mn-teal)]' : ''
+        isReply ? 'ml-4 sm:ml-6 border-l-4 border-l-[var(--mn-ok)]' : ''
       }`}
     >
       <div className="flex items-center gap-2 flex-wrap">
@@ -78,7 +78,7 @@ export function CommentItem({
           </span>
         )}
         {comment.isCreator && (
-          <span className="font-pixel text-[10px] uppercase text-[var(--mn-teal)] border border-[var(--mn-teal)] px-1">
+          <span className="font-pixel text-[10px] uppercase text-[var(--mn-ok)] border border-[var(--mn-ok)] px-1">
             escritor
           </span>
         )}

@@ -269,10 +269,10 @@ export function CreatorChaptersPage() {
                         {proseIllustrations(chapter)} ilus
                       </span>
                       {chapter.chapterType === 'PROLOGUE' && (
-                        <span className="ml-2 font-pixel text-[10px] uppercase text-[var(--mn-teal)]">prólogo</span>
+                        <span className="ml-2 font-pixel text-[10px] uppercase text-[var(--mn-ok)]">prólogo</span>
                       )}
                       {chapter.chapterType === 'SPECIAL' && (
-                        <span className="ml-2 font-pixel text-[10px] uppercase text-[var(--mn-teal)]">especial</span>
+                        <span className="ml-2 font-pixel text-[10px] uppercase text-[var(--mn-ok)]">especial</span>
                       )}
                     </>
                   ) : (
@@ -281,7 +281,7 @@ export function CreatorChaptersPage() {
                     </span>
                   )}
                   {chapter.releaseDate && new Date(chapter.releaseDate).getTime() > Date.now() && (
-                    <span className="ml-2 font-pixel text-[10px] uppercase text-[var(--mn-teal)]">
+                    <span className="ml-2 font-pixel text-[10px] uppercase text-[var(--mn-ok)]">
                       PROGRAMADO PARA {new Date(chapter.releaseDate).toLocaleDateString('pt-BR')}
                     </span>
                   )}
@@ -318,8 +318,8 @@ export function CreatorChaptersPage() {
       {selectedWork && (
         <>
           {editing && (
-            <div className="flex flex-wrap items-center justify-between gap-3 border-2 border-[var(--mn-teal)] bg-[var(--mn-ink-2)] px-4 py-3">
-              <p className="font-pixel text-[11px] uppercase text-[var(--mn-teal)]">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-2 border-[var(--mn-ok)] bg-[var(--mn-ink-2)] px-4 py-3">
+              <p className="font-pixel text-[11px] uppercase text-[var(--mn-ok)]">
                 Editando o capítulo #{editing.chapterNumber} — “{editing.title}”
               </p>
               <Button variant="ghost" onClick={() => setEditing(null)}>
