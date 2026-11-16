@@ -23,66 +23,65 @@ export function HomeTrendingRails({
   minRailSize,
   onSelectWork,
   onNavigateToCatalog,
-  mangaColdStartCta,
-  novelColdStartCta,
 }: HomeTrendingRailsProps) {
+  const hasManga = showMangaRail && trendingManga.length >= minRailSize;
+  const hasNovel = showNovelRail && trendingLightNovel.length >= minRailSize;
+
+  if (!hasManga && !hasNovel) {
+    return null;
+  }
+
   return (
     <>
       {/* EM ALTA: MANGÁS */}
-      {showMangaRail &&
-        (trendingManga.length >= minRailSize ? (
-          <section className="space-y-4">
-            <div className="flex items-center justify-between border-b-2 border-[var(--mn-line)] pb-3">
-              <h2 className="font-display text-3xl sm:text-4xl text-[var(--mn-paper)] uppercase tracking-wide">
-                MANGÁS EM ALTA
-              </h2>
-              {onNavigateToCatalog && (
-                <button
-                  type="button"
-                  onClick={onNavigateToCatalog}
-                  className="flex items-center gap-1 font-pixel text-[12px] text-[var(--mn-yellow)] hover:underline"
-                >
-                  VER TODOS <ArrowRight size={13} aria-hidden="true" />
-                </button>
-              )}
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-2">
-              {trendingManga.slice(0, 5).map((work, idx) => (
-                <RankRow key={work.id} rank={idx + 1} work={work} onSelect={onSelectWork} />
-              ))}
-            </div>
-          </section>
-        ) : (
-          mangaColdStartCta
-        ))}
+      {hasManga && (
+        <section className="space-y-4">
+          <div className="flex items-center justify-between border-b-2 border-[var(--mn-line)] pb-3">
+            <h2 className="font-display text-3xl sm:text-4xl text-[var(--mn-paper)] uppercase tracking-wide">
+              MANGÁS EM ALTA
+            </h2>
+            {onNavigateToCatalog && (
+              <button
+                type="button"
+                onClick={onNavigateToCatalog}
+                className="flex items-center gap-1 font-pixel text-[12px] text-[var(--mn-yellow)] hover:underline"
+              >
+                VER TODOS <ArrowRight size={13} aria-hidden="true" />
+              </button>
+            )}
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-2">
+            {trendingManga.slice(0, 5).map((work, idx) => (
+              <RankRow key={work.id} rank={idx + 1} work={work} onSelect={onSelectWork} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* EM ALTA: LIGHT NOVELS */}
-      {showNovelRail &&
-        (trendingLightNovel.length >= minRailSize ? (
-          <section className="space-y-4">
-            <div className="flex items-center justify-between border-b-2 border-[var(--mn-line)] pb-3">
-              <h2 className="font-display text-3xl sm:text-4xl text-[var(--mn-paper)] uppercase tracking-wide">
-                LIGHT NOVELS EM ALTA
-              </h2>
-              {onNavigateToCatalog && (
-                <button
-                  type="button"
-                  onClick={onNavigateToCatalog}
-                  className="flex items-center gap-1 font-pixel text-[12px] text-[var(--mn-yellow)] hover:underline"
-                >
-                  VER TODAS <ArrowRight size={13} aria-hidden="true" />
-                </button>
-              )}
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-2">
-              {trendingLightNovel.slice(0, 5).map((work, idx) => (
-                <RankRow key={work.id} rank={idx + 1} work={work} onSelect={onSelectWork} />
-              ))}
-            </div>
-          </section>
-        ) : (
-          novelColdStartCta
-        ))}
+      {hasNovel && (
+        <section className="space-y-4">
+          <div className="flex items-center justify-between border-b-2 border-[var(--mn-line)] pb-3">
+            <h2 className="font-display text-3xl sm:text-4xl text-[var(--mn-paper)] uppercase tracking-wide">
+              LIGHT NOVELS EM ALTA
+            </h2>
+            {onNavigateToCatalog && (
+              <button
+                type="button"
+                onClick={onNavigateToCatalog}
+                className="flex items-center gap-1 font-pixel text-[12px] text-[var(--mn-yellow)] hover:underline"
+              >
+                VER TODAS <ArrowRight size={13} aria-hidden="true" />
+              </button>
+            )}
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-2">
+            {trendingLightNovel.slice(0, 5).map((work, idx) => (
+              <RankRow key={work.id} rank={idx + 1} work={work} onSelect={onSelectWork} />
+            ))}
+          </div>
+        </section>
+      )}
     </>
   );
 }

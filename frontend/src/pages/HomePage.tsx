@@ -132,7 +132,10 @@ export function HomePage({
           isAuthenticated={isAuthenticated}
         />
 
-        {/* 5. RANKINGS EM ALTA POR FORMATO */}
+        {/* 5. AVISO COLD-START ÚNICO (UMA ÚNICA NOTIFICAÇÃO CONDICIONAL) */}
+        {coldStartCta}
+
+        {/* 6. RANKINGS EM ALTA POR FORMATO (SOMENTE SE HOUVER OBRAS SUFICIENTES) */}
         <HomeTrendingRails
           showMangaRail={showMangaRail}
           showNovelRail={showNovelRail}
@@ -141,8 +144,6 @@ export function HomePage({
           minRailSize={MIN_RAIL_SIZE}
           onSelectWork={onSelectWork}
           onNavigateToCatalog={onNavigateToCatalog}
-          mangaColdStartCta={coldStartCta}
-          novelColdStartCta={coldStartCta}
         />
       </div>
     </div>
