@@ -1,4 +1,4 @@
-import { Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { FileText, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { CreatorWorkSummaryDto } from '../../../api/workApi';
 import { Button } from '../../ui/Button';
 
@@ -11,6 +11,8 @@ export interface CreatorWorksListProps {
   onOpenCreateForm: () => void;
   onEditWork: (work: CreatorWorkSummaryDto) => void;
   onRemoveWork: (work: CreatorWorkSummaryDto) => void;
+  onManageChapters?: (work: CreatorWorkSummaryDto) => void;
+  onGoToChapters?: () => void;
 }
 
 export function CreatorWorksList({
@@ -22,6 +24,8 @@ export function CreatorWorksList({
   onOpenCreateForm,
   onEditWork,
   onRemoveWork,
+  onManageChapters,
+  onGoToChapters,
 }: CreatorWorksListProps) {
   return (
     <div className="space-y-3">
@@ -40,6 +44,16 @@ export function CreatorWorksList({
                 className="w-48 bg-transparent font-body text-sm text-[var(--mn-paper)] placeholder:text-[var(--mn-mute)] focus:outline-none"
               />
             </label>
+          )}
+          {works.length > 0 && onGoToChapters && (
+            <Button
+              variant="ghost"
+              onClick={onGoToChapters}
+              className="!px-4 !py-3"
+              title="Acessar gerenciador de capítulos"
+            >
+              <FileText size={15} /> VER CAPÍTULOS
+            </Button>
           )}
           {works.length > 0 && (
             <Button
@@ -85,11 +99,29 @@ export function CreatorWorksList({
                 </p>
               </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="ghost" onClick={() => onEditWork(work)}>
+            <div className="flex flex-wrap gap-2 pt-2 border-t border-[var(--mn-line)]">
+              {onManageChapters && (
+                <Button
+                  variant="primary"
+                  onClick={() => onManageChapters(work)}
+                  className="!px-3 !py-1.5 font-pixel text-[11px]"
+                  title="Gerenciar e lançar capítulos desta obra"
+                >
+                  <FileText size={13} /> CAPÍTULOS ({work.totalChapters})
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                onClick={() => onEditWork(work)}
+                className="!px-3 !py-1.5 font-pixel text-[11px]"
+              >
                 <Pencil size={13} /> CONFIGURAR
               </Button>
-              <Button variant="ghost" onClick={() => onRemoveWork(work)}>
+              <Button
+                variant="ghost"
+                onClick={() => onRemoveWork(work)}
+                className="!px-3 !py-1.5 font-pixel text-[11px] text-[var(--mn-red)]"
+              >
                 <Trash2 size={13} /> REMOVER
               </Button>
             </div>

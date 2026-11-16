@@ -69,7 +69,10 @@ export function CreatorChaptersPage() {
   const [works, setWorks] = useState<CreatorWorkSummaryDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedWorkId, setSelectedWorkId] = useState<string>('');
+  const urlWorkId = typeof window !== 'undefined'
+    ? new URLSearchParams(window.location.search).get('obra') || ''
+    : '';
+  const [selectedWorkId, setSelectedWorkId] = useState<string>(urlWorkId);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [chapters, setChapters] = useState<ChapterRow[]>([]);
   const [chaptersLoading, setChaptersLoading] = useState(false);
@@ -82,9 +85,11 @@ export function CreatorChaptersPage() {
       .listMyWorks()
       .then((payload) => {
         setWorks(payload);
-        setSelectedWorkId((current) =>
-          payload.some((work) => work.id === current) ? current : payload[0]?.id || ''
-        );
+        setSelectedWorkId((current) => {
+          if (current && payload.some((work) => work.id === current)) return current;
+          if (urlWorkId && payload.some((work) => work.id === urlWorkId)) return urlWorkId;
+          return payload[0]?.id || '';
+        });
       })
       .catch(() => setError('Não foi possível carregar suas obras.'))
       .finally(() => setLoading(false));

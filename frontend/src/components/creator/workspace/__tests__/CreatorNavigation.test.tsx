@@ -222,13 +222,13 @@ describe('TASK-116 — Hub Unificado do Workspace do Autor & Sincronização via
     });
   });
 
-  describe('2. CREATOR_MENU possui 4 itens com query params mapeados', () => {
-    it('CREATOR_MENU.length === 4', () => {
-      expect(CREATOR_MENU).toHaveLength(4);
+  describe('2. CREATOR_MENU possui os itens essenciais do criador com query params mapeados', () => {
+    it('CREATOR_MENU.length === 7', () => {
+      expect(CREATOR_MENU).toHaveLength(7);
     });
 
     it('contém Visão Geral apontando para ?aba=visao-geral', () => {
-      expect(CREATOR_MENU[0]).toMatchObject({
+      expect(CREATOR_MENU.find((i) => i.abaQuery === 'visao-geral')).toMatchObject({
         label: 'Visão Geral',
         tab: 'creator-dashboard',
         abaQuery: 'visao-geral',
@@ -236,23 +236,47 @@ describe('TASK-116 — Hub Unificado do Workspace do Autor & Sincronização via
     });
 
     it('contém Minhas Obras apontando para ?aba=obras', () => {
-      expect(CREATOR_MENU[1]).toMatchObject({
+      expect(CREATOR_MENU.find((i) => i.abaQuery === 'obras')).toMatchObject({
         label: 'Minhas Obras',
         tab: 'creator-dashboard',
         abaQuery: 'obras',
       });
     });
 
+    it('contém Capítulos & Lançamento apontando para ?aba=capitulos', () => {
+      expect(CREATOR_MENU.find((i) => i.abaQuery === 'capitulos')).toMatchObject({
+        label: 'Capítulos & Lançamento',
+        tab: 'creator-dashboard',
+        abaQuery: 'capitulos',
+      });
+    });
+
     it('contém Missões & XP apontando para ?aba=missoes', () => {
-      expect(CREATOR_MENU[2]).toMatchObject({
+      expect(CREATOR_MENU.find((i) => i.abaQuery === 'missoes')).toMatchObject({
         label: 'Missões & XP',
         tab: 'creator-dashboard',
         abaQuery: 'missoes',
       });
     });
 
+    it('contém Analytics apontando para ?aba=analytics', () => {
+      expect(CREATOR_MENU.find((i) => i.abaQuery === 'analytics')).toMatchObject({
+        label: 'Analytics',
+        tab: 'creator-dashboard',
+        abaQuery: 'analytics',
+      });
+    });
+
+    it('contém Monetização apontando para ?aba=monetizacao', () => {
+      expect(CREATOR_MENU.find((i) => i.abaQuery === 'monetizacao')).toMatchObject({
+        label: 'Monetização',
+        tab: 'creator-dashboard',
+        abaQuery: 'monetizacao',
+      });
+    });
+
     it('contém Perfil & Ajustes apontando para ?aba=configuracoes', () => {
-      expect(CREATOR_MENU[3]).toMatchObject({
+      expect(CREATOR_MENU.find((i) => i.abaQuery === 'configuracoes')).toMatchObject({
         label: 'Perfil & Ajustes',
         tab: 'creator-dashboard',
         abaQuery: 'configuracoes',

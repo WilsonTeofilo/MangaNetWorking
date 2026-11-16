@@ -4,7 +4,10 @@ import {
   Crown,
   LayoutDashboard,
   BookOpen,
+  FileText,
   Award,
+  BarChart3,
+  Coins,
   Settings,
   LogOut,
   ShieldAlert,
@@ -31,7 +34,10 @@ export interface CreatorMenuItem {
 export const CREATOR_MENU: CreatorMenuItem[] = [
   { label: 'Visão Geral', tab: 'creator-dashboard', abaQuery: 'visao-geral', icon: LayoutDashboard },
   { label: 'Minhas Obras', tab: 'creator-dashboard', abaQuery: 'obras', icon: BookOpen },
+  { label: 'Capítulos & Lançamento', tab: 'creator-dashboard', abaQuery: 'capitulos', icon: FileText },
   { label: 'Missões & XP', tab: 'creator-dashboard', abaQuery: 'missoes', icon: Award },
+  { label: 'Analytics', tab: 'creator-dashboard', abaQuery: 'analytics', icon: BarChart3 },
+  { label: 'Monetização', tab: 'creator-dashboard', abaQuery: 'monetizacao', icon: Coins },
   { label: 'Perfil & Ajustes', tab: 'creator-dashboard', abaQuery: 'configuracoes', icon: Settings },
 ];
 
@@ -231,7 +237,10 @@ export function HeaderUserMenu({
                         (!currentAba && item.abaQuery === 'visao-geral') ||
                         (item.abaQuery === 'visao-geral' && currentAba === 'overview') ||
                         (item.abaQuery === 'obras' && currentAba === 'works') ||
+                        (item.abaQuery === 'capitulos' && (currentAba === 'capitulos' || currentAba === 'chapters')) ||
                         (item.abaQuery === 'missoes' && currentAba === 'missions') ||
+                        (item.abaQuery === 'analytics' && currentAba === 'analytics') ||
+                        (item.abaQuery === 'monetizacao' && (currentAba === 'monetizacao' || currentAba === 'monetization')) ||
                         (item.abaQuery === 'configuracoes' && currentAba === 'settings'));
 
                     return (

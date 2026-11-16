@@ -29,6 +29,7 @@ export interface CreatorWorkspacePageProps {
 const TAB_TO_QUERY: Record<WorkspaceTab, string> = {
   overview: 'visao-geral',
   works: 'obras',
+  chapters: 'capitulos',
   missions: 'missoes',
   settings: 'configuracoes',
 };
@@ -41,23 +42,23 @@ function getAbaParam(): string | null {
 }
 
 function resolveWorkspaceState(section?: CreatorWorkspaceSection): {
-  dedicated: 'chapters' | 'analytics' | 'monetization' | null;
+  dedicated: 'analytics' | 'monetization' | null;
   tab: WorkspaceTab;
 } {
   const aba = getAbaParam();
 
-  // 1. Seções dedicadas por query param ?aba= ou pela prop section
+  // 1. Seções analíticas/monetização dedicadas por query param ?aba= ou pela prop section
   if (aba === 'analytics' || (!aba && section === 'analytics')) {
     return { dedicated: 'analytics', tab: 'overview' };
-  }
-  if (aba === 'capitulos' || aba === 'chapters' || (!aba && section === 'chapters')) {
-    return { dedicated: 'chapters', tab: 'works' };
   }
   if (aba === 'monetizacao' || aba === 'monetization' || (!aba && section === 'monetization')) {
     return { dedicated: 'monetization', tab: 'overview' };
   }
 
   // 2. Abas operacionais do workspace via ?aba=
+  if (aba === 'capitulos' || aba === 'chapters' || (!aba && section === 'chapters')) {
+    return { dedicated: null, tab: 'chapters' };
+  }
   if (aba === 'obras' || aba === 'works') {
     return { dedicated: null, tab: 'works' };
   }
@@ -73,6 +74,7 @@ function resolveWorkspaceState(section?: CreatorWorkspaceSection): {
 
   // 3. Respeitar a prop section se não houver ?aba=
   if (section === 'works') return { dedicated: null, tab: 'works' };
+  if (section === 'chapters') return { dedicated: null, tab: 'chapters' };
   if (section === 'missions') return { dedicated: null, tab: 'missions' };
   if (section === 'settings') return { dedicated: null, tab: 'settings' };
 
@@ -141,7 +143,6 @@ export function CreatorWorkspacePage({
   const currentResolved = resolveWorkspaceState(section);
 
   // Seções dedicadas sem a UI de WorkspaceTab interna
-  if (currentResolved.dedicated === 'chapters') return <CreatorChaptersPage />;
   if (currentResolved.dedicated === 'analytics') return <CreatorAnalyticsPage />;
   if (currentResolved.dedicated === 'monetization') return <CreatorMonetizationPage />;
 
@@ -170,7 +171,20 @@ export function CreatorWorkspacePage({
         />
       )}
 
-      {activeTab === 'works' && <CreatorWorksPage />}
+      {activeTab === 'works' && (
+        <CreatorWorksPage
+          onNavigateToChapters={(workId) => {
+            handleTabChange('chapters');
+            if (workId && typeof window !== 'undefined') {
+              const url = new URL(window.location.href);
+              url.searchParams.set('obra', workId);
+              window.history.replaceState(window.history.state, '', url.pathname + url.search);
+            }
+          }}
+        />
+      )}
+
+      {activeTab === 'chapters' && <CreatorChaptersPage />}
 
       {activeTab === 'missions' && (
         <CreatorMissionsPanel

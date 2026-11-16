@@ -10,7 +10,11 @@ import { CreatorWorkForm } from '../components/creator/works/CreatorWorkForm';
  * <p>Decomposto modularmente conforme TASK-105:
  * consome useCreatorWorks e orquestra CreatorWorksList, CreatorWorkForm e ImageCropper.</p>
  */
-export function CreatorWorksPage() {
+interface CreatorWorksPageProps {
+  onNavigateToChapters?: (workId?: string) => void;
+}
+
+export function CreatorWorksPage({ onNavigateToChapters }: CreatorWorksPageProps = {}) {
   const {
     works, filteredWorks, loading, error, message, query, setQuery, formOpen, setFormOpen,
     editingId, title, setTitle, synopsis, setSynopsis, genres, toggleGenre, format, setFormat,
@@ -44,6 +48,8 @@ export function CreatorWorksPage() {
         }}
         onEditWork={startEditing}
         onRemoveWork={remove}
+        onManageChapters={(work) => onNavigateToChapters?.(work.id)}
+        onGoToChapters={() => onNavigateToChapters?.()}
       />
 
       {formOpen && (
