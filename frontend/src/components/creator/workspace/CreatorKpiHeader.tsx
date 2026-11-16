@@ -18,8 +18,6 @@ export interface CreatorKpiHeaderProps {
 
 const TABS: { key: WorkspaceTab; label: string }[] = [
   { key: 'overview', label: 'VISÃO GERAL' },
-  { key: 'works', label: 'MINHAS OBRAS' },
-  { key: 'chapters', label: 'CAPÍTULOS' },
   { key: 'missions', label: 'MISSÕES & XP' },
   { key: 'settings', label: 'PERFIL & AJUSTES' },
 ];

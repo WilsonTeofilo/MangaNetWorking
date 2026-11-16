@@ -167,6 +167,14 @@ export function CreatorWorkspacePage({
           totalDonationsBrl={Number(workspace.totalDonationsBrl || 0)}
           monthlyMembersCount={workspace.monthlyMembersCount || 0}
           onNavigateTab={handleTabChange}
+          onManageWorkChapters={(workId) => {
+            handleTabChange('chapters');
+            if (workId && typeof window !== 'undefined') {
+              const url = new URL(window.location.href);
+              url.searchParams.set('obra', workId);
+              window.history.replaceState(window.history.state, '', url.pathname + url.search);
+            }
+          }}
           onOpenDeclarationModal={() => setDeclarationModalOpen(true)}
         />
       )}

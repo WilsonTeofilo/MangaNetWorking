@@ -12,6 +12,7 @@ export interface CreatorOverviewTabProps {
   monthlyMembersCount: number;
   onNavigateTab: (tab: WorkspaceTab) => void;
   onOpenDeclarationModal: () => void;
+  onManageWorkChapters?: (workId: string) => void;
 }
 
 function formatBrl(value: number): string {
@@ -25,6 +26,7 @@ export function CreatorOverviewTab({
   monthlyMembersCount,
   onNavigateTab,
   onOpenDeclarationModal,
+  onManageWorkChapters,
 }: CreatorOverviewTabProps) {
   const [works, setWorks] = useState<CreatorWorkSummaryDto[]>([]);
   const [loadingWorks, setLoadingWorks] = useState(true);
@@ -190,7 +192,7 @@ export function CreatorOverviewTab({
                 <Button
                   type="button"
                   variant="ghost"
-                  onClick={() => onNavigateTab('works')}
+                  onClick={() => (onManageWorkChapters ? onManageWorkChapters(work.id) : onNavigateTab('chapters'))}
                   className="w-full !py-1.5 text-xs font-display tracking-wider"
                 >
                   GERENCIAR
@@ -207,16 +209,6 @@ export function CreatorOverviewTab({
           AÇÕES RÁPIDAS DA BANCADA
         </h2>
         <div className="flex flex-wrap items-center gap-3">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => onNavigateTab('missions')}
-            className="inline-flex items-center gap-1.5"
-          >
-            <Award size={14} />
-            <span>VER MISSÕES DA SEASON</span>
-          </Button>
-
           <Button
             type="button"
             variant="ghost"

@@ -282,11 +282,11 @@ describe('TASK-116 — Hub Unificado do Workspace do Autor & Sincronização via
         />,
       );
 
-      // O botão redundante não deve constar no markup
+      // Botões redundantes de atalho removidos (mantidos apenas nas abas/menu)
       expect(html).not.toContain('NOVA OBRA / CAPÍTULO');
+      expect(html).not.toContain('VER MISSÕES DA SEASON');
 
-      // Ações não duplicadas continuam presentes
-      expect(html).toContain('VER MISSÕES DA SEASON');
+      // Ações essenciais continuam presentes
       expect(html).toContain('TERMOS DE AUTORIA (ART. 184 CP)');
     });
   });

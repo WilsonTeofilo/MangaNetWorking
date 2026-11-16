@@ -103,10 +103,10 @@ export function HeaderUserMenu({
             <img
               src={user.avatarUrl || '/avatar-placeholder.png'}
               alt={user.name}
-              className="w-10 h-10 rounded-full object-cover bg-[var(--mn-ink-2)]"
+              className="w-12 h-12 md:w-14 md:h-14 rounded-full object-cover bg-[var(--mn-ink-2)]"
             />
             <ChevronDown
-              size={14}
+              size={16}
               className={`text-[var(--mn-mute)] transition-transform ${
                 menuOpen ? 'rotate-180' : ''
               }`}
@@ -119,12 +119,21 @@ export function HeaderUserMenu({
               className="absolute right-0 mt-2 w-64 border-2 border-[var(--mn-line)] bg-[var(--mn-ink)] shadow-[6px_6px_0_rgba(0,0,0,0.6)]"
             >
               <div className="border-b-2 border-[var(--mn-ink-2)] px-4 py-3">
-                <p className="font-display text-sm text-[var(--mn-paper)] uppercase truncate">
-                  {user.name}
-                </p>
-                <p className="font-pixel text-[11px] text-[var(--mn-yellow)] mt-0.5">
-                  @{user.username || 'sem-username'}
-                </p>
+                <div className="flex items-center gap-3">
+                  <img
+                    src={user.avatarUrl || '/avatar-placeholder.png'}
+                    alt={user.name}
+                    className="w-12 h-12 rounded-full object-cover border-2 border-[var(--mn-yellow)] bg-[var(--mn-ink-2)] shrink-0"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-display text-sm text-[var(--mn-paper)] uppercase truncate">
+                      {user.name}
+                    </p>
+                    <p className="font-pixel text-[11px] text-[var(--mn-yellow)] mt-0.5 truncate">
+                      @{user.username || 'sem-username'}
+                    </p>
+                  </div>
+                </div>
 
                 {/* Crachás contextuais e status VIP dentro do dropdown */}
                 <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
