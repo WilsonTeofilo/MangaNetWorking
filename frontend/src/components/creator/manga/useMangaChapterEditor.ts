@@ -22,7 +22,14 @@ export function useMangaChapterEditor({
 }: UseMangaChapterEditorProps) {
   const isEditing = Boolean(draft);
 
-  const [step, setStep] = useState<number>(1);
+  // No modo edição com páginas já carregadas, inicia direto na etapa 2 ("Organizar páginas")
+  // para deixar evidente que o mangaká está editando e evitar tela de upload vazia.
+  const [step, setStep] = useState<number>(() => {
+    if (draft && Array.isArray(draft.pages) && draft.pages.length > 0) {
+      return 2;
+    }
+    return 1;
+  });
   const [pages, setPages] = useState<PageItem[]>(() =>
     (draft?.pages ?? []).map((url, index) => ({
       key: `existente-${index}-${url}`,

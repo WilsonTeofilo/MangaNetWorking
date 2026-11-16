@@ -67,7 +67,13 @@ export function useLightNovelEditor({
   existingChapterNumbers = [],
   onSaved,
 }: UseLightNovelEditorProps) {
-  const [step, setStep] = useState(1);
+  // No modo edição com conteúdo gravado, inicia direto na etapa 2 (Editor de texto/blocos)
+  const [step, setStep] = useState(() => {
+    if (draft && ((draft.blocksJson && draft.blocksJson.trim().length > 0) || (draft.content && draft.content.trim().length > 0))) {
+      return 2;
+    }
+    return 1;
+  });
   const [chapterType, setChapterType] = useState<ChapterType>(draft?.chapterType ?? 'REGULAR');
   const [chapterTitle, setChapterTitle] = useState(
     draft?.title ?? (nextChapterNumber === 1 ? 'Capítulo 1' : `Capítulo ${nextChapterNumber}`)
