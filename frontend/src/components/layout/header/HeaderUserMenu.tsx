@@ -71,57 +71,8 @@ export function HeaderUserMenu({
 
   return (
     <div className="flex items-center gap-2.5 lg:gap-4 shrink-0">
-      {/* Identidade administrativa explícita */}
-      {user.isOwner && (
-        <div
-          className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 bg-[var(--mn-red)] text-[var(--mn-paper)] border-2 border-[var(--mn-ink)] shadow-[2px_2px_0_var(--mn-paper)] font-pixel text-[12px] uppercase font-bold tracking-wider"
-          title="Proprietário da plataforma"
-        >
-          <ShieldAlert size={12} />
-          <span>DONO</span>
-        </div>
-      )}
-
       {/* Central interna de notificações */}
       <NotificationBell />
-
-      {/* VIP Status / Assinar VIP */}
-      {user.isVip ? (
-        <div
-          className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 bg-[var(--mn-yellow)] text-[var(--mn-ink)] border-2 border-[var(--mn-ink)] shadow-[2px_2px_0_var(--mn-paper)] font-pixel text-[12px] uppercase font-bold tracking-wider"
-          title="Assinante VIP MangaNetWorking — 100% Livre de Anúncios"
-        >
-          <Crown size={12} className="fill-[var(--mn-ink)]" />
-          <span>VIP</span>
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={openVip}
-          className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 border-2 border-[var(--mn-yellow)] text-[var(--mn-yellow)] hover:bg-[var(--mn-yellow)] hover:text-[var(--mn-ink)] font-pixel text-[12px] uppercase tracking-wider transition-all"
-          title="Assinar VIP MangaNetWorking — Remova todos os anúncios da leitura"
-        >
-          <Crown size={12} />
-          <span>VIP</span>
-        </button>
-      )}
-
-      {/* Atalho para moderação */}
-      {canModerate && (
-        <button
-          type="button"
-          onClick={() => onNavigate('moderation')}
-          className={`p-1.5 border-2 transition-all ${
-            currentTab === 'moderation'
-              ? 'bg-[var(--mn-red)] text-[var(--mn-paper)] border-[var(--mn-red)]'
-              : 'bg-[var(--mn-ink-2)] text-[var(--mn-mute)] border-[var(--mn-line)] hover:text-[var(--mn-red)] hover:border-[var(--mn-red)]'
-          }`}
-          title="Acessar Mesa de Moderação Editorial"
-          aria-label="Acessar mesa de moderação editorial"
-        >
-          <ShieldAlert size={14} />
-        </button>
-      )}
 
       {isAuthenticated ? (
         /* Avatar redondo: abre menu de conta */
@@ -141,7 +92,7 @@ export function HeaderUserMenu({
             <img
               src={user.avatarUrl || '/avatar-placeholder.png'}
               alt={user.name}
-              className="w-[54px] h-[54px] rounded-full object-cover bg-[var(--mn-ink-2)]"
+              className="w-10 h-10 rounded-full object-cover bg-[var(--mn-ink-2)]"
             />
             <ChevronDown
               size={14}
@@ -154,7 +105,7 @@ export function HeaderUserMenu({
           {menuOpen && (
             <div
               role="menu"
-              className="absolute right-0 mt-2 w-60 border-2 border-[var(--mn-line)] bg-[var(--mn-ink)] shadow-[6px_6px_0_rgba(0,0,0,0.6)]"
+              className="absolute right-0 mt-2 w-64 border-2 border-[var(--mn-line)] bg-[var(--mn-ink)] shadow-[6px_6px_0_rgba(0,0,0,0.6)]"
             >
               <div className="border-b-2 border-[var(--mn-ink-2)] px-4 py-3">
                 <p className="font-display text-sm text-[var(--mn-paper)] uppercase truncate">
@@ -163,6 +114,42 @@ export function HeaderUserMenu({
                 <p className="font-pixel text-[11px] text-[var(--mn-yellow)] mt-0.5">
                   @{user.username || 'sem-username'}
                 </p>
+
+                {/* Crachás contextuais e status VIP dentro do dropdown */}
+                <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
+                  {user.isOwner && (
+                    <span
+                      className="inline-flex items-center gap-1 px-2 py-0.5 bg-[var(--mn-red)] text-[var(--mn-paper)] font-pixel text-[10px] uppercase font-bold tracking-wider"
+                      title="Proprietário da plataforma"
+                    >
+                      <ShieldAlert size={10} />
+                      <span>DONO</span>
+                    </span>
+                  )}
+
+                  {user.isVip ? (
+                    <span
+                      className="inline-flex items-center gap-1 px-2 py-0.5 bg-[var(--mn-yellow)] text-[var(--mn-ink)] font-pixel text-[10px] uppercase font-bold tracking-wider"
+                      title="Assinante VIP MangaNetWorking — 100% Livre de Anúncios"
+                    >
+                      <Crown size={10} className="fill-[var(--mn-ink)]" />
+                      <span>VIP</span>
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        openVip();
+                      }}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 border border-[var(--mn-yellow)] text-[var(--mn-yellow)] hover:bg-[var(--mn-yellow)] hover:text-[var(--mn-ink)] font-pixel text-[10px] uppercase tracking-wider transition-colors cursor-pointer"
+                      title="Assinar VIP MangaNetWorking — Remova todos os anúncios da leitura"
+                    >
+                      <Crown size={10} />
+                      <span>Assinar VIP</span>
+                    </button>
+                  )}
+                </div>
               </div>
 
               {!user.isCreator && (
@@ -190,6 +177,28 @@ export function HeaderUserMenu({
                   className="w-full text-left px-4 py-2.5 font-body text-sm text-[var(--mn-paper)] hover:bg-[var(--mn-ink-2)] hover:text-[var(--mn-yellow)] transition-colors"
                 >
                   Ver minha página pública
+                </button>
+              )}
+
+              {canModerate && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onNavigate('moderation');
+                  }}
+                  className={`w-full text-left px-4 py-2.5 flex items-center gap-2 font-body text-sm transition-colors ${
+                    currentTab === 'moderation'
+                      ? 'bg-[var(--mn-red)] text-[var(--mn-paper)] font-semibold'
+                      : 'text-[var(--mn-paper)] hover:bg-[var(--mn-ink-2)] hover:text-[var(--mn-red)]'
+                  }`}
+                >
+                  <ShieldAlert
+                    size={14}
+                    className={currentTab === 'moderation' ? 'text-[var(--mn-paper)]' : 'text-[var(--mn-red)]'}
+                  />
+                  Mesa de moderação editorial
                 </button>
               )}
 

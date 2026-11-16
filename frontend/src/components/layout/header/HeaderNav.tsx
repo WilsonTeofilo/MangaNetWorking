@@ -39,8 +39,8 @@ export function HeaderNav({ currentTab, favoritesCount, onNavigate }: HeaderNavP
         onClick={() => onNavigate('about')}
         className={`px-3 py-1.5 font-display text-sm lg:text-base tracking-wider uppercase transition-all ${
           currentTab === 'about'
-            ? 'bg-[var(--mn-red)] text-[var(--mn-paper)] border-2 border-[var(--mn-ink)] shadow-[3px_3px_0_var(--mn-paper)]'
-            : 'text-[var(--mn-mute)] hover:text-[var(--mn-yellow)] border-2 border-transparent'
+            ? 'bg-[var(--mn-yellow)] text-[var(--mn-ink)] border-2 border-[var(--mn-ink)] shadow-[3px_3px_0_var(--mn-ink)]'
+            : 'text-[var(--mn-paper)] hover:text-[var(--mn-yellow)] border-2 border-transparent'
         }`}
       >
         SOBRE
@@ -49,7 +49,7 @@ export function HeaderNav({ currentTab, favoritesCount, onNavigate }: HeaderNavP
       <button
         type="button"
         onClick={() => onNavigate('library')}
-        aria-label={`Biblioteca (${favoritesCount} obras)`}
+        aria-label={favoritesCount > 0 ? `Biblioteca (${favoritesCount} obras)` : 'Biblioteca'}
         className={`px-3 py-1.5 font-display text-sm lg:text-base tracking-wider uppercase flex items-center gap-1.5 transition-all ${
           currentTab === 'library'
             ? 'bg-[var(--mn-yellow)] text-[var(--mn-ink)] border-2 border-[var(--mn-ink)] shadow-[3px_3px_0_var(--mn-ink)]'
@@ -57,8 +57,8 @@ export function HeaderNav({ currentTab, favoritesCount, onNavigate }: HeaderNavP
         }`}
       >
         <Heart size={14} className={currentTab === 'library' ? 'fill-[var(--mn-ink)]' : ''} />
-        <span className="hidden xl:inline">BIBLIOTECA</span>
-        ({favoritesCount})
+        <span>BIBLIOTECA</span>
+        {favoritesCount > 0 && <span>{`(${favoritesCount})`}</span>}
       </button>
     </nav>
   );

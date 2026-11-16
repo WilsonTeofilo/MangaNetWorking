@@ -548,3 +548,7 @@ Ao concluir um item, atualize **esta tabela** e `AUDITORIA-ATUAL.md` no mesmo co
 | 103 | F5/F7 | 🟢 **Suíte de Testes Automatizados com Vitest no Frontend:** Configuração de Vitest com JSDOM no frontend (`vitest.config.ts`, script `npm test`). Criação de testes unitários para a camada de domínio e estado: `src/utils/__tests__/catalogFilters.test.ts` (4 testes) e `src/utils/__tests__/apiMappers.test.ts` (3 testes), cobrindo serialização de URL, filtros de catálogo, mapeamento de capítulos e parsing defensivo de páginas JSON. **Evidências (2026-11-16):** 7/7 testes passando em 809ms. |
 
 ---
+
+| 114 | F5 | 🟢 **Despoluição do Header e Navegação Geral (TASK-114):** Remoção de crachás avulsos de DONO/VIP e moderação do topo externo de `HeaderUserMenu.tsx`, preservando o avatar intacto em `54px × 54px` e movendo essas identidades com elegância para o dropdown. Padronização da aba ativa `SOBRE` em amarelo no `HeaderNav.tsx` e ocultação do ruído `(0)` na biblioteca vazia. Implementação de navegação mobile contextual no `HeaderMobileNav.tsx` chaveando para `PAINEL` quando o usuário for criador. **Evidências (2026-11-16):** 14/14 testes unitários no Vitest verdes (suítes dedicadas para HeaderNav e HeaderMobileNav); 0 erros TypeScript no build Vite (2.77s); relatório `RELATORIO-TASK-114.md`. |
+
+---

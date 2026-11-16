@@ -1,9 +1,10 @@
-import { BookOpen, Compass, Heart, Info, User as UserIcon } from 'lucide-react';
+import { BookOpen, Compass, Heart, Info, LayoutDashboard, User as UserIcon } from 'lucide-react';
 import { AppTab } from '../Header';
 
 interface HeaderMobileNavProps {
   currentTab: AppTab;
   isAuthenticated: boolean;
+  isCreator?: boolean;
   onNavigate: (tab: AppTab) => void;
   onOpenLogin?: () => void;
 }
@@ -11,6 +12,7 @@ interface HeaderMobileNavProps {
 export function HeaderMobileNav({
   currentTab,
   isAuthenticated,
+  isCreator = false,
   onNavigate,
   onOpenLogin,
 }: HeaderMobileNavProps) {
@@ -63,18 +65,31 @@ export function HeaderMobileNav({
         <span className="font-pixel text-[12px] tracking-wider mt-1">SOBRE</span>
       </button>
 
-      <button
-        type="button"
-        onClick={() =>
-          isAuthenticated ? onNavigate('account') : onOpenLogin ? onOpenLogin() : onNavigate('login')
-        }
-        className={`flex flex-col items-center justify-center w-14 h-14 ${
-          currentTab === 'account' ? 'text-[var(--mn-yellow)]' : 'text-[var(--mn-mute)]'
-        }`}
-      >
-        <UserIcon size={20} />
-        <span className="font-pixel text-[12px] tracking-wider mt-1">PERFIL</span>
-      </button>
+      {isAuthenticated && isCreator ? (
+        <button
+          type="button"
+          onClick={() => onNavigate('creator-dashboard')}
+          className={`flex flex-col items-center justify-center w-14 h-14 ${
+            currentTab.startsWith('creator-') ? 'text-[var(--mn-yellow)]' : 'text-[var(--mn-mute)]'
+          }`}
+        >
+          <LayoutDashboard size={20} />
+          <span className="font-pixel text-[12px] tracking-wider mt-1">PAINEL</span>
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() =>
+            isAuthenticated ? onNavigate('account') : onOpenLogin ? onOpenLogin() : onNavigate('login')
+          }
+          className={`flex flex-col items-center justify-center w-14 h-14 ${
+            currentTab === 'account' ? 'text-[var(--mn-yellow)]' : 'text-[var(--mn-mute)]'
+          }`}
+        >
+          <UserIcon size={20} />
+          <span className="font-pixel text-[12px] tracking-wider mt-1">PERFIL</span>
+        </button>
+      )}
     </nav>
   );
 }

@@ -79,6 +79,7 @@ export function Header({
       <HeaderMobileNav
         currentTab={currentTab}
         isAuthenticated={isAuthenticated}
+        isCreator={user.isCreator}
         onNavigate={handleNavigate}
         onOpenLogin={onOpenLogin}
       />
