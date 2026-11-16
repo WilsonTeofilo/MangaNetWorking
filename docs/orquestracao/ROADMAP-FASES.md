@@ -525,6 +525,10 @@ Ao concluir um item, atualize **esta tabela** e `AUDITORIA-ATUAL.md` no mesmo co
 
 ---
 
+| 111 | F5 | 🟢 **Decomposição Modular e Anti-Monólito do Leitor de Obras (ReaderPage.tsx):** Decomposição de `ReaderPage.tsx` (reduzido de 511 → 163 linhas). Criação do pacote `components/reader/`: `useReaderState.ts` (260 linhas), `ReaderHeader.tsx` (134 linhas), `ReaderProgressBar.tsx` (30 linhas), `ReaderEarlyAccessLock.tsx` (23 linhas) e `ReaderNavigationFooter.tsx` (55 linhas). Preservação integral da telemetria, anúncios a cada 30 páginas, curtidas e modo prosa/imagem. **Evidências (2026-11-16):** 0 erros TS, build Vite em 2.47s, relatório TASK-111. |
+
+---
+
 ### Próximos Passos Planejados — Bloco F (Arquitetura Limpa, Observabilidade & Testes de Frontend)
 
 | # | Fase | Entrega Planejada |
