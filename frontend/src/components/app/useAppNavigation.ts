@@ -81,8 +81,14 @@ export function useAppNavigation() {
   }, [refreshSession]);
 
   const [currentTab, setCurrentTab] = useState<AppTab>(() => {
-    if (typeof window !== 'undefined' && hasCatalogParams(window.location.search)) {
-      return 'works';
+    if (typeof window !== 'undefined') {
+      const search = window.location.search;
+      if (new URLSearchParams(search).has('aba')) {
+        return 'creator-dashboard';
+      }
+      if (hasCatalogParams(search)) {
+        return 'works';
+      }
     }
     return readNavSnapshot()?.tab ?? 'feed';
   });
@@ -200,8 +206,25 @@ export function useAppNavigation() {
     setSelectedWork(null);
     setReadingChapter(null);
     setCurrentTab(tab);
-    if (tab !== 'works' && typeof window !== 'undefined' && hasCatalogParams(window.location.search)) {
-      window.history.replaceState({ tab }, '', window.location.pathname);
+    if (typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      let paramsChanged = false;
+
+      if (tab !== 'creator-dashboard' && searchParams.has('aba')) {
+        searchParams.delete('aba');
+        paramsChanged = true;
+      }
+
+      if (tab !== 'works' && hasCatalogParams(window.location.search)) {
+        window.history.replaceState({ tab }, '', window.location.pathname);
+        return;
+      }
+
+      if (paramsChanged) {
+        const query = searchParams.toString();
+        const nextUrl = window.location.pathname + (query ? `?${query}` : '');
+        window.history.replaceState({ tab }, '', nextUrl);
+      }
     }
   };
 

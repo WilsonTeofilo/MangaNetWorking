@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BookOpen, DollarSign, Users, Award, Plus, ArrowRight, ShieldCheck } from 'lucide-react';
+import { BookOpen, DollarSign, Users, Award, ArrowRight, ShieldCheck } from 'lucide-react';
 import { Button } from '../../ui/Button';
 import { Cover } from '../../ui/Cover';
 import { FormatBadge } from '../../ui/FormatBadge';
@@ -207,16 +207,6 @@ export function CreatorOverviewTab({
           AÇÕES RÁPIDAS DA BANCADA
         </h2>
         <div className="flex flex-wrap items-center gap-3">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => onNavigateTab('works')}
-            className="inline-flex items-center gap-1.5"
-          >
-            <Plus size={14} />
-            <span>NOVA OBRA / CAPÍTULO</span>
-          </Button>
-
           <Button
             type="button"
             variant="ghost"

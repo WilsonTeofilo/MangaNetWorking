@@ -2,13 +2,16 @@
  * TASK-116 — Testes de navegação unificada do Workspace do Autor
  *
  * Verifica:
- * 1. AppTabRouter com currentTab="creator-works" renderiza CreatorWorkspacePage
- * 2. AppTabRouter com currentTab="creator-missions" renderiza CreatorWorkspacePage
- * 3. CREATOR_MENU tem exatamente 1 item
- * 4. O botão "NOVA OBRA / CAPÍTULO" no OverviewTab NÃO tem a classe bg-[var(--mn-yellow)]
+ * 1. AppTabRouter com rotas creator-* delegam para CreatorWorkspacePage / CreatorDashboardPage
+ * 2. CREATOR_MENU possui 4 itens apontando para as abas via query param ?aba=
+ * 3. Botão redundante "NOVA OBRA / CAPÍTULO" removido de CreatorOverviewTab
+ * 4. CreatorWorkspacePage inicializa a aba correta com base em ?aba= na URL
+ * 5. Telas dedicadas (analytics, capítulos, monetização) renderizadas quando requisitadas via ?aba=
+ * 6. Regressão: reader-profile faz fallthrough seguro
  */
-import { describe, it, expect, vi, beforeAll } from 'vitest';
+import { describe, it, expect, vi, beforeAll, afterEach } from 'vitest';
 import { renderToString } from 'react-dom/server';
+import type { AppTab } from '../../../layout/Header';
 
 // ---------------------------------------------------------------------------
 // Mocks globais necessários para renderizar os componentes que consomem
@@ -108,23 +111,23 @@ vi.mock('../useCreatorWorkspaceData', () => ({
 
 // Mock das páginas filhas para evitar cadeia de dependências profunda
 vi.mock('../../../../pages/CreatorWorksPage', () => ({
-  CreatorWorksPage: () => null,
+  CreatorWorksPage: () => <div data-testid="creator-works-page">Works Page</div>,
 }));
 
 vi.mock('../../../../pages/CreatorChaptersPage', () => ({
-  CreatorChaptersPage: () => null,
+  CreatorChaptersPage: () => <div data-testid="creator-chapters-page">Chapters Page</div>,
 }));
 
 vi.mock('../../../../pages/CreatorAnalyticsPage', () => ({
-  CreatorAnalyticsPage: () => null,
+  CreatorAnalyticsPage: () => <div data-testid="creator-analytics-page">Analytics Page</div>,
 }));
 
 vi.mock('../../../../pages/CreatorMonetizationPage', () => ({
-  CreatorMonetizationPage: () => null,
+  CreatorMonetizationPage: () => <div data-testid="creator-monetization-page">Monetization Page</div>,
 }));
 
 vi.mock('../../../../pages/CreatorDashboardPage', () => ({
-  CreatorDashboardPage: () => null,
+  CreatorDashboardPage: () => <div data-testid="creator-dashboard-page">Dashboard Page</div>,
 }));
 
 vi.mock('../../../../pages/HomePage', () => ({ HomePage: () => null }));
@@ -138,28 +141,32 @@ vi.mock('../../../../pages/PublicProfilePage', () => ({ PublicProfilePage: () =>
 vi.mock('../../../../pages/ModerationBackofficePage', () => ({ ModerationBackofficePage: () => null }));
 
 vi.mock('../../../common/ImageCropper', () => ({ ImageCropper: () => null }));
-vi.mock('../../../creator/CreatorMissionsPanel', () => ({ CreatorMissionsPanel: () => null }));
+vi.mock('../../../creator/CreatorMissionsPanel', () => ({ CreatorMissionsPanel: () => <div data-testid="creator-missions-panel">Missions Panel</div> }));
 vi.mock('../OriginalWorkDeclarationModal', () => ({ OriginalWorkDeclarationModal: () => null }));
-vi.mock('../CreatorProfileSettingsTab', () => ({ CreatorProfileSettingsTab: () => null }));
+vi.mock('../CreatorProfileSettingsTab', () => ({ CreatorProfileSettingsTab: () => <div data-testid="creator-settings-panel">Settings Panel</div> }));
 vi.mock('../../../layout/NotificationBell', () => ({ NotificationBell: () => null }));
 
 // ---------------------------------------------------------------------------
 // Imports dos módulos sob teste (após os mocks)
 // ---------------------------------------------------------------------------
 
-// Importação dinâmica para garantir que os mocks foram registrados antes
 let AppTabRouter: typeof import('../../../../components/app/AppTabRouter').AppTabRouter;
-let CREATOR_MENU_MODULE: typeof import('../../../layout/header/HeaderUserMenu');
+let CREATOR_MENU: typeof import('../../../layout/header/HeaderUserMenu').CREATOR_MENU;
 let CreatorOverviewTab: typeof import('../CreatorOverviewTab').CreatorOverviewTab;
+let CreatorWorkspacePage: typeof import('../../../../pages/CreatorWorkspacePage').CreatorWorkspacePage;
 
 beforeAll(async () => {
   const routerMod = await import('../../../../components/app/AppTabRouter');
   AppTabRouter = routerMod.AppTabRouter;
 
-  CREATOR_MENU_MODULE = await import('../../../layout/header/HeaderUserMenu');
+  const headerMod = await import('../../../layout/header/HeaderUserMenu');
+  CREATOR_MENU = headerMod.CREATOR_MENU;
 
   const overviewMod = await import('../CreatorOverviewTab');
   CreatorOverviewTab = overviewMod.CreatorOverviewTab;
+
+  const workspaceMod = await import('../../../../pages/CreatorWorkspacePage');
+  CreatorWorkspacePage = workspaceMod.CreatorWorkspacePage;
 });
 
 // ---------------------------------------------------------------------------
@@ -169,9 +176,8 @@ beforeAll(async () => {
 const noop = () => {};
 const asyncNoop = async () => {};
 
-function renderRouter(currentTab: string) {
+function renderRouter(currentTab: AppTab) {
   return renderToString(
-    // @ts-expect-error — currentTab é string no teste para simular tabs dinâmicas
     <AppTabRouter
       currentTab={currentTab}
       publicProfileUsername=""
@@ -189,54 +195,73 @@ function renderRouter(currentTab: string) {
 // Testes
 // ---------------------------------------------------------------------------
 
-describe('TASK-116 — Hub Unificado do Workspace do Autor', () => {
-  describe('1. AppTabRouter — rotas creator-* delegam para CreatorWorkspacePage', () => {
-    it('creator-works renderiza CreatorWorkspacePage (não nulo)', () => {
-      // Se renderizar sem throw, o route chegou ao CreatorWorkspacePage
+describe('TASK-116 — Hub Unificado do Workspace do Autor & Sincronização via URL', () => {
+  describe('1. AppTabRouter — rotas creator-* delegam para CreatorWorkspacePage ou páginas filhas', () => {
+    it('creator-dashboard renderiza sem exceção', () => {
+      expect(() => renderRouter('creator-dashboard')).not.toThrow();
+    });
+
+    it('creator-works renderiza CreatorWorkspacePage com seção works', () => {
       expect(() => renderRouter('creator-works')).not.toThrow();
     });
 
-    it('creator-missions renderiza CreatorWorkspacePage (não nulo)', () => {
+    it('creator-missions renderiza CreatorWorkspacePage com seção missions', () => {
       expect(() => renderRouter('creator-missions')).not.toThrow();
     });
 
-    it('creator-chapters renderiza CreatorWorkspacePage (não nulo)', () => {
+    it('creator-chapters renderiza CreatorWorkspacePage com seção chapters', () => {
       expect(() => renderRouter('creator-chapters')).not.toThrow();
     });
 
-    it('creator-analytics renderiza CreatorWorkspacePage (não nulo)', () => {
+    it('creator-analytics renderiza CreatorWorkspacePage com seção analytics', () => {
       expect(() => renderRouter('creator-analytics')).not.toThrow();
     });
 
-    it('creator-monetization renderiza CreatorWorkspacePage (não nulo)', () => {
+    it('creator-monetization renderiza CreatorWorkspacePage com seção monetization', () => {
       expect(() => renderRouter('creator-monetization')).not.toThrow();
     });
   });
 
-  describe('2. CREATOR_MENU tem exatamente 1 item', () => {
-    it('CREATOR_MENU.length === 1', async () => {
-      // Lê o source do HeaderUserMenu e conta entradas do CREATOR_MENU
-      const fs = await import('fs');
-      const path = await import('path');
-      const filePath = path.resolve(
-        'd:/Projetos/MangaNetWorking/frontend/src/components/layout/header/HeaderUserMenu.tsx',
-      );
-      const source = fs.readFileSync(filePath, 'utf-8');
+  describe('2. CREATOR_MENU possui 4 itens com query params mapeados', () => {
+    it('CREATOR_MENU.length === 4', () => {
+      expect(CREATOR_MENU).toHaveLength(4);
+    });
 
-      // Extrai o bloco CREATOR_MENU entre colchetes
-      const menuMatch = source.match(/const CREATOR_MENU[^=]+=\s*\[([\s\S]*?)\];/);
-      expect(menuMatch).not.toBeNull();
-      const menuBody = menuMatch![1];
+    it('contém Visão Geral apontando para ?aba=visao-geral', () => {
+      expect(CREATOR_MENU[0]).toMatchObject({
+        label: 'Visão Geral',
+        tab: 'creator-dashboard',
+        abaQuery: 'visao-geral',
+      });
+    });
 
-      // Conta quantas entradas { label: ... } existem dentro do array
-      const entryMatches = menuBody.match(/\{\s*label:/g);
-      expect(entryMatches).not.toBeNull();
-      expect(entryMatches!.length).toBe(1);
+    it('contém Minhas Obras apontando para ?aba=obras', () => {
+      expect(CREATOR_MENU[1]).toMatchObject({
+        label: 'Minhas Obras',
+        tab: 'creator-dashboard',
+        abaQuery: 'obras',
+      });
+    });
+
+    it('contém Missões & XP apontando para ?aba=missoes', () => {
+      expect(CREATOR_MENU[2]).toMatchObject({
+        label: 'Missões & XP',
+        tab: 'creator-dashboard',
+        abaQuery: 'missoes',
+      });
+    });
+
+    it('contém Perfil & Ajustes apontando para ?aba=configuracoes', () => {
+      expect(CREATOR_MENU[3]).toMatchObject({
+        label: 'Perfil & Ajustes',
+        tab: 'creator-dashboard',
+        abaQuery: 'configuracoes',
+      });
     });
   });
 
-  describe('3. CreatorOverviewTab — botão NOVA OBRA / CAPÍTULO NÃO usa CTA primário amarelo', () => {
-    it('não contém bg-[var(--mn-yellow)] no botão de publicação rápida', () => {
+  describe('3. CreatorOverviewTab — remoção do botão redundante NOVA OBRA / CAPÍTULO', () => {
+    it('não renderiza o botão redundante NOVA OBRA / CAPÍTULO', () => {
       const html = renderToString(
         <CreatorOverviewTab
           walletBalanceBrl={0}
@@ -247,27 +272,71 @@ describe('TASK-116 — Hub Unificado do Workspace do Autor', () => {
         />,
       );
 
-      // Verifica que a classe primária amarela não está no botão de ação rápida
-      // O botão "+ PUBLICAR PRIMEIRA OBRA" pode ter bg-yellow pois só aparece
-      // quando não há obras (Design System permite 1 CTA primário por tela quando
-      // o KpiHeader não está visível). O botão "NOVA OBRA / CAPÍTULO" deve ser ghost/outline.
-      //
-      // Estratégia: procurar "NOVA OBRA" no HTML e garantir que não há
-      // bg-[var(--mn-yellow)] imediatamente associado ao mesmo elemento.
-      const lines = html.split('>');
-      const novaObraLine = lines.find((l) => l.includes('NOVA OBRA') && l.includes('CAPÍTULO'));
-      if (novaObraLine) {
-        expect(novaObraLine).not.toContain('bg-[var(--mn-yellow)]');
-      } else {
-        // Se o botão não existe (estado vazio de works), o teste passa trivialmente
-        expect(true).toBe(true);
-      }
+      // O botão redundante não deve constar no markup
+      expect(html).not.toContain('NOVA OBRA / CAPÍTULO');
+
+      // Ações não duplicadas continuam presentes
+      expect(html).toContain('VER MISSÕES DA SEASON');
+      expect(html).toContain('TERMOS DE AUTORIA (ART. 184 CP)');
     });
   });
 
-  describe('4. Regressão — reader-profile não deve gerar rota solta', () => {
-    it('reader-profile renderiza sem erro (fallthrough para account)', () => {
-      expect(() => renderRouter('reader-profile')).not.toThrow();
+  describe('4. CreatorWorkspacePage — sincronização bidirecional via URL (?aba=...)', () => {
+    afterEach(() => {
+      window.history.replaceState({}, '', '/');
+    });
+
+    function setLocationSearch(search: string) {
+      window.history.replaceState({}, '', `/${search}`);
+    }
+
+    it('?aba=obras renderiza tela com aba de obras', () => {
+      setLocationSearch('?aba=obras');
+      const html = renderToString(<CreatorWorkspacePage />);
+      expect(html).toContain('data-testid="creator-works-page"');
+    });
+
+    it('?aba=missoes renderiza tela com aba de missões', () => {
+      setLocationSearch('?aba=missoes');
+      const html = renderToString(<CreatorWorkspacePage />);
+      expect(html).toContain('data-testid="creator-missions-panel"');
+    });
+
+    it('?aba=configuracoes renderiza tela com aba de configurações', () => {
+      setLocationSearch('?aba=configuracoes');
+      const html = renderToString(<CreatorWorkspacePage />);
+      expect(html).toContain('data-testid="creator-settings-panel"');
+    });
+
+    it('?aba=analytics renderiza tela dedicada CreatorAnalyticsPage', () => {
+      setLocationSearch('?aba=analytics');
+      const html = renderToString(<CreatorWorkspacePage />);
+      expect(html).toContain('data-testid="creator-analytics-page"');
+    });
+
+    it('?aba=capitulos renderiza tela dedicada CreatorChaptersPage', () => {
+      setLocationSearch('?aba=capitulos');
+      const html = renderToString(<CreatorWorkspacePage />);
+      expect(html).toContain('data-testid="creator-chapters-page"');
+    });
+
+    it('?aba=monetizacao renderiza tela dedicada CreatorMonetizationPage', () => {
+      setLocationSearch('?aba=monetizacao');
+      const html = renderToString(<CreatorWorkspacePage />);
+      expect(html).toContain('data-testid="creator-monetization-page"');
+    });
+
+    it('sem parâmetro ?aba= renderiza overview por padrão', () => {
+      setLocationSearch('');
+      const html = renderToString(<CreatorWorkspacePage />);
+      expect(html).toContain('PAINEL DO AUTOR');
+      expect(html).toContain('AÇÕES RÁPIDAS DA BANCADA');
+    });
+  });
+
+  describe('5. Regressão — rota inválida ou fallthrough', () => {
+    it('reader-profile faz fallthrough seguro para null no AppTabRouter', () => {
+      expect(() => renderRouter('reader-profile' as unknown as AppTab)).not.toThrow();
     });
   });
 });

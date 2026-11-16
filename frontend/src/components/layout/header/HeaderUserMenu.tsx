@@ -3,6 +3,9 @@ import {
   ChevronDown,
   Crown,
   LayoutDashboard,
+  BookOpen,
+  Award,
+  Settings,
   LogOut,
   ShieldAlert,
 } from 'lucide-react';
@@ -18,8 +21,18 @@ interface HeaderUserMenuProps {
   onOpenLogin?: () => void;
 }
 
-const CREATOR_MENU: { label: string; tab: AppTab; icon: typeof LayoutDashboard }[] = [
-  { label: 'Meu Workspace', tab: 'creator-dashboard', icon: LayoutDashboard },
+export interface CreatorMenuItem {
+  label: string;
+  tab: AppTab;
+  abaQuery: string;
+  icon: typeof LayoutDashboard;
+}
+
+export const CREATOR_MENU: CreatorMenuItem[] = [
+  { label: 'Visão Geral', tab: 'creator-dashboard', abaQuery: 'visao-geral', icon: LayoutDashboard },
+  { label: 'Minhas Obras', tab: 'creator-dashboard', abaQuery: 'obras', icon: BookOpen },
+  { label: 'Missões & XP', tab: 'creator-dashboard', abaQuery: 'missoes', icon: Award },
+  { label: 'Perfil & Ajustes', tab: 'creator-dashboard', abaQuery: 'configuracoes', icon: Settings },
 ];
 
 export function HeaderUserMenu({
@@ -57,6 +70,16 @@ export function HeaderUserMenu({
     setMenuOpen(false);
     await logout();
     onNavigate('feed');
+  };
+
+  const handleCreatorNavigate = (abaQuery: string) => {
+    setMenuOpen(false);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('aba', abaQuery);
+      window.history.replaceState({ tab: 'creator-dashboard', aba: abaQuery }, '', url.pathname + url.search);
+    }
+    onNavigate('creator-dashboard');
   };
 
   return (
@@ -197,25 +220,37 @@ export function HeaderUserMenu({
                   <p className="px-4 pt-3 pb-1 font-pixel text-[11px] tracking-widest text-[var(--mn-mute)] uppercase">
                     Criador
                   </p>
-                  {CREATOR_MENU.map((item) => (
-                    <button
-                      key={item.tab}
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setMenuOpen(false);
-                        onNavigate(item.tab);
-                      }}
-                      className={`w-full text-left px-4 py-2.5 flex items-center gap-2 font-body text-sm transition-colors ${
-                        currentTab === item.tab
-                          ? 'bg-[var(--mn-yellow)] text-[var(--mn-ink)] font-semibold'
-                          : 'text-[var(--mn-paper)] hover:bg-[var(--mn-ink-2)] hover:text-[var(--mn-yellow)]'
-                      }`}
-                    >
-                      <item.icon size={14} />
-                      {item.label}
-                    </button>
-                  ))}
+                  {CREATOR_MENU.map((item) => {
+                    const currentAba =
+                      typeof window !== 'undefined'
+                        ? new URLSearchParams(window.location.search).get('aba')?.toLowerCase()
+                        : null;
+                    const isItemActive =
+                      currentTab === 'creator-dashboard' &&
+                      (currentAba === item.abaQuery ||
+                        (!currentAba && item.abaQuery === 'visao-geral') ||
+                        (item.abaQuery === 'visao-geral' && currentAba === 'overview') ||
+                        (item.abaQuery === 'obras' && currentAba === 'works') ||
+                        (item.abaQuery === 'missoes' && currentAba === 'missions') ||
+                        (item.abaQuery === 'configuracoes' && currentAba === 'settings'));
+
+                    return (
+                      <button
+                        key={item.abaQuery}
+                        type="button"
+                        role="menuitem"
+                        onClick={() => handleCreatorNavigate(item.abaQuery)}
+                        className={`w-full text-left px-4 py-2.5 flex items-center gap-2 font-body text-sm transition-colors ${
+                          isItemActive
+                            ? 'bg-[var(--mn-yellow)] text-[var(--mn-ink)] font-semibold'
+                            : 'text-[var(--mn-paper)] hover:bg-[var(--mn-ink-2)] hover:text-[var(--mn-yellow)]'
+                        }`}
+                      >
+                        <item.icon size={14} />
+                        {item.label}
+                      </button>
+                    );
+                  })}
                 </>
               )}
 
