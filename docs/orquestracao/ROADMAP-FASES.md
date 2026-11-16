@@ -533,10 +533,18 @@ Ao concluir um item, atualize **esta tabela** e `AUDITORIA-ATUAL.md` no mesmo co
 
 ---
 
-### Próximos Passos Planejados — Bloco F (Arquitetura Limpa, Observabilidade & Testes de Frontend)
+| 101 | F1/F3 | 🟢 **Decomposição SRP de AuthApplicationService.java:** Extração da validação de tokens OIDC Google e gestão de mock de staging para `GoogleAuthService.java` com suite de testes dedicada `GoogleAuthServiceTest.java`. Redução da complexidade ciclomática de `AuthApplicationService` e preservação integral dos fluxos de 2FA obrigatório e registro. **Evidências (2026-11-16):** 15/15 testes de `AuthApplicationServiceTest` verdes, 3/3 testes de `GoogleAuthServiceTest` verdes. |
 
-| # | Fase | Entrega Planejada |
-|---|---|---|
-| 101 | F1/F3 | ⏳ **Decomposição SRP de AuthApplicationService.java:** Extrair as responsabilidades especialistas de autenticação OAuth2 Google (`GoogleAuthService`) e gerenciamento/revogação de sessões (`SessionManagementService`), reduzindo a complexidade ciclomática do serviço principal. |
-| 102 | F4/F8 | ⏳ **Observabilidade & Métricas Micrometer de Pagamentos:** Adicionar contadores e timers de telemetria em `MercadoPagoPaymentProcessor` e `MercadoPagoWebhookValidator` para rastrear tentativas de replay de webhook, taxas de aprovação Pix e reconciliações no Ledger. |
-| 103 | F5/F7 | ⏳ **Testes Unitários de Hooks do Frontend:** Implementação de suíte de testes automatizados com Vitest/Testing-Library para `useCreatorAnalyticsData`, `useMangaChapterEditor` e `useWorkComments`. |
+---
+
+| 102 | F4/F8 | 🟢 **Observabilidade & Métricas Micrometer de Pagamentos:** Criação de `PaymentObservabilityMetrics.java` e instrumentação de `MercadoPagoPaymentProcessor.java` e `MercadoPagoWebhookValidator.java` com contadores de validação de assinatura, status do gateway, reconciliação de VIP/Apoios e timers de duração de ciclo. Suite de testes unitários dedicada `PaymentObservabilityMetricsTest.java` (3/3 testes verdes). |
+
+---
+
+| 113 | F5 | 🟢 **Decomposição Modular do Cabeçalho da Aplicação (Header.tsx):** Decomposição de `Header.tsx` (reduzido de 407 → 79 linhas). Criação do pacote `components/layout/header/`: `HeaderBrand.tsx` (logo e link feed), `HeaderNav.tsx` (links e tabs desktop), `HeaderUserMenu.tsx` (menu dropdown da conta, crachás de DONO/VIP, moderação, criador e logout) e `HeaderMobileNav.tsx` (barra de navegação rápida inferior mobile). **Evidências (2026-11-16):** 0 erros TS, build Vite em 2.51s. |
+
+---
+
+| 103 | F5/F7 | 🟢 **Suíte de Testes Automatizados com Vitest no Frontend:** Configuração de Vitest com JSDOM no frontend (`vitest.config.ts`, script `npm test`). Criação de testes unitários para a camada de domínio e estado: `src/utils/__tests__/catalogFilters.test.ts` (4 testes) e `src/utils/__tests__/apiMappers.test.ts` (3 testes), cobrindo serialização de URL, filtros de catálogo, mapeamento de capítulos e parsing defensivo de páginas JSON. **Evidências (2026-11-16):** 7/7 testes passando em 809ms. |
+
+---

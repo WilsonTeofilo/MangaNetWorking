@@ -1,5 +1,6 @@
 package com.manganetworking.service.monetization;
 
+import com.manganetworking.config.observability.PaymentObservabilityMetrics;
 import com.manganetworking.config.properties.PlatformProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,6 +15,7 @@ import org.springframework.web.client.RestClientResponseException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -39,6 +41,7 @@ public class MercadoPagoPaymentProcessor {
     private final PlatformProperties properties;
     private final MonetizationService monetizationService;
     private final JdbcTemplate jdbcTemplate;
+    private final PaymentObservabilityMetrics metrics;
     private RestClient defaultRestClient;
     private Supplier<RestClient> restClientSupplier;
 
@@ -46,9 +49,18 @@ public class MercadoPagoPaymentProcessor {
     public MercadoPagoPaymentProcessor(
             PlatformProperties properties,
             MonetizationService monetizationService,
+            JdbcTemplate jdbcTemplate,
+            PaymentObservabilityMetrics metrics
+    ) {
+        this(properties, monetizationService, jdbcTemplate, metrics, null);
+    }
+
+    public MercadoPagoPaymentProcessor(
+            PlatformProperties properties,
+            MonetizationService monetizationService,
             JdbcTemplate jdbcTemplate
     ) {
-        this(properties, monetizationService, jdbcTemplate, null);
+        this(properties, monetizationService, jdbcTemplate, null, null);
     }
 
     public MercadoPagoPaymentProcessor(
@@ -57,9 +69,20 @@ public class MercadoPagoPaymentProcessor {
             JdbcTemplate jdbcTemplate,
             Supplier<RestClient> restClientSupplier
     ) {
+        this(properties, monetizationService, jdbcTemplate, null, restClientSupplier);
+    }
+
+    public MercadoPagoPaymentProcessor(
+            PlatformProperties properties,
+            MonetizationService monetizationService,
+            JdbcTemplate jdbcTemplate,
+            PaymentObservabilityMetrics metrics,
+            Supplier<RestClient> restClientSupplier
+    ) {
         this.properties = properties;
         this.monetizationService = monetizationService;
         this.jdbcTemplate = jdbcTemplate;
+        this.metrics = metrics;
         this.restClientSupplier = restClientSupplier;
 
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
@@ -93,6 +116,7 @@ public class MercadoPagoPaymentProcessor {
      */
     @Transactional
     public void processPaymentNotification(String paymentId) {
+        Instant start = Instant.now();
         if (paymentId == null || !paymentId.matches("[A-Za-z0-9_-]{1,100}")) {
             return;
         }
@@ -103,17 +127,20 @@ public class MercadoPagoPaymentProcessor {
 
         Map<?, ?> payment = fetchPayment(paymentId, accessToken);
         if (payment == null) {
+            recordStatus("unknown", "not_found");
             return;
         }
 
         String status = String.valueOf(payment.get("status"));
         if (!"approved".equals(status)) {
+            recordStatus("unknown", status);
             if ("refunded".equals(status) || "charged_back".equals(status)) {
                 log.warn("[MERCADO-PAGO] Pagamento {} exige conciliação de estorno/chargeback.", paymentId);
             }
             return;
         }
         if (!"BRL".equals(payment.get("currency_id"))) {
+            recordStatus("unknown", "currency_mismatch");
             log.warn("[MERCADO-PAGO] Pagamento {} com moeda divergente; ignorado.", paymentId);
             return;
         }
@@ -128,12 +155,14 @@ public class MercadoPagoPaymentProcessor {
         if (!(payment.get("transaction_amount") instanceof Number amount)
                 || new BigDecimal(amount.toString()).setScale(2, RoundingMode.HALF_EVEN)
                 .compareTo(properties.getVipPrice().setScale(2, RoundingMode.HALF_EVEN)) != 0) {
+            recordStatus("vip", "amount_mismatch");
             log.warn("[MERCADO-PAGO] Pagamento {} com valor divergente; ignorado.", paymentId);
             return;
         }
 
         Optional<CheckoutReference> reference = parseExternalReference(payment.get("external_reference"));
         if (reference.isEmpty()) {
+            recordStatus("vip", "invalid_ref");
             log.warn("[MERCADO-PAGO] Pagamento {} sem referência de checkout válida; ignorado.", paymentId);
             return;
         }
@@ -141,6 +170,7 @@ public class MercadoPagoPaymentProcessor {
 
         Optional<String> preferenceId = findPreferenceId(checkout.checkoutReference(), checkout.userId());
         if (preferenceId.isEmpty()) {
+            recordStatus("vip", "missing_intent");
             log.warn("[MERCADO-PAGO] Pagamento {} sem checkout persistido para o usuário; ignorado.", paymentId);
             return;
         }
@@ -149,16 +179,22 @@ public class MercadoPagoPaymentProcessor {
                 + "|" + checkout.checkoutReference();
         Map<?, ?> preference = fetchPreference(preferenceId.get(), accessToken);
         if (!isExpectedVipPreference(preference, preferenceId.get(), expectedExternalReference)) {
+            recordStatus("vip", "preference_mismatch");
             log.warn("[MERCADO-PAGO] Pagamento {} não corresponde à preferência persistida; ignorado.", paymentId);
             return;
         }
 
         monetizationService.subscribePlatformVip(checkout.userId(), VIP_PAYMENT_PREFIX + paymentId);
+        recordStatus("vip", "approved");
+        recordReconciliation("vip", "success");
+        recordDuration("vip", Duration.between(start, Instant.now()));
     }
 
     private void processSupportPayment(String paymentId, BigDecimal paidAmount, String externalReference, String accessToken) {
+        Instant start = Instant.now();
         String reference = externalReference.substring(SUPPORT_REFERENCE_PREFIX.length());
         if (!reference.matches("[0-9a-f]{16}")) {
+            recordStatus("support", "malformed_ref");
             return;
         }
         SupportCheckoutRecord checkout = jdbcTemplate.query("""
@@ -178,16 +214,21 @@ public class MercadoPagoPaymentProcessor {
                 resultSet.getObject("payer_user_id", UUID.class),
                 resultSet.getString("processed_payment_id")) : null, reference);
 
+        String productType = checkout != null && "MEMBERSHIP".equals(checkout.productType()) ? "membership" : "donation";
+
         if (checkout == null || checkout.preferenceId() == null
                 || paidAmount.compareTo(checkout.amount()) != 0) {
+            recordStatus(productType, "amount_or_intent_mismatch");
             return;
         }
         String expectedReference = SUPPORT_REFERENCE_PREFIX + checkout.reference();
         Map<?, ?> preference = fetchPreference(checkout.preferenceId(), accessToken);
         if (!isExpectedSupportPreference(preference, checkout, expectedReference)) {
+            recordStatus(productType, "preference_mismatch");
             return;
         }
         if (checkout.processedPaymentId() != null) {
+            recordReconciliation(productType, "already_processed");
             return;
         }
 
@@ -196,6 +237,7 @@ public class MercadoPagoPaymentProcessor {
                 WHERE checkout_reference = ? AND processed_payment_id IS NULL
                 """, paymentId, checkout.reference());
         if (claimed != 1) {
+            recordReconciliation(productType, "already_processed");
             return;
         }
 
@@ -205,6 +247,27 @@ public class MercadoPagoPaymentProcessor {
                     checkout.workId(), checkout.chapterId(), checkout.amount(), checkout.message(), externalPaymentId);
         } else if ("MEMBERSHIP".equals(checkout.productType())) {
             monetizationService.subscribeMembership(checkout.payerUserId(), checkout.creatorId(), checkout.amount(), externalPaymentId);
+        }
+        recordStatus(productType, "approved");
+        recordReconciliation(productType, "success");
+        recordDuration(productType, Duration.between(start, Instant.now()));
+    }
+
+    private void recordStatus(String type, String status) {
+        if (metrics != null) {
+            metrics.recordPaymentStatus(type, status);
+        }
+    }
+
+    private void recordReconciliation(String type, String outcome) {
+        if (metrics != null) {
+            metrics.recordReconciliation(type, outcome);
+        }
+    }
+
+    private void recordDuration(String type, Duration duration) {
+        if (metrics != null) {
+            metrics.recordProcessingDuration(type, duration);
         }
     }
 

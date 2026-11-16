@@ -1,6 +1,8 @@
 package com.manganetworking.service.monetization;
 
+import com.manganetworking.config.observability.PaymentObservabilityMetrics;
 import com.manganetworking.config.properties.PlatformProperties;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.Mac;
@@ -26,9 +28,16 @@ public class MercadoPagoWebhookValidator {
     private static final Duration WEBHOOK_SIGNATURE_MAX_AGE = Duration.ofMinutes(15);
 
     private final PlatformProperties properties;
+    private final PaymentObservabilityMetrics metrics;
+
+    @Autowired
+    public MercadoPagoWebhookValidator(PlatformProperties properties, PaymentObservabilityMetrics metrics) {
+        this.properties = properties;
+        this.metrics = metrics;
+    }
 
     public MercadoPagoWebhookValidator(PlatformProperties properties) {
-        this.properties = properties;
+        this(properties, null);
     }
 
     /**
@@ -41,8 +50,12 @@ public class MercadoPagoWebhookValidator {
      */
     public boolean verifyWebhookSignature(String signatureHeader, String requestIdHeader, String dataId) {
         String secret = properties.getMercadopago().getWebhookSecret();
-        if (secret == null || secret.isBlank() || signatureHeader == null
-                || requestIdHeader == null || dataId == null) {
+        if (secret == null || secret.isBlank()) {
+            recordMetric("missing_secret");
+            return false;
+        }
+        if (signatureHeader == null || requestIdHeader == null || dataId == null) {
+            recordMetric("malformed_headers");
             return false;
         }
 
@@ -63,12 +76,14 @@ public class MercadoPagoWebhookValidator {
         }
 
         if (timestamp == null || signature == null || !timestamp.matches("[0-9]{1,12}")) {
+            recordMetric("malformed_headers");
             return false;
         }
 
         try {
             long timestampSeconds = Long.parseLong(timestamp);
             if (Math.abs(Instant.now().getEpochSecond() - timestampSeconds) > WEBHOOK_SIGNATURE_MAX_AGE.toSeconds()) {
+                recordMetric("expired_replay");
                 return false;
             }
 
@@ -80,9 +95,18 @@ public class MercadoPagoWebhookValidator {
             byte[] expected = mac.doFinal(manifest.getBytes(StandardCharsets.UTF_8));
             byte[] actual = HexFormat.of().parseHex(signature);
 
-            return MessageDigest.isEqual(expected, actual);
+            boolean valid = MessageDigest.isEqual(expected, actual);
+            recordMetric(valid ? "valid" : "invalid_signature");
+            return valid;
         } catch (Exception exception) {
+            recordMetric("invalid_signature");
             return false;
+        }
+    }
+
+    private void recordMetric(String outcome) {
+        if (metrics != null) {
+            metrics.recordWebhookVerification(outcome);
         }
     }
 }

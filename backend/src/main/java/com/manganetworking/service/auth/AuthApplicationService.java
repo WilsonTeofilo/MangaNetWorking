@@ -16,21 +16,14 @@ import com.manganetworking.util.CpfValidator;
 import com.manganetworking.util.EmailNormalizer;
 import com.manganetworking.util.SocialLinkPolicy;
 import com.manganetworking.util.UsernamePolicy;
-import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
-import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
-import com.google.api.client.http.javanet.NetHttpTransport;
-import com.google.api.client.json.gson.GsonFactory;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.IOException;
-import java.security.GeneralSecurityException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
@@ -50,9 +43,7 @@ public class AuthApplicationService {
     private final SessionService sessionService;
     private final PasswordEncoder passwordEncoder;
     private final PrivacyComplianceService privacyComplianceService;
-    private final String googleClientId;
-    private final GoogleIdTokenVerifier googleIdTokenVerifier;
-    private final boolean googleStagingMockEnabled;
+    private final GoogleAuthService googleAuthService;
     /**
      * Hash descartável usado para manter custo de BCrypt mesmo quando o e-mail não existe
      * ou a conta é somente Google. Evita enumeração de contas por diferença de tempo.
@@ -69,8 +60,7 @@ public class AuthApplicationService {
             SessionService sessionService,
             PasswordEncoder passwordEncoder,
             PrivacyComplianceService privacyComplianceService,
-            @Value("${GOOGLE_CLIENT_ID:}") String googleClientId,
-            @Value("${google.auth.staging-mock-enabled:false}") boolean googleStagingMockEnabled
+            GoogleAuthService googleAuthService
     ) {
         this.userRepository = userRepository;
         this.creatorRepository = creatorRepository;
@@ -80,12 +70,7 @@ public class AuthApplicationService {
         this.sessionService = sessionService;
         this.passwordEncoder = passwordEncoder;
         this.privacyComplianceService = privacyComplianceService;
-        this.googleClientId = googleClientId == null ? "" : googleClientId.trim();
-        this.googleStagingMockEnabled = googleStagingMockEnabled;
-        this.googleIdTokenVerifier = new GoogleIdTokenVerifier.Builder(
-                new NetHttpTransport(), GsonFactory.getDefaultInstance())
-                .setAudience(Collections.singletonList(this.googleClientId))
-                .build();
+        this.googleAuthService = googleAuthService;
         this.dummyPasswordHash = passwordEncoder.encode("manganetworking-timing-only-not-a-credential");
     }
 
@@ -102,7 +87,24 @@ public class AuthApplicationService {
     ) {
         this(userRepository, creatorRepository, creatorProfileFactory, twoFactorAuthService,
                 otpIssuanceLimiter, sessionService, passwordEncoder, privacyComplianceService,
-                googleClientId, false);
+                new GoogleAuthService(googleClientId));
+    }
+
+    public AuthApplicationService(
+            UserRepository userRepository,
+            CreatorRepository creatorRepository,
+            CreatorProfileFactory creatorProfileFactory,
+            TwoFactorAuthService twoFactorAuthService,
+            OtpIssuanceLimiter otpIssuanceLimiter,
+            SessionService sessionService,
+            PasswordEncoder passwordEncoder,
+            PrivacyComplianceService privacyComplianceService,
+            String googleClientId,
+            boolean googleStagingMockEnabled
+    ) {
+        this(userRepository, creatorRepository, creatorProfileFactory, twoFactorAuthService,
+                otpIssuanceLimiter, sessionService, passwordEncoder, privacyComplianceService,
+                new GoogleAuthService(googleClientId, googleStagingMockEnabled));
     }
 
     @Transactional
@@ -230,49 +232,11 @@ public class AuthApplicationService {
 
     @Transactional
     public Map<String, Object> loginWithGoogle(GoogleLoginRequestDto dto, HttpServletRequest request) {
-        GoogleIdToken idToken = null;
-        if (googleStagingMockEnabled && dto.googleToken() != null && dto.googleToken().startsWith("STAGING_GOOGLE_TOKEN:")) {
-            String[] parts = dto.googleToken().split(":", 3);
-            String mockEmail = parts.length > 1 && !parts[1].isBlank() ? parts[1].trim() : "leitor.staging@manganetworking.com";
-            String mockName = parts.length > 2 && !parts[2].isBlank() ? parts[2].trim() : "Leitor Staging Google";
-            GoogleIdToken.Payload mockPayload = new GoogleIdToken.Payload();
-            mockPayload.setEmail(mockEmail);
-            mockPayload.setEmailVerified(true);
-            mockPayload.setSubject("staging-google-sub-" + mockEmail.hashCode());
-            mockPayload.set("name", mockName);
-            mockPayload.set("picture", "/api/storage/avatar-default.png");
-            idToken = new GoogleIdToken(new com.google.api.client.json.webtoken.JsonWebSignature.Header(), mockPayload, new byte[0], new byte[0]);
-        } else {
-            if (googleClientId.isBlank()) {
-                throw new IllegalStateException("Login Google indisponível: GOOGLE_CLIENT_ID não configurado.");
-            }
-            try {
-                idToken = googleIdTokenVerifier.verify(dto.googleToken());
-            } catch (GeneralSecurityException ex) {
-                throw new SecurityException("Token Google inválido", ex);
-            } catch (IOException ex) {
-                throw new IllegalStateException("Não foi possível validar a identidade Google agora.", ex);
-            } catch (IllegalArgumentException ex) {
-                throw new SecurityException("Token Google inválido", ex);
-            }
-        }
+        GoogleAuthService.GoogleTokenClaims claims = googleAuthService.verifyToken(dto.googleToken());
 
-        if (idToken == null) {
-            throw new SecurityException("Token Google inválido");
-        }
-
-        GoogleIdToken.Payload claims = idToken.getPayload();
-        String email = claims.getEmail();
-        String subject = claims.getSubject();
-        if (!Boolean.TRUE.equals(claims.getEmailVerified())
-                || email == null || email.isBlank()
-                || subject == null || subject.isBlank()) {
-            throw new SecurityException("Token Google inválido");
-        }
-
-        String normalizedEmail = EmailNormalizer.normalize(email);
-        String verifiedName = (String) claims.get("name");
-        String verifiedAvatarUrl = (String) claims.get("picture");
+        String normalizedEmail = EmailNormalizer.normalize(claims.email());
+        String verifiedName = claims.name();
+        String verifiedAvatarUrl = claims.picture();
         UserEntity user = userRepository.findByEmail(normalizedEmail).orElse(null);
         if (user == null) {
             if (!Boolean.TRUE.equals(dto.termsAccepted())
