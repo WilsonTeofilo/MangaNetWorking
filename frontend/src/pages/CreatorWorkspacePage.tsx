@@ -2,13 +2,24 @@ import { useState } from 'react';
 import { ImageCropper } from '../components/common/ImageCropper';
 import { CreatorMissionsPanel } from '../components/creator/CreatorMissionsPanel';
 import { CreatorWorksPage } from './CreatorWorksPage';
+import { CreatorChaptersPage } from './CreatorChaptersPage';
+import { CreatorAnalyticsPage } from './CreatorAnalyticsPage';
+import { CreatorMonetizationPage } from './CreatorMonetizationPage';
 import { useCreatorWorkspaceData } from '../components/creator/workspace/useCreatorWorkspaceData';
 import { CreatorKpiHeader, WorkspaceTab } from '../components/creator/workspace/CreatorKpiHeader';
 import { CreatorOverviewTab } from '../components/creator/workspace/CreatorOverviewTab';
 import { CreatorProfileSettingsTab } from '../components/creator/workspace/CreatorProfileSettingsTab';
 import { OriginalWorkDeclarationModal } from '../components/creator/workspace/OriginalWorkDeclarationModal';
 
-export type CreatorWorkspaceSection = 'dashboard' | 'missions' | 'works' | 'settings' | 'overview';
+export type CreatorWorkspaceSection =
+  | 'dashboard'
+  | 'missions'
+  | 'works'
+  | 'settings'
+  | 'overview'
+  | 'chapters'
+  | 'analytics'
+  | 'monetization';
 
 export interface CreatorWorkspacePageProps {
   section?: CreatorWorkspaceSection;
@@ -24,7 +35,13 @@ export function CreatorWorkspacePage({
   onOpenPublicProfile,
 }: CreatorWorkspacePageProps = {}) {
   const initialTab: WorkspaceTab =
-    section === 'missions' ? 'missions' : section === 'works' ? 'works' : 'overview';
+    section === 'missions'
+      ? 'missions'
+      : section === 'works' || section === 'chapters'
+        ? 'works'
+        : section === 'settings'
+          ? 'settings'
+          : 'overview';
 
   const [activeTab, setActiveTab] = useState<WorkspaceTab>(initialTab);
   const [declarationModalOpen, setDeclarationModalOpen] = useState(false);
@@ -54,6 +71,11 @@ export function CreatorWorkspacePage({
   }
 
   const { workspace } = data;
+
+  // Seções dedicadas sem a UI de WorkspaceTab interna
+  if (section === 'chapters') return <CreatorChaptersPage />;
+  if (section === 'analytics') return <CreatorAnalyticsPage />;
+  if (section === 'monetization') return <CreatorMonetizationPage />;
 
   return (
     <div className="mn-container py-8 space-y-8 select-none pb-24">

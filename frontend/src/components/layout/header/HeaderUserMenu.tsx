@@ -1,15 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  BarChart3,
-  BookMarked,
   ChevronDown,
-  Coins,
   Crown,
   LayoutDashboard,
   LogOut,
-  PenLine,
   ShieldAlert,
-  Trophy,
 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { useModals } from '../../../context/ModalContext';
@@ -24,12 +19,7 @@ interface HeaderUserMenuProps {
 }
 
 const CREATOR_MENU: { label: string; tab: AppTab; icon: typeof LayoutDashboard }[] = [
-  { label: 'Workspace do criador', tab: 'creator-dashboard', icon: LayoutDashboard },
-  { label: 'Minhas obras', tab: 'creator-works', icon: BookMarked },
-  { label: 'Capítulos', tab: 'creator-chapters', icon: PenLine },
-  { label: 'Missões & XP', tab: 'creator-missions', icon: Trophy },
-  { label: 'Analytics', tab: 'creator-analytics', icon: BarChart3 },
-  { label: 'Monetização', tab: 'creator-monetization', icon: Coins },
+  { label: 'Meu Workspace', tab: 'creator-dashboard', icon: LayoutDashboard },
 ];
 
 export function HeaderUserMenu({

@@ -9,11 +9,7 @@ import { BecomeWriterPage } from '../../pages/BecomeWriterPage';
 import { OnboardingPage } from '../../pages/OnboardingPage';
 import { PublicProfilePage } from '../../pages/PublicProfilePage';
 import { CreatorDashboardPage } from '../../pages/CreatorDashboardPage';
-import { CreatorMissionsPage } from '../../pages/CreatorMissionsPage';
-import { CreatorAnalyticsPage } from '../../pages/CreatorAnalyticsPage';
-import { CreatorWorksPage } from '../../pages/CreatorWorksPage';
-import { CreatorChaptersPage } from '../../pages/CreatorChaptersPage';
-import { CreatorMonetizationPage } from '../../pages/CreatorMonetizationPage';
+import { CreatorWorkspacePage } from '../../pages/CreatorWorkspacePage';
 import { ModerationBackofficePage } from '../../pages/ModerationBackofficePage';
 
 interface AppTabRouterProps {
@@ -73,7 +69,6 @@ export function AppTabRouter({
         />
       );
 
-    case 'reader-profile':
     case 'account':
       return (
         <AccountProfilePage
@@ -103,20 +98,20 @@ export function AppTabRouter({
     case 'creator-dashboard':
       return <CreatorDashboardPage onOpenPublicProfile={onOpenPublicProfile} />;
 
-    case 'creator-missions':
-      return <CreatorMissionsPage />;
-
-    case 'creator-analytics':
-      return <CreatorAnalyticsPage />;
-
     case 'creator-works':
-      return <CreatorWorksPage />;
+      return <CreatorWorkspacePage section="works" onOpenPublicProfile={onOpenPublicProfile} />;
 
     case 'creator-chapters':
-      return <CreatorChaptersPage />;
+      return <CreatorWorkspacePage section="chapters" onOpenPublicProfile={onOpenPublicProfile} />;
+
+    case 'creator-missions':
+      return <CreatorWorkspacePage section="missions" onOpenPublicProfile={onOpenPublicProfile} />;
+
+    case 'creator-analytics':
+      return <CreatorWorkspacePage section="analytics" onOpenPublicProfile={onOpenPublicProfile} />;
 
     case 'creator-monetization':
-      return <CreatorMonetizationPage />;
+      return <CreatorWorkspacePage section="monetization" onOpenPublicProfile={onOpenPublicProfile} />;
 
     case 'moderation':
       return <ModerationBackofficePage onBack={() => onSwitchTab('feed')} />;
