@@ -43,7 +43,7 @@ export function CreatorKpiHeader({
   const displayedName = profileName || 'CRIADOR';
 
   return (
-    <header className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] shadow-[4px_4px_0_var(--mn-ink)] p-5 sm:p-7 space-y-6 select-none">
+    <header className="bg-[var(--mn-ink-2)] border-b-2 border-[var(--mn-line)] p-6 sm:p-8 space-y-6 select-none">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         {/* Identidade do Autor: Avatar e Nomes */}
         <div className="flex items-center gap-4 sm:gap-6">

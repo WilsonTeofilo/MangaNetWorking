@@ -133,7 +133,7 @@ export function AccountSecurityTab({
     <div className="space-y-6">
       {/* Reivindicação de Username (apenas se for gerado) */}
       {usernameIsGenerated && (
-        <div className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-6 space-y-4">
+        <div className="bg-[var(--mn-ink-2)] p-6 sm:p-7 space-y-4">
           <h2 className="font-display text-xl text-[var(--mn-paper)] uppercase">Definir meu username</h2>
           <p className="font-body text-sm text-[var(--mn-mute)]">
             Sua conta ainda usa o identificador automático. Escolha o username público: ele será a
@@ -173,7 +173,7 @@ export function AccountSecurityTab({
       )}
 
       {/* Visibilidade do Perfil */}
-      <div className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-6 space-y-4">
+      <div className="bg-[var(--mn-ink-2)] p-6 sm:p-7 space-y-4">
         <h2 className="font-display text-xl text-[var(--mn-paper)] uppercase">Visibilidade do perfil</h2>
         {user.isCreator ? (
           <p className="font-body text-sm text-[var(--mn-mute)] border-2 border-[var(--mn-teal)] p-3">
@@ -217,7 +217,7 @@ export function AccountSecurityTab({
       {error && <p role="alert" className="font-pixel text-xs text-[var(--mn-red)] uppercase">{error}</p>}
 
       {/* Seção de Governança de Dados LGPD */}
-      <div className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-6 space-y-4">
+      <div className="bg-[var(--mn-ink-2)] p-6 sm:p-7 space-y-4">
         <div className="flex items-center gap-2">
           <ShieldCheck size={20} className="text-[var(--mn-yellow)]" />
           <h2 className="font-display text-xl text-[var(--mn-paper)] uppercase">Governança e Privacidade (LGPD)</h2>

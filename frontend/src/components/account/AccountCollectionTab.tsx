@@ -102,7 +102,7 @@ export function AccountCollectionTab({
     <div className="space-y-8">
       {/* Seção Compacta de Assinatura VIP */}
       {user.isVip ? (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-2 border-[var(--mn-yellow)] bg-[var(--mn-ink-2)]">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-[var(--mn-ink-2)] p-5 sm:p-6 border-l-2 border-[var(--mn-yellow)]">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-[var(--mn-yellow)] text-[var(--mn-ink)] border border-[var(--mn-ink)]">
               <Crown size={20} className="fill-[var(--mn-ink)]" />
@@ -119,7 +119,7 @@ export function AccountCollectionTab({
           </span>
         </div>
       ) : (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)]">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-[var(--mn-ink-2)] p-5 sm:p-6 border-l-2 border-[var(--mn-yellow)]">
           <div className="flex items-center gap-3">
             <div className="p-2 border border-[var(--mn-yellow)] text-[var(--mn-yellow)]">
               <Crown size={20} />

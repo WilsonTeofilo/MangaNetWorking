@@ -59,7 +59,7 @@ export function CreatorOverviewTab({
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Card 1: Saldo Disponível */}
-          <div className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-5 space-y-2">
+          <div className="bg-[var(--mn-ink-2)] border-l-2 border-[var(--mn-line)] p-5 space-y-2">
             <div className="flex items-center justify-between text-[var(--mn-mute)]">
               <span className="font-pixel text-[11px] uppercase tracking-wider">
                 SALDO DISPONÍVEL
@@ -75,7 +75,7 @@ export function CreatorOverviewTab({
           </div>
 
           {/* Card 2: Membros Mensais */}
-          <div className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-5 space-y-2">
+          <div className="bg-[var(--mn-ink-2)] border-l-2 border-[var(--mn-line)] p-5 space-y-2">
             <div className="flex items-center justify-between text-[var(--mn-mute)]">
               <span className="font-pixel text-[11px] uppercase tracking-wider">
                 MEMBROS ATIVOS
@@ -91,7 +91,7 @@ export function CreatorOverviewTab({
           </div>
 
           {/* Card 3: Leitores e Alcance */}
-          <div className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-5 space-y-2 sm:col-span-2 lg:col-span-1">
+          <div className="bg-[var(--mn-ink-2)] border-l-2 border-[var(--mn-line)] p-5 space-y-2 sm:col-span-2 lg:col-span-1">
             <div className="flex items-center justify-between text-[var(--mn-mute)]">
               <span className="font-pixel text-[11px] uppercase tracking-wider">
                 LEITURAS TOTAIS
@@ -202,7 +202,7 @@ export function CreatorOverviewTab({
       </section>
 
       {/* 3. Ações Rápidas & Conformidade */}
-      <section aria-labelledby="quick-actions-title" className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-5 space-y-4">
+      <section aria-labelledby="quick-actions-title" className="bg-[var(--mn-ink-2)] p-6 space-y-4">
         <h2 id="quick-actions-title" className="font-display text-sm sm:text-base text-[var(--mn-paper)] uppercase tracking-wide">
           AÇÕES RÁPIDAS DA BANCADA
         </h2>

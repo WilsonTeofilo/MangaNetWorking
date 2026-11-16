@@ -90,7 +90,7 @@ export function PublicProfilePage({ username }: { username: string }) {
 
   return (
     <section className="mn-container py-10 space-y-6">
-      <header className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-6 sm:p-8 flex flex-col sm:flex-row gap-6">
+      <header className="bg-[var(--mn-ink-2)] border-b-2 border-[var(--mn-line)] p-6 sm:p-8 flex flex-col sm:flex-row gap-6">
         <img
           src={profile.avatarUrl || '/avatar-placeholder.png'}
           alt={profile.displayName || profile.username}
@@ -139,7 +139,7 @@ export function PublicProfilePage({ username }: { username: string }) {
               )}
             </>
           ) : (
-            <div className="flex items-start gap-2 border-2 border-[var(--mn-line)] bg-[var(--mn-ink)] p-4">
+            <div className="flex items-start gap-2 bg-[var(--mn-ink-2)] p-4">
               <EyeOff size={16} className="text-[var(--mn-mute)] mt-0.5" />
               <p className="font-body text-sm text-[var(--mn-mute)]">
                 Este perfil é privado. O username aparece nos comentários, mas os dados do titular não são
