@@ -160,7 +160,62 @@ export function useAppNavigation() {
     setSelectedWork(work);
     setReadingChapter(null);
     setReadingStartPage(undefined);
+    if (typeof window !== 'undefined') {
+      const snapshot: NavSnapshot = {
+        tab: currentTab,
+        workSlug: work.slug,
+      };
+      window.history.pushState(snapshot, '', window.location.pathname);
+    }
   };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // Registra entrada inicial no histórico se ainda não existir
+    const currentState = window.history.state as NavSnapshot | null;
+    if (!currentState || !currentState.tab) {
+      window.history.replaceState({ tab: currentTab }, '', window.location.href);
+    }
+
+    const handlePopState = (event: PopStateEvent) => {
+      const state = event.state as NavSnapshot | null;
+      if (!state) {
+        setSelectedWork(null);
+        setReadingChapter(null);
+        setCurrentTab('feed');
+        return;
+      }
+
+      setCurrentTab(state.tab || 'feed');
+      setPublicProfileUsername(state.profileUsername || '');
+
+      if (state.workSlug) {
+        workApi
+          .getWorkBySlug(state.workSlug)
+          .then((dto) => {
+            const restored = mapWorkDetailsToWork(dto);
+            setSelectedWork(restored);
+            if (state.chapterNumber) {
+              const chap = restored.chapters?.find((c) => c.number === state.chapterNumber);
+              setReadingChapter(chap || null);
+            } else {
+              setReadingChapter(null);
+            }
+          })
+          .catch(() => {
+            setSelectedWork(null);
+            setReadingChapter(null);
+          });
+      } else {
+        setSelectedWork(null);
+        setReadingChapter(null);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [currentTab]);
 
   useEffect(() => {
     const onOpenWork = (event: Event) => {
@@ -184,6 +239,14 @@ export function useAppNavigation() {
     setSelectedWork(work);
     setReadingChapter(chapter);
     setReadingStartPage(page);
+    if (typeof window !== 'undefined') {
+      const snapshot: NavSnapshot = {
+        tab: currentTab,
+        workSlug: work.slug,
+        chapterNumber: chapter.number,
+      };
+      window.history.pushState(snapshot, '', window.location.pathname);
+    }
   };
 
   const handleNavigateChapter = (nextNumber: number) => {
@@ -203,9 +266,13 @@ export function useAppNavigation() {
   };
 
   const handleSwitchTab = (tab: AppTab) => {
+    const isDifferent =
+      tab !== currentTab || selectedWork !== null || readingChapter !== null;
+
     setSelectedWork(null);
     setReadingChapter(null);
     setCurrentTab(tab);
+
     if (typeof window !== 'undefined') {
       const searchParams = new URLSearchParams(window.location.search);
       let paramsChanged = false;
@@ -216,13 +283,20 @@ export function useAppNavigation() {
       }
 
       if (tab !== 'works' && hasCatalogParams(window.location.search)) {
-        window.history.replaceState({ tab }, '', window.location.pathname);
+        if (isDifferent) {
+          window.history.pushState({ tab }, '', window.location.pathname);
+        } else {
+          window.history.replaceState({ tab }, '', window.location.pathname);
+        }
         return;
       }
 
-      if (paramsChanged) {
-        const query = searchParams.toString();
-        const nextUrl = window.location.pathname + (query ? `?${query}` : '');
+      const query = searchParams.toString();
+      const nextUrl = window.location.pathname + (query ? `?${query}` : '');
+
+      if (isDifferent) {
+        window.history.pushState({ tab }, '', nextUrl);
+      } else if (paramsChanged) {
         window.history.replaceState({ tab }, '', nextUrl);
       }
     }
@@ -268,7 +342,16 @@ export function useAppNavigation() {
 
   const openPublicProfile = (username: string) => {
     setPublicProfileUsername(username);
-    handleSwitchTab('public-profile');
+    setSelectedWork(null);
+    setReadingChapter(null);
+    setCurrentTab('public-profile');
+    if (typeof window !== 'undefined') {
+      window.history.pushState(
+        { tab: 'public-profile', profileUsername: username },
+        '',
+        window.location.pathname
+      );
+    }
   };
 
   const handleLoginSuccess = async () => {

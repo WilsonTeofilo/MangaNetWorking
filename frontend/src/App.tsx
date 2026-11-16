@@ -40,8 +40,12 @@ function AppContent() {
           chapter={nav.readingChapter}
           initialPage={nav.readingStartPage}
           onBack={() => {
-            nav.setReadingChapter(null);
-            nav.setReadingStartPage(undefined);
+            if (typeof window !== 'undefined' && window.history.state?.chapterNumber) {
+              window.history.back();
+            } else {
+              nav.setReadingChapter(null);
+              nav.setReadingStartPage(undefined);
+            }
           }}
           onNavigateChapter={nav.handleNavigateChapter}
           onRequireAuth={nav.handleRequireAuth}
@@ -56,7 +60,13 @@ function AppContent() {
           <main className="flex-1 w-full">
             <WorkDetailPage
               work={nav.selectedWork}
-              onBackToCatalog={() => nav.setSelectedWork(null)}
+              onBackToCatalog={() => {
+                if (typeof window !== 'undefined' && window.history.state?.workSlug) {
+                  window.history.back();
+                } else {
+                  nav.setSelectedWork(null);
+                }
+              }}
               onOpenChapter={nav.handleOpenChapter}
               onRequireAuth={nav.handleRequireAuth}
             />
