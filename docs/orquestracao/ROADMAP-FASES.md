@@ -517,6 +517,10 @@ Ao concluir um item, atualize **esta tabela** e `AUDITORIA-ATUAL.md` no mesmo co
 
 ---
 
+| 109 | F5 | 🟢 **Decomposição Modular e Anti-Monólito do Orquestrador Central (App.tsx):** Decomposição de `App.tsx` (reduzido de 543 → 114 linhas). Criação do pacote `components/app/`: `useAppNavigation.ts` (297 linhas), `PrivacyConsentGate.tsx` (60 linhas), `GlobalAppNotices.tsx` (55 linhas) e `AppTabRouter.tsx` (95 linhas). Purga total de valores hexadecimais legados (`#0B0B0C`, `#F4EFE3`, `#FFD400`) substituídos por variáveis CSS `var(--mn-*)`. **Evidências (2026-11-16):** 0 erros TS, build Vite em 2.54s, relatório TASK-109. |
+
+---
+
 ### Próximos Passos Planejados — Bloco F (Arquitetura Limpa, Observabilidade & Testes de Frontend)
 
 | # | Fase | Entrega Planejada |
