@@ -75,16 +75,16 @@ export function NovelBlockItem({
       }`}
     >
       {/* Cabeçalho do Bloco */}
-      <div className="flex items-center justify-between px-3 py-1.5 border-b border-[var(--mn-line)] bg-[var(--mn-ink-2)] text-xs font-mono text-[var(--mn-mute)] select-none">
+      <div className="flex items-center justify-between px-3 py-1.5 border-b border-[var(--mn-line)] bg-[var(--mn-ink-2)] text-xs font-body text-[var(--mn-mute)] select-none">
         <div className="flex items-center gap-2 cursor-grab active:cursor-grabbing">
-          <span className="font-bold text-[var(--mn-paper)]">#{index + 1}</span>
-          <span>
+          <span className="font-bold text-[var(--mn-paper)] tabular-nums">#{index + 1}</span>
+          <span className="font-pixel text-[12px] uppercase">
             {block.type === 'text' && 'PARÁGRAFO'}
             {block.type === 'illustration' && 'ILUSTRAÇÃO'}
             {block.type === 'separator' && 'SEPARADOR DE CENA'}
           </span>
           {block.type === 'text' && (
-            <span className="text-[10px] text-[var(--mn-mute)]">
+            <span className="text-xs text-[var(--mn-mute)] tabular-nums">
               ({countVisibleProseCharacters(block.text)} caracteres)
             </span>
           )}
@@ -136,7 +136,7 @@ export function NovelBlockItem({
         {block.type === 'illustration' && (
           <div className="space-y-3">
             {block.uploading ? (
-              <div className="h-44 border-2 border-dashed border-[var(--mn-yellow)] flex flex-col items-center justify-center gap-2 text-[var(--mn-yellow)] font-mono text-xs">
+              <div className="h-44 border-2 border-dashed border-[var(--mn-yellow)] flex flex-col items-center justify-center gap-2 text-[var(--mn-yellow)] font-body text-xs">
                 <Loader2 className="w-6 h-6 animate-spin" />
                 <span>Enviando ilustração para o servidor seguro...</span>
               </div>
@@ -158,7 +158,7 @@ export function NovelBlockItem({
                   </button>
                 </div>
                 <div className="flex-1 space-y-2 w-full">
-                  <label className="block text-xs font-mono text-[var(--mn-mute)]">
+                  <label className="block text-xs font-body text-[var(--mn-mute)]">
                     LEGENDA / DESCRIÇÃO DE ACESSIBILIDADE (ALT TEXT)
                   </label>
                   <input
@@ -170,12 +170,12 @@ export function NovelBlockItem({
                     placeholder="Ex: Yukio encarando a lâmina de Kiraya no pátio"
                     className="w-full bg-[var(--mn-ink-2)] border border-[var(--mn-line)] px-2.5 py-1.5 text-xs text-[var(--mn-paper)] focus:outline-none focus:border-[var(--mn-yellow)]"
                   />
-                  <div className="flex items-center gap-2 text-xs font-mono text-[var(--mn-mute)] pt-1">
+                  <div className="flex items-center gap-2 text-xs font-body text-[var(--mn-mute)] pt-1">
                     <span>Largura:</span>
                     <button
                       type="button"
                       onClick={() => onUpdate((b) => ({ ...(b as IllustrationEditorBlock), width: 100 }))}
-                      className={`px-2 py-0.5 border ${
+                      className={`px-2 py-0.5 border font-body tabular-nums text-xs ${
                         block.width === 100
                           ? 'border-[var(--mn-yellow)] text-[var(--mn-yellow)] font-bold'
                           : 'border-[var(--mn-line)]'
@@ -186,7 +186,7 @@ export function NovelBlockItem({
                     <button
                       type="button"
                       onClick={() => onUpdate((b) => ({ ...(b as IllustrationEditorBlock), width: 75 }))}
-                      className={`px-2 py-0.5 border ${
+                      className={`px-2 py-0.5 border font-body tabular-nums text-xs ${
                         block.width === 75
                           ? 'border-[var(--mn-yellow)] text-[var(--mn-yellow)] font-bold'
                           : 'border-[var(--mn-line)]'
@@ -197,7 +197,7 @@ export function NovelBlockItem({
                     <button
                       type="button"
                       onClick={() => onUpdate((b) => ({ ...(b as IllustrationEditorBlock), width: 50 }))}
-                      className={`px-2 py-0.5 border ${
+                      className={`px-2 py-0.5 border font-body tabular-nums text-xs ${
                         block.width === 50
                           ? 'border-[var(--mn-yellow)] text-[var(--mn-yellow)] font-bold'
                           : 'border-[var(--mn-line)]'
@@ -214,7 +214,7 @@ export function NovelBlockItem({
                 className="h-32 border-2 border-dashed border-[var(--mn-line)] hover:border-[var(--mn-yellow)] flex flex-col items-center justify-center gap-2 cursor-pointer text-[var(--mn-mute)] hover:text-[var(--mn-paper)] transition-colors"
               >
                 <ImageIcon className="w-6 h-6" />
-                <span className="font-mono text-xs">Clique para selecionar uma imagem</span>
+                <span className="font-body text-xs">Clique para selecionar uma imagem</span>
               </div>
             )}
 
@@ -236,13 +236,13 @@ export function NovelBlockItem({
             <div className="font-display tracking-[0.3em] text-lg text-[var(--mn-yellow)] text-center flex-1">
               {SEPARATOR_LABEL[block.style].glyph}
             </div>
-            <div className="flex items-center gap-1.5 text-xs font-mono text-[var(--mn-mute)]">
+            <div className="flex items-center gap-1.5 text-xs font-body text-[var(--mn-mute)]">
               {(['scene', 'time', 'pov', 'line'] as const).map((s) => (
                 <button
                   key={s}
                   type="button"
                   onClick={() => onUpdate((b) => ({ ...(b as SeparatorEditorBlock), style: s }))}
-                  className={`px-2 py-0.5 border ${
+                  className={`px-2 py-0.5 border font-body text-xs ${
                     block.style === s
                       ? 'border-[var(--mn-yellow)] text-[var(--mn-yellow)] font-bold'
                       : 'border-[var(--mn-line)]'

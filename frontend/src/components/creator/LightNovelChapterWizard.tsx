@@ -64,7 +64,7 @@ export function LightNovelChapterWizard({
       {/* 1. Header do Wizard e Barra de Navegação de Steps */}
       <div className="border-b-2 border-[var(--mn-line)] pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <span className="font-mono text-xs text-[var(--mn-yellow)] uppercase tracking-wider block">
+          <span className="font-pixel text-[12px] text-[var(--mn-yellow)] uppercase tracking-wider block">
             {isEditing ? `EDITANDO CAPÍTULO #${editingNumber}` : 'NOVO CAPÍTULO DE LIGHT NOVEL'}
           </span>
           <h2 className="font-display text-2xl text-[var(--mn-paper)] uppercase">{workTitle}</h2>
@@ -93,7 +93,7 @@ export function LightNovelChapterWizard({
 
       {/* 2. Barra de Alertas: Rascunho Recuperável / Feedback de Autosave */}
       {editor.recoverable && (
-        <div className="border-2 border-[var(--mn-yellow)] bg-[var(--mn-yellow)]/10 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono">
+        <div className="border-2 border-[var(--mn-yellow)] bg-[var(--mn-yellow)]/10 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-body">
           <span className="text-[var(--mn-paper)] flex items-center gap-2">
             <RotateCcw className="w-4 h-4 text-[var(--mn-yellow)] shrink-0" />
             Rascunho não salvo encontrado de {new Date(editor.recoverable.savedAt).toLocaleTimeString('pt-BR')}.
@@ -118,13 +118,13 @@ export function LightNovelChapterWizard({
       )}
 
       {editor.error && (
-        <div className="border-2 border-[var(--mn-red)] bg-[var(--mn-red)]/10 p-3 text-xs font-mono text-[var(--mn-red)] flex items-center gap-2">
+        <div className="border-2 border-[var(--mn-red)] bg-[var(--mn-red)]/10 p-3 text-xs font-body text-[var(--mn-red)] flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 shrink-0" /> {editor.error}
         </div>
       )}
 
       {editor.success && (
-        <div className="border-2 border-[var(--mn-green)] bg-[var(--mn-green)]/10 p-3 text-xs font-mono text-[var(--mn-green)]">
+        <div className="border-2 border-[var(--mn-green)] bg-[var(--mn-green)]/10 p-3 text-xs font-body text-[var(--mn-green)]">
           {editor.success}
         </div>
       )}
@@ -236,7 +236,7 @@ export function LightNovelChapterWizard({
 
         <div className="flex items-center gap-3">
           {editor.savedAt && (
-            <span className="text-[11px] font-mono text-[var(--mn-mute)] flex items-center gap-1">
+            <span className="text-xs font-body tabular-nums text-[var(--mn-mute)] flex items-center gap-1">
               <Save className="w-3.5 h-3.5" /> Salvo às {editor.savedAt.toLocaleTimeString('pt-BR')}
             </span>
           )}
@@ -275,7 +275,7 @@ export function LightNovelChapterWizard({
         <div className="fixed inset-0 z-50 bg-black/90 flex flex-col p-4 sm:p-6 overflow-y-auto">
           <div className="max-w-2xl mx-auto w-full space-y-6">
             <div className="flex items-center justify-between border-b border-[var(--mn-line)] pb-3">
-              <span className="font-mono text-xs text-[var(--mn-yellow)] uppercase">PRÉVIA DO LEITOR</span>
+              <span className="font-pixel text-[12px] text-[var(--mn-yellow)] uppercase">PRÉVIA DO LEITOR</span>
               <button
                 type="button"
                 onClick={() => editor.setShowPreview(false)}
@@ -292,7 +292,7 @@ export function LightNovelChapterWizard({
                   {b.type === 'illustration' && b.previewUrl && (
                     <figure className="my-6 text-center">
                       <img src={b.previewUrl} alt={b.altText} className="mx-auto rounded max-h-[70vh]" />
-                      {b.altText && <figcaption className="text-xs font-mono text-[var(--mn-mute)] mt-2">{b.altText}</figcaption>}
+                      {b.altText && <figcaption className="text-xs font-body text-[var(--mn-mute)] mt-2">{b.altText}</figcaption>}
                     </figure>
                   )}
                   {b.type === 'separator' && (

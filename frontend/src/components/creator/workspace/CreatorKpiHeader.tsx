@@ -65,7 +65,7 @@ export function CreatorKpiHeader({
             {/* Ações discretas de avatar */}
             <div className="flex items-center gap-1.5 mt-2">
               <label
-                className={`inline-flex items-center gap-1 border border-[var(--mn-line)] px-2 py-1 font-pixel text-[10px] text-[var(--mn-paper)] hover:border-[var(--mn-yellow)] cursor-pointer transition-colors ${
+                className={`inline-flex items-center gap-1 border border-[var(--mn-line)] px-2 py-1 font-pixel text-[12px] text-[var(--mn-paper)] hover:border-[var(--mn-yellow)] cursor-pointer transition-colors ${
                   isUploadingAvatar ? 'opacity-50 pointer-events-none' : ''
                 }`}
                 title="Subir nova foto de perfil"
@@ -86,7 +86,7 @@ export function CreatorKpiHeader({
                   type="button"
                   onClick={onAdjustPhoto}
                   disabled={isUploadingAvatar}
-                  className="inline-flex items-center gap-1 border border-[var(--mn-line)] px-2 py-1 font-pixel text-[10px] text-[var(--mn-paper)] hover:border-[var(--mn-yellow)] transition-colors"
+                  className="inline-flex items-center gap-1 border border-[var(--mn-line)] px-2 py-1 font-pixel text-[12px] text-[var(--mn-paper)] hover:border-[var(--mn-yellow)] transition-colors"
                   title="Reajustar recorte da foto atual"
                 >
                   <Crop size={10} />
@@ -98,10 +98,10 @@ export function CreatorKpiHeader({
 
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="font-pixel text-[11px] text-[var(--mn-yellow)] tracking-wider uppercase font-bold">
+              <span className="font-pixel text-[12px] text-[var(--mn-yellow)] tracking-wider uppercase font-bold">
                 PAINEL DO AUTOR
               </span>
-              <span className="inline-flex items-center gap-1 border border-[var(--mn-line)] bg-[var(--mn-ink)] px-2 py-0.5 font-pixel text-[10px] text-[var(--mn-paper)]">
+              <span className="inline-flex items-center gap-1 border border-[var(--mn-line)] bg-[var(--mn-ink)] px-2 py-0.5 font-pixel text-[12px] text-[var(--mn-paper)]">
                 <Crown size={10} className="text-[var(--mn-yellow)]" />
                 LV.{monetizationLevel || 1}
               </span>

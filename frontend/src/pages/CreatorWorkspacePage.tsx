@@ -119,7 +119,7 @@ export function CreatorWorkspacePage({
     return (
       <div role="status" className="mn-container py-16 text-center space-y-4 select-none">
         <h1 className="font-display text-2xl sm:text-3xl text-[var(--mn-paper)] uppercase">
-          CARREGANDO PAINEL DO AUTOR…
+          CARREGANDO BANCADA DO AUTOR…
         </h1>
         <p className="font-body text-xs text-[var(--mn-mute)]">Sincronizando métricas com o servidor.</p>
       </div>
@@ -129,9 +129,9 @@ export function CreatorWorkspacePage({
   if (!data.workspace) {
     return (
       <div role="status" className="mn-container py-16 text-center space-y-4 select-none">
-        <h1 className="font-display text-3xl text-[var(--mn-paper)] uppercase">PAINEL DO CRIADOR</h1>
+        <h1 className="font-display text-3xl text-[var(--mn-paper)] uppercase">BANCADA DO AUTOR</h1>
         <p className="font-body text-xs sm:text-sm text-[var(--mn-mute)]">
-          {data.error ?? 'Entre com uma conta de criador para acessar este painel.'}
+          {data.error ?? 'Entre com uma conta de autor independente para acessar esta bancada.'}
         </p>
       </div>
     );

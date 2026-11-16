@@ -47,7 +47,7 @@ export function NovelReviewStep({
           SUMÁRIO DO CAPÍTULO
         </h3>
 
-        <div className="grid grid-cols-2 gap-4 text-xs font-mono">
+        <div className="grid grid-cols-2 gap-4 text-xs font-body">
           <div>
             <span className="text-[var(--mn-mute)] block">TÍTULO:</span>
             <span className="font-bold text-[var(--mn-paper)] text-sm">{chapterTitle}</span>
@@ -61,15 +61,15 @@ export function NovelReviewStep({
             <span className="font-bold text-[var(--mn-paper)] tabular-nums">
               {totalChars.toLocaleString()}
             </span>{' '}
-            <span className="text-[var(--mn-mute)]">({targetMin}-{targetMax} recomendados)</span>
+            <span className="text-[var(--mn-mute)] tabular-nums">({targetMin}-{targetMax} recomendados)</span>
           </div>
           <div>
             <span className="text-[var(--mn-mute)] block">ILUSTRAÇÕES:</span>
-            <span className="font-bold text-[var(--mn-paper)]">{illustrationCount} de 6</span>
+            <span className="font-bold text-[var(--mn-paper)] tabular-nums">{illustrationCount} de 6</span>
           </div>
           <div>
             <span className="text-[var(--mn-mute)] block">PARÁGRAFOS / BLOCOS:</span>
-            <span className="text-[var(--mn-paper)]">
+            <span className="text-[var(--mn-paper)] tabular-nums">
               {textBlockCount} textos, {blocks.length} blocos total
             </span>
           </div>
@@ -90,7 +90,7 @@ export function NovelReviewStep({
           CONFORMIDADE COM A POLÍTICA EDITORIAL
         </h3>
 
-        <ul className="space-y-2 text-xs font-mono">
+        <ul className="space-y-2 text-xs font-body">
           <li className="flex items-center gap-2">
             {totalChars >= minChars && totalChars <= maxChars ? (
               <Check className="w-4 h-4 text-[var(--mn-green)] shrink-0" />
@@ -98,7 +98,8 @@ export function NovelReviewStep({
               <AlertTriangle className="w-4 h-4 text-[var(--mn-red)] shrink-0" />
             )}
             <span>
-              Mínimo técnico de {minChars} caracteres (atual: {totalChars.toLocaleString()})
+              Mínimo técnico de {minChars} caracteres (atual:{' '}
+              <strong className="tabular-nums font-body">{totalChars.toLocaleString()}</strong>)
             </span>
           </li>
           <li className="flex items-center gap-2">
@@ -107,7 +108,10 @@ export function NovelReviewStep({
             ) : (
               <AlertTriangle className="w-4 h-4 text-[var(--mn-red)] shrink-0" />
             )}
-            <span>Limite de até 6 ilustrações por capítulo (atual: {illustrationCount})</span>
+            <span>
+              Limite de até 6 ilustrações por capítulo (atual:{' '}
+              <strong className="tabular-nums font-body">{illustrationCount}</strong>)
+            </span>
           </li>
           <li className="flex items-center gap-2">
             {structureErrors.length === 0 ? (
@@ -120,7 +124,7 @@ export function NovelReviewStep({
         </ul>
 
         {!editorial.valid && editorial.errors.length > 0 && (
-          <div className="mt-3 p-3 bg-[var(--mn-red)]/10 border border-[var(--mn-red)] text-xs font-mono text-[var(--mn-red)] space-y-1">
+          <div className="mt-3 p-3 bg-[var(--mn-red)]/10 border border-[var(--mn-red)] text-xs font-body text-[var(--mn-red)] space-y-1">
             {editorial.errors.map((err: string, idx: number) => (
               <p key={idx}>• {err}</p>
             ))}
@@ -132,7 +136,7 @@ export function NovelReviewStep({
       <div className="p-4 border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] flex items-center justify-between">
         <div>
           <h4 className="font-display text-sm text-[var(--mn-paper)] uppercase">PRÉVIA DO LEITOR</h4>
-          <p className="text-xs font-mono text-[var(--mn-mute)]">
+          <p className="text-xs font-body text-[var(--mn-mute)]">
             Veja exatamente como os leitores visualizarão o texto e as imagens em scroll contínuo.
           </p>
         </div>

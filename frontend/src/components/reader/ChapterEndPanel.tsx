@@ -41,7 +41,7 @@ export function ChapterEndPanel({
   onOpenDonate,
 }: ChapterEndPanelProps) {
   return (
-    <div className="w-full bg-[var(--mn-ink-2)] border-2 border-[var(--mn-yellow)] p-8 text-center space-y-4 mt-4">
+    <div className="w-full bg-[var(--mn-ink-2)] border-t-2 border-[var(--mn-line)] p-8 text-center space-y-4 mt-4">
       <span className="font-pixel text-[12px] text-[var(--mn-yellow)] uppercase tracking-widest block">
         FIM DO CAPÍTULO
       </span>
@@ -107,7 +107,7 @@ export function ChapterEndPanel({
       )}
 
       {supportEnabled && (
-        <div className="w-full border-2 border-[var(--mn-line)] bg-[#101114] p-5 text-center space-y-3">
+        <div className="w-full border border-[var(--mn-line)] bg-[var(--mn-ink-3)] p-5 text-center space-y-3">
           <p className="font-display text-lg text-[var(--mn-paper)] uppercase">
             GOSTOU DESTE CAPÍTULO? APOIE O AUTOR.
           </p>

@@ -41,7 +41,7 @@ export function WorkDetailHero({
   const { openDonate } = useModals();
 
   return (
-    <section className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] shadow-[6px_6px_0_var(--mn-paper)] p-6 sm:p-8 relative overflow-hidden">
+    <section className="border border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-6 sm:p-8 relative overflow-hidden">
       {/* Banner Horizontal de Arte Ilustrada ao Fundo */}
       {work.bannerUrl && (
         <div

@@ -85,7 +85,7 @@ export function WorkChapterList({
                     </span>
                   </p>
                   {chap.isEarlyAccess && (
-                    <p className="font-pixel text-[10px] uppercase text-[var(--mn-teal)]">
+                    <p className="font-pixel text-[12px] uppercase text-[var(--mn-ok)]">
                       {isLocked
                         ? `LANÇAMENTO EM ${new Date(chap.publicReleaseAt).toLocaleDateString('pt-BR')} · ANTECIPADO PARA MEMBROS`
                         : `LANÇAMENTO EM ${new Date(chap.publicReleaseAt).toLocaleDateString('pt-BR')}`}
@@ -107,7 +107,7 @@ export function WorkChapterList({
                         ? 'Baixar capítulo para leitura offline'
                         : 'Recurso exclusivo para assinantes VIP MangaNetWorking'
                     }
-                    className={`p-1.5 border transition-all flex items-center gap-1.5 text-[11px] font-pixel uppercase ${
+                    className={`p-1.5 border transition-all flex items-center gap-1.5 font-pixel text-[12px] uppercase ${
                       offlineChapterIds.has(chap.id)
                         ? 'border-[var(--mn-ok)] bg-[var(--mn-ok)]/10 text-[var(--mn-ok)]'
                         : 'border-[var(--mn-line)] text-[var(--mn-mute)] hover:border-[var(--mn-yellow)] hover:text-[var(--mn-yellow)]'

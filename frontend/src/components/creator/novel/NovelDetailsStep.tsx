@@ -49,7 +49,7 @@ export function NovelDetailsStep({
     <div className="space-y-6 max-w-2xl">
       {/* 1. Tipo de Capítulo */}
       <div>
-        <label className="block font-mono text-xs text-[var(--mn-mute)] uppercase tracking-wider mb-2">
+        <label className="block font-body text-xs font-semibold text-[var(--mn-mute)] uppercase tracking-wider mb-2">
           TIPO DE CAPÍTULO
         </label>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -74,7 +74,7 @@ export function NovelDetailsStep({
                 }`}
               >
                 <div className="font-display text-sm uppercase">{CHAPTER_TYPE_LABEL[t]}</div>
-                <div className="text-[11px] font-mono mt-1 opacity-80">
+                <div className="text-xs font-body mt-1 opacity-80">
                   {t === 'REGULAR' && '6k-18k recomendados'}
                   {t === 'PROLOGUE' && 'Capítulo 0 narrativo'}
                   {t === 'SPECIAL' && 'Mínimo de 300 chars'}
@@ -83,7 +83,7 @@ export function NovelDetailsStep({
             );
           })}
         </div>
-        {typeError && <p className="text-xs font-mono text-[var(--mn-red)] mt-1.5">{typeError}</p>}
+        {typeError && <p className="text-xs font-body text-[var(--mn-red)] mt-1.5">{typeError}</p>}
       </div>
 
       {/* 2. Título do Capítulo */}
@@ -99,7 +99,7 @@ export function NovelDetailsStep({
           error={titleError ?? undefined}
           required
         />
-        <p className="text-[11px] font-mono text-[var(--mn-mute)] mt-1">
+        <p className="text-xs font-body text-[var(--mn-mute)] mt-1">
           {isEditing
             ? `Editando capítulo #${editingNumber}`
             : chapterType === 'PROLOGUE'
@@ -119,14 +119,14 @@ export function NovelDetailsStep({
             markDirty();
           }}
         />
-        <p className="text-[11px] font-mono text-[var(--mn-mute)] mt-1">
+        <p className="text-xs font-body text-[var(--mn-mute)] mt-1">
           Deixe vazio ou com horário atual para publicar imediatamente. Se no futuro, ficará agendado para membros/público.
         </p>
       </div>
 
       {/* 4. Capa Opcional do Capítulo */}
       <div>
-        <label className="block font-mono text-xs text-[var(--mn-mute)] uppercase tracking-wider mb-2">
+        <label className="block font-body text-xs font-semibold text-[var(--mn-mute)] uppercase tracking-wider mb-2">
           CAPA DO CAPÍTULO (OPCIONAL)
         </label>
         <div className="flex items-center gap-4">
@@ -136,7 +136,7 @@ export function NovelDetailsStep({
               <button
                 type="button"
                 onClick={onOpenCrop}
-                className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center font-mono text-[10px] text-[var(--mn-paper)] transition-opacity"
+                className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center font-display text-xs uppercase tracking-wider text-[var(--mn-paper)] transition-opacity"
               >
                 Reajustar
               </button>
@@ -145,14 +145,14 @@ export function NovelDetailsStep({
             <button
               type="button"
               onClick={() => coverInputRef.current?.click()}
-              className="w-28 h-40 border-2 border-dashed border-[var(--mn-line)] hover:border-[var(--mn-yellow)] flex flex-col items-center justify-center gap-2 font-mono text-[10px] text-[var(--mn-mute)] hover:text-[var(--mn-paper)] transition-colors"
+              className="w-28 h-40 border-2 border-dashed border-[var(--mn-line)] hover:border-[var(--mn-yellow)] flex flex-col items-center justify-center gap-2 font-display text-xs uppercase tracking-wider text-[var(--mn-mute)] hover:text-[var(--mn-paper)] transition-colors"
             >
               <Upload className="w-5 h-5" />
               <span>Enviar capa</span>
             </button>
           )}
 
-          <div className="space-y-2 text-xs font-mono text-[var(--mn-mute)]">
+          <div className="space-y-2 text-xs font-body text-[var(--mn-mute)]">
             <p>Se não enviar, a light novel usará a capa principal da obra.</p>
             {coverPreview && (
               <div className="flex gap-2">

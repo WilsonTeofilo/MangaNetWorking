@@ -14,7 +14,7 @@ export function WorkCreatorSidebar({ work, creator }: WorkCreatorSidebarProps) {
   return (
     <aside className="space-y-6">
       {creator && (
-        <div className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-5 space-y-4">
+        <div className="bg-[var(--mn-ink-2)] border border-[var(--mn-line)] p-5 space-y-4">
           <span className="font-pixel text-[12px] text-[var(--mn-yellow)] tracking-wider uppercase block font-bold">
             SOBRE O CRIADOR
           </span>
@@ -62,7 +62,7 @@ export function WorkCreatorSidebar({ work, creator }: WorkCreatorSidebarProps) {
         </div>
       )}
 
-      <div className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-5 space-y-2">
+      <div className="bg-[var(--mn-ink-2)] border border-[var(--mn-line)] p-5 space-y-2">
         <span className="font-pixel text-[12px] text-[var(--mn-mute)] tracking-wider uppercase block">
           CRONOGRAMA EDITORIAL
         </span>

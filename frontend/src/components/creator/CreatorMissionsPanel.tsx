@@ -36,11 +36,11 @@ export function CreatorMissionsPanel({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
         
         {/* Janela de Missões Semanais */}
-        <Win title="QUEST_SEMANAL.EXE">
+        <Win title="MISSOES_DA_BANCA.EXE">
           <div className="space-y-4">
             <div className="border-b border-[var(--mn-line)] pb-2">
               <span className="font-pixel text-[12px] text-[var(--mn-yellow)]">
-                MISSÕES ATIVAS
+                MISSÕES DA BANCA
               </span>
             </div>
 
@@ -132,11 +132,11 @@ export function CreatorMissionsPanel({
         </Win>
 
         {/* Janela de Ganhos Financeiros Transparentes */}
-        <Win title="GANHOS.EXE">
+        <Win title="GANHOS_DA_TEMPORADA.EXE">
           <div className="space-y-4">
             <div className="border-b border-[var(--mn-line)] pb-2">
               <span className="font-pixel text-[12px] text-[var(--mn-yellow)]">
-                DIVISÃO FINANCEIRA REAL (SERVIDOR)
+                DIVISÃO DA BANCA (SERVIDOR SEGURO)
               </span>
             </div>
 

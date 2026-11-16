@@ -176,7 +176,7 @@ export function MangaReaderView({
                   (firstPageRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
                 }
               }}
-              className="relative w-full bg-[#000000]"
+              className="relative w-full bg-[var(--mn-ink)]"
             >
               <img
                 src={pageUrl}
@@ -209,7 +209,7 @@ export function MangaReaderView({
     <>
       <div
         ref={firstPageRef}
-        className="relative w-full overflow-hidden bg-[#000000] flex justify-center"
+        className="relative w-full overflow-hidden bg-[var(--mn-ink)] flex justify-center"
       >
         <img
           src={pages[currentPage - 1] || pages[0] || ''}

@@ -71,7 +71,7 @@ export function NovelBlockEditorStep({
     <div className="space-y-6">
       {/* 1. Barra de Estatísticas da Política Editorial */}
       <div className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink)] p-4 space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
+        <div className="flex flex-wrap items-center justify-between gap-3 text-xs font-body">
           <div className="flex items-center gap-3">
             <span className="text-[var(--mn-mute)] uppercase">CONTAGEM REAL:</span>
             <span className="font-bold text-base text-[var(--mn-yellow)] tabular-nums">
@@ -82,10 +82,10 @@ export function NovelBlockEditorStep({
 
           <div className="flex items-center gap-4">
             <span className={illustrationCount > 6 ? 'text-[var(--mn-red)] font-bold' : 'text-[var(--mn-mute)]'}>
-              ILUSTRAÇÕES: <strong className="text-[var(--mn-paper)]">{illustrationCount}</strong> / 6
+              ILUSTRAÇÕES: <strong className="text-[var(--mn-paper)] tabular-nums">{illustrationCount}</strong> / 6
             </span>
             <span className="text-[var(--mn-mute)]">
-              BLOCO(S): <strong className="text-[var(--mn-paper)]">{blocks.length}</strong>
+              BLOCO(S): <strong className="text-[var(--mn-paper)] tabular-nums">{blocks.length}</strong>
             </span>
           </div>
         </div>
@@ -108,7 +108,7 @@ export function NovelBlockEditorStep({
 
         {/* Avisos Inline */}
         {(structureErrors.length > 0 || !editorial.valid) && (
-          <div className="pt-1 text-xs font-mono space-y-1">
+          <div className="pt-1 text-xs font-body space-y-1">
             {structureErrors.map((err: string, idx: number) => (
               <p key={idx} className="text-[var(--mn-red)] flex items-center gap-1.5">
                 <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> {err}
@@ -139,7 +139,7 @@ export function NovelBlockEditorStep({
             handleIllustrationUpload(file);
           }
         }}
-        className={`border-2 border-dashed p-3 transition-colors text-center font-mono text-xs ${
+        className={`border-2 border-dashed p-3 transition-colors text-center font-body text-xs ${
           fileDropActive
             ? 'border-[var(--mn-yellow)] bg-[var(--mn-yellow)]/10 text-[var(--mn-yellow)]'
             : 'border-[var(--mn-line)] text-[var(--mn-mute)]'
@@ -193,27 +193,27 @@ export function NovelBlockEditorStep({
 
             {/* Inserção Rápida entre blocos */}
             <div className="flex items-center justify-center gap-2 opacity-30 hover:opacity-100 transition-opacity py-1">
-              <span className="text-[10px] font-mono text-[var(--mn-mute)]">+ INSERIR:</span>
+              <span className="font-pixel text-[12px] uppercase text-[var(--mn-mute)]">+ INSERIR:</span>
               <button
                 type="button"
                 onClick={() => addBlockAt(index, newTextBlock())}
-                className="px-2 py-0.5 border border-[var(--mn-line)] bg-[var(--mn-ink)] text-[10px] font-mono text-[var(--mn-paper)] hover:border-[var(--mn-yellow)]"
+                className="px-2.5 py-1 border border-[var(--mn-line)] bg-[var(--mn-ink)] font-display text-xs uppercase tracking-wider text-[var(--mn-paper)] hover:border-[var(--mn-yellow)]"
               >
-                + Parágrafo
+                + PARÁGRAFO
               </button>
               <button
                 type="button"
                 onClick={() => addBlockAt(index, newIllustrationBlock())}
-                className="px-2 py-0.5 border border-[var(--mn-line)] bg-[var(--mn-ink)] text-[10px] font-mono text-[var(--mn-paper)] hover:border-[var(--mn-yellow)]"
+                className="px-2.5 py-1 border border-[var(--mn-line)] bg-[var(--mn-ink)] font-display text-xs uppercase tracking-wider text-[var(--mn-paper)] hover:border-[var(--mn-yellow)]"
               >
-                + Ilustração
+                + ILUSTRAÇÃO
               </button>
               <button
                 type="button"
                 onClick={() => addBlockAt(index, newSeparatorBlock())}
-                className="px-2 py-0.5 border border-[var(--mn-line)] bg-[var(--mn-ink)] text-[10px] font-mono text-[var(--mn-paper)] hover:border-[var(--mn-yellow)]"
+                className="px-2.5 py-1 border border-[var(--mn-line)] bg-[var(--mn-ink)] font-display text-xs uppercase tracking-wider text-[var(--mn-paper)] hover:border-[var(--mn-yellow)]"
               >
-                + Separador
+                + SEPARADOR
               </button>
             </div>
           </React.Fragment>
@@ -225,21 +225,21 @@ export function NovelBlockEditorStep({
         <button
           type="button"
           onClick={() => addBlockAt(blocks.length - 1, newTextBlock())}
-          className="inline-flex items-center gap-1.5 px-3 py-2 border-2 border-[var(--mn-line)] bg-[var(--mn-ink)] text-xs font-mono text-[var(--mn-paper)] hover:border-[var(--mn-yellow)] hover:text-[var(--mn-yellow)] transition-all"
+          className="inline-flex items-center gap-1.5 px-3 py-2 border-2 border-[var(--mn-line)] bg-[var(--mn-ink)] font-display text-xs uppercase tracking-wider text-[var(--mn-paper)] hover:border-[var(--mn-yellow)] hover:text-[var(--mn-yellow)] transition-all"
         >
           <Plus className="w-4 h-4" /> ADICIONAR PARÁGRAFO
         </button>
         <button
           type="button"
           onClick={() => addBlockAt(blocks.length - 1, newIllustrationBlock())}
-          className="inline-flex items-center gap-1.5 px-3 py-2 border-2 border-[var(--mn-line)] bg-[var(--mn-ink)] text-xs font-mono text-[var(--mn-paper)] hover:border-[var(--mn-yellow)] hover:text-[var(--mn-yellow)] transition-all"
+          className="inline-flex items-center gap-1.5 px-3 py-2 border-2 border-[var(--mn-line)] bg-[var(--mn-ink)] font-display text-xs uppercase tracking-wider text-[var(--mn-paper)] hover:border-[var(--mn-yellow)] hover:text-[var(--mn-yellow)] transition-all"
         >
           <ImagePlus className="w-4 h-4" /> ADICIONAR ILUSTRAÇÃO
         </button>
         <button
           type="button"
           onClick={() => addBlockAt(blocks.length - 1, newSeparatorBlock())}
-          className="inline-flex items-center gap-1.5 px-3 py-2 border-2 border-[var(--mn-line)] bg-[var(--mn-ink)] text-xs font-mono text-[var(--mn-paper)] hover:border-[var(--mn-yellow)] hover:text-[var(--mn-yellow)] transition-all"
+          className="inline-flex items-center gap-1.5 px-3 py-2 border-2 border-[var(--mn-line)] bg-[var(--mn-ink)] font-display text-xs uppercase tracking-wider text-[var(--mn-paper)] hover:border-[var(--mn-yellow)] hover:text-[var(--mn-yellow)] transition-all"
         >
           <Minus className="w-4 h-4" /> SEPARADOR DE CENA
         </button>

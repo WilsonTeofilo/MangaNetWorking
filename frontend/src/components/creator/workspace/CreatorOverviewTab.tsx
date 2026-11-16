@@ -61,7 +61,7 @@ export function CreatorOverviewTab({
           {/* Card 1: Saldo Disponível */}
           <div className="bg-[var(--mn-ink-2)] border-l-2 border-[var(--mn-line)] p-5 space-y-2">
             <div className="flex items-center justify-between text-[var(--mn-mute)]">
-              <span className="font-pixel text-[11px] uppercase tracking-wider">
+              <span className="font-pixel text-[12px] uppercase tracking-wider">
                 SALDO DISPONÍVEL
               </span>
               <DollarSign size={16} className="text-[var(--mn-yellow)]" />
@@ -77,7 +77,7 @@ export function CreatorOverviewTab({
           {/* Card 2: Membros Mensais */}
           <div className="bg-[var(--mn-ink-2)] border-l-2 border-[var(--mn-line)] p-5 space-y-2">
             <div className="flex items-center justify-between text-[var(--mn-mute)]">
-              <span className="font-pixel text-[11px] uppercase tracking-wider">
+              <span className="font-pixel text-[12px] uppercase tracking-wider">
                 MEMBROS ATIVOS
               </span>
               <Award size={16} className="text-[var(--mn-yellow)]" />
@@ -93,7 +93,7 @@ export function CreatorOverviewTab({
           {/* Card 3: Leitores e Alcance */}
           <div className="bg-[var(--mn-ink-2)] border-l-2 border-[var(--mn-line)] p-5 space-y-2 sm:col-span-2 lg:col-span-1">
             <div className="flex items-center justify-between text-[var(--mn-mute)]">
-              <span className="font-pixel text-[11px] uppercase tracking-wider">
+              <span className="font-pixel text-[12px] uppercase tracking-wider">
                 LEITURAS TOTAIS
               </span>
               <Users size={16} className="text-[var(--mn-yellow)]" />
@@ -124,7 +124,7 @@ export function CreatorOverviewTab({
             <button
               type="button"
               onClick={() => onNavigateTab('works')}
-              className="inline-flex items-center gap-1 font-pixel text-[11px] text-[var(--mn-yellow)] hover:underline uppercase"
+              className="inline-flex items-center gap-1 font-pixel text-[12px] text-[var(--mn-yellow)] hover:underline uppercase"
             >
               <span>VER TODAS ({works.length})</span>
               <ArrowRight size={12} />
@@ -181,7 +181,7 @@ export function CreatorOverviewTab({
 
                   <div className="flex items-center justify-between font-body text-xs text-[var(--mn-mute)]">
                     <span>{work.totalChapters || 0} capítulos</span>
-                    <span className="border border-[var(--mn-line)] px-1.5 py-0.5 text-[10px] font-pixel text-[var(--mn-paper)]">
+                    <span className="border border-[var(--mn-line)] px-1.5 py-0.5 text-[12px] font-pixel text-[var(--mn-paper)]">
                       {work.status === 'completed' ? 'CONCLUÍDO' : 'EM ANDAMENTO'}
                     </span>
                   </div>
