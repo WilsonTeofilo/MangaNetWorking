@@ -160,10 +160,10 @@ export function CatalogWorksGrid({
 
           {/* Cold start: convite a publicar quando o recorte tiver poucas obras */}
           {isAuthenticated && isCreator && (data?.total ?? 0) < COLD_START_THRESHOLD && onPublishWork && (
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 border-2 border-[var(--mn-yellow)] bg-[var(--mn-ink-2)] p-4">
-              <Sparkles className="text-[var(--mn-yellow)] shrink-0" size={22} aria-hidden="true" />
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 border border-dashed border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-4 shadow-[2px_2px_0_#000000]">
+              <Sparkles className="text-[var(--mn-yellow)] shrink-0" size={20} aria-hidden="true" />
               <div className="flex-1">
-                <p className="font-display text-lg text-[var(--mn-paper)] uppercase leading-tight">
+                <p className="font-display text-base text-[var(--mn-paper)] uppercase leading-tight">
                   A banca ainda tem poucas obras neste recorte
                 </p>
                 <p className="font-body text-xs text-[var(--mn-mute)] mt-0.5">
@@ -173,7 +173,7 @@ export function CatalogWorksGrid({
               <button
                 type="button"
                 onClick={onPublishWork}
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-[var(--mn-yellow)] text-[var(--mn-ink)] font-pixel text-[12px] uppercase border-2 border-[var(--mn-ink)] shadow-[3px_3px_0_var(--mn-ink)]"
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-[var(--mn-yellow)] text-[var(--mn-ink)] font-pixel text-[11px] uppercase font-bold border-2 border-[var(--mn-ink)] shadow-[2px_2px_0_var(--mn-ink)] hover:bg-[var(--mn-yellow-press)] transition-colors cursor-pointer"
               >
                 <PenLine size={13} aria-hidden="true" />
                 Publicar obra

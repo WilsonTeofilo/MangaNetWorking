@@ -36,7 +36,7 @@ export function CatalogGenreFilterBar({
   };
 
   return (
-    <section className="w-full bg-[var(--mn-ink)] border-b-2 border-[var(--mn-line)] py-2.5 sticky top-[70px] md:top-[82px] z-30">
+    <section className="w-full bg-[var(--mn-ink-2)]/95 backdrop-blur-sm border-b-2 border-[var(--mn-line)] py-2.5 sticky top-[70px] md:top-[82px] z-30">
       <div className="mn-container space-y-2">
         {/* No mobile o formato fica fixo no topo ao rolar a lista. */}
         <div className="lg:hidden">
@@ -50,7 +50,7 @@ export function CatalogGenreFilterBar({
           />
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none flex-1">
             {visibleGenres.map((genre) => {
               const selected = filters.generos.includes(genre.value);
@@ -60,10 +60,10 @@ export function CatalogGenreFilterBar({
                   type="button"
                   onClick={() => toggleGenre(genre.value)}
                   aria-pressed={selected}
-                  className={`inline-flex items-center gap-1 px-3 py-1 font-pixel text-[12px] tracking-wider uppercase border-2 whitespace-nowrap transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--mn-yellow)] ${
+                  className={`inline-flex items-center gap-1 px-3 py-1 font-pixel text-[11px] tracking-wider uppercase border-2 whitespace-nowrap transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--mn-yellow)] ${
                     selected
-                      ? 'bg-[var(--mn-yellow)] text-[var(--mn-ink)] border-[var(--mn-yellow)] shadow-[2px_2px_0_var(--mn-paper)]'
-                      : 'bg-transparent text-[var(--mn-paper)] border-[var(--mn-line)] hover:border-[var(--mn-yellow)] hover:text-[var(--mn-yellow)]'
+                      ? 'bg-[var(--mn-yellow)] text-[var(--mn-ink)] border-[var(--mn-yellow)] font-bold shadow-[2px_2px_0_#000000]'
+                      : 'bg-[var(--mn-ink)] text-[var(--mn-paper)] border-[var(--mn-line)] hover:border-[var(--mn-yellow)] hover:text-[var(--mn-yellow)] shadow-[1px_1px_0_#000000]'
                   }`}
                 >
                   {selected && <Check size={11} aria-hidden="true" />}
@@ -76,7 +76,7 @@ export function CatalogGenreFilterBar({
               <button
                 type="button"
                 onClick={() => setShowAllGenres((value) => !value)}
-                className="px-3 py-1 font-pixel text-[12px] tracking-wider uppercase border-2 border-[var(--mn-line)] text-[var(--mn-mute)] whitespace-nowrap hover:text-[var(--mn-yellow)] hover:border-[var(--mn-yellow)]"
+                className="px-3 py-1 font-pixel text-[11px] tracking-wider uppercase border-2 border-[var(--mn-line)] bg-[var(--mn-ink)] text-[var(--mn-mute)] whitespace-nowrap hover:text-[var(--mn-yellow)] hover:border-[var(--mn-yellow)] cursor-pointer"
                 aria-expanded={showAllGenres}
               >
                 {showAllGenres ? '– menos' : '+ mais'}
@@ -89,16 +89,16 @@ export function CatalogGenreFilterBar({
             onClick={onOpenDrawer}
             aria-expanded={drawerOpen}
             aria-controls="catalog-filter-drawer"
-            className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 font-pixel text-[12px] tracking-wider uppercase border-2 transition-colors ${
+            className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 font-pixel text-[11px] tracking-wider uppercase border-2 transition-colors cursor-pointer shadow-[2px_2px_0_#000000] ${
               advancedFilterCount > 0 || drawerOpen
-                ? 'bg-[var(--mn-yellow)] text-[var(--mn-ink)] border-[var(--mn-yellow)]'
-                : 'bg-transparent text-[var(--mn-paper)] border-[var(--mn-line)] hover:border-[var(--mn-yellow)] hover:text-[var(--mn-yellow)]'
+                ? 'bg-[var(--mn-yellow)] text-[var(--mn-ink)] border-[var(--mn-yellow)] font-bold'
+                : 'bg-[var(--mn-ink)] text-[var(--mn-paper)] border-[var(--mn-line)] hover:border-[var(--mn-yellow)] hover:text-[var(--mn-yellow)]'
             }`}
           >
             <SlidersHorizontal size={13} aria-hidden="true" />
             <span>Filtros</span>
             {advancedFilterCount > 0 && (
-              <span className="bg-[var(--mn-ink)] text-[var(--mn-yellow)] px-1 tabular-nums">
+              <span className="bg-[var(--mn-ink)] text-[var(--mn-yellow)] px-1 tabular-nums font-bold">
                 {advancedFilterCount}
               </span>
             )}

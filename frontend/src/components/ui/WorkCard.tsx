@@ -69,21 +69,25 @@ export function WorkCard({
           dropShadow={true}
         />
 
-        {/* Botão de Favoritar sobre a capa (44x44px para acessibilidade) */}
+        {/* Botão de Favoritar sobre a capa */}
         {onToggleFavorite && (
           <button
             type="button"
             onClick={handleFavoriteClick}
             aria-pressed={isFavorite}
             aria-label={isFavorite ? `Remover ${work.title} dos favoritos` : `Favoritar ${work.title}`}
-            className="absolute top-2 right-2 w-11 h-11 flex items-center justify-center bg-[var(--mn-ink)] border-2 border-[var(--mn-paper)] shadow-[2px_2px_0_var(--mn-paper)] hover:scale-105 transition-all z-20"
+            className={`absolute top-2 right-2 w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center border transition-all z-20 cursor-pointer shadow-[2px_2px_0_#000000] hover:scale-110 ${
+              isFavorite
+                ? 'bg-[var(--mn-ink)] border-[var(--mn-yellow)]'
+                : 'bg-black/80 backdrop-blur-xs border-white/30 hover:border-[var(--mn-yellow)]'
+            }`}
           >
             <Star
-              size={18}
+              size={15}
               className={
                 isFavorite
                   ? 'fill-[var(--mn-yellow)] text-[var(--mn-yellow)]'
-                  : 'text-[var(--mn-paper)]'
+                  : 'text-white/80 hover:text-[var(--mn-yellow)]'
               }
             />
           </button>

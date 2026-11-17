@@ -47,7 +47,7 @@ export function FormatSwitcher({ value, onChange, counts, size = 'lg', className
     <div
       role="group"
       aria-label="Filtrar por formato"
-      className={`inline-flex w-full sm:w-auto border-2 border-[var(--mn-ink)] bg-[var(--mn-paper)] shadow-[4px_4px_0_var(--mn-ink)] ${className}`}
+      className={`inline-flex w-full sm:w-auto border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] shadow-[3px_3px_0_#000000] ${className}`}
     >
       {FORMAT_OPTIONS.map((option, index) => {
         const active = option.value === value;
@@ -64,21 +64,23 @@ export function FormatSwitcher({ value, onChange, counts, size = 'lg', className
             onKeyDown={(event) => handleKeyDown(event, index)}
             onClick={() => onChange(option.value)}
             className={[
-              'flex-1 sm:flex-none inline-flex items-center justify-center gap-2 uppercase tracking-wide transition-colors',
-              'focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--mn-yellow)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--mn-ink)]',
-              size === 'lg' ? 'px-4 sm:px-6 py-2.5 text-[13px]' : 'px-3 py-1.5 text-[12px]',
+              'flex-1 sm:flex-none inline-flex items-center justify-center gap-2 uppercase tracking-wide transition-colors cursor-pointer',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--mn-yellow)]',
+              size === 'lg' ? 'px-4 sm:px-5 py-2 text-[12px]' : 'px-3 py-1.5 text-[11px]',
               'font-pixel',
               active
-                ? 'bg-[var(--mn-yellow)] text-[var(--mn-ink)]'
-                : 'bg-transparent text-[var(--mn-ink)] hover:bg-[var(--mn-yellow)]/40',
-              index > 0 ? 'border-l-2 border-[var(--mn-ink)]' : '',
+                ? 'bg-[var(--mn-yellow)] text-[var(--mn-ink)] font-bold shadow-[inset_0_0_0_1px_var(--mn-ink)]'
+                : 'bg-transparent text-[var(--mn-paper)] hover:text-[var(--mn-yellow)] hover:bg-[var(--mn-ink)]',
+              index > 0 ? 'border-l-2 border-[var(--mn-line)]' : '',
             ].join(' ')}
           >
             <span>{option.label}</span>
             {count !== null && (
               <span
-                className={`tabular-nums text-[11px] px-1 border ${
-                  active ? 'border-[var(--mn-ink)] bg-[var(--mn-ink)] text-[var(--mn-yellow)]' : 'border-[var(--mn-ink)]/40'
+                className={`tabular-nums text-[10px] px-1 py-0.2 border ${
+                  active
+                    ? 'border-[var(--mn-ink)] bg-[var(--mn-ink)] text-[var(--mn-yellow)]'
+                    : 'border-[var(--mn-line)] bg-[var(--mn-ink-3)] text-[var(--mn-mute)]'
                 }`}
                 aria-hidden="true"
               >
