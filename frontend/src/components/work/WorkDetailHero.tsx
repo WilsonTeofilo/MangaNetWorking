@@ -21,6 +21,7 @@ export interface WorkDetailHeroProps {
   readingProgress: ReadingProgressDto | null;
   onOpenWithProgress: (chapter: Chapter, page?: number) => void;
   onChapterClick: (chapter: Chapter) => void;
+  onOpenPublicProfile?: (username: string) => void;
 }
 
 export function WorkDetailHero({
@@ -37,6 +38,7 @@ export function WorkDetailHero({
   readingProgress,
   onOpenWithProgress,
   onChapterClick,
+  onOpenPublicProfile,
 }: WorkDetailHeroProps) {
   const { openDonate } = useModals();
 
@@ -81,7 +83,21 @@ export function WorkDetailHero({
 
             <p className="font-body text-sm text-[var(--mn-mute)] mt-1.5">
               Criado por{' '}
-              <strong className="text-[var(--mn-yellow)] font-semibold">{work.authorName}</strong>
+              {onOpenPublicProfile ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const identifier = creator?.handle?.replace(/^@/, '') || work.authorName;
+                    onOpenPublicProfile(identifier);
+                  }}
+                  className="text-[var(--mn-yellow)] font-semibold hover:underline cursor-pointer transition-colors"
+                  title={`Ver perfil de ${work.authorName}`}
+                >
+                  {work.authorName}
+                </button>
+              ) : (
+                <strong className="text-[var(--mn-yellow)] font-semibold">{work.authorName}</strong>
+              )}
             </p>
 
             {/* Total da obra: soma das visualizações de todos os capítulos */}

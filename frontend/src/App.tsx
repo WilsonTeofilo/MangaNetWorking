@@ -69,6 +69,7 @@ function AppContent() {
               }}
               onOpenChapter={nav.handleOpenChapter}
               onRequireAuth={nav.handleRequireAuth}
+              onOpenPublicProfile={nav.openPublicProfile}
             />
           </main>
           <Footer />

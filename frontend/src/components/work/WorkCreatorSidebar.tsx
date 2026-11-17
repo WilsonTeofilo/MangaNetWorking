@@ -6,9 +6,10 @@ import { useModals } from '../../context/ModalContext';
 export interface WorkCreatorSidebarProps {
   work: Work;
   creator?: Creator;
+  onOpenPublicProfile?: (username: string) => void;
 }
 
-export function WorkCreatorSidebar({ work, creator }: WorkCreatorSidebarProps) {
+export function WorkCreatorSidebar({ work, creator, onOpenPublicProfile }: WorkCreatorSidebarProps) {
   const { openDonate, openMembership } = useModals();
 
   return (
@@ -20,18 +21,38 @@ export function WorkCreatorSidebar({ work, creator }: WorkCreatorSidebarProps) {
           </span>
 
           <div className="flex items-center gap-3">
-            <img
-              src={creator.avatarUrl}
-              alt={creator.name}
-              className="w-12 h-12 object-cover border-2 border-[var(--mn-ink)] shadow-[2px_2px_0_var(--mn-yellow)]"
-            />
-            <div>
-              <h4 className="font-display text-lg text-[var(--mn-paper)] uppercase">
-                {creator.name}
-              </h4>
-              <span className="font-body text-xs text-[var(--mn-mute)]">
-                @{creator.handle.replace(/^@/, '')}
-              </span>
+            <button
+              type="button"
+              onClick={() => {
+                const identifier = creator.handle?.replace(/^@/, '') || work.authorName;
+                onOpenPublicProfile?.(identifier);
+              }}
+              className="shrink-0 hover:opacity-85 transition-opacity cursor-pointer"
+              title={`Ver perfil de ${creator.name}`}
+            >
+              <img
+                src={creator.avatarUrl}
+                alt={creator.name}
+                className="w-12 h-12 object-cover border-2 border-[var(--mn-ink)] shadow-[2px_2px_0_var(--mn-yellow)]"
+              />
+            </button>
+            <div className="min-w-0">
+              <button
+                type="button"
+                onClick={() => {
+                  const identifier = creator.handle?.replace(/^@/, '') || work.authorName;
+                  onOpenPublicProfile?.(identifier);
+                }}
+                className="text-left group cursor-pointer block truncate"
+                title={`Ver perfil de ${creator.name}`}
+              >
+                <h4 className="font-display text-lg text-[var(--mn-paper)] uppercase group-hover:text-[var(--mn-yellow)] group-hover:underline transition-colors truncate">
+                  {creator.name}
+                </h4>
+                <span className="font-body text-xs text-[var(--mn-mute)] group-hover:text-[var(--mn-paper)] transition-colors block">
+                  @{creator.handle.replace(/^@/, '')}
+                </span>
+              </button>
             </div>
           </div>
 

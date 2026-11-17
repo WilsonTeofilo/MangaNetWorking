@@ -9,6 +9,7 @@ export interface WorkDetailPageProps {
   onBackToCatalog: () => void;
   onOpenChapter: (work: Work, chapter: Chapter, page?: number) => void;
   onRequireAuth?: () => void;
+  onOpenPublicProfile?: (username: string) => void;
 }
 
 /**
@@ -21,6 +22,7 @@ export function WorkDetailPage({
   onBackToCatalog,
   onOpenChapter,
   onRequireAuth,
+  onOpenPublicProfile,
 }: WorkDetailPageProps) {
   const {
     creator,
@@ -82,6 +84,7 @@ export function WorkDetailPage({
         readingProgress={readingProgress}
         onOpenWithProgress={handleOpenWithProgress}
         onChapterClick={handleChapterClick}
+        onOpenPublicProfile={onOpenPublicProfile}
       />
 
       {/* 3. Grade de Conteúdo: Lista de Capítulos + Sidebar do Autor */}
@@ -98,7 +101,7 @@ export function WorkDetailPage({
           onDownloadOffline={handleDownloadOffline}
         />
 
-        <WorkCreatorSidebar work={work} creator={creator} />
+        <WorkCreatorSidebar work={work} creator={creator} onOpenPublicProfile={onOpenPublicProfile} />
       </div>
     </div>
   );

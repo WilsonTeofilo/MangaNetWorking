@@ -49,9 +49,14 @@ public class PublicProfileService {
 
     @Transactional(readOnly = true)
     public PublicProfileResponseDto getPublicProfile(String rawUsername) {
-        String username = rawUsername == null ? "" : rawUsername.trim().replace("@", "");
-        UserEntity user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("Perfil não encontrado: @" + username));
+        String clean = rawUsername == null ? "" : rawUsername.trim();
+        String withoutAt = clean.replace("@", "").trim();
+
+        UserEntity user = userRepository.findByUsername(withoutAt)
+                .or(() -> creatorRepository.findByHandle(withoutAt).map(CreatorEntity::getUser))
+                .or(() -> creatorRepository.findByHandle("@" + withoutAt).map(CreatorEntity::getUser))
+                .or(() -> userRepository.findByNameIgnoreCase(clean).stream().findFirst())
+                .orElseThrow(() -> new ResourceNotFoundException("Perfil não encontrado: @" + clean));
 
         if (!user.isProfilePublic()) {
             // Perfil privado: só o username e a própria informação de que ele é privado.

@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
-import { EyeOff, Instagram, Youtube, Link2, Users, BookOpen, Heart, UserPlus } from 'lucide-react';
+import { EyeOff, Instagram, Youtube, Link2, Users, BookOpen, Heart, UserPlus, Eye } from 'lucide-react';
 import { authApi } from '../api/authApi';
-import { creatorApi } from '../api/creatorApi';
+import { creatorApi, CreatorWorkSummary } from '../api/creatorApi';
+import { workApi } from '../api/workApi';
+import { mapWorkDetailsToWork } from '../utils/apiMappers';
+import { Work } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/Button';
 
@@ -23,7 +26,12 @@ export interface PublicProfile {
   joinedAt: string | null;
 }
 
-export function PublicProfilePage({ username }: { username: string }) {
+export interface PublicProfilePageProps {
+  username: string;
+  onSelectWork?: (work: Work) => void;
+}
+
+export function PublicProfilePage({ username, onSelectWork }: PublicProfilePageProps) {
   const { user, isAuthenticated } = useAuth();
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -31,16 +39,34 @@ export function PublicProfilePage({ username }: { username: string }) {
   const [following, setFollowing] = useState(false);
   const [followers, setFollowers] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [works, setWorks] = useState<CreatorWorkSummary[]>([]);
+  const [loadingWorks, setLoadingWorks] = useState(false);
+  const [openingWorkSlug, setOpeningWorkSlug] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
     setLoading(true);
     authApi
       .getPublicProfile(username)
-      .then((payload) => {
+      .then(async (payload) => {
         if (!active) return;
         setProfile(payload);
         setFollowers(payload.followerCount);
+
+        // Se for autor com handle, busca as obras públicas
+        if (payload.isCreator && payload.creatorHandle) {
+          setLoadingWorks(true);
+          try {
+            const creatorProfile = await creatorApi.getPublicProfile(payload.creatorHandle);
+            if (active && creatorProfile.works) {
+              setWorks(creatorProfile.works);
+            }
+          } catch {
+            // Silencioso se não tiver obras
+          } finally {
+            if (active) setLoadingWorks(false);
+          }
+        }
       })
       .catch(() => {
         if (active) setError('Perfil não encontrado.');
@@ -52,6 +78,20 @@ export function PublicProfilePage({ username }: { username: string }) {
       active = false;
     };
   }, [username]);
+
+  const handleWorkClick = async (w: CreatorWorkSummary) => {
+    if (!onSelectWork) return;
+    setOpeningWorkSlug(w.slug);
+    try {
+      const dto = await workApi.getWorkBySlug(w.slug);
+      const fullWork = mapWorkDetailsToWork(dto);
+      onSelectWork(fullWork);
+    } catch {
+      // Ignora erro de transição
+    } finally {
+      setOpeningWorkSlug(null);
+    }
+  };
 
   const toggleFollow = async () => {
     if (!profile?.creatorHandle) return;
@@ -149,6 +189,80 @@ export function PublicProfilePage({ username }: { username: string }) {
           )}
         </div>
       </header>
+
+      {/* Grade de Obras Publicadas pelo Autor */}
+      {profile.isCreator && (
+        <section className="space-y-4 pt-4 border-t-2 border-[var(--mn-line)]">
+          <div className="flex items-center justify-between border-b-2 border-[var(--mn-line)] pb-2">
+            <div className="flex items-center gap-2">
+              <BookOpen size={18} className="text-[var(--mn-yellow)]" />
+              <h2 className="font-display text-xl sm:text-2xl text-[var(--mn-paper)] uppercase tracking-wide">
+                OBRAS PUBLICADAS ({works.length})
+              </h2>
+            </div>
+          </div>
+
+          {loadingWorks ? (
+            <div className="p-8 text-center bg-[var(--mn-ink-2)] border-2 border-[var(--mn-line)]">
+              <p className="font-pixel text-xs text-[var(--mn-mute)] uppercase">CARREGANDO OBRAS…</p>
+            </div>
+          ) : works.length === 0 ? (
+            <div className="p-8 text-center bg-[var(--mn-ink-2)] border-2 border-dashed border-[var(--mn-line)] space-y-1">
+              <p className="font-display text-base text-[var(--mn-paper)] uppercase">NENHUMA OBRA DISPONÍVEL</p>
+              <p className="font-body text-xs text-[var(--mn-mute)]">Este autor ainda não publicou obras abertas ao público.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+              {works.map((w) => (
+                <article
+                  key={w.id}
+                  onClick={() => handleWorkClick(w)}
+                  className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-3 space-y-3 flex flex-col justify-between hover:border-[var(--mn-yellow)] transition-colors cursor-pointer group shadow-[3px_3px_0_#000000]"
+                >
+                  <div className="space-y-2">
+                    <div className="aspect-[2/3] border border-[var(--mn-line)] overflow-hidden bg-[var(--mn-ink-3)] relative">
+                      {w.coverUrl ? (
+                        <img
+                          src={w.coverUrl}
+                          alt={w.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center font-display text-xs text-[var(--mn-mute)]">
+                          SEM CAPA
+                        </div>
+                      )}
+                      {openingWorkSlug === w.slug && (
+                        <div className="absolute inset-0 bg-black/70 flex items-center justify-center font-pixel text-[11px] text-[var(--mn-yellow)] uppercase">
+                          ABRINDO…
+                        </div>
+                      )}
+                    </div>
+
+                    <h3 className="font-display text-sm sm:text-base text-[var(--mn-paper)] uppercase truncate group-hover:text-[var(--mn-yellow)] transition-colors">
+                      {w.title}
+                    </h3>
+
+                    {w.synopsis && (
+                      <p className="font-body text-xs text-[var(--mn-mute)] line-clamp-2 leading-relaxed">
+                        {w.synopsis}
+                      </p>
+                    )}
+
+                    <div className="flex items-center justify-between font-body text-[11px] text-[var(--mn-mute)] pt-1 border-t border-[var(--mn-line)]">
+                      <span>{w.totalChapters || 0} {w.totalChapters === 1 ? 'capítulo' : 'capítulos'}</span>
+                      <span className="flex items-center gap-1 tabular-nums">
+                        <Eye size={12} className="text-[var(--mn-yellow)]" />
+                        {Number(w.totalViews || 0).toLocaleString('pt-BR')}
+                      </span>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
     </section>
   );
 }

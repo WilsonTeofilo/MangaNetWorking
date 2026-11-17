@@ -98,7 +98,12 @@ export function AppTabRouter({
       );
 
     case 'public-profile':
-      return <PublicProfilePage username={publicProfileUsername || authUsername || ''} />;
+      return (
+        <PublicProfilePage
+          username={publicProfileUsername || authUsername || ''}
+          onSelectWork={onSelectWork}
+        />
+      );
 
     case 'creator-dashboard':
       return <CreatorDashboardPage onOpenPublicProfile={onOpenPublicProfile} />;
