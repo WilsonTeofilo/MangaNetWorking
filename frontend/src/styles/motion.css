@@ -34,7 +34,7 @@
   }
 }
 
-/* Barra de progresso do carrossel (6 segundos) */
+/* Barra de progresso do carrossel (6 segundos contínuos) */
 @keyframes mn-progress-fill {
   from {
     width: 0%;
@@ -44,15 +44,26 @@
   }
 }
 
-/* Entrada de Slide estilo MangaPlus (fade-in + elevação suave) */
-@keyframes mn-slide-enter {
+/* Transição de Slide Horizontal estilo MangaPlus */
+@keyframes mn-slide-in-right {
   0% {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateX(36px);
   }
   100% {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateX(0);
+  }
+}
+
+@keyframes mn-slide-in-left {
+  0% {
+    opacity: 0;
+    transform: translateX(-36px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
   }
 }
 
@@ -69,15 +80,20 @@
   animation: mn-cover-float 5s ease-in-out infinite;
 }
 
-.mn-motion-slide {
-  animation: mn-slide-enter 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+.mn-motion-slide-right {
+  animation: mn-slide-in-right 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.mn-motion-slide-left {
+  animation: mn-slide-in-left 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .mn-motion-bob,
   .mn-motion-neon,
   .mn-motion-cover,
-  .mn-motion-slide {
+  .mn-motion-slide-right,
+  .mn-motion-slide-left {
     animation: none !important;
   }
 }

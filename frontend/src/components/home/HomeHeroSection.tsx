@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Work } from '../../types';
 import { FormatBadge } from '../ui/FormatBadge';
@@ -24,49 +24,39 @@ export function HomeHeroSection({
   onSelectWork,
   onNavigateToCatalog,
 }: HomeHeroSectionProps) {
-  const [isPaused, setIsPaused] = useState(false);
-  const [progressKey, setProgressKey] = useState(0);
-  const isPausedRef = useRef(false);
+  const [direction, setDirection] = useState<'right' | 'left'>('right');
 
-  // Mantém ref sincronizada para uso dentro do intervalo
-  useEffect(() => {
-    isPausedRef.current = isPaused;
-  }, [isPaused]);
-
-  // Avança slide e reinicia animação da barra
+  // Avança slide automaticamente ou manualmente
   const handleNextSlide = useCallback(() => {
     if (heroWorks.length <= 1) return;
+    setDirection('right');
     onSetHeroIndex((prev) => (prev + 1) % heroWorks.length);
-    setProgressKey((k) => k + 1);
   }, [heroWorks.length, onSetHeroIndex]);
 
   const handlePrevSlide = useCallback(() => {
     if (heroWorks.length <= 1) return;
+    setDirection('left');
     onSetHeroIndex((prev) => (prev - 1 + heroWorks.length) % heroWorks.length);
-    setProgressKey((k) => k + 1);
   }, [heroWorks.length, onSetHeroIndex]);
 
   const handleSelectIndex = useCallback(
     (idx: number) => {
+      setDirection(idx >= heroIndex ? 'right' : 'left');
       onSetHeroIndex(idx);
-      setProgressKey((k) => k + 1);
     },
-    [onSetHeroIndex]
+    [heroIndex, onSetHeroIndex]
   );
 
-  // Carrossel automático de 6 segundos
+  // Carrossel automático fluido de 6 segundos sincronizado com o heroIndex
   useEffect(() => {
     if (heroWorks.length <= 1) return;
 
-    const interval = setInterval(() => {
-      if (!isPausedRef.current) {
-        onSetHeroIndex((prev) => (prev + 1) % heroWorks.length);
-        setProgressKey((k) => k + 1);
-      }
+    const timer = setTimeout(() => {
+      handleNextSlide();
     }, 6000);
 
-    return () => clearInterval(interval);
-  }, [heroWorks.length, onSetHeroIndex, progressKey]);
+    return () => clearTimeout(timer);
+  }, [heroIndex, heroWorks.length, handleNextSlide]);
 
   if (!currentHero) {
     return (
@@ -90,19 +80,17 @@ export function HomeHeroSection({
     );
   }
 
+  const slideAnimClass = direction === 'right' ? 'mn-motion-slide-right' : 'mn-motion-slide-left';
+
   return (
-    <section
-      className="relative w-full bg-[var(--mn-ink-2)] text-[var(--mn-paper)] border-b-2 border-[var(--mn-line)] mn-grain pt-10 pb-16 overflow-hidden"
-      onMouseEnter={() => setIsPaused(true)}
-      onMouseLeave={() => setIsPaused(false)}
-    >
+    <section className="relative w-full bg-[var(--mn-ink-2)] text-[var(--mn-paper)] border-b-2 border-[var(--mn-line)] mn-grain pt-10 pb-16 overflow-hidden">
       {/* Elementos gráficos de fundo angulares e hachura suave com amarelo da identidade visual */}
       <div className="absolute top-0 right-0 w-96 h-full bg-[var(--mn-yellow)]/5 -skew-x-12 pointer-events-none" />
       <div className="absolute inset-0 mn-halftone pointer-events-none opacity-10" />
 
       <div className="mn-container relative z-10 grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-8 items-center">
-        {/* Bloco de conteúdo do slide re-renderizado com animação MangaPlus via key */}
-        <div key={currentHero.id} className="space-y-5 mn-motion-slide">
+        {/* Bloco de conteúdo com transição horizontal de carrossel estilo MangaPlus */}
+        <div key={`content-${currentHero.id}`} className={`space-y-5 ${slideAnimClass}`}>
           <div className="flex items-center gap-3 flex-wrap">
             {/* Destaque Neon com bobbing suave e respiração de brilho */}
             <div className="inline-flex items-center gap-1.5 bg-black border-2 border-[var(--mn-yellow)] px-3 py-1 shadow-[3px_3px_0_#000000] mn-motion-bob">
@@ -148,14 +136,13 @@ export function HomeHeroSection({
 
           {heroWorks.length > 1 && (
             <div className="space-y-3 pt-3">
-              {/* Barra de progresso automática de 6 segundos estilo MangaPlus */}
+              {/* Barra de progresso contínua de 6 segundos estilo MangaPlus */}
               <div className="w-56 h-1 bg-[var(--mn-ink-3)] border border-[var(--mn-line)] overflow-hidden">
                 <div
-                  key={progressKey}
+                  key={heroIndex}
                   className="h-full bg-[var(--mn-yellow)]"
                   style={{
                     animation: 'mn-progress-fill 6s linear forwards',
-                    animationPlayState: isPaused ? 'paused' : 'running',
                   }}
                 />
               </div>
@@ -195,8 +182,9 @@ export function HomeHeroSection({
           )}
         </div>
 
-        {/* Capa com motion vertical suave orgânico estilo Peditto storefront */}
-        <div className="relative flex justify-center lg:justify-end">
+        {/* Capa com transição de carrossel sincronizada + motion de flutuação vertical */}
+        <div key={`cover-${currentHero.id}`} className={`relative flex justify-center lg:justify-end ${slideAnimClass}`}>
+          {/* Card inclinado de fundo com listras amarelas da identidade visual */}
           <div
             className="absolute w-56 sm:w-64 aspect-[2/3] border-2 border-[var(--mn-line)] -rotate-3 translate-x-4 translate-y-3 pointer-events-none overflow-hidden"
             style={{
