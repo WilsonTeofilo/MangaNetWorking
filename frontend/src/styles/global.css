@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "./tokens.css";
 @import "./textures.css";
+@import "./motion.css";
 
 @theme {
   --color-ink: #0B0B0C;

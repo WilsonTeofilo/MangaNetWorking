@@ -1,0 +1,83 @@
+/* Motion System — MangaNetWorking */
+
+/* Destaque Bobbing (flutuação vertical suave) */
+@keyframes mn-hero-bob {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+/* Respiração Neon Suave (aumenta e abaixa o brilho do texto amarelo sem piscar brusco) */
+@keyframes mn-neon-glow {
+  0% {
+    color: var(--mn-yellow);
+    text-shadow: 0 0 4px rgba(255, 212, 0, 0.4), 0 0 10px rgba(255, 212, 0, 0.2);
+    opacity: 0.88;
+  }
+  100% {
+    color: #FFFFFF;
+    text-shadow: 0 0 8px rgba(255, 212, 0, 0.95), 0 0 18px rgba(255, 212, 0, 0.75), 0 0 30px rgba(255, 212, 0, 0.4);
+    opacity: 1;
+  }
+}
+
+/* Flutuação Orgânica da Capa (estilo Peditto storefront) */
+@keyframes mn-cover-float {
+  0%, 100% {
+    transform: translateY(0) rotate(2deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(2.5deg);
+  }
+}
+
+/* Barra de progresso do carrossel (6 segundos) */
+@keyframes mn-progress-fill {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+/* Entrada de Slide estilo MangaPlus (fade-in + elevação suave) */
+@keyframes mn-slide-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Utilitários de classes */
+.mn-motion-bob {
+  animation: mn-hero-bob 3.5s ease-in-out infinite;
+}
+
+.mn-motion-neon {
+  animation: mn-neon-glow 2.2s ease-in-out infinite alternate;
+}
+
+.mn-motion-cover {
+  animation: mn-cover-float 5s ease-in-out infinite;
+}
+
+.mn-motion-slide {
+  animation: mn-slide-enter 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mn-motion-bob,
+  .mn-motion-neon,
+  .mn-motion-cover,
+  .mn-motion-slide {
+    animation: none !important;
+  }
+}

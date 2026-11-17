@@ -9,7 +9,7 @@
 
 /* Faixas diagonais de aviso/fita */
 .mn-stripes {
-  background: repeating-linear-gradient(-45deg, var(--mn-ink) 0 10px, transparent 10px 20px);
+  background: repeating-linear-gradient(-45deg, var(--mn-yellow) 0 10px, transparent 10px 20px);
 }
 
 /* Granulação (grão de papel/xerox) */
