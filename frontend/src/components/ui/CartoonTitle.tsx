@@ -48,7 +48,7 @@ export function CartoonTitle({
                     sm:w-10 sm:h-12 sm:text-2xl
                     md:w-12 md:h-14 md:text-3xl
                     border-y-2 border-l-2 border-black last:border-r-2
-                    ${isDark ? 'bg-black text-white' : 'bg-white text-black'}
+                    ${isDark ? 'bg-black text-white' : 'bg-[var(--mn-yellow)] text-black'}
                   `}
                 >
                   {char}

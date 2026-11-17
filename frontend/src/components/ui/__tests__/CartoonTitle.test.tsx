@@ -8,7 +8,7 @@ describe('CartoonTitle', () => {
 
     expect(html).toContain('aria-label="TESTE MIOMYA"');
     expect(html).toContain('bg-black');
-    expect(html).toContain('bg-white');
+    expect(html).toContain('bg-[var(--mn-yellow)]');
     expect(html).toContain('T');
     expect(html).toContain('M');
   });
