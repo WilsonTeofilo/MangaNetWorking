@@ -6,7 +6,6 @@ import { MIN_RAIL_SIZE } from '../hooks/useHomeDiscovery';
 import { useHomeNavigation } from '../components/home/useHomeNavigation';
 import { HomeHeroSection } from '../components/home/HomeHeroSection';
 import { HomeFormatBar } from '../components/home/HomeFormatBar';
-import { HomeContinueReading } from '../components/home/HomeContinueReading';
 import { HomeRecentReleases } from '../components/home/HomeRecentReleases';
 import { HomeTrendingRails } from '../components/home/HomeTrendingRails';
 import { HomeRankingsSidebar } from '../components/home/HomeRankingsSidebar';
@@ -42,9 +41,6 @@ export function HomePage({
     discovery,
     heroWorks,
     currentHero,
-    progress,
-    progressWork,
-    progressChapter,
     recentGroups,
     handleReadNow,
     openRelease,
@@ -118,16 +114,7 @@ export function HomePage({
       <Marquee />
 
       <div className="mn-container space-y-12">
-        {/* 3. CONTINUAR LENDO */}
-        <HomeContinueReading
-          progress={progress}
-          progressWork={progressWork}
-          progressChapter={progressChapter}
-          onOpenChapter={onOpenChapter}
-          onSelectWork={onSelectWork}
-        />
-
-        {/* 4. NOVOS CAPÍTULOS + SIDEBAR DE RANKINGS */}
+        {/* NOVOS CAPÍTULOS + SIDEBAR DE RANKINGS */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-8 items-start">
           {/* Coluna Esquerda: Lançamentos Recentes */}
           <HomeRecentReleases
