@@ -107,12 +107,46 @@ export function CreatorWorkspacePage({
     return () => window.removeEventListener('popstate', handlePopState);
   }, [section]);
 
+  // Na montagem, sincroniza silenciosamente a URL com a aba inicial (sem criar
+  // entrada de histórico) para que o estado inicial seja navegável via popstate.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const initial = resolveWorkspaceState(section);
+    if (!initial.dedicated) {
+      const querySlug = TAB_TO_QUERY[initial.tab] || 'visao-geral';
+      const url = new URL(window.location.href);
+      if (url.searchParams.get('aba') !== querySlug) {
+        url.searchParams.set('aba', querySlug);
+        window.history.replaceState({ workspaceTab: initial.tab }, '', url.pathname + url.search);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /**
+   * Troca de aba acionada pelo usuário (clique em aba ou atalho interno).
+   * Usa pushState para registrar a transição no histórico do browser,
+   * permitindo que o botão Voltar retorne à aba anterior dentro do workspace
+   * em vez de saltar diretamente para o feed.
+   */
   const handleTabChange = (nextTab: WorkspaceTab) => {
     setActiveTab(nextTab);
     if (typeof window !== 'undefined') {
       const querySlug = TAB_TO_QUERY[nextTab] || 'visao-geral';
       const url = new URL(window.location.href);
       url.searchParams.set('aba', querySlug);
+      window.history.pushState({ workspaceTab: nextTab }, '', url.pathname + url.search);
+    }
+  };
+
+  /**
+   * Sincronização silenciosa da URL sem criar entrada no histórico.
+   * Usado somente para parâmetros extras (ex: ?obra=) que não são tabs.
+   */
+  const syncUrlParam = (key: string, value: string) => {
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set(key, value);
       window.history.replaceState(window.history.state, '', url.pathname + url.search);
     }
   };
@@ -170,11 +204,7 @@ export function CreatorWorkspacePage({
           onNavigateTab={handleTabChange}
           onManageWorkChapters={(workId) => {
             handleTabChange('chapters');
-            if (workId && typeof window !== 'undefined') {
-              const url = new URL(window.location.href);
-              url.searchParams.set('obra', workId);
-              window.history.replaceState(window.history.state, '', url.pathname + url.search);
-            }
+            if (workId) syncUrlParam('obra', workId);
           }}
           onOpenDeclarationModal={() => setDeclarationModalOpen(true)}
         />
@@ -184,11 +214,7 @@ export function CreatorWorkspacePage({
         <CreatorWorksPage
           onNavigateToChapters={(workId) => {
             handleTabChange('chapters');
-            if (workId && typeof window !== 'undefined') {
-              const url = new URL(window.location.href);
-              url.searchParams.set('obra', workId);
-              window.history.replaceState(window.history.state, '', url.pathname + url.search);
-            }
+            if (workId) syncUrlParam('obra', workId);
           }}
         />
       )}
