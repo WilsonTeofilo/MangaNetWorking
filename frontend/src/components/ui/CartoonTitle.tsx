@@ -25,7 +25,7 @@ export function CartoonTitle({
 
   return (
     <HeadingTag
-      className={`flex flex-wrap items-center gap-x-3 sm:gap-x-4 gap-y-2 sm:gap-y-3 select-none ${className}`}
+      className={`flex flex-wrap items-center gap-x-6 sm:gap-x-8 md:gap-x-9 gap-y-3 sm:gap-y-4 select-none ${className}`}
       aria-label={cleanTitle}
     >
       {words.map((word, wordIndex) => {

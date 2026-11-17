@@ -19,9 +19,11 @@ export function FormatBadge({ format, size = 'sm', className = '' }: FormatBadge
   const label = novel ? 'Light novel' : 'Mangá';
   const Icon = novel ? BookOpen : PanelsTopLeft;
 
-  const palette = novel
-    ? 'bg-[var(--mn-paper)] text-[var(--mn-ink)] border-[var(--mn-ink)]'
-    : 'bg-[var(--mn-yellow)] text-[var(--mn-ink)] border-[var(--mn-ink)]';
+  const palette = 'bg-white text-black border-[var(--mn-ink)]';
+
+  const textStyle = novel
+    ? 'text-black [text-shadow:_1px_0_0_var(--mn-red),_-1px_0_0_var(--mn-red),_0_1px_0_var(--mn-red),_0_-1px_0_var(--mn-red)]'
+    : '';
 
   const sizing =
     size === 'md'
@@ -33,8 +35,8 @@ export function FormatBadge({ format, size = 'sm', className = '' }: FormatBadge
       className={`inline-flex items-center border-2 font-pixel font-bold uppercase tracking-wider select-none ${palette} ${sizing} ${className}`}
       title={novel ? 'Light novel: capítulos em prosa' : 'Mangá: capítulos em páginas'}
     >
-      <Icon size={size === 'md' ? 15 : 12} aria-hidden="true" className="shrink-0" />
-      <span>{label}</span>
+      <Icon size={size === 'md' ? 15 : 12} aria-hidden="true" className={`shrink-0 ${novel ? 'text-[var(--mn-red)]' : ''}`} />
+      <span className={textStyle}>{label}</span>
     </span>
   );
 }

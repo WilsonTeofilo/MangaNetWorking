@@ -1,6 +1,6 @@
 import { Lock } from 'lucide-react';
 
-export type StickerKind = 'new' | 'members' | 'free' | 'complete' | 'hiatus';
+export type StickerKind = 'new' | 'members' | 'free' | 'complete' | 'hiatus' | 'neon';
 
 export interface StickerProps {
   kind: StickerKind;
@@ -40,6 +40,10 @@ export function Sticker({
     case 'hiatus':
       styleClasses = 'bg-[var(--mn-ink-3)] text-[var(--mn-paper)] border-2 border-[var(--mn-line)]';
       defaultLabel = 'HIATO';
+      break;
+    case 'neon':
+      styleClasses = 'bg-[#EFFF00] text-[var(--mn-ink)] border-2 border-[var(--mn-ink)] shadow-[3px_3px_0_#000000]';
+      defaultLabel = 'DESTAQUE';
       break;
   }
 

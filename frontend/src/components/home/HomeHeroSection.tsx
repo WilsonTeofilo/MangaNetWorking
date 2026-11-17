@@ -56,7 +56,7 @@ export function HomeHeroSection({
       <div className="mn-container relative z-10 grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-8 items-center">
         <div className="space-y-5">
           <div className="flex items-center gap-3 flex-wrap">
-            <Sticker kind="new" label="DESTAQUE AGORA" rotate={-2} />
+            <Sticker kind="neon" label="DESTAQUE AGORA" rotate={-2} />
             <FormatBadge format={currentHero.format} size="md" />
             <span className="font-pixel text-[12px] tracking-wider text-[var(--mn-yellow)] font-bold">
               POR {currentHero.authorName}
