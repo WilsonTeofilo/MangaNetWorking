@@ -99,7 +99,6 @@ export function HomeHeroSection({
       {/* Elementos gráficos de fundo angulares e hachura suave com amarelo da identidade visual */}
       <div className="absolute top-0 right-0 w-96 h-full bg-[var(--mn-yellow)]/5 -skew-x-12 pointer-events-none" />
       <div className="absolute inset-0 mn-halftone pointer-events-none opacity-10" />
-      <div className="absolute top-0 right-0 w-80 h-full mn-stripes opacity-25 pointer-events-none" />
 
       <div className="mn-container relative z-10 grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-8 items-center">
         {/* Bloco de conteúdo do slide re-renderizado com animação MangaPlus via key */}
@@ -198,7 +197,12 @@ export function HomeHeroSection({
 
         {/* Capa com motion vertical suave orgânico estilo Peditto storefront */}
         <div className="relative flex justify-center lg:justify-end">
-          <div className="absolute w-56 sm:w-64 aspect-[2/3] border-2 border-[var(--mn-line)] bg-[var(--mn-ink-3)] -rotate-3 translate-x-4 translate-y-3 pointer-events-none opacity-80" />
+          <div
+            className="absolute w-56 sm:w-64 aspect-[2/3] border-2 border-[var(--mn-line)] -rotate-3 translate-x-4 translate-y-3 pointer-events-none overflow-hidden"
+            style={{
+              background: 'repeating-linear-gradient(-45deg, var(--mn-yellow) 0, var(--mn-yellow) 6px, var(--mn-ink-3) 6px, var(--mn-ink-3) 16px)'
+            }}
+          />
           <div
             onClick={() => onSelectWork(currentHero)}
             className="relative w-56 sm:w-64 aspect-[2/3] border-2 border-[var(--mn-yellow)] shadow-[8px_8px_0_var(--mn-yellow)] mn-motion-cover hover:rotate-0 transition-transform duration-150 cursor-pointer overflow-hidden z-10"

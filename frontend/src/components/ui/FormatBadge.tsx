@@ -19,7 +19,9 @@ export function FormatBadge({ format, size = 'sm', className = '' }: FormatBadge
   const label = novel ? 'Light novel' : 'Mangá';
   const Icon = novel ? BookOpen : PanelsTopLeft;
 
-  const palette = 'bg-white text-black border-[var(--mn-ink)]';
+  const palette = novel
+    ? 'bg-white text-black border-[var(--mn-yellow)]'
+    : 'bg-white text-black border-[var(--mn-ink)]';
 
   const textStyle = novel
     ? 'text-black [text-shadow:_1px_0_0_var(--mn-red),_-1px_0_0_var(--mn-red),_0_1px_0_var(--mn-red),_0_-1px_0_var(--mn-red)]'
