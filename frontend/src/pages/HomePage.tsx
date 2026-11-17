@@ -9,6 +9,7 @@ import { HomeFormatBar } from '../components/home/HomeFormatBar';
 import { HomeContinueReading } from '../components/home/HomeContinueReading';
 import { HomeRecentReleases } from '../components/home/HomeRecentReleases';
 import { HomeTrendingRails } from '../components/home/HomeTrendingRails';
+import { HomeRankingsSidebar } from '../components/home/HomeRankingsSidebar';
 
 export interface HomePageProps {
   onSelectWork: (work: Work) => void;
@@ -126,14 +127,35 @@ export function HomePage({
           onSelectWork={onSelectWork}
         />
 
-        {/* 4. NOVOS CAPÍTULOS */}
-        <HomeRecentReleases
-          recentGroups={recentGroups}
-          onSelectWork={onSelectWork}
-          onOpenRelease={openRelease}
-          favorites={user?.favorites}
-          isAuthenticated={isAuthenticated}
-        />
+        {/* 4. NOVOS CAPÍTULOS + SIDEBAR DE RANKINGS */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-8 items-start">
+          {/* Coluna Esquerda: Lançamentos Recentes */}
+          <HomeRecentReleases
+            recentGroups={recentGroups}
+            onSelectWork={onSelectWork}
+            onOpenRelease={openRelease}
+            favorites={user?.favorites}
+            isAuthenticated={isAuthenticated}
+          />
+
+          {/* Coluna Direita: Ranking Lateral Estilo MangaPlus */}
+          {(discovery.trendingManga.length > 0 || discovery.trendingLightNovel.length > 0) && (
+            <div className="sticky top-4">
+              <HomeRankingsSidebar
+                rankingWorks={
+                  formato === 'LIGHT_NOVEL'
+                    ? discovery.trendingLightNovel
+                    : discovery.trendingManga.length > 0
+                    ? discovery.trendingManga
+                    : discovery.trendingLightNovel
+                }
+                onSelectWork={onSelectWork}
+                onOpenAuthorProfile={onOpenPublicProfile}
+                onNavigateToCatalog={onNavigateToCatalog}
+              />
+            </div>
+          )}
+        </div>
 
         {/* 5. AVISO COLD-START ÚNICO (UMA ÚNICA NOTIFICAÇÃO CONDICIONAL) */}
         {coldStartCta}
