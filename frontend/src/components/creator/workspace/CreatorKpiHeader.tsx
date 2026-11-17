@@ -1,4 +1,4 @@
-import { Upload, Crop, Crown } from 'lucide-react';
+import { Upload, Crop, Crown, ExternalLink } from 'lucide-react';
 import { Button } from '../../ui/Button';
 
 export type WorkspaceTab = 'overview' | 'works' | 'chapters' | 'missions' | 'settings';
@@ -11,6 +11,7 @@ export interface CreatorKpiHeaderProps {
   activeTab: WorkspaceTab;
   onTabChange: (tab: WorkspaceTab) => void;
   onPrimaryCtaClick: () => void;
+  onOpenPublicProfile?: (username: string) => void;
   isUploadingAvatar?: boolean;
   onAvatarFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onAdjustPhoto?: () => void;
@@ -34,6 +35,7 @@ export function CreatorKpiHeader({
   activeTab,
   onTabChange,
   onPrimaryCtaClick,
+  onOpenPublicProfile,
   isUploadingAvatar = false,
   onAvatarFileChange,
   onAdjustPhoto,
@@ -110,9 +112,22 @@ export function CreatorKpiHeader({
               {displayedName}
             </h1>
 
-            <span className="font-body text-xs text-[var(--mn-mute)] block">
-              @{cleanHandle}
-            </span>
+            <div className="flex items-center gap-3 pt-0.5">
+              <span className="font-body text-xs text-[var(--mn-mute)]">
+                @{cleanHandle}
+              </span>
+              {onOpenPublicProfile && cleanHandle !== '-' && (
+                <button
+                  type="button"
+                  onClick={() => onOpenPublicProfile(cleanHandle)}
+                  className="inline-flex items-center gap-1 font-pixel text-[11px] text-[var(--mn-yellow)] hover:underline uppercase transition-colors cursor-pointer"
+                  title="Ver perfil público"
+                >
+                  <span>VER PERFIL PÚBLICO</span>
+                  <ExternalLink size={10} />
+                </button>
+              )}
+            </div>
           </div>
         </div>
 

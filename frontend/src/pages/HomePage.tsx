@@ -16,6 +16,7 @@ export interface HomePageProps {
   onNavigateToCatalog?: () => void;
   /** CTA de cold start (autor logado). */
   onPublishWork?: () => void;
+  onOpenPublicProfile?: (username: string) => void;
 }
 
 /**
@@ -28,6 +29,7 @@ export function HomePage({
   onOpenChapter,
   onNavigateToCatalog,
   onPublishWork,
+  onOpenPublicProfile,
 }: HomePageProps) {
   const { user, isAuthenticated } = useAuth();
 
@@ -101,6 +103,7 @@ export function HomePage({
         onSetHeroIndex={setHeroIndex}
         onReadNow={handleReadNow}
         onSelectWork={onSelectWork}
+        onOpenAuthorProfile={onOpenPublicProfile}
         onNavigateToCatalog={onNavigateToCatalog}
       />
 

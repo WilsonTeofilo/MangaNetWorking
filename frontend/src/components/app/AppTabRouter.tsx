@@ -45,6 +45,7 @@ export function AppTabRouter({
           onOpenChapter={onOpenChapter}
           onNavigateToCatalog={() => onSwitchTab('works')}
           onPublishWork={() => onSwitchTab('become-writer')}
+          onOpenPublicProfile={onOpenPublicProfile}
         />
       );
 

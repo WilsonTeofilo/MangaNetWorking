@@ -12,6 +12,7 @@ export interface HomeHeroSectionProps {
   onSetHeroIndex: (index: number | ((prev: number) => number)) => void;
   onReadNow: (work: Work) => void;
   onSelectWork: (work: Work) => void;
+  onOpenAuthorProfile?: (authorUsername: string) => void;
   onNavigateToCatalog?: () => void;
 }
 
@@ -22,6 +23,7 @@ export function HomeHeroSection({
   onSetHeroIndex,
   onReadNow,
   onSelectWork,
+  onOpenAuthorProfile,
   onNavigateToCatalog,
 }: HomeHeroSectionProps) {
   const [direction, setDirection] = useState<'right' | 'left'>('right');
@@ -107,16 +109,24 @@ export function HomeHeroSection({
             <CartoonTitle title={currentHero.title} />
           </div>
 
-          {/* Nome do autor em linha própria e clicável */}
+          {/* Nome do autor em linha própria e clicável levando ao perfil do autor */}
           <div className="flex items-center gap-2">
             <span className="font-pixel text-[11px] uppercase tracking-wider text-[var(--mn-mute)]">
               POR
             </span>
             <button
               type="button"
-              onClick={() => onSelectWork(currentHero)}
+              onClick={(e) => {
+                e.stopPropagation();
+                const authorUsername = currentHero.authorName?.replace(/^@/, '') || currentHero.authorId;
+                if (onOpenAuthorProfile && authorUsername) {
+                  onOpenAuthorProfile(authorUsername);
+                } else {
+                  onSelectWork(currentHero);
+                }
+              }}
               className="font-pixel text-[13px] tracking-wider text-[var(--mn-yellow)] font-bold hover:underline hover:text-white transition-colors cursor-pointer"
-              title={`Ver obra de ${currentHero.authorName}`}
+              title={`Ver perfil do autor ${currentHero.authorName}`}
             >
               {currentHero.authorName}
             </button>

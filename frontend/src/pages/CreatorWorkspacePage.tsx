@@ -156,6 +156,7 @@ export function CreatorWorkspacePage({
         activeTab={activeTab}
         onTabChange={handleTabChange}
         onPrimaryCtaClick={() => handleTabChange('works')}
+        onOpenPublicProfile={onOpenPublicProfile}
         isUploadingAvatar={data.isUploadingAvatar}
         onAvatarFileChange={data.handleAvatarUpload}
         onAdjustPhoto={data.avatarPreview ? () => data.setAvatarCropSource({ url: data.avatarPreview }) : undefined}

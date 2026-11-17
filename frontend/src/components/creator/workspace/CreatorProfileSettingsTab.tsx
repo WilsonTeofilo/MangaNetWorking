@@ -1,4 +1,4 @@
-import { Check, ShieldCheck } from 'lucide-react';
+import { Check, ShieldCheck, ExternalLink } from 'lucide-react';
 import { Button } from '../../ui/Button';
 import { Field } from '../../ui/Field';
 import { CreatorPrivacyAccordion } from './CreatorPrivacyAccordion';
@@ -61,13 +61,26 @@ export function CreatorProfileSettingsTab({
         onSubmit={onSave}
         className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-6 sm:p-8 space-y-6"
       >
-        <div className="border-b-2 border-[var(--mn-line)] pb-4">
-          <h2 className="font-display text-xl sm:text-2xl text-[var(--mn-paper)] uppercase tracking-wide">
-            CONFIGURAÇÕES DO CRIADOR
-          </h2>
-          <p className="font-body text-xs text-[var(--mn-mute)] mt-1">
-            Atualize sua identidade pública editorial e o valor da assinatura de membros.
-          </p>
+        <div className="border-b-2 border-[var(--mn-line)] pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 className="font-display text-xl sm:text-2xl text-[var(--mn-paper)] uppercase tracking-wide">
+              CONFIGURAÇÕES DO CRIADOR
+            </h2>
+            <p className="font-body text-xs text-[var(--mn-mute)] mt-1">
+              Atualize sua identidade pública editorial e o valor da assinatura de membros.
+            </p>
+          </div>
+          {onOpenPublicProfile && (
+            <button
+              type="button"
+              onClick={() => onOpenPublicProfile(cleanHandle)}
+              className="inline-flex items-center gap-2 px-4 py-2 border-2 border-[var(--mn-yellow)] bg-[var(--mn-yellow)] text-[var(--mn-ink)] font-pixel text-[12px] uppercase font-bold shadow-[3px_3px_0_var(--mn-ink)] hover:bg-[var(--mn-yellow-press)] transition-colors cursor-pointer self-start sm:self-auto shrink-0"
+              title="Visualizar seu perfil público como os leitores o veem"
+            >
+              <ExternalLink size={14} />
+              <span>VER MEU PERFIL PÚBLICO</span>
+            </button>
+          )}
         </div>
 
         {/* Campos Principais: Nome e Valor de Mensalidade */}
