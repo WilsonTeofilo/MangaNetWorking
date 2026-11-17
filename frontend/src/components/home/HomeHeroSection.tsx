@@ -100,15 +100,26 @@ export function HomeHeroSection({
             </div>
 
             <FormatBadge format={currentHero.format} size="md" />
-
-            <span className="font-pixel text-[12px] tracking-wider text-[var(--mn-yellow)] font-bold">
-              POR {currentHero.authorName}
-            </span>
           </div>
 
           {/* TÍTULO EM ESTILO COLAGEM CARTOON NETWORK */}
           <div className="pt-1">
             <CartoonTitle title={currentHero.title} />
+          </div>
+
+          {/* Nome do autor em linha própria e clicável */}
+          <div className="flex items-center gap-2">
+            <span className="font-pixel text-[11px] uppercase tracking-wider text-[var(--mn-mute)]">
+              POR
+            </span>
+            <button
+              type="button"
+              onClick={() => onSelectWork(currentHero)}
+              className="font-pixel text-[13px] tracking-wider text-[var(--mn-yellow)] font-bold hover:underline hover:text-white transition-colors cursor-pointer"
+              title={`Ver obra de ${currentHero.authorName}`}
+            >
+              {currentHero.authorName}
+            </button>
           </div>
 
           <p className="font-body text-sm sm:text-base md:text-lg text-[var(--mn-paper-2)] line-clamp-3 leading-relaxed max-w-xl">
@@ -184,12 +195,9 @@ export function HomeHeroSection({
 
         {/* Capa com transição de carrossel sincronizada + motion de flutuação vertical */}
         <div key={`cover-${currentHero.id}`} className={`relative flex justify-center lg:justify-end ${slideAnimClass}`}>
-          {/* Card inclinado de fundo com listras amarelas da identidade visual */}
+          {/* Card inclinado de fundo sem listras — profundidade limpa */}
           <div
-            className="absolute w-56 sm:w-64 aspect-[2/3] border-2 border-[var(--mn-line)] -rotate-3 translate-x-4 translate-y-3 pointer-events-none overflow-hidden"
-            style={{
-              background: 'repeating-linear-gradient(-45deg, var(--mn-yellow) 0, var(--mn-yellow) 6px, var(--mn-ink-3) 6px, var(--mn-ink-3) 16px)'
-            }}
+            className="absolute w-56 sm:w-64 aspect-[2/3] border-2 border-[var(--mn-line)] bg-[var(--mn-ink-3)] -rotate-3 translate-x-4 translate-y-3 pointer-events-none opacity-80"
           />
           <div
             onClick={() => onSelectWork(currentHero)}

@@ -24,7 +24,7 @@ export function FormatBadge({ format, size = 'sm', className = '' }: FormatBadge
     : 'bg-white text-black border-[var(--mn-ink)]';
 
   const textStyle = novel
-    ? 'text-black [text-shadow:_1px_0_0_var(--mn-red),_-1px_0_0_var(--mn-red),_0_1px_0_var(--mn-red),_0_-1px_0_var(--mn-red)]'
+    ? 'text-black [text-shadow:_1px_0_0_var(--mn-yellow),_-1px_0_0_var(--mn-yellow),_0_1px_0_var(--mn-yellow),_0_-1px_0_var(--mn-yellow)]'
     : '';
 
   const sizing =
@@ -37,7 +37,7 @@ export function FormatBadge({ format, size = 'sm', className = '' }: FormatBadge
       className={`inline-flex items-center border-2 font-pixel font-bold uppercase tracking-wider select-none ${palette} ${sizing} ${className}`}
       title={novel ? 'Light novel: capítulos em prosa' : 'Mangá: capítulos em páginas'}
     >
-      <Icon size={size === 'md' ? 15 : 12} aria-hidden="true" className={`shrink-0 ${novel ? 'text-[var(--mn-red)]' : ''}`} />
+      <Icon size={size === 'md' ? 15 : 12} aria-hidden="true" className={`shrink-0 ${novel ? 'text-[var(--mn-yellow)]' : ''}`} />
       <span className={textStyle}>{label}</span>
     </span>
   );
