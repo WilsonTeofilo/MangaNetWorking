@@ -125,6 +125,10 @@ public class CatalogQueryService {
         String search = term == null ? null : term.trim().toLowerCase(Locale.ROOT);
 
         return (root, query, cb) -> {
+            if (query.getResultType() != Long.class && query.getResultType() != long.class) {
+                root.fetch("author", JoinType.LEFT).fetch("user", JoinType.LEFT);
+            }
+
             List<Predicate> predicates = new ArrayList<>();
             // Comparação por string canônica (maiuscula, pós-V25): o CriteriaBuilder não
             // aplica o WorkStatusConverter no in(...)/equal com enum, e literal em
