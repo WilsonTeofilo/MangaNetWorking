@@ -6,8 +6,8 @@ import com.manganetworking.domain.enums.TransactionType;
 import com.manganetworking.domain.relational.CreatorEntity;
 import com.manganetworking.domain.relational.FinancialLedgerEntity;
 import com.manganetworking.service.monetization.MonetizationService;
+import com.manganetworking.service.monetization.PaymentGatewayPort;
 import com.manganetworking.service.monetization.dto.LedgerEntryResponseDto;
-import com.manganetworking.service.monetization.MercadoPagoService;
 import com.manganetworking.service.session.SessionService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -65,7 +65,7 @@ class MonetizationAuthorizationTest {
     private MonetizationService monetizationService;
 
     @MockitoBean
-    private MercadoPagoService mercadoPagoService;
+    private PaymentGatewayPort paymentGatewayPort;
 
     // Bean Filter incluído no slice @WebMvcTest; depende deste serviço.
     @MockitoBean

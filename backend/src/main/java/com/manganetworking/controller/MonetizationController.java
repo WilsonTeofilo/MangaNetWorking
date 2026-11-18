@@ -3,8 +3,8 @@ package com.manganetworking.controller;
 import com.manganetworking.config.exception.AccessDeniedException;
 import com.manganetworking.config.security.SecurityContextUtils;
 import com.manganetworking.service.monetization.MonetizationService;
+import com.manganetworking.service.monetization.PaymentGatewayPort;
 import com.manganetworking.service.monetization.dto.LedgerEntryResponseDto;
-import com.manganetworking.service.monetization.MercadoPagoService;
 import com.manganetworking.service.monetization.dto.DonationCheckoutRequestDto;
 import com.manganetworking.service.monetization.dto.MembershipCheckoutRequestDto;
 import com.manganetworking.service.monetization.dto.CheckoutResponseDto;
@@ -21,24 +21,24 @@ import java.util.UUID;
 public class MonetizationController {
 
     private final MonetizationService monetizationService;
-    private final MercadoPagoService mercadoPagoService;
+    private final PaymentGatewayPort paymentGatewayPort;
 
-    public MonetizationController(MonetizationService monetizationService, MercadoPagoService mercadoPagoService) {
+    public MonetizationController(MonetizationService monetizationService, PaymentGatewayPort paymentGatewayPort) {
         this.monetizationService = monetizationService;
-        this.mercadoPagoService = mercadoPagoService;
+        this.paymentGatewayPort = paymentGatewayPort;
     }
 
     @PostMapping("/donations/checkout")
     public ResponseEntity<CheckoutResponseDto> createDonationCheckout(@Valid @RequestBody DonationCheckoutRequestDto dto) {
         UUID payerUserId = SecurityContextUtils.requireCurrentUserId();
-        return ResponseEntity.ok(mercadoPagoService.createDonationCheckoutPreference(payerUserId, dto.creatorId(),
+        return ResponseEntity.ok(paymentGatewayPort.createDonationCheckoutPreference(payerUserId, dto.creatorId(),
                 dto.workId(), dto.chapterId(), dto.amountBrl(), dto.message(), dto.idempotencyKey()));
     }
 
     @PostMapping("/membership/checkout")
     public ResponseEntity<CheckoutResponseDto> createMembershipCheckout(@Valid @RequestBody MembershipCheckoutRequestDto dto) {
         UUID payerUserId = SecurityContextUtils.requireCurrentUserId();
-        return ResponseEntity.ok(mercadoPagoService.createMembershipCheckoutPreference(payerUserId,
+        return ResponseEntity.ok(paymentGatewayPort.createMembershipCheckoutPreference(payerUserId,
                 dto.creatorId(), dto.idempotencyKey()));
     }
 

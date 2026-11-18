@@ -29,7 +29,7 @@ import java.util.UUID;
  * Mantém 100% de retrocompatibilidade com controladores e contratos existentes.</p>
  */
 @Service
-public class MercadoPagoService {
+public class MercadoPagoService implements PaymentGatewayPort {
 
     private static final String MP_API_BASE = "https://api.mercadopago.com";
 
@@ -95,10 +95,12 @@ public class MercadoPagoService {
         }
     }
 
+    @Override
     public BigDecimal getVipPrice() {
         return checkoutService.getVipPrice();
     }
 
+    @Override
     @Transactional
     public CheckoutResponseDto createDonationCheckoutPreference(
             UUID payerUserId, UUID creatorId, UUID workId, UUID chapterId,
@@ -109,6 +111,7 @@ public class MercadoPagoService {
         );
     }
 
+    @Override
     @Transactional
     public CheckoutResponseDto createMembershipCheckoutPreference(
             UUID payerUserId, UUID creatorId, String idempotencyKey
@@ -116,14 +119,17 @@ public class MercadoPagoService {
         return checkoutService.createMembershipCheckoutPreference(payerUserId, creatorId, idempotencyKey);
     }
 
+    @Override
     public String createVipCheckoutPreference(UUID userId) {
         return checkoutService.createVipCheckoutPreference(userId);
     }
 
+    @Override
     public boolean verifyWebhookSignature(String signatureHeader, String requestIdHeader, String dataId) {
         return webhookValidator.verifyWebhookSignature(signatureHeader, requestIdHeader, dataId);
     }
 
+    @Override
     @Transactional
     public void processPaymentNotification(String paymentId) {
         paymentProcessor.processPaymentNotification(paymentId);
