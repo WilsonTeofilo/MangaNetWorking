@@ -25,7 +25,7 @@ export function HomeRankingsSidebar({
   }
 
   return (
-    <aside className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-4 sm:p-5 shadow-[4px_4px_0_#000000] space-y-4 select-none">
+    <aside className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-4 sm:p-5 shadow-[4px_4px_0_var(--mn-ink)] space-y-4 select-none">
       {/* Cabeçalho da Sidebar */}
       <div className="flex items-center justify-between border-b-2 border-[var(--mn-line)] pb-3">
         <div className="flex items-center gap-1.5">
@@ -65,7 +65,7 @@ export function HomeRankingsSidebar({
               <div
                 className={`w-7 h-7 shrink-0 flex items-center justify-center font-display text-sm font-bold border-2 transition-colors ${
                   isTopOne
-                    ? 'bg-[var(--mn-yellow)] text-[var(--mn-ink)] border-[var(--mn-yellow)] shadow-[1px_1px_0_#000000]'
+                    ? 'bg-[var(--mn-yellow)] text-[var(--mn-ink)] border-[var(--mn-yellow)] shadow-[1px_1px_0_var(--mn-ink)]'
                     : isTopThree
                     ? 'bg-[var(--mn-ink)] text-[var(--mn-yellow)] border-[var(--mn-yellow)]'
                     : 'bg-[var(--mn-ink)] text-[var(--mn-mute)] border-[var(--mn-line)]'

@@ -217,7 +217,7 @@ export function PublicProfilePage({ username, onSelectWork }: PublicProfilePageP
                 <article
                   key={w.id}
                   onClick={() => handleWorkClick(w)}
-                  className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-3 space-y-3 flex flex-col justify-between hover:border-[var(--mn-yellow)] transition-colors cursor-pointer group shadow-[3px_3px_0_#000000]"
+                  className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] p-3 space-y-3 flex flex-col justify-between hover:border-[var(--mn-yellow)] transition-colors cursor-pointer group shadow-[3px_3px_0_var(--mn-ink)]"
                 >
                   <div className="space-y-2">
                     <div className="aspect-[2/3] border border-[var(--mn-line)] overflow-hidden bg-[var(--mn-ink-3)] relative">

@@ -32,40 +32,40 @@ export function MembershipModal() {
     <Modal
       isOpen={membershipData.isOpen}
       onClose={closeMembership}
-      title="CLUBE_MEMBROS.EXE"
+      title="CLUBE DE MEMBROS"
       subtitle={`Acesso Antecipado a todos os capítulos de ${creator.name}`}
     >
       <div className="space-y-5">
           {/* Preço e Destaque */}
-          <div className="bg-[#0B0B0C] border-2 border-[#FFD400] p-4 text-center">
-            <span className="font-pixel text-[12px] uppercase tracking-widest text-[#FFD400] block mb-1">
+          <div className="bg-[var(--mn-ink)] border-2 border-[var(--mn-yellow)] p-4 text-center">
+            <span className="font-pixel text-[12px] uppercase tracking-widest text-[var(--mn-yellow)] block mb-1">
               PLANO OFICIAL DO CRIADOR
             </span>
             <div className="flex items-baseline justify-center gap-1">
-              <span className="font-body text-sm font-bold text-[#A9A59A]">R$</span>
-              <span className="font-display text-4xl font-bold text-[#F4EFE3] tabular-nums">
+              <span className="font-body text-sm font-bold text-[var(--mn-mute)]">R$</span>
+              <span className="font-display text-4xl font-bold text-[var(--mn-paper)] tabular-nums">
                 {price.toFixed(2)}
               </span>
-              <span className="font-pixel text-[12px] text-[#A9A59A]">/ MÊS</span>
+              <span className="font-pixel text-[12px] text-[var(--mn-mute)]">/ MÊS</span>
             </div>
           </div>
 
           {/* Vantagens do Membro */}
           <div className="space-y-2">
-            <h5 className="font-pixel text-[12px] uppercase tracking-wider text-[#A9A59A]">
+            <h5 className="font-pixel text-[12px] uppercase tracking-wider text-[var(--mn-mute)]">
               VANTAGENS INCLUSAS:
             </h5>
-            <ul className="space-y-2 text-xs font-body text-[#F4EFE3]">
+            <ul className="space-y-2 text-xs font-body text-[var(--mn-paper)]">
               <li className="flex items-start gap-2">
-                <Check size={14} className="text-[#3DDC84] mt-0.5 shrink-0" />
+                <Check size={14} className="text-[var(--mn-ok)] mt-0.5 shrink-0" />
                 <span><strong>Acesso Antecipado:</strong> Leia novos capítulos até 7 dias antes do público geral.</span>
               </li>
               <li className="flex items-start gap-2">
-                <Check size={14} className="text-[#3DDC84] mt-0.5 shrink-0" />
+                <Check size={14} className="text-[var(--mn-ok)] mt-0.5 shrink-0" />
                 <span><strong>Selo de Apoiador:</strong> Badge de membro exclusivo nos comentários da obra.</span>
               </li>
               <li className="flex items-start gap-2">
-                <Check size={14} className="text-[#3DDC84] mt-0.5 shrink-0" />
+                <Check size={14} className="text-[var(--mn-ok)] mt-0.5 shrink-0" />
                 <span>Seu apoio ajuda o criador a continuar publicando.</span>
               </li>
             </ul>

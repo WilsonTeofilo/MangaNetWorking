@@ -31,38 +31,8 @@ interface ChapterRow {
   chapterNumber: number;
   title: string;
   coverUrl?: string | null;
-  pages: string[];
   releaseDate?: string | null;
-  content?: string | null;
-  blocksJson?: string | null;
-  chapterType?: 'REGULAR' | 'PROLOGUE' | 'SPECIAL' | null;
-}
-
-/** Contagem aproximada de caracteres visíveis do capítulo (prosa). */
-function proseLength(row: ChapterRow): number {
-  if (row.blocksJson) {
-    try {
-      const parsed = JSON.parse(row.blocksJson) as { blocks?: Array<{ type: string; content?: { text?: string } }> };
-      return (parsed.blocks ?? []).reduce(
-        (sum, block) => (block.type === 'text' ? sum + (block.content?.text ?? '').length : sum),
-        0
-      );
-    } catch {
-      return row.content?.length ?? 0;
-    }
-  }
-  return row.content?.length ?? 0;
-}
-
-/** Quantas ilustrações intercaladas o capítulo tem (prosa). */
-function proseIllustrations(row: ChapterRow): number {
-  if (!row.blocksJson) return 0;
-  try {
-    const parsed = JSON.parse(row.blocksJson) as { blocks?: Array<{ type: string }> };
-    return (parsed.blocks ?? []).filter((block) => block.type === 'illustration').length;
-  } catch {
-    return 0;
-  }
+  format?: 'IMAGE_PAGES' | 'PROSE';
 }
 
 export function CreatorChaptersPage() {
@@ -76,6 +46,7 @@ export function CreatorChaptersPage() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [chapters, setChapters] = useState<ChapterRow[]>([]);
   const [chaptersLoading, setChaptersLoading] = useState(false);
+  const [loadingChapterNumber, setLoadingChapterNumber] = useState<number | null>(null);
   const [editing, setEditing] = useState<ChapterDraft | null>(null);
   /** Incrementa depois de publicar/editar para recarregar a lista de capítulos. */
   const [reloadToken, setReloadToken] = useState(0);
@@ -102,7 +73,7 @@ export function CreatorChaptersPage() {
 
   const selectedWork = works.find((work) => work.id === selectedWorkId) || null;
 
-  // Carrega os capítulos da obra selecionada (com as páginas, para editar).
+  // Carrega os capítulos da obra selecionada via resumo (sem N+1 de requisições).
   useEffect(() => {
     if (!selectedWork) {
       setChapters([]);
@@ -112,22 +83,16 @@ export function CreatorChaptersPage() {
     setChaptersLoading(true);
     workApi
       .getWorkBySlug(selectedWork.slug)
-      .then(async (work) => {
-        const rows: ChapterRow[] = [];
-        for (const chapter of work.chapters ?? []) {
-          const read = await workApi.readChapter(selectedWork.slug, chapter.chapterNumber).catch(() => null);
-          rows.push({
-            chapterNumber: chapter.chapterNumber,
-            title: chapter.title,
-            coverUrl: chapter.coverUrl,
-            pages: read ? parsePages(read) : [],
-            releaseDate: chapter.publicReleaseAt ?? null,
-            content: read?.content ?? null,
-            blocksJson: read?.blocksJson ?? null,
-            chapterType: read?.chapterType ?? null,
-          });
-        }
-        if (active) setChapters(rows);
+      .then((work) => {
+        if (!active) return;
+        const rows: ChapterRow[] = (work.chapters ?? []).map((ch) => ({
+          chapterNumber: ch.chapterNumber,
+          title: ch.title,
+          coverUrl: ch.coverUrl,
+          releaseDate: ch.publicReleaseAt ?? null,
+          format: ch.format,
+        }));
+        setChapters(rows);
       })
       .catch(() => {
         if (active) setChapters([]);
@@ -139,6 +104,29 @@ export function CreatorChaptersPage() {
       active = false;
     };
   }, [selectedWork, reloadToken]);
+
+  const handleEditChapter = async (chapter: ChapterRow) => {
+    if (!selectedWork) return;
+    setLoadingChapterNumber(chapter.chapterNumber);
+    setError(null);
+    try {
+      const read = await workApi.readChapter(selectedWork.slug, chapter.chapterNumber);
+      setEditing({
+        chapterNumber: chapter.chapterNumber,
+        title: chapter.title,
+        pages: parsePages(read),
+        coverUrl: chapter.coverUrl ?? null,
+        releaseDate: chapter.releaseDate ?? null,
+        content: read?.content ?? null,
+        blocksJson: read?.blocksJson ?? null,
+        chapterType: read?.chapterType ?? null,
+      });
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Não foi possível carregar os detalhes do capítulo para edição.');
+    } finally {
+      setLoadingChapterNumber(null);
+    }
+  };
 
   const removeChapter = async (chapter: ChapterRow) => {
     if (!selectedWork) return;
@@ -266,23 +254,12 @@ export function CreatorChaptersPage() {
                   </span>
                   {chapter.title}
                   {selectedWork?.format === 'LIGHT_NOVEL' ? (
-                    <>
-                      <span className="ml-2 font-pixel text-[10px] uppercase text-[var(--mn-mute)]">
-                        {proseLength(chapter).toLocaleString('pt-BR')} car
-                      </span>
-                      <span className="ml-2 font-pixel text-[10px] uppercase text-[var(--mn-mute)]">
-                        {proseIllustrations(chapter)} ilus
-                      </span>
-                      {chapter.chapterType === 'PROLOGUE' && (
-                        <span className="ml-2 font-pixel text-[10px] uppercase text-[var(--mn-ok)]">prólogo</span>
-                      )}
-                      {chapter.chapterType === 'SPECIAL' && (
-                        <span className="ml-2 font-pixel text-[10px] uppercase text-[var(--mn-ok)]">especial</span>
-                      )}
-                    </>
+                    <span className="ml-2 font-pixel text-[10px] uppercase text-[var(--mn-mute)]">
+                      PROSA
+                    </span>
                   ) : (
                     <span className="ml-2 font-pixel text-[10px] uppercase text-[var(--mn-mute)]">
-                      {chapter.pages.length} pág
+                      MANGÁ
                     </span>
                   )}
                   {chapter.releaseDate && new Date(chapter.releaseDate).getTime() > Date.now() && (
@@ -294,20 +271,10 @@ export function CreatorChaptersPage() {
                 <div className="flex items-center gap-2">
                   <Button
                     variant="ghost"
-                    onClick={() =>
-                      setEditing({
-                        chapterNumber: chapter.chapterNumber,
-                        title: chapter.title,
-                        pages: chapter.pages,
-                        coverUrl: chapter.coverUrl ?? null,
-                        releaseDate: chapter.releaseDate ?? null,
-                        content: chapter.content ?? null,
-                        blocksJson: chapter.blocksJson ?? null,
-                        chapterType: chapter.chapterType ?? null,
-                      })
-                    }
+                    disabled={loadingChapterNumber === chapter.chapterNumber}
+                    onClick={() => void handleEditChapter(chapter)}
                   >
-                    <Pencil size={13} /> EDITAR
+                    <Pencil size={13} /> {loadingChapterNumber === chapter.chapterNumber ? 'CARREGANDO...' : 'EDITAR'}
                   </Button>
                   <Button variant="ghost" onClick={() => removeChapter(chapter)} title="Excluir este capítulo (com as páginas)">
                     <Trash2 size={13} /> EXCLUIR

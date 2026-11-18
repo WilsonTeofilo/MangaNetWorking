@@ -37,18 +37,18 @@ export function Modal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-[#0B0B0C]/85 transition-opacity"
+        className="fixed inset-0 bg-[var(--mn-ink)]/85 transition-opacity"
         onClick={onClose}
       />
 
       {/* Janela de Modal Retrô OS */}
       <div
-        className={`relative w-full ${maxWidth} bg-[#151517] border-2 border-[#0B0B0C] shadow-[8px_8px_0_#FFD400] z-10 overflow-hidden text-[#F4EFE3] select-none`}
+        className={`relative w-full ${maxWidth} bg-[var(--mn-ink-2)] border-2 border-[var(--mn-line)] shadow-[6px_6px_0_var(--mn-yellow)] z-10 overflow-hidden text-[var(--mn-paper)] select-none`}
         role="dialog"
         aria-modal="true"
       >
         {/* Barra de Título em Amarelo com Fechador [×] */}
-        <header className="h-[32px] bg-[#FFD400] text-[#0B0B0C] border-b-2 border-[#0B0B0C] px-3 flex items-center justify-between select-none">
+        <header className="h-[32px] bg-[var(--mn-yellow)] text-[var(--mn-ink)] border-b-2 border-[var(--mn-ink)] px-3 flex items-center justify-between select-none">
           <div className="flex items-center gap-2 truncate">
             <span className="font-pixel text-[12px] tracking-wider uppercase font-bold truncate">
               {title}
@@ -58,7 +58,7 @@ export function Modal({
           <button
             type="button"
             onClick={onClose}
-            className="w-5 h-5 border-[1.5px] border-[#0B0B0C] bg-transparent flex items-center justify-center font-bold text-sm leading-none hover:bg-[#0B0B0C] hover:text-[#FFD400] transition-colors cursor-pointer"
+            className="w-5 h-5 border-[1.5px] border-[var(--mn-ink)] bg-transparent flex items-center justify-center font-bold text-sm leading-none hover:bg-[var(--mn-ink)] hover:text-[var(--mn-yellow)] transition-colors cursor-pointer"
             aria-label="Fechar janela"
           >
             ×
@@ -66,7 +66,7 @@ export function Modal({
         </header>
 
         {subtitle && (
-          <div className="bg-[#212125] border-b border-[#34343A] px-4 py-1.5 font-body text-xs text-[#A9A59A]">
+          <div className="bg-[var(--mn-ink)] border-b border-[var(--mn-line)] px-4 py-1.5 font-body text-xs text-[var(--mn-mute)]">
             {subtitle}
           </div>
         )}

@@ -34,55 +34,55 @@ export function VipModal() {
     <Modal
       isOpen={vipData.isOpen}
       onClose={closeVip}
-      title="ASSINATURA_VIP.EXE"
+      title="ASSINATURA VIP"
       subtitle="Experiência MangaNetWorking Pura & Sem Anúncios"
     >
       <div className="space-y-5">
           {/* Preço e Destaque Oficial */}
-          <div className="bg-[#0B0B0C] border-2 border-[#FFD400] p-4 text-center shadow-[4px_4px_0_#FFD400]">
-            <span className="font-pixel text-[12px] uppercase tracking-widest text-[#FFD400] block mb-1">
+          <div className="bg-[var(--mn-ink)] border-2 border-[var(--mn-yellow)] p-4 text-center shadow-[4px_4px_0_var(--mn-yellow)]">
+            <span className="font-pixel text-[12px] uppercase tracking-widest text-[var(--mn-yellow)] block mb-1">
               PREMIUM GLOBAL DA PLATAFORMA
             </span>
             <div className="flex items-baseline justify-center gap-1">
-              <span className="font-body text-sm font-bold text-[#A9A59A]">R$</span>
-              <span className="font-display text-4xl font-bold text-[#F4EFE3] tabular-nums">
+              <span className="font-body text-sm font-bold text-[var(--mn-mute)]">R$</span>
+              <span className="font-display text-4xl font-bold text-[var(--mn-paper)] tabular-nums">
                 {priceBrl === null ? '—' : new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(priceBrl)}
               </span>
-              <span className="font-pixel text-[12px] text-[#A9A59A]">/ 30 DIAS</span>
+              <span className="font-pixel text-[12px] text-[var(--mn-mute)]">/ 30 DIAS</span>
             </div>
-            <span className="font-body text-[12px] text-[#A9A59A] block mt-1">
+            <span className="font-body text-[12px] text-[var(--mn-mute)] block mt-1">
               Cancele quando quiser · Pagamento via PIX ou Cartão
             </span>
           </div>
 
           {/* Vantagens Inclusas */}
           <div className="space-y-2">
-            <h5 className="font-pixel text-[12px] uppercase tracking-wider text-[#A9A59A]">
+            <h5 className="font-pixel text-[12px] uppercase tracking-wider text-[var(--mn-mute)]">
               VANTAGENS EXCLUSIVAS VIP:
             </h5>
-            <ul className="space-y-2 text-xs font-body text-[#F4EFE3]">
+            <ul className="space-y-2 text-xs font-body text-[var(--mn-paper)]">
               <li className="flex items-start gap-2">
-                <Check size={14} className="text-[#3DDC84] mt-0.5 shrink-0" />
+                <Check size={14} className="text-[var(--mn-ok)] mt-0.5 shrink-0" />
                 <span><strong>Zero Anúncios:</strong> Leitura 100% contínua sem nenhum banner ou interrupção publicitária.</span>
               </li>
               <li className="flex items-start gap-2">
-                <Check size={14} className="text-[#3DDC84] mt-0.5 shrink-0" />
+                <Check size={14} className="text-[var(--mn-ok)] mt-0.5 shrink-0" />
                 <span><strong>Selo VIP Cosmético:</strong> Destaque oficial dourado no seu avatar e nos comentários.</span>
               </li>
               <li className="flex items-start gap-2">
-                <Smartphone size={14} className="text-[#FFD400] mt-0.5 shrink-0" />
+                <Smartphone size={14} className="text-[var(--mn-yellow)] mt-0.5 shrink-0" />
                 <span><strong>Leitura Offline:</strong> assinantes VIP podem baixar capítulos no navegador (PWA) e ler sem internet. O download seguro dentro do app móvel chega na próxima fase.</span>
               </li>
             </ul>
           </div>
 
           {/* Alerta de Integridade Editorial (Respeito aos Criadores) */}
-          <div className="bg-[#151517] border-2 border-[#E8402F] p-3 text-left space-y-1">
-            <div className="flex items-center gap-1.5 text-[#E8402F] font-pixel text-[12px] uppercase font-bold">
+          <div className="bg-[var(--mn-ink-2)] border-2 border-[var(--mn-red)] p-3 text-left space-y-1">
+            <div className="flex items-center gap-1.5 text-[var(--mn-red)] font-pixel text-[12px] uppercase font-bold">
               <ShieldAlert size={14} />
               <span>REGRA DE OURO EDITORIAL</span>
             </div>
-            <p className="font-body text-[12px] text-[#A9A59A] leading-relaxed">
+            <p className="font-body text-[12px] text-[var(--mn-mute)] leading-relaxed">
               O VIP da plataforma <strong>NÃO dá acesso antecipado</strong> aos capítulos exclusivos de criadores. Para ler capítulos antecipados de um autor específico, apoie diretamente o <strong>Clube de Membros</strong> dele (com 83% de repasse líquido para o artista).
             </p>
           </div>
