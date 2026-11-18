@@ -33,19 +33,19 @@ export function DonateModal() {
     <Modal
       isOpen={donateData.isOpen}
       onClose={closeDonate}
-      title="APOIAR_AUTOR.EXE"
+      title="APOIAR AUTOR"
       subtitle={`Doação direta para ${donateData.creatorName}`}
     >
       <div className="space-y-5">
           {donateData.workTitle && (
-            <div className="bg-[#0B0B0C] border-2 border-[#34343A] p-2.5 text-xs text-[#A9A59A]">
-              Obra: <strong className="text-[#F4EFE3]">{donateData.workTitle}</strong>
+            <div className="bg-[var(--mn-ink)] border-2 border-[var(--mn-line)] p-2.5 text-xs text-[var(--mn-mute)]">
+              Obra: <strong className="text-[var(--mn-paper)]">{donateData.workTitle}</strong>
             </div>
           )}
 
           {/* Seleção de Valores */}
           <div>
-            <label className="block font-pixel text-[12px] uppercase tracking-wider text-[#A9A59A] mb-2">
+            <label className="block font-pixel text-[12px] uppercase tracking-wider text-[var(--mn-mute)] mb-2">
               ESCOLHA O VALOR DO APOIO:
             </label>
             <div className="grid grid-cols-4 gap-2">
@@ -60,8 +60,8 @@ export function DonateModal() {
                   }}
                   className={`py-2 border-2 font-display text-base tracking-wider uppercase transition-all ${
                     !customAmount && amount === val
-                      ? 'bg-[#FFD400] text-[#0B0B0C] border-[#0B0B0C] shadow-[2px_2px_0_#0B0B0C]'
-                      : 'bg-[#0B0B0C] text-[#F4EFE3] border-[#34343A] hover:border-[#FFD400]'
+                      ? 'bg-[var(--mn-yellow)] text-[var(--mn-ink)] border-[var(--mn-ink)] shadow-[2px_2px_0_var(--mn-ink)]'
+                      : 'bg-[var(--mn-ink)] text-[var(--mn-paper)] border-[var(--mn-line)] hover:border-[var(--mn-yellow)]'
                   }`}
                 >
                   R$ {val}
@@ -72,7 +72,7 @@ export function DonateModal() {
 
           {/* Valor Personalizado */}
           <div>
-            <label className="block font-pixel text-[12px] uppercase tracking-wider text-[#A9A59A] mb-1.5">
+            <label className="block font-pixel text-[12px] uppercase tracking-wider text-[var(--mn-mute)] mb-1.5">
               OU DIGITE OUTRO VALOR:
             </label>
             <input
@@ -82,13 +82,13 @@ export function DonateModal() {
               value={customAmount}
               onChange={(e) => { setCustomAmount(e.target.value); setIdempotencyKey(crypto.randomUUID()); }}
               placeholder="Ex: 15.00"
-              className="w-full p-2.5 bg-[#0B0B0C] text-[#F4EFE3] font-body text-sm border-2 border-[#34343A] focus:border-[#FFD400] outline-none"
+              className="w-full p-2.5 bg-[var(--mn-ink)] text-[var(--mn-paper)] font-body text-sm border-2 border-[var(--mn-line)] focus:border-[var(--mn-yellow)] outline-none"
             />
           </div>
 
           {/* Mensagem de Apoio */}
           <div>
-            <label className="block font-pixel text-[12px] uppercase tracking-wider text-[#A9A59A] mb-1.5">
+            <label className="block font-pixel text-[12px] uppercase tracking-wider text-[var(--mn-mute)] mb-1.5">
               MENSAGEM DE INCENTIVO (OPCIONAL):
             </label>
             <textarea
@@ -96,7 +96,7 @@ export function DonateModal() {
               onChange={(e) => { setMessage(e.target.value); setIdempotencyKey(crypto.randomUUID()); }}
               rows={2}
               placeholder="Manda uma mensagem de força pro autor..."
-              className="w-full p-2.5 bg-[#0B0B0C] text-[#F4EFE3] font-body text-sm border-2 border-[#34343A] focus:border-[#FFD400] outline-none"
+              className="w-full p-2.5 bg-[var(--mn-ink)] text-[var(--mn-paper)] font-body text-sm border-2 border-[var(--mn-line)] focus:border-[var(--mn-yellow)] outline-none"
             />
           </div>
 

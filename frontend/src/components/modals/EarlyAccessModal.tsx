@@ -41,32 +41,32 @@ export function EarlyAccessModal() {
     <Modal
       isOpen={earlyAccessData.isOpen}
       onClose={closeEarlyAccess}
-      title="ACESSO_ANTECIPADO.EXE"
+      title="ACESSO ANTECIPADO"
       subtitle={`Capítulo #${chapter.number} — ${chapter.title}`}
     >
       <div className="space-y-5 text-center">
         {/* Ícone de Bloqueio em Estilo Sticker */}
-        <div className="w-16 h-16 bg-[#0B0B0C] border-2 border-[#FFD400] shadow-[4px_4px_0_#FFD400] flex items-center justify-center mx-auto text-[#FFD400]">
+        <div className="w-16 h-16 bg-[var(--mn-ink)] border-2 border-[var(--mn-yellow)] shadow-[4px_4px_0_var(--mn-yellow)] flex items-center justify-center mx-auto text-[var(--mn-yellow)]">
           <Lock size={30} />
         </div>
 
         <div>
-          <h4 className="font-display text-2xl uppercase tracking-wider text-[#F4EFE3]">
+          <h4 className="font-display text-2xl uppercase tracking-wider text-[var(--mn-paper)]">
             CAPÍTULO EXCLUSIVO PARA MEMBROS
           </h4>
-          <p className="font-body text-xs text-[#A9A59A] mt-1.5 max-w-sm mx-auto">
+          <p className="font-body text-xs text-[var(--mn-mute)] mt-1.5 max-w-sm mx-auto">
             O autor <strong>{creator.handle}</strong> liberou este capítulo em
             primeira mão para os membros apoiadores.
           </p>
         </div>
 
         {/* Cronômetro Regressivo */}
-        <div className="bg-[#0B0B0C] border-2 border-[#34343A] p-4 text-center space-y-1">
-          <div className="flex items-center justify-center gap-1.5 text-xs text-[#A9A59A] font-pixel">
-            <Clock size={14} className="text-[#FFD400]" />
+        <div className="bg-[var(--mn-ink)] border-2 border-[var(--mn-line)] p-4 text-center space-y-1">
+          <div className="flex items-center justify-center gap-1.5 text-xs text-[var(--mn-mute)] font-pixel">
+            <Clock size={14} className="text-[var(--mn-yellow)]" />
             <span>LIBERAÇÃO PÚBLICA GRATUITA EM:</span>
           </div>
-          <div className="font-display text-3xl text-[#FFD400] tracking-wider tabular-nums">
+          <div className="font-display text-3xl text-[var(--mn-yellow)] tracking-wider tabular-nums">
             {countdown.days > 0 && `${countdown.days}D `}
             {countdown.hours}H {countdown.minutes}M {countdown.seconds}S
           </div>
