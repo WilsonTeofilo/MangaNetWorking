@@ -27,7 +27,7 @@ export function HomeContinueReading({
   return (
     <section className="space-y-3 max-w-xl">
       <h2 className="font-display text-2xl text-[var(--mn-paper)] uppercase tracking-wide">CONTINUAR LENDO</h2>
-      <Win title="CONTINUAR_LENDO.EXE">
+      <Win title="CONTINUAR LENDO">
         <div className="flex items-center gap-4">
           <div className="w-[68px] h-[102px] shrink-0 border border-[var(--mn-line)]">
             <Cover src={progressWork.coverUrl} title={progressWork.title} aspectRatio="2/3" dropShadow={false} />

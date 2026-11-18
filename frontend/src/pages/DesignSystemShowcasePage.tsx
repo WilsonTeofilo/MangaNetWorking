@@ -52,7 +52,7 @@ export function DesignSystemShowcasePage() {
           2. JANELAS RETRÔ OS (&lt;Win&gt;)
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Win title="CONTINUAR_LENDO.EXE">
+          <Win title="CONTINUAR LENDO">
             <p className="font-body text-sm text-[var(--mn-paper)]">
               Você parou na página 12 do Capítulo 4. Deseja continuar a leitura
               de onde parou?
@@ -63,7 +63,7 @@ export function DesignSystemShowcasePage() {
             </div>
           </Win>
 
-          <Win title="PREVIEW_PAPEL.EXE" theme="paper">
+          <Win title="PREVIEW PAPEL" theme="paper">
             <p className="font-body text-sm text-[var(--mn-ink)]">
               Superfície clara de papel off-white com texto nanquim e drop shadow
               preta dura.

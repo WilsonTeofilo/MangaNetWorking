@@ -206,7 +206,7 @@ export function ImageCropper({
       className="fixed inset-0 z-[130] bg-black/85 flex items-center justify-center p-4"
     >
       <div className="w-full max-w-lg">
-        <Win title="AJUSTAR IMAGEM.EXE">
+        <Win title="AJUSTAR IMAGEM">
           <div className="space-y-4">
             <p className="font-body text-xs text-[var(--mn-mute)]">
               Arraste a imagem para enquadrar (funciona nos quatro eixos) ou use as setas do teclado. O

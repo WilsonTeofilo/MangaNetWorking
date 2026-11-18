@@ -235,7 +235,7 @@ export function CreatorAnalyticsPage() {
 
             {tab === 'overview' ? (
               <>
-                <Win title="VISUALIZAÇÕES POR DIA.EXE">
+                <Win title="VISUALIZAÇÕES POR DIA">
                   <CreatorDailyChart data={viewsPerDay} comparison={comparison ?? undefined} />
                 </Win>
 
@@ -250,16 +250,16 @@ export function CreatorAnalyticsPage() {
                 </Win>
 
                 <div className="grid grid-cols-1 gap-6 2xl:grid-cols-2">
-                  <Win title="RETENÇÃO POR PÁGINA.EXE">
+                  <Win title="RETENÇÃO POR PÁGINA">
                     <CreatorRetentionCurve rows={data.pageRetention} sampleReaders={totals?.uniqueReaders ?? 0} />
                   </Win>
 
-                  <Win title="QUANDO A AUDIÊNCIA LÊ.EXE">
+                  <Win title="QUANDO A AUDIÊNCIA LÊ">
                     <CreatorAudienceHeatmap heatmap={data.audienceHeatmap} />
                   </Win>
                 </div>
 
-                <Win title="FINANCEIRO DA JANELA.EXE">
+                <Win title="FINANCEIRO DA JANELA">
                   <dl className="grid gap-3 font-body text-sm sm:grid-cols-2">
                     <FinanceRow label="Doações" value={brl(Number(data.netDonationsBrl))} />
                     <FinanceRow label="Membros" value={brl(Number(data.netMembershipsBrl))} />

@@ -9,7 +9,7 @@ interface CreatorFunnelPanelProps {
 export function CreatorFunnelPanel({ funnel }: CreatorFunnelPanelProps) {
   if (!funnel) {
     return (
-      <Win title="FUNIL DE DESCOBERTA.EXE">
+      <Win title="FUNIL DE DESCOBERTA">
         <p className="font-pixel text-xs uppercase text-[var(--mn-mute)]">Funil indisponível.</p>
       </Win>
     );
@@ -50,7 +50,7 @@ export function CreatorFunnelPanel({ funnel }: CreatorFunnelPanelProps) {
   const max = Math.max(1, ...stages.map((stage) => (stage.available ? Number(stage.value ?? 0) : 0)));
 
   return (
-    <Win title="FUNIL DE DESCOBERTA.EXE">
+    <Win title="FUNIL DE DESCOBERTA">
       <ol className="space-y-2">
         {stages.map((stage) => (
           <li key={stage.label} className="min-w-0">

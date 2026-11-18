@@ -80,7 +80,7 @@ export function TwoFactorStep({
 
       {/* Dev Outbox em Janela Retrô <Win> (Apenas Fora de Prod) */}
       {devOtpHint && (
-        <Win title="DEV_OUTBOX.EXE" className="mt-4">
+        <Win title="DEV OUTBOX" className="mt-4">
           <div className="flex items-center justify-between text-xs">
             <span className="font-pixel text-[var(--mn-mute)]">CÓDIGO DE TESTE:</span>
             <button
