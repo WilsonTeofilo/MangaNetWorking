@@ -217,8 +217,10 @@ public class WorkApplicationService {
         work.setSlug(finalSlug);
         work.setOriginalTitle(safeOriginalTitle);
         work.setSynopsis(safeSynopsis);
-        work.setCoverUrl(dto.coverUrl().trim());
-        work.setBannerUrl(dto.bannerUrl() != null ? dto.bannerUrl().trim() : null);
+        work.setCoverUrl(WorkImageUrlPolicy.cover(dto.coverUrl()));
+        work.setBannerUrl(dto.bannerUrl() != null && !dto.bannerUrl().isBlank()
+                ? WorkImageUrlPolicy.banner(dto.bannerUrl())
+                : null);
         work.setGenres(dto.genres());
         work.setFormat(dto.format());
         work.setStatus(WorkStatus.ONGOING);
@@ -269,22 +271,37 @@ public class WorkApplicationService {
     }
 
     private void assertWorkVisible(WorkEntity work) {
+        // 1. Obras removidas por LGPD são invisíveis para todos
         if (work != null && work.getStatus() == WorkStatus.ARCHIVED_LGPD) {
             throw new ResourceNotFoundException("Obra não encontrada.");
         }
-        if (work == null || work.getStatus() != WorkStatus.SUSPENDED) {
+
+        // 2. Obras em DRAFT só são visíveis ao autor e moderadores
+        if (work != null && work.getStatus() == WorkStatus.DRAFT) {
+            SessionService.UserSession session = SecurityContextUtils.getCurrentSession().orElse(null);
+            boolean isModerator = session != null && session.isModerator();
+            UUID sessionCreatorId = session != null ? session.creatorId() : null;
+            boolean isAuthor = sessionCreatorId != null && work.getAuthor() != null
+                    && sessionCreatorId.equals(work.getAuthor().getId());
+            if (!isAuthor && !isModerator) {
+                throw new ResourceNotFoundException("Obra não encontrada.");
+                // Lança 404 (não 403) para não revelar a existência da obra ao público
+            }
             return;
         }
 
-        SessionService.UserSession session = SecurityContextUtils.getCurrentSession().orElse(null);
-        boolean isModerator = session != null && session.isModerator();
-        UUID sessionCreatorId = session != null ? session.creatorId() : null;
-        boolean isAuthor = sessionCreatorId != null && work.getAuthor() != null
-                && sessionCreatorId.equals(work.getAuthor().getId());
-
-        if (!isAuthor && !isModerator) {
-            throw new AccessDeniedException("Esta obra está suspensa cautelarmente e indisponível.");
+        // 3. Obras suspensas: autor e moderadores veem, o resto recebe 403
+        if (work == null || work.getStatus() == WorkStatus.SUSPENDED) {
+            SessionService.UserSession session = SecurityContextUtils.getCurrentSession().orElse(null);
+            boolean isModerator = session != null && session.isModerator();
+            UUID sessionCreatorId = session != null ? session.creatorId() : null;
+            boolean isAuthor = sessionCreatorId != null && work != null && work.getAuthor() != null
+                    && sessionCreatorId.equals(work.getAuthor().getId());
+            if (!isAuthor && !isModerator) {
+                throw new AccessDeniedException("Esta obra está suspensa cautelarmente e indisponível.");
+            }
         }
+        // 4. Qualquer outro status (ONGOING, HIATUS, COMPLETED) é público → passa
     }
 
     private void publishFeedSync(UUID workId, String context) {

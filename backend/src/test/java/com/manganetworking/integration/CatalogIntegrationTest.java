@@ -276,7 +276,7 @@ class CatalogIntegrationTest {
                 title,
                 null,
                 "Sinopse de teste de integração do catálogo com formato como primeiro eixo.",
-                "https://cdn.exemplo/capa.png",
+                "/api/storage/11111111-1111-1111-1111-111111111111.png",
                 null,
                 genres,
                 true,
