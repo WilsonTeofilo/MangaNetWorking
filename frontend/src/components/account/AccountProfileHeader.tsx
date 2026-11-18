@@ -24,7 +24,7 @@ export function AccountProfileHeader({
   uploading,
 }: AccountProfileHeaderProps) {
   return (
-    <header className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] shadow-[6px_6px_0_var(--mn-paper)] p-6 sm:p-8 space-y-6">
+    <header className="border-2 border-[var(--mn-line)] bg-[var(--mn-ink-2)] shadow-[4px_4px_0_#000000] p-6 sm:p-8 space-y-6">
       <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
         <div className="relative mx-auto sm:mx-0 w-28 h-28 shrink-0">
           <img

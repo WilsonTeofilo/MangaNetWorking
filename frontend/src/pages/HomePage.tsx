@@ -2,12 +2,10 @@ import { PenLine } from 'lucide-react';
 import { Work, Chapter } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { Marquee } from '../components/ui/Marquee';
-import { MIN_RAIL_SIZE } from '../hooks/useHomeDiscovery';
 import { useHomeNavigation } from '../components/home/useHomeNavigation';
 import { HomeHeroSection } from '../components/home/HomeHeroSection';
 import { HomeFormatBar } from '../components/home/HomeFormatBar';
 import { HomeRecentReleases } from '../components/home/HomeRecentReleases';
-import { HomeTrendingRails } from '../components/home/HomeTrendingRails';
 import { HomeRankingsSidebar } from '../components/home/HomeRankingsSidebar';
 
 export interface HomePageProps {
@@ -45,9 +43,6 @@ export function HomePage({
     handleReadNow,
     openRelease,
   } = useHomeNavigation({ onSelectWork, onOpenChapter });
-
-  const showMangaRail = formato !== 'LIGHT_NOVEL';
-  const showNovelRail = formato !== 'MANGA';
 
   // Notificação de cold-start unificada: 1 único bloco com lógica condicional
   const totalMangas = discovery.trendingManga.length;
@@ -146,17 +141,6 @@ export function HomePage({
 
         {/* 5. AVISO COLD-START ÚNICO (UMA ÚNICA NOTIFICAÇÃO CONDICIONAL) */}
         {coldStartCta}
-
-        {/* 6. RANKINGS EM ALTA POR FORMATO (SOMENTE SE HOUVER OBRAS SUFICIENTES) */}
-        <HomeTrendingRails
-          showMangaRail={showMangaRail}
-          showNovelRail={showNovelRail}
-          trendingManga={discovery.trendingManga}
-          trendingLightNovel={discovery.trendingLightNovel}
-          minRailSize={MIN_RAIL_SIZE}
-          onSelectWork={onSelectWork}
-          onNavigateToCatalog={onNavigateToCatalog}
-        />
       </div>
     </div>
   );

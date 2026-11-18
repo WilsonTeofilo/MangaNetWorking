@@ -154,6 +154,7 @@ export function CatalogWorksGrid({
                 onToggleFavorite={onToggleFavorite}
                 analyticsSurface="CATALOGO"
                 analyticsEnabled={isAuthenticated}
+                showFormatBadge={filters.formato === 'all'}
               />
             ))}
           </div>

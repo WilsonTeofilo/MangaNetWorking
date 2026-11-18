@@ -29,6 +29,7 @@ interface HeaderProps {
   onOpenLogin?: () => void;
   /** Username aberto na página pública (usado no item "Minha conta"). */
   publicProfileUsername?: string;
+  onOpenPublicProfile?: (username: string) => void;
 }
 
 /**
@@ -44,6 +45,7 @@ export function Header({
   setCurrentTab,
   onOpenLogin,
   publicProfileUsername,
+  onOpenPublicProfile,
 }: HeaderProps) {
   const { user, isAuthenticated } = useAuth();
 
@@ -71,6 +73,7 @@ export function Header({
             publicProfileUsername={publicProfileUsername}
             onNavigate={handleNavigate}
             onOpenLogin={onOpenLogin}
+            onOpenPublicProfile={onOpenPublicProfile}
           />
         </div>
       </header>

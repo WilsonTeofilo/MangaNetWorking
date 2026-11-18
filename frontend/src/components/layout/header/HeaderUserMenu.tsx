@@ -21,6 +21,7 @@ interface HeaderUserMenuProps {
   publicProfileUsername?: string;
   onNavigate: (tab: AppTab) => void;
   onOpenLogin?: () => void;
+  onOpenPublicProfile?: (username: string) => void;
 }
 
 export interface CreatorMenuItem {
@@ -43,6 +44,7 @@ export function HeaderUserMenu({
   publicProfileUsername,
   onNavigate,
   onOpenLogin,
+  onOpenPublicProfile,
 }: HeaderUserMenuProps) {
   const { user, isAuthenticated, logout } = useAuth();
   const { openVip } = useModals();
@@ -172,31 +174,44 @@ export function HeaderUserMenu({
                 </div>
               </div>
 
-              {!user.isCreator && (
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    onNavigate('account');
-                  }}
-                  className="w-full text-left px-4 py-2.5 font-body text-sm text-[var(--mn-paper)] hover:bg-[var(--mn-ink-2)] hover:text-[var(--mn-yellow)] transition-colors"
-                >
-                  Minha conta
-                </button>
-              )}
+              {/* "Minha conta" disponível para todos (leitores e criadores têm perfil e segurança) */}
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onNavigate('account');
+                }}
+                className={`w-full text-left px-4 py-2.5 font-body text-sm transition-colors ${
+                  currentTab === 'account'
+                    ? 'bg-[var(--mn-yellow)] text-[var(--mn-ink)] font-semibold'
+                    : 'text-[var(--mn-paper)] hover:bg-[var(--mn-ink-2)] hover:text-[var(--mn-yellow)]'
+                }`}
+              >
+                Minha conta
+              </button>
 
-              {publicProfileUsername && (
+              {/* Acesso direto ao perfil público do próprio usuário */}
+              {(user.username || publicProfileUsername) && (
                 <button
                   type="button"
                   role="menuitem"
                   onClick={() => {
                     setMenuOpen(false);
-                    onNavigate('public-profile');
+                    const targetUsername = user.username || publicProfileUsername || '';
+                    if (targetUsername && onOpenPublicProfile) {
+                      onOpenPublicProfile(targetUsername);
+                    } else {
+                      onNavigate('public-profile');
+                    }
                   }}
-                  className="w-full text-left px-4 py-2.5 font-body text-sm text-[var(--mn-paper)] hover:bg-[var(--mn-ink-2)] hover:text-[var(--mn-yellow)] transition-colors"
+                  className={`w-full text-left px-4 py-2.5 font-body text-sm transition-colors ${
+                    currentTab === 'public-profile'
+                      ? 'bg-[var(--mn-yellow)] text-[var(--mn-ink)] font-semibold'
+                      : 'text-[var(--mn-paper)] hover:bg-[var(--mn-ink-2)] hover:text-[var(--mn-yellow)]'
+                  }`}
                 >
-                  Ver minha página pública
+                  Ver meu perfil público
                 </button>
               )}
 

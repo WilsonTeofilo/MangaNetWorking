@@ -56,6 +56,8 @@ function AppContent() {
             currentTab={nav.currentTab}
             setCurrentTab={nav.handleSwitchTab}
             onOpenLogin={() => nav.handleSwitchTab('login')}
+            publicProfileUsername={nav.publicProfileUsername}
+            onOpenPublicProfile={nav.openPublicProfile}
           />
           <main className="flex-1 w-full">
             <WorkDetailPage
@@ -89,6 +91,7 @@ function AppContent() {
             setCurrentTab={nav.handleSwitchTab}
             onOpenLogin={() => nav.handleSwitchTab('login')}
             publicProfileUsername={nav.publicProfileUsername}
+            onOpenPublicProfile={nav.openPublicProfile}
           />
           <main className="flex-1 w-full">
             <AppTabRouter
