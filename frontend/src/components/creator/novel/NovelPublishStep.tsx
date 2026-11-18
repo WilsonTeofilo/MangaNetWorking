@@ -39,15 +39,15 @@ export function NovelPublishStep({
 
         <div className="border-t border-[var(--mn-line)] pt-4 text-xs font-body text-[var(--mn-mute)] space-y-2">
           <p className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-[var(--mn-green)] shrink-0" />
+            <CheckCircle2 className="w-4 h-4 text-[var(--mn-ok)] shrink-0" />
             <span>Documento de blocos formatado e sanitizado pelo servidor</span>
           </p>
           <p className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-[var(--mn-green)] shrink-0" />
+            <CheckCircle2 className="w-4 h-4 text-[var(--mn-ok)] shrink-0" />
             <span>Validação de caracteres e ilustrações autorizadas</span>
           </p>
           <p className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-[var(--mn-green)] shrink-0" />
+            <CheckCircle2 className="w-4 h-4 text-[var(--mn-ok)] shrink-0" />
             <span>
               {isScheduled ? (
                 <>

@@ -1,15 +1,25 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { PageItem, ChecklistItem } from './mangaEditorTypes';
 import { toBackendLocalDateTime } from '../../../utils/datetime';
 import { storageApi } from '../../../api/storageApi';
 import { workApi } from '../../../api/workApi';
 import type { ChapterDraft } from '../LightNovelChapterWizard';
 
+export type MangaChapterType = 'REGULAR' | 'SPECIAL' | 'PROLOGUE';
+
+export interface MangaRecoverableDraft {
+  chapterTitle: string;
+  releaseDate: string;
+  chapterType: MangaChapterType;
+  savedAt: string;
+}
+
 export interface UseMangaChapterEditorProps {
   workId: string;
   workTitle: string;
   nextChapterNumber: number;
   draft?: ChapterDraft | null;
+  existingChapterNumbers?: number[];
   onPublished?: () => void;
 }
 
@@ -18,6 +28,7 @@ export function useMangaChapterEditor({
   workTitle,
   nextChapterNumber,
   draft,
+  existingChapterNumbers,
   onPublished,
 }: UseMangaChapterEditorProps) {
   const isEditing = Boolean(draft);
@@ -43,6 +54,9 @@ export function useMangaChapterEditor({
   const [coverUrl, setCoverUrl] = useState<string | null>(draft?.coverUrl ?? null);
   const [coverPreview, setCoverPreview] = useState<string | null>(draft?.coverUrl ?? null);
   const [chapterTitle, setChapterTitle] = useState(`Capítulo ${nextChapterNumber}`);
+  const [chapterType, setChapterType] = useState<MangaChapterType>(
+    (draft?.chapterType as MangaChapterType) ?? 'REGULAR'
+  );
   const [releaseDate, setReleaseDate] = useState(() => toBackendLocalDateTime(new Date()));
   const [chapterCoverCropOpen, setChapterCoverCropOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -52,9 +66,19 @@ export function useMangaChapterEditor({
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
 
+  const [dirty, setDirty] = useState(false);
+  const [recoverable, setRecoverable] = useState<MangaRecoverableDraft | null>(null);
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
+
   const pagesInputRef = useRef<HTMLInputElement | null>(null);
   const coverInputRef = useRef<HTMLInputElement | null>(null);
   const pageRefs = useRef<Record<string, HTMLLIElement | null>>({});
+
+  const draftKey = `mn:manga-draft:${workId}`;
+  const prologueTaken = (existingChapterNumbers ?? []).includes(0) && (!isEditing || draft?.chapterNumber !== 0);
+  const effectiveChapterNumber = isEditing
+    ? (draft?.chapterNumber ?? nextChapterNumber)
+    : (chapterType === 'PROLOGUE' ? 0 : nextChapterNumber);
 
   const uploadReady = pages.length > 0;
   const organizeReady = uploadReady;
@@ -84,6 +108,87 @@ export function useMangaChapterEditor({
     setStep(Math.min(Math.max(1, target), maxStep));
     setError(null);
   };
+
+  const updateChapterTitle = (title: string) => {
+    setChapterTitle(title);
+    setDirty(true);
+  };
+
+  const updateReleaseDate = (date: string) => {
+    setReleaseDate(date);
+    setDirty(true);
+  };
+
+  const updateChapterType = (type: MangaChapterType) => {
+    setChapterType(type);
+    setDirty(true);
+  };
+
+  // Draft persistence: checa rascunho de metadados ao montar (< 24h)
+  useEffect(() => {
+    if (isEditing) return;
+    try {
+      const stored = localStorage.getItem(draftKey);
+      if (!stored) return;
+      const parsed = JSON.parse(stored);
+      if (!parsed || typeof parsed !== 'object') return;
+      const savedTime = new Date(parsed.savedAt).getTime();
+      const now = Date.now();
+      const isRecent = !isNaN(savedTime) && now - savedTime < 24 * 60 * 60 * 1000;
+      if (isRecent && typeof parsed.chapterTitle === 'string') {
+        const type: MangaChapterType =
+          parsed.chapterType === 'PROLOGUE' || parsed.chapterType === 'SPECIAL'
+            ? parsed.chapterType
+            : 'REGULAR';
+        setRecoverable({
+          chapterTitle: parsed.chapterTitle,
+          releaseDate: typeof parsed.releaseDate === 'string' ? parsed.releaseDate : '',
+          chapterType: type,
+          savedAt: typeof parsed.savedAt === 'string' ? parsed.savedAt : new Date().toISOString(),
+        });
+      }
+    } catch {
+      // quota or JSON error
+    }
+  }, [isEditing, draftKey]);
+
+  // Draft persistence: salva debounced apenas os metadados (não as imagens)
+  useEffect(() => {
+    if (isEditing || !dirty) return;
+    const handle = window.setTimeout(() => {
+      try {
+        const payload: MangaRecoverableDraft = {
+          chapterTitle,
+          releaseDate,
+          chapterType,
+          savedAt: new Date().toISOString(),
+        };
+        localStorage.setItem(draftKey, JSON.stringify(payload));
+        setSavedAt(new Date());
+      } catch {
+        // quota
+      }
+    }, 1000);
+    return () => clearTimeout(handle);
+  }, [isEditing, dirty, chapterTitle, releaseDate, chapterType, draftKey]);
+
+  const restoreDraft = useCallback(() => {
+    if (!recoverable) return;
+    setChapterTitle(recoverable.chapterTitle);
+    setReleaseDate(recoverable.releaseDate);
+    setChapterType(recoverable.chapterType);
+    setDirty(true);
+    setRecoverable(null);
+  }, [recoverable]);
+
+  const discardStoredDraft = useCallback(() => {
+    try {
+      localStorage.removeItem(draftKey);
+    } catch {
+      // ignore
+    }
+    setRecoverable(null);
+  }, [draftKey]);
 
   const addPages = (files: FileList | File[], advance = false) => {
     const allowed = ['image/jpeg', 'image/png', 'image/webp'];
@@ -161,6 +266,7 @@ export function useMangaChapterEditor({
       }))
     );
     setChapterTitle(draft?.title ?? `Capítulo ${nextChapterNumber}`);
+    setChapterType((draft?.chapterType as MangaChapterType) ?? 'REGULAR');
     setCoverFile(null);
     setCoverUrl(draft?.coverUrl ?? null);
     setCoverPreview(draft?.coverUrl ?? null);
@@ -202,13 +308,14 @@ export function useMangaChapterEditor({
         chapterCoverUrl = storedCover.url;
       }
 
-      const chapterNumber = draft?.chapterNumber ?? nextChapterNumber;
+      const chapterNumber = effectiveChapterNumber;
       if (isEditing) {
         await workApi.updateChapter(workId, chapterNumber, {
           title: chapterTitle.trim(),
           coverUrl: chapterCoverUrl,
           pages: uploaded,
           format: 'IMAGE_PAGES',
+          chapterType,
           publicReleaseAt: releaseDate ? toBackendLocalDateTime(new Date(releaseDate)) : toBackendLocalDateTime(new Date()),
         });
       } else {
@@ -218,9 +325,17 @@ export function useMangaChapterEditor({
           coverUrl: chapterCoverUrl,
           pages: uploaded,
           format: 'IMAGE_PAGES',
+          chapterType,
           publicReleaseAt: releaseDate ? toBackendLocalDateTime(new Date(releaseDate)) : toBackendLocalDateTime(new Date()),
         });
       }
+
+      try {
+        localStorage.removeItem(draftKey);
+      } catch {
+        // ignore
+      }
+      setDirty(false);
 
       setSuccess(
         releaseDate
@@ -229,8 +344,13 @@ export function useMangaChapterEditor({
       );
       setPages([]);
       onPublished?.();
-    } catch (err: any) {
-      setError(err?.message || 'Não foi possível publicar o capítulo. Verifique os dados e tente novamente.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err ?? '');
+      if (msg.toLowerCase().includes('prólogo') || msg.toLowerCase().includes('prologue')) {
+        setError('Esta obra já possui um prólogo.');
+      } else {
+        setError(msg || 'Não foi possível publicar o capítulo. Verifique os dados e tente novamente.');
+      }
     } finally {
       setBusy(false);
     }
@@ -253,9 +373,13 @@ export function useMangaChapterEditor({
     coverPreview,
     setCoverPreview,
     chapterTitle,
-    setChapterTitle,
+    setChapterTitle: updateChapterTitle,
+    chapterType,
+    setChapterType: updateChapterType,
+    prologueTaken,
+    effectiveChapterNumber,
     releaseDate,
-    setReleaseDate,
+    setReleaseDate: updateReleaseDate,
     chapterCoverCropOpen,
     setChapterCoverCropOpen,
     busy,
@@ -278,5 +402,9 @@ export function useMangaChapterEditor({
     jumpToPage,
     pickCover,
     publish,
+    recoverable,
+    savedAt,
+    restoreDraft,
+    discardStoredDraft,
   };
 }

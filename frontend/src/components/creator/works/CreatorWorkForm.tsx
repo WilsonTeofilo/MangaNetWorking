@@ -22,6 +22,8 @@ export interface CreatorWorkFormProps {
   saving: boolean;
   error: string | null;
   message: string | null;
+  createdWorkId?: string | null;
+  onNavigateToChapters?: (workId?: string) => void;
   onSubmit: (event: React.FormEvent) => void;
   onCancelEdit: () => void;
   onClose: () => void;
@@ -48,6 +50,8 @@ export function CreatorWorkForm({
   saving,
   error,
   message,
+  createdWorkId,
+  onNavigateToChapters,
   onSubmit,
   onCancelEdit,
   onClose,
@@ -134,6 +138,13 @@ export function CreatorWorkForm({
                 </button>
               ))}
             </div>
+            {!editingId && (
+              <p className="text-[10px] font-body text-[var(--mn-mute)] mt-1">
+                {format === 'MANGA'
+                  ? 'Mangá: capítulos publicados como páginas de imagem (JPG/PNG/WebP).'
+                  : 'Light Novel: capítulos escritos em blocos de texto com editor visual.'}
+              </p>
+            )}
           </div>
 
           {editingId && (
@@ -169,7 +180,10 @@ export function CreatorWorkForm({
         {/* Capa e banner (a obra, não o capítulo) */}
         <div className="space-y-4">
           <div className="border-2 border-[var(--mn-line)] p-4 space-y-2">
-            <p className="font-pixel text-[11px] uppercase text-[var(--mn-mute)]">CAPA DA OBRA (2:3)</p>
+            <label className="font-display text-xs uppercase text-[var(--mn-mute)] tracking-wider block">
+              CAPA DA OBRA <span className="text-[var(--mn-red)]">*</span>
+              <span className="ml-1 font-body normal-case text-[10px]">Retrato 2:3 — obrigatória</span>
+            </label>
             {cover ? (
               <img
                 src={cover.previewUrl}
@@ -265,10 +279,34 @@ export function CreatorWorkForm({
           {error}
         </p>
       )}
-      {message && (
-        <p role="status" className="border-2 border-[var(--mn-ok)] p-3 font-body text-sm text-[var(--mn-paper)]">
-          {message}
-        </p>
+
+      {createdWorkId ? (
+        <div
+          role="status"
+          className="border-2 border-[var(--mn-ok)] bg-[var(--mn-ok)]/10 p-3 font-body text-sm text-[var(--mn-paper)] flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-[var(--mn-ok)] font-semibold">✅ Obra criada!</span>
+            <a
+              href={`?aba=obras&obra=${createdWorkId}`}
+              onClick={(e) => {
+                if (onNavigateToChapters) {
+                  e.preventDefault();
+                  onNavigateToChapters(createdWorkId);
+                }
+              }}
+              className="text-[var(--mn-yellow)] hover:underline inline-flex items-center gap-1 font-semibold"
+            >
+              Publique o primeiro capítulo agora →
+            </a>
+          </div>
+        </div>
+      ) : (
+        message && (
+          <p role="status" className="border-2 border-[var(--mn-ok)] p-3 font-body text-sm text-[var(--mn-paper)]">
+            {message}
+          </p>
+        )
       )}
 
       <Button type="submit" variant="primary" disabled={saving}>

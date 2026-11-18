@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { workApi, CreatorWorkSummaryDto } from '../../../api/workApi';
 import { storageApi } from '../../../api/storageApi';
 
@@ -43,6 +43,17 @@ export function useCreatorWorks() {
   /** URL da imagem atual, usada como origem do recorte (reajustar). */
   const [cropUrl, setCropUrl] = useState<string | null>(null);
 
+  const [createdWorkId, setCreatedWorkId] = useState<string | null>(null);
+  const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (successTimerRef.current) {
+        clearTimeout(successTimerRef.current);
+      }
+    };
+  }, []);
+
   const loadWorks = useCallback(async () => {
     setLoading(true);
     try {
@@ -84,6 +95,10 @@ export function useCreatorWorks() {
   }, []);
 
   const resetForm = useCallback(() => {
+    if (successTimerRef.current) {
+      clearTimeout(successTimerRef.current);
+    }
+    setCreatedWorkId(null);
     setEditingId(null);
     setTitle('');
     setSynopsis('');
@@ -195,8 +210,11 @@ export function useCreatorWorks() {
             status,
           });
           setMessage('Obra atualizada.');
+          resetForm();
+          setFormOpen(works.length === 0);
+          await loadWorks();
         } else {
-          await workApi.createWork({
+          const res = await workApi.createWork({
             title: title.trim(),
             synopsis: synopsis.trim(),
             coverUrl: cover.url,
@@ -205,11 +223,20 @@ export function useCreatorWorks() {
             originalAuthorDeclaration: true,
             format,
           });
-          setMessage('Obra publicada no catálogo.');
+          const newWorkId = (res as { workId?: string })?.workId ?? null;
+          setCreatedWorkId(newWorkId);
+          setMessage('Obra criada!');
+          await loadWorks();
+          if (successTimerRef.current) {
+            clearTimeout(successTimerRef.current);
+          }
+          successTimerRef.current = setTimeout(() => {
+            setCreatedWorkId(null);
+            setMessage(null);
+            resetForm();
+            setFormOpen(false);
+          }, 3000);
         }
-        resetForm();
-        setFormOpen(works.length === 0);
-        await loadWorks();
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : 'Não foi possível salvar a obra.');
       } finally {
@@ -275,6 +302,7 @@ export function useCreatorWorks() {
     setStatus,
     declared,
     setDeclared,
+    createdWorkId,
     saving,
     formOpen,
     setFormOpen,

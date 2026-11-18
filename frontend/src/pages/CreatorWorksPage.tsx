@@ -20,6 +20,7 @@ export function CreatorWorksPage({ onNavigateToChapters }: CreatorWorksPageProps
     editingId, title, setTitle, synopsis, setSynopsis, genres, toggleGenre, format, setFormat,
     status, setStatus, cover, banner, declared, setDeclared, saving, startEditing, resetForm,
     save, remove, cropTarget, cropFile, cropUrl, startCropFromFile, startCropFromUrl, cancelCrop, confirmCrop,
+    createdWorkId,
   } = useCreatorWorks();
 
   return (
@@ -72,6 +73,8 @@ export function CreatorWorksPage({ onNavigateToChapters }: CreatorWorksPageProps
           saving={saving}
           error={error}
           message={message}
+          createdWorkId={createdWorkId}
+          onNavigateToChapters={onNavigateToChapters}
           onSubmit={save}
           onCancelEdit={resetForm}
           onClose={() => setFormOpen(false)}
