@@ -1,4 +1,4 @@
-import { Check, ChevronLeft, ChevronRight, Pencil, X, ZoomIn } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Pencil, RotateCcw, X, ZoomIn } from 'lucide-react';
 import { Button } from '../../ui/Button';
 import { ImageCropper } from '../../common/ImageCropper';
 import { storageApi } from '../../../api/storageApi';
@@ -21,8 +21,39 @@ export function MangaChapterWizard(props: UseMangaChapterEditorProps) {
         </p>
       ) : (
         <p className="font-pixel text-[11px] uppercase text-[var(--mn-mute)]">
-          Publicando em <span className="text-[var(--mn-yellow)]">{props.workTitle}</span> · capítulo {props.nextChapterNumber} · mangá (páginas)
+          Publicando em <span className="text-[var(--mn-yellow)]">{props.workTitle}</span> · capítulo {editor.effectiveChapterNumber} · mangá (páginas)
         </p>
+      )}
+
+      {/* Rascunho Recuperável do localStorage */}
+      {editor.recoverable && (
+        <div className="border-2 border-[var(--mn-yellow)] bg-[var(--mn-yellow)]/10 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-body">
+          <div className="text-[var(--mn-paper)] space-y-0.5">
+            <span className="flex items-center gap-2 font-semibold">
+              <RotateCcw className="w-4 h-4 text-[var(--mn-yellow)] shrink-0" />
+              Metadados de capítulo não publicado recuperados de {new Date(editor.recoverable.savedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}. Restaurar?
+            </span>
+            <p className="text-[11px] text-[var(--mn-mute)]">
+              Seus textos e configurações foram recuperados. As imagens precisam ser reenviadas.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={editor.restoreDraft}
+              className="px-2.5 py-1 bg-[var(--mn-yellow)] text-black font-bold hover:bg-white transition-colors"
+            >
+              Restaurar rascunho
+            </button>
+            <button
+              type="button"
+              onClick={editor.discardStoredDraft}
+              className="px-2.5 py-1 border border-[var(--mn-line)] text-[var(--mn-mute)] hover:text-[var(--mn-paper)] transition-colors"
+            >
+              Descartar
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Checklist de publicação */}
@@ -108,6 +139,9 @@ export function MangaChapterWizard(props: UseMangaChapterEditorProps) {
           nextChapterNumber={props.nextChapterNumber}
           chapterTitle={editor.chapterTitle}
           setChapterTitle={editor.setChapterTitle}
+          chapterType={editor.chapterType}
+          setChapterType={editor.setChapterType}
+          prologueTaken={editor.prologueTaken}
           releaseDate={editor.releaseDate}
           setReleaseDate={editor.setReleaseDate}
           pages={editor.pages}

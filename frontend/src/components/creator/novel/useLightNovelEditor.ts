@@ -1,4 +1,5 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
 import {
   ChapterDraft,
   EditorBlock,
@@ -169,6 +170,22 @@ export function useLightNovelEditor({
     chapterType === 'PROLOGUE' && prologueTaken
       ? 'Esta obra já possui um capítulo 0. Edite o prólogo existente.'
       : null;
+
+  const isEditing = editingNumber !== null && editingNumber !== undefined;
+  const titleValid = !titleError && !typeError;
+  const contentReady = blocks.length > 0 && editorial.valid;
+
+  const maxStep = useMemo(() => {
+    if (isEditing) return 4;
+    if (!titleValid) return 1;
+    if (!contentReady) return 2;
+    return 4;
+  }, [isEditing, titleValid, contentReady]);
+
+  const goToStep = useCallback((target: number) => {
+    setStep(Math.min(Math.max(1, target), maxStep));
+    setError(null);
+  }, [maxStep]);
 
   // Autosave
   useEffect(() => {
@@ -427,9 +444,30 @@ export function useLightNovelEditor({
     onSaved,
   ]);
 
+  const selectCoverFile = useCallback((file: File) => {
+    setCoverFile(file);
+    setCoverPreview(URL.createObjectURL(file));
+    setDirty(true);
+  }, []);
+
+  const removeCover = useCallback(() => {
+    setCoverFile(null);
+    setCoverPreview(null);
+    setCoverUrl(null);
+    setDirty(true);
+  }, []);
+
+  const cropConfirmed = useCallback((file: File, previewUrl: string) => {
+    setCoverFile(file);
+    setCoverPreview(previewUrl);
+    setDirty(true);
+  }, []);
+
   return {
     step,
     setStep,
+    maxStep,
+    goToStep,
     chapterType,
     setChapterType,
     chapterTitle,
@@ -464,6 +502,9 @@ export function useLightNovelEditor({
     blockInputRefs,
     textareaRefs,
     prologueTaken,
+    selectCoverFile,
+    removeCover,
+    cropConfirmed,
     isScheduled,
     scheduledDate,
     blocksDto,

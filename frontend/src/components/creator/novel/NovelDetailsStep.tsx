@@ -3,6 +3,7 @@ import { Upload } from 'lucide-react';
 import { CHAPTER_TYPE_LABEL } from './novelEditorTypes';
 import { ChapterType } from '../../../utils/proseEditorialPolicy';
 import { Field } from '../../ui/Field';
+import { ImageCropper } from '../../common/ImageCropper';
 
 interface NovelDetailsStepProps {
   chapterType: ChapterType;
@@ -22,6 +23,9 @@ interface NovelDetailsStepProps {
   editingNumber?: number | null;
   nextChapterNumber: number;
   markDirty: () => void;
+  cropOpen?: boolean;
+  onCloseCrop?: () => void;
+  onCropConfirmed?: (file: File, previewUrl: string) => void;
 }
 
 export function NovelDetailsStep({
@@ -42,6 +46,9 @@ export function NovelDetailsStep({
   editingNumber,
   nextChapterNumber,
   markDirty,
+  cropOpen,
+  onCloseCrop,
+  onCropConfirmed,
 }: NovelDetailsStepProps) {
   const isEditing = editingNumber !== null && editingNumber !== undefined;
 
@@ -70,7 +77,7 @@ export function NovelDetailsStep({
                     ? 'border-[var(--mn-yellow)] bg-[var(--mn-yellow)] text-black font-bold shadow-[2px_2px_0_var(--mn-paper)]'
                     : disabled
                       ? 'border-[var(--mn-line)] opacity-40 cursor-not-allowed bg-[var(--mn-ink-2)] text-[var(--mn-mute)]'
-                      : 'border-[var(--mn-line)] bg-[var(--mn-ink)] text-[var(--mn-paper)] hover:border-[var(--mn-paper-muted)]'
+                      : 'border-[var(--mn-line)] bg-[var(--mn-ink)] text-[var(--mn-paper)] hover:border-[var(--mn-paper)]'
                 }`}
               >
                 <div className="font-display text-sm uppercase">{CHAPTER_TYPE_LABEL[t]}</div>
@@ -187,6 +194,22 @@ export function NovelDetailsStep({
           className="hidden"
         />
       </div>
+
+      {/* Modal de Crop de Capa */}
+      {cropOpen && coverPreview && (
+        <ImageCropper
+          sourceUrl={coverPreview}
+          outputWidth={600}
+          outputHeight={800}
+          onConfirm={(blob: Blob) => {
+            const file = new File([blob], 'cover.jpg', { type: 'image/jpeg' });
+            onCropConfirmed?.(file, URL.createObjectURL(blob));
+            onCloseCrop?.();
+            markDirty();
+          }}
+          onCancel={() => onCloseCrop?.()}
+        />
+      )}
     </div>
   );
 }

@@ -93,7 +93,7 @@ export function NovelReviewStep({
         <ul className="space-y-2 text-xs font-body">
           <li className="flex items-center gap-2">
             {totalChars >= minChars && totalChars <= maxChars ? (
-              <Check className="w-4 h-4 text-[var(--mn-green)] shrink-0" />
+              <Check className="w-4 h-4 text-[var(--mn-ok)] shrink-0" />
             ) : (
               <AlertTriangle className="w-4 h-4 text-[var(--mn-red)] shrink-0" />
             )}
@@ -104,7 +104,7 @@ export function NovelReviewStep({
           </li>
           <li className="flex items-center gap-2">
             {illustrationCount <= 6 ? (
-              <Check className="w-4 h-4 text-[var(--mn-green)] shrink-0" />
+              <Check className="w-4 h-4 text-[var(--mn-ok)] shrink-0" />
             ) : (
               <AlertTriangle className="w-4 h-4 text-[var(--mn-red)] shrink-0" />
             )}
@@ -115,7 +115,7 @@ export function NovelReviewStep({
           </li>
           <li className="flex items-center gap-2">
             {structureErrors.length === 0 ? (
-              <Check className="w-4 h-4 text-[var(--mn-green)] shrink-0" />
+              <Check className="w-4 h-4 text-[var(--mn-ok)] shrink-0" />
             ) : (
               <AlertTriangle className="w-4 h-4 text-[var(--mn-red)] shrink-0" />
             )}

@@ -11,6 +11,8 @@ import com.manganetworking.repository.jpa.ChapterRepository;
 import com.manganetworking.repository.jpa.CreatorRepository;
 import com.manganetworking.repository.jpa.WorkRepository;
 import com.manganetworking.service.feed.event.WorkFeedSyncEvent;
+import com.manganetworking.service.session.SessionService;
+import com.manganetworking.service.storage.FilePolicyException;
 import com.manganetworking.service.work.dto.ChapterSummaryDto;
 import com.manganetworking.service.work.dto.CreateWorkRequestDto;
 import com.manganetworking.service.work.dto.WorkDetailsResponseDto;
@@ -22,8 +24,12 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -83,7 +89,7 @@ class WorkApplicationServiceTest {
                 "Nova Obra Original",
                 "Original",
                 "Sinopse rica de mangá.",
-                "https://storage.local/capa.jpg",
+                "/api/storage/11111111-1111-1111-1111-111111111111.jpg",
                 null,
                 List.of(Genre.ACAO, Genre.FANTASIA),
                 true
@@ -111,7 +117,7 @@ class WorkApplicationServiceTest {
                 "Obra com sync por evento",
                 "Original",
                 "Sinopse rica de mangá.",
-                "https://storage.local/capa.jpg",
+                "/api/storage/11111111-1111-1111-1111-111111111111.jpg",
                 null,
                 List.of(Genre.ACAO),
                 true
@@ -159,6 +165,104 @@ class WorkApplicationServiceTest {
         assertThrows(ResourceNotFoundException.class, () ->
                 workService.getWorkBySlug("cronicas-de-cyberpunk", null));
         verifyNoInteractions(chapterRepository);
+    }
+
+    @Test
+    @DisplayName("createWork rejeita capa com URL externa ou fora do padrão do storage")
+    void shouldRejectInvalidCoverUrlOnCreateWork() {
+        when(creatorRepository.findById(creatorId)).thenReturn(Optional.of(author));
+
+        CreateWorkRequestDto dto = new CreateWorkRequestDto(
+                "Nova Obra",
+                "Original",
+                "Sinopse",
+                "https://malicious.com/fake.jpg",
+                null,
+                List.of(Genre.ACAO),
+                true
+        );
+
+        assertThrows(FilePolicyException.class, () ->
+                workService.createWork(creatorId, dto));
+    }
+
+    @Test
+    @DisplayName("Obra em DRAFT não é exposta para visitante anônimo → 404")
+    void shouldHideDraftWorkFromAnonymousViewer() {
+        work.setStatus(WorkStatus.DRAFT);
+        when(workRepository.findBySlug("cronicas-de-cyberpunk")).thenReturn(Optional.of(work));
+
+        assertThrows(ResourceNotFoundException.class, () ->
+                workService.getWorkBySlug("cronicas-de-cyberpunk", null));
+        verifyNoInteractions(chapterRepository);
+    }
+
+    @Test
+    @DisplayName("Obra em DRAFT não é exposta para leitor/usuário que não seja o autor nem moderador → 404")
+    void shouldHideDraftWorkFromOtherUser() {
+        work.setStatus(WorkStatus.DRAFT);
+        when(workRepository.findBySlug("cronicas-de-cyberpunk")).thenReturn(Optional.of(work));
+
+        SessionService.UserSession readerSession = new SessionService.UserSession(
+                "sid-reader", UUID.randomUUID(), "leitor@manganetworking.com", "Leitor",
+                false, false, UUID.randomUUID(), "outro_autor", Instant.now().plusSeconds(3600)
+        );
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(readerSession, null, Collections.emptyList())
+        );
+        try {
+            assertThrows(ResourceNotFoundException.class, () ->
+                    workService.getWorkBySlug("cronicas-de-cyberpunk", null));
+            verifyNoInteractions(chapterRepository);
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
+    @DisplayName("Obra em DRAFT é acessível pelo autor criador da obra")
+    void shouldAllowAuthorToViewDraftWork() {
+        work.setStatus(WorkStatus.DRAFT);
+        when(workRepository.findBySlug("cronicas-de-cyberpunk")).thenReturn(Optional.of(work));
+        when(chapterRepository.findAllByWorkIdOrderByChapterNumberDesc(workId)).thenReturn(Collections.emptyList());
+
+        SessionService.UserSession authorSession = new SessionService.UserSession(
+                "sid-author", UUID.randomUUID(), "autor@manganetworking.com", "Autor",
+                true, false, creatorId, "autor_independente", Instant.now().plusSeconds(3600)
+        );
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(authorSession, null, Collections.emptyList())
+        );
+        try {
+            WorkDetailsResponseDto response = workService.getWorkBySlug("cronicas-de-cyberpunk", null);
+            assertNotNull(response);
+            assertEquals("Crônicas de Cyberpunk", response.title());
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
+    @DisplayName("Obra em DRAFT é acessível por moderador")
+    void shouldAllowModeratorToViewDraftWork() {
+        work.setStatus(WorkStatus.DRAFT);
+        when(workRepository.findBySlug("cronicas-de-cyberpunk")).thenReturn(Optional.of(work));
+        when(chapterRepository.findAllByWorkIdOrderByChapterNumberDesc(workId)).thenReturn(Collections.emptyList());
+
+        SessionService.UserSession modSession = new SessionService.UserSession(
+                "sid-mod", UUID.randomUUID(), "mod@manganetworking.com", "Moderador",
+                false, true, null, null, Instant.now().plusSeconds(3600)
+        );
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(modSession, null, Collections.emptyList())
+        );
+        try {
+            WorkDetailsResponseDto response = workService.getWorkBySlug("cronicas-de-cyberpunk", null);
+            assertNotNull(response);
+            assertEquals("Crônicas de Cyberpunk", response.title());
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
     }
 
     private ChapterEntity chapter(int number, LocalDateTime releaseAt) {

@@ -222,7 +222,7 @@ class ChapterFileAccessIntegrationTest {
                 "Obra " + UUID.randomUUID().toString().substring(0, 6),
                 null,
                 "Sinopse de teste de integração",
-                "https://cdn.exemplo/capa.png",
+                "/api/storage/11111111-1111-1111-1111-111111111111.png",
                 null,
                 List.of(Genre.ACAO),
                 true
