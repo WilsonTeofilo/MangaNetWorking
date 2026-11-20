@@ -183,6 +183,9 @@ public class ChapterApplicationService {
         replaceChapterFiles(saved.getId(), accessFiles(pages, blocksJson));
 
         work.setTotalChapters(work.getTotalChapters() + 1);
+        if (work.getStatus() == WorkStatus.DRAFT) {
+            work.setStatus(WorkStatus.ONGOING);
+        }
         WorkEntity updatedWork = workRepository.save(work);
 
         publishFeedSync(updatedWork.getId(), "publicação de capítulo");

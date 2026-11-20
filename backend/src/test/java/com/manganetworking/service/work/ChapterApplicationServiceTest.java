@@ -8,6 +8,7 @@ import com.manganetworking.domain.enums.ChapterFormat;
 import com.manganetworking.domain.enums.MembershipStatus;
 import com.manganetworking.domain.enums.ChapterType;
 import com.manganetworking.domain.enums.WorkFormat;
+import com.manganetworking.domain.enums.WorkStatus;
 import com.manganetworking.domain.relational.ChapterEntity;
 import com.manganetworking.domain.relational.ChapterFileEntity;
 import com.manganetworking.domain.relational.CreatorEntity;
@@ -123,6 +124,45 @@ class ChapterApplicationServiceTest {
         chapterService.createChapter(creatorId, workId, dto);
 
         verify(eventPublisher).publishEvent(new WorkFeedSyncEvent(workId, "publicação de capítulo"));
+    }
+
+    @Test
+    @DisplayName("Publicar capítulo em obra DRAFT promove automaticamente para ONGOING")
+    void shouldPromoteDraftWorkToOngoingOnChapterPublish() {
+        work.setStatus(WorkStatus.DRAFT);
+        when(workRepository.findById(workId)).thenReturn(Optional.of(work));
+        when(chapterRepository.findByWorkIdAndChapterNumber(workId, 1)).thenReturn(Optional.empty());
+        when(chapterRepository.save(any(ChapterEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(workRepository.save(any(WorkEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        CreateChapterRequestDto dto = new CreateChapterRequestDto(
+                1, "Capítulo 1", null, List.of("p1.png"), LocalDateTime.now());
+
+        chapterService.createChapter(creatorId, workId, dto);
+
+        assertEquals(WorkStatus.ONGOING, work.getStatus());
+        assertEquals(1, work.getTotalChapters());
+        ArgumentCaptor<WorkEntity> workCaptor = ArgumentCaptor.forClass(WorkEntity.class);
+        verify(workRepository).save(workCaptor.capture());
+        assertEquals(WorkStatus.ONGOING, workCaptor.getValue().getStatus());
+    }
+
+    @Test
+    @DisplayName("Publicar capítulo em obra COMPLETED mantém status COMPLETED")
+    void shouldKeepCompletedStatusWhenChapterPublished() {
+        work.setStatus(WorkStatus.COMPLETED);
+        when(workRepository.findById(workId)).thenReturn(Optional.of(work));
+        when(chapterRepository.findByWorkIdAndChapterNumber(workId, 1)).thenReturn(Optional.empty());
+        when(chapterRepository.save(any(ChapterEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(workRepository.save(any(WorkEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        CreateChapterRequestDto dto = new CreateChapterRequestDto(
+                1, "Epílogo Extra", null, List.of("p1.png"), LocalDateTime.now());
+
+        chapterService.createChapter(creatorId, workId, dto);
+
+        assertEquals(WorkStatus.COMPLETED, work.getStatus());
+        assertEquals(1, work.getTotalChapters());
     }
 
     @Test
