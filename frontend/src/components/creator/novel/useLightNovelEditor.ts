@@ -17,6 +17,9 @@ import {
 import { storageApi } from '../../../api/storageApi';
 import { workApi } from '../../../api/workApi';
 import { toBackendLocalDateTime } from '../../../utils/datetime';
+import { useAuth } from '../../../context/AuthContext';
+
+const RECOVERABLE_DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
 
 export interface UseLightNovelEditorProps {
   workId: string;
@@ -68,6 +71,7 @@ export function useLightNovelEditor({
   existingChapterNumbers = [],
   onSaved,
 }: UseLightNovelEditorProps) {
+  const { user } = useAuth();
   // No modo edição com conteúdo gravado, inicia direto na etapa 2 (Editor de texto/blocos)
   const [step, setStep] = useState(() => {
     if (draft && ((draft.blocksJson && draft.blocksJson.trim().length > 0) || (draft.content && draft.content.trim().length > 0))) {
@@ -112,7 +116,7 @@ export function useLightNovelEditor({
   const blockInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const textareaRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
 
-  const draftKey = `mn:ln-draft:${workId}:${draft?.chapterNumber ?? 'novo'}`;
+  const draftKey = `mn:ln-draft:${user.uid}:${workId}:${draft?.chapterNumber ?? 'novo'}`;
   const prologueTaken = existingChapterNumbers.includes(0) && editingNumber !== 0;
 
   const scheduledDate = () => (releaseDate ? new Date(releaseDate) : new Date());
@@ -189,6 +193,7 @@ export function useLightNovelEditor({
 
   // Autosave
   useEffect(() => {
+    if (user.uid === 'guest') return;
     if (!dirty) return;
     const handle = window.setTimeout(() => {
       try {
@@ -207,14 +212,24 @@ export function useLightNovelEditor({
       }
     }, 1200);
     return () => clearTimeout(handle);
-  }, [dirty, chapterTitle, chapterType, blocks, releaseDate, coverUrl, draftKey]);
+  }, [user.uid, dirty, chapterTitle, chapterType, blocks, releaseDate, coverUrl, draftKey]);
 
   // Checa rascunho recuperável
   useEffect(() => {
+    setRecoverable(null);
+    if (user.uid === 'guest') return;
     try {
       const stored = localStorage.getItem(draftKey);
       if (!stored) return;
       const parsed = JSON.parse(stored);
+      const savedAtMs = typeof parsed?.savedAt === 'string' ? Date.parse(parsed.savedAt) : Number.NaN;
+      const isRecent = Number.isFinite(savedAtMs)
+        && savedAtMs <= Date.now()
+        && Date.now() - savedAtMs < RECOVERABLE_DRAFT_TTL_MS;
+      if (!isRecent) {
+        localStorage.removeItem(draftKey);
+        return;
+      }
       if (Array.isArray(parsed?.blocks) && parsed.blocks.length > 0) {
         const sanitized = sanitizeRestoredBlocks(parsed.blocks);
         if (sanitized.length > 0) {
@@ -222,14 +237,14 @@ export function useLightNovelEditor({
             title: typeof parsed.title === 'string' ? parsed.title : '',
             chapterType: parsed.chapterType === 'PROLOGUE' || parsed.chapterType === 'SPECIAL' ? parsed.chapterType : 'REGULAR',
             blocks: sanitized,
-            savedAt: typeof parsed.savedAt === 'string' ? parsed.savedAt : '',
+            savedAt: parsed.savedAt,
           });
         }
       }
     } catch {
       // ignore
     }
-  }, [draftKey]);
+  }, [user.uid, draftKey]);
 
   const restoreDraft = useCallback(() => {
     if (!recoverable) return;
@@ -390,7 +405,7 @@ export function useLightNovelEditor({
         await workApi.updateChapter(workId, editingNumber, {
           title: chapterTitle.trim(),
           coverUrl: finalCover ?? undefined,
-          content: blocksPayload,
+          blocksJson: blocksPayload,
           format: 'PROSE',
           publicReleaseAt: effectiveReleaseAt,
           chapterType,
@@ -402,7 +417,7 @@ export function useLightNovelEditor({
           chapterNumber: assignedNumber,
           title: chapterTitle.trim(),
           coverUrl: finalCover ?? undefined,
-          content: blocksPayload,
+          blocksJson: blocksPayload,
           format: 'PROSE',
           publicReleaseAt: effectiveReleaseAt,
           chapterType,

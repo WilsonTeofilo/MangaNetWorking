@@ -1,18 +1,7 @@
-- Identidade separada (21/10/2026): V17 adiciona `users.username` (único, imutável depois de escolhido, com
-  backfill `user_<id>`), `users.sex`, `creator_follows` e `work_comments`. Login e 2FA aceitam e-mail **ou** username.
-  Cadastro cria sempre leitor; virar escritor exige `POST /api/creators/apply` com pelo menos um vínculo social
-  (allowlist de host + HTTPS obrigatório, sem `javascript:`/`data:`/credencial/porta).
-  `GET /api/users/{username}/public-profile` respeita a privacidade (perfil privado devolve só o username). Seguidores só
-  de escritor; comentários mostram o username e escondem o resto quando o perfil é privado. Front: header sem a divisão
-  "modo criador/leitor" (menu do avatar), painel do criador em telas separadas (workspace, obras, capítulos, missões,
-  analytics, monetização), tela "Minha conta" e onboarding pós-cadastro. Bug real do stack de alerta corrigido: anotação
-  YAML com `:` não citado derrubava o Prometheus (`promtool` → 4 regras, alvo `up`); Prometheus e Alertmanager
-  passaram para o profile `monitoring` do Compose. Suíte: **412 testes, 0 falhas, 0 erros**.
-
 # ROADMAP DE FASES — MangaNetWorking
 
 > **Documento único de execução.** Substitui as pastas `backend/tasks/`, `frontend/tasks/` e os relatórios por worker.
-> Estado verificado em 20/10/2026, contra o working tree real. Onde não houve execução, está marcado **NÃO VERIFICADO**.
+> Estado do repositório conferido em 18/11/2026: branch `develop`, commit-base `79c5e43`, com correções locais ainda **não commitadas**. Onde não houve execução, está marcado **NÃO VERIFICADO**.
 
 Legenda: ✅ pronto · 🟡 parcial · 🔴 bloqueado/pendente · ⏸️ fora do escopo atual
 
@@ -32,6 +21,33 @@ Legenda: ✅ pronto · 🟡 parcial · 🔴 bloqueado/pendente · ⏸️ fora do
 | **F7** | QA, smoke E2E, CI e empacotamento de produção | ✅ build e smoke 12/12 locais; Compose de produção validado sem `.env`; CI remoto verde no PR #5 (run `39448285071`) |
 | **F8** | Prontidão de produção (observabilidade, Redis, e-mail, backup) | 🟡 OTP/sessão/rate-limit observados em Redis real; backup/restore local executado com checksums; métricas/alertas, runbook, retenção/cifra, destino off-site e operação externa pendentes |
 
+### Situação consolidada em 18/11/2026
+
+**Concluído no código**
+
+- `TASK-SECURITY-001` (`894b927`): política de URLs de capa/banner e leitura de obras `DRAFT` restrita a autor/moderador.
+- `TASK-121` (`e0fb563`): remove N+1 HTTP ao listar capítulos; limpeza de tokens/sombras.
+- `TASK-122` (`d1549e7`): limpeza de cores literais e títulos `.EXE` nos modais restantes.
+- `TASK-123` (`7e4bc59`): code-splitting das rotas pesadas. Bundle inicial reportado: 465 kB; meta anterior de <300 kB não atingida.
+- `TASK-124` (`79c5e43`): bloqueio de etapas LN, tipo de capítulo no wizard de mangá, recuperação local de metadados e decomposição do wizard LN.
+- Performance/arquitetura: N+1 JPA do catálogo, `PaymentGatewayPort` e índices `pg_trgm` (`7de4bdf`, `b7cc9a1`, `be928e9`). Ajustes recentes de feed, perfil, catálogo e navegação também estão na branch.
+- `main` e `develop` têm a mesma árvore no clone (`2ed363d`/`79c5e43`). Isso não prova deploy em produção.
+
+**Fila atual — concluído e pendente no mesmo documento**
+
+| Prioridade | Frente | Estado e critério de fechamento |
+|---|---|---|
+
+| P1 | Rascunhos privados | ✅ Chave por usuário em Manga/LN; mudança de usuário remonta o wizard, guest não lê nem grava. Expiração de 24 h e limpeza após publicar preservadas. |
+| P1 | Publicação Manga/LN | ✅ Correção local pendente de commit: o wizard LN envia `blocksJson` (não o campo legado `content`), preservando estrutura e guard de ilustrações; criação/edição exigem formato compatível com a obra, persistem `chapterType` e reservam capítulo 0 ao prólogo; o mangá usa upload em lote e bloqueia cedo excesso de 300 páginas/tamanho configurado. Criar regressões específicas de UI para recuperação de rascunho e falha de upload/publicação. Os 46 testes de frontend ainda não comprovam esses cenários. |
+| P1 | UX do escritor | QA manual desktop/mobile: atalhos e menu lateral, voltar/avançar do navegador, criar/editar/publicar, upload parcial e recuperação após erro; teclado e leitor de tela. A regra de visibilidade inicial da obra vazia continua decisão de produto: hoje `createWork` publica como `ONGOING`; mudar para `DRAFT` exige definir quando o primeiro capítulo agendado ou antecipado promove a obra. |
+| P1 | F3 — leitura/storage | Fechar volumes, progresso/retensão real de prosa e referências órfãs de storage conforme a seção F3. Medir carga somente com páginas válidas e respostas de sucesso. |
+| P2 | Bundle inicial | Reavaliar composição dos chunks atuais. 465 kB melhorou o bundle, mas não cumpre a meta registrada de <300 kB. |
+| Externo | F1/F4/F8/F14 | DNS/provedor e token Google real; credenciais/webhook/pagamento Sandbox (13.4); destino/KMS operacional; conta Oracle, VM, SSH, firewall, deploy e smoke (14). Nada disso deve ser marcado pronto sem execução real. |
+
+**Prova desta atualização:** a execução integral com o filtro de origem gerou 82 relatórios, **468 testes, 0 falhas, 0 erros e 22 ignorados**; após desativar o registro duplicado no container, o alvo do filtro passou 5/5. Frontend Vitest 46/46; `npm run build` verde. Docker/smoke não executados. A inspeção dos serviços e wizards foi estática; o feed público foi visto em desktop e 360 px, sem erros de console.
+
+---
 > **Nomenclatura:** F0–F8 é o mapa vigente. Menções a F9–F17 em itens históricos são a numeração legada de fases posteriores, preservada apenas como rastreabilidade; não são fases adicionais do estado atual.
 
 ---
@@ -557,11 +573,11 @@ Ao concluir um item, atualize **esta tabela** e `AUDITORIA-ATUAL.md` no mesmo co
 
 ---
 
-| 116 | F5 | ?? **Hub Unificado do Workspace do Autor (TASK-116):** Consolida��o das 5 rotas �rf�s do criador (creator-works, creator-chapters, creator-missions, creator-analytics, creator-monetization) para renderizarem CreatorWorkspacePage com prop section correspondente, eliminando navega��o fragmentada. Remo��o do case 'reader-profile' como ponta solta da TASK-115. Simplifica��o do CREATOR_MENU em HeaderUserMenu.tsx de 6 itens para 1 entrada �nica ('Meu Workspace'). Expans�o do tipo CreatorWorkspaceSection para incluir 'chapters' | 'analytics' | 'monetization'. Novo teste CreatorNavigation.test.tsx (8 testes). **Evid�ncias (2026-11-16):** 30/30 testes passando; build Vite em 3.90s, 0 erros TypeScript; commit 2f91600. |
+| 116 | F5 | ?? **Hub Unificado do Workspace do Autor (TASK-116):** Consolida��o das 5 rotas �rf�s do criador (creator-works, creator-chapters, creator-missions, creator-analytics, creator-monetization) para renderizarem CreatorWorkspacePage com prop section correspondente, eliminando navega��o fragmentada. Remo��o do case 'reader-profile' como ponta solta da TASK-115. Simplifica��o do CREATOR_MENU em HeaderUserMenu.tsx de 6 itens para 1 entrada �nica ('Meu Workspace'). Expans�o do tipo CreatorWorkspaceSection para incluir 'chapters' | 'analytics' | 'monetization'. Novo teste CreatorNavigation.test.tsx (8 testes). **Evid�ncias (2026-11-16):** 30/30 testes passando; build Vite em 3.90s, 0 erros TypeScript; commit 2f91600. |
 
-| 116-REF | F5 | ?? **Refinamento do Hub do Autor & Sincroniza��o via URL (TASK-116):** Sincroniza��o bidirecional do Workspace com query params ?aba= na URL (visao-geral, obras, missoes, configuracoes, analytics). Menu do criador no Header apontando diretamente para as abas via URL. Remo��o do bot�o redundante '+ Nova Obra' nas A��es R�pidas da Bancada, mantendo 1 �nico CTA prim�rio amarelo no topo. Exclus�o f�sica definitiva do arquivo morto ReaderProfilePage.tsx. Limpeza de query params ao sair do Workspace. **Evid�ncias (2026-11-16):** 42/42 testes passando (100% verde), build Vite em 2.55s (0 erros TS), commit e44d7b9. |
+| 116-REF | F5 | ?? **Refinamento do Hub do Autor & Sincroniza��o via URL (TASK-116):** Sincroniza��o bidirecional do Workspace com query params ?aba= na URL (visao-geral, obras, missoes, configuracoes, analytics). Menu do criador no Header apontando diretamente para as abas via URL. Remo��o do bot�o redundante '+ Nova Obra' nas A��es R�pidas da Bancada, mantendo 1 �nico CTA prim�rio amarelo no topo. Exclus�o f�sica definitiva do arquivo morto ReaderProfilePage.tsx. Limpeza de query params ao sair do Workspace. **Evid�ncias (2026-11-16):** 42/42 testes passando (100% verde), build Vite em 2.55s (0 erros TS), commit e44d7b9. |
 
-| 117 | F5 | ?? **Despolui��o de Superf�cies & Fim do 'Efeito Gaiola' (TASK-117):** Erradica��o de caixas perim�tricas pesadas order-2 border-[var(--mn-line)] e sombras duras desnecess�rias em elementos est�ticos por toda a aplica��o (CreatorKpiHeader, CreatorOverviewTab, AccountSecurityTab, AccountCollectionTab, PublicProfilePage). Estabelecimento da hierarquia oficial onde bordas e sombras duras s�o exclusivas de elementos interativos, enquanto blocos secund�rios usam fundos chapados elegantes (g-[var(--mn-ink-2)]), acentos sutis (order-l-2) e respiro generoso (p-6 a p-8). **Evid�ncias (2026-11-16):** 42/42 testes passando (100% verde), build Vite em 2.56s (0 erros TS), commit 74f6291. |
+| 117 | F5 | ?? **Despolui��o de Superf�cies & Fim do 'Efeito Gaiola' (TASK-117):** Erradica��o de caixas perim�tricas pesadas order-2 border-[var(--mn-line)] e sombras duras desnecess�rias em elementos est�ticos por toda a aplica��o (CreatorKpiHeader, CreatorOverviewTab, AccountSecurityTab, AccountCollectionTab, PublicProfilePage). Estabelecimento da hierarquia oficial onde bordas e sombras duras s�o exclusivas de elementos interativos, enquanto blocos secund�rios usam fundos chapados elegantes (g-[var(--mn-ink-2)]), acentos sutis (order-l-2) e respiro generoso (p-6 a p-8). **Evid�ncias (2026-11-16):** 42/42 testes passando (100% verde), build Vite em 2.56s (0 erros TS), commit 74f6291. |
 
-| 118 | F5 | ?? **Tipografia & Microcopy de Rua nos Dashboards (TASK-118):** Purga total de 100% das 39 ocorr�ncias residuais de ont-mono no frontend (0 font-mono restante). Padroniza��o rigorosa do quarteto tipogr�fico oficial (Anton, Bowlby One, Archivo e Silkscreen). Eleva��o de todos os microrr�tulos Silkscreen para o patamar m�nimo oficial de 12px (	ext-[12px]). Microcopy aut�ntica de bancada independente e rua em pt-BR em todo o Workspace e pain�is do autor. **Evid�ncias (2026-11-16):** 42/42 testes passando (100% verde), build Vite em 2.46s (0 erros TS), commit 1f782a6. |
-| 119 | F5 | ?? **Ficha da Obra & Modo Leitor Puro (TASK-119):** Purga de sombra dura gigante em container est�tico em WorkDetailHero.tsx e caixas perim�tricas na barra lateral do criador. Purga do token de cor n�o oficial mn-teal substitu�do por mn-ok em WorkChapterList.tsx. Modo Leitor 100% puro e imersivo (--mn-ink), com purga de literais hexadecimais (#000000, #101114) e elimina��o da caixa amarela agressiva em ChapterEndPanel.tsx, adotando divisor sutil e foco na leitura cont�nua. **Evid�ncias (2026-11-16):** 42/42 testes passando (100% verde), build Vite em 2.46s (0 erros TS), commit 1f782a6. |
+| 118 | F5 | ?? **Tipografia & Microcopy de Rua nos Dashboards (TASK-118):** Purga total de 100% das 39 ocorr�ncias residuais de ont-mono no frontend (0 font-mono restante). Padroniza��o rigorosa do quarteto tipogr�fico oficial (Anton, Bowlby One, Archivo e Silkscreen). Eleva��o de todos os microrr�tulos Silkscreen para o patamar m�nimo oficial de 12px (	ext-[12px]). Microcopy aut�ntica de bancada independente e rua em pt-BR em todo o Workspace e pain�is do autor. **Evid�ncias (2026-11-16):** 42/42 testes passando (100% verde), build Vite em 2.46s (0 erros TS), commit 1f782a6. |
+| 119 | F5 | ?? **Ficha da Obra & Modo Leitor Puro (TASK-119):** Purga de sombra dura gigante em container est�tico em WorkDetailHero.tsx e caixas perim�tricas na barra lateral do criador. Purga do token de cor n�o oficial mn-teal substitu�do por mn-ok em WorkChapterList.tsx. Modo Leitor 100% puro e imersivo (--mn-ink), com purga de literais hexadecimais (#000000, #101114) e elimina��o da caixa amarela agressiva em ChapterEndPanel.tsx, adotando divisor sutil e foco na leitura cont�nua. **Evid�ncias (2026-11-16):** 42/42 testes passando (100% verde), build Vite em 2.46s (0 erros TS), commit 1f782a6. |

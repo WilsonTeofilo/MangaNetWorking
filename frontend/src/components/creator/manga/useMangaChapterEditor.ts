@@ -4,8 +4,22 @@ import { toBackendLocalDateTime } from '../../../utils/datetime';
 import { storageApi } from '../../../api/storageApi';
 import { workApi } from '../../../api/workApi';
 import type { ChapterDraft } from '../LightNovelChapterWizard';
+import { useAuth } from '../../../context/AuthContext';
 
 export type MangaChapterType = 'REGULAR' | 'SPECIAL' | 'PROLOGUE';
+
+const MAX_CHAPTER_PAGES = 300;
+const DEFAULT_MAX_PAGE_FILE_SIZE_MB = 15;
+
+function resolveMaxPageFileSizeBytes(): number {
+  const configuredMegabytes = Number(import.meta.env.VITE_STORAGE_MAX_FILE_SIZE_MB);
+  const megabytes = Number.isFinite(configuredMegabytes) && configuredMegabytes > 0
+    ? configuredMegabytes
+    : DEFAULT_MAX_PAGE_FILE_SIZE_MB;
+  return megabytes * 1024 * 1024;
+}
+
+const MAX_PAGE_FILE_SIZE_BYTES = resolveMaxPageFileSizeBytes();
 
 export interface MangaRecoverableDraft {
   chapterTitle: string;
@@ -31,6 +45,7 @@ export function useMangaChapterEditor({
   existingChapterNumbers,
   onPublished,
 }: UseMangaChapterEditorProps) {
+  const { user } = useAuth();
   const isEditing = Boolean(draft);
 
   // No modo edição com páginas já carregadas, inicia direto na etapa 2 ("Organizar páginas")
@@ -74,7 +89,7 @@ export function useMangaChapterEditor({
   const coverInputRef = useRef<HTMLInputElement | null>(null);
   const pageRefs = useRef<Record<string, HTMLLIElement | null>>({});
 
-  const draftKey = `mn:manga-draft:${workId}`;
+  const draftKey = `mn:manga-draft:${user.uid}:${workId}`;
   const prologueTaken = (existingChapterNumbers ?? []).includes(0) && (!isEditing || draft?.chapterNumber !== 0);
   const effectiveChapterNumber = isEditing
     ? (draft?.chapterNumber ?? nextChapterNumber)
@@ -126,6 +141,8 @@ export function useMangaChapterEditor({
 
   // Draft persistence: checa rascunho de metadados ao montar (< 24h)
   useEffect(() => {
+    setRecoverable(null);
+    if (user.uid === 'guest') return;
     if (isEditing) return;
     try {
       const stored = localStorage.getItem(draftKey);
@@ -134,7 +151,9 @@ export function useMangaChapterEditor({
       if (!parsed || typeof parsed !== 'object') return;
       const savedTime = new Date(parsed.savedAt).getTime();
       const now = Date.now();
-      const isRecent = !isNaN(savedTime) && now - savedTime < 24 * 60 * 60 * 1000;
+      const isRecent = !isNaN(savedTime)
+        && savedTime <= now
+        && now - savedTime < 24 * 60 * 60 * 1000;
       if (isRecent && typeof parsed.chapterTitle === 'string') {
         const type: MangaChapterType =
           parsed.chapterType === 'PROLOGUE' || parsed.chapterType === 'SPECIAL'
@@ -150,10 +169,11 @@ export function useMangaChapterEditor({
     } catch {
       // quota or JSON error
     }
-  }, [isEditing, draftKey]);
+  }, [user.uid, isEditing, draftKey]);
 
   // Draft persistence: salva debounced apenas os metadados (não as imagens)
   useEffect(() => {
+    if (user.uid === 'guest') return;
     if (isEditing || !dirty) return;
     const handle = window.setTimeout(() => {
       try {
@@ -170,7 +190,7 @@ export function useMangaChapterEditor({
       }
     }, 1000);
     return () => clearTimeout(handle);
-  }, [isEditing, dirty, chapterTitle, releaseDate, chapterType, draftKey]);
+  }, [user.uid, isEditing, dirty, chapterTitle, releaseDate, chapterType, draftKey]);
 
   const restoreDraft = useCallback(() => {
     if (!recoverable) return;
@@ -197,10 +217,34 @@ export function useMangaChapterEditor({
       setError('Selecione arquivos de imagem válidos (JPG, PNG ou WebP).');
       return;
     }
-    setError(null);
+
+    const filesWithinSizeLimit = selected.filter((file) => file.size <= MAX_PAGE_FILE_SIZE_BYTES);
+    const availableSlots = Math.max(0, MAX_CHAPTER_PAGES - pages.length);
+    const accepted = filesWithinSizeLimit.slice(0, availableSlots);
+
+    if (accepted.length === 0) {
+      if (availableSlots === 0) {
+        setError(`Este capítulo já atingiu o limite de ${MAX_CHAPTER_PAGES} páginas.`);
+      } else {
+        setError(`Cada página pode ter no máximo ${MAX_PAGE_FILE_SIZE_BYTES / 1024 / 1024} MB.`);
+      }
+      return;
+    }
+
+    const rejectedBySize = selected.length - filesWithinSizeLimit.length;
+    const rejectedByCount = Math.max(0, filesWithinSizeLimit.length - availableSlots);
+    if (rejectedBySize > 0 || rejectedByCount > 0) {
+      const details = [
+        rejectedBySize > 0 ? `${rejectedBySize} acima do tamanho permitido` : null,
+        rejectedByCount > 0 ? `${rejectedByCount} acima do limite de páginas` : null,
+      ].filter(Boolean).join(' e ');
+      setError(`Algumas imagens não foram adicionadas: ${details}.`);
+    } else {
+      setError(null);
+    }
     setPages((current) => [
       ...current,
-      ...selected.map((file) => ({
+      ...accepted.map((file) => ({
         key: `${file.name}-${file.size}-${file.lastModified}-${Math.random().toString(36).slice(2, 8)}`,
         file,
         previewUrl: URL.createObjectURL(file),
@@ -291,16 +335,17 @@ export function useMangaChapterEditor({
     setError(null);
     setSuccess(null);
     try {
-      const uploaded: string[] = [];
-      for (const page of pages) {
-        if (page.url) {
-          uploaded.push(page.url);
-          continue;
+      const newPageFiles = pages.flatMap((page) => page.url || !page.file ? [] : [page.file]);
+      const newlyUploadedPages = await storageApi.uploadBatch(newPageFiles);
+      let uploadedPageIndex = 0;
+      const uploaded = pages.map((page) => {
+        if (page.url) return page.url;
+        const stored = newlyUploadedPages[uploadedPageIndex++];
+        if (!stored) {
+          throw new Error('Não foi possível preparar todas as páginas do capítulo para publicação.');
         }
-        if (!page.file) continue;
-        const stored = await storageApi.uploadFile(page.file);
-        uploaded.push(stored.url);
-      }
+        return stored.url;
+      });
 
       let chapterCoverUrl: string | undefined = coverUrl ?? undefined;
       if (!chapterCoverUrl && coverFile) {
@@ -349,7 +394,7 @@ export function useMangaChapterEditor({
       if (msg.toLowerCase().includes('prólogo') || msg.toLowerCase().includes('prologue')) {
         setError('Esta obra já possui um prólogo.');
       } else {
-        setError(msg || 'Não foi possível publicar o capítulo. Verifique os dados e tente novamente.');
+        setError(msg || 'Não foi possível publicar o capítulo. As páginas permanecem no editor; tente novamente.');
       }
     } finally {
       setBusy(false);

@@ -26,6 +26,7 @@ import org.springframework.security.web.header.writers.XXssProtectionHeaderWrite
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.util.List;
+import java.util.Set;
 
 @Configuration
 @EnableWebSecurity
@@ -198,7 +199,8 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(sessionAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(sessionAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(cookieOriginCsrfFilter(), SessionAuthenticationFilter.class);
 
         return http.build();
     }
@@ -247,13 +249,21 @@ public class SecurityConfig {
         return registration;
     }
 
+    /**
+     * Evita que o filtro de origem seja registrado uma segunda vez pelo container. A única
+     * execução deve ocorrer na ordem definida na {@link SecurityFilterChain}, após a sessão.
+     */
+    @Bean
+    public FilterRegistrationBean<CookieOriginCsrfFilter> cookieOriginCsrfFilterRegistration(
+            CookieOriginCsrfFilter filter) {
+        FilterRegistrationBean<CookieOriginCsrfFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
-        // Normaliza a lista (remove espaços/entradas vazias de um env var separado por vírgula).
-        List<String> origins = allowedOrigins.stream()
-                .map(String::trim)
-                .filter(origin -> !origin.isEmpty())
-                .toList();
+        List<String> origins = normalizedAllowedOrigins();
 
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(origins);
@@ -266,5 +276,18 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
+    }
+
+    @Bean
+    public CookieOriginCsrfFilter cookieOriginCsrfFilter() {
+        return new CookieOriginCsrfFilter(Set.copyOf(normalizedAllowedOrigins()));
+    }
+
+    private List<String> normalizedAllowedOrigins() {
+        // Normaliza a lista (remove espaços/entradas vazias de uma variável separada por vírgula).
+        return allowedOrigins.stream()
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .toList();
     }
 }

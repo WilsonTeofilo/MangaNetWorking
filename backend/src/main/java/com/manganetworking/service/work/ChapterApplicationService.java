@@ -102,6 +102,8 @@ public class ChapterApplicationService {
         boolean hasBlocks = dto.blocksJson() != null && !dto.blocksJson().isBlank();
         boolean hasLegacyProse = dto.content() != null && !dto.content().isBlank();
 
+        validateChapterTypeAndNumber(dto.chapterNumber(), chapterType);
+
         if (hasBlocks && (hasLegacyProse || !pages.isEmpty())) {
             throw new IllegalArgumentException("Blocos (blocksJson) são exclusivos com content/pages.");
         }
@@ -110,15 +112,6 @@ public class ChapterApplicationService {
         String blocksJson = null;
 
         if (format == ChapterFormat.PROSE) {
-            if (chapterType == ChapterType.PROLOGUE) {
-                if (dto.chapterNumber() != 0) {
-                    throw new IllegalArgumentException("Prólogo deve ser o capítulo 0.");
-                }
-                if (chapterRepository.findByWorkIdAndChapterNumber(workId, 0).isPresent()) {
-                    throw new IllegalArgumentException("Esta obra já possui um prólogo (capítulo 0).");
-                }
-            }
-
             if (hasBlocks) {
                 if (dto.blocksJson().length() > ChapterBlocksPolicy.MAX_RAW_JSON_CHARS) {
                     throw new IllegalArgumentException("O JSON de blocos excede o limite técnico de processamento.");
@@ -160,12 +153,7 @@ public class ChapterApplicationService {
             throw new AccessDeniedException("Apenas o autor proprietário pode publicar capítulos nesta obra.");
         }
 
-        boolean formatMatchesWork = work.getFormat() == com.manganetworking.domain.enums.WorkFormat.MANGA
-                ? format == ChapterFormat.IMAGE_PAGES
-                : format == ChapterFormat.PROSE;
-        if (!formatMatchesWork) {
-            throw new IllegalArgumentException("O formato do capítulo deve corresponder ao formato da obra.");
-        }
+        assertChapterFormatMatchesWork(work, format);
 
         if (chapterRepository.findByWorkIdAndChapterNumber(workId, dto.chapterNumber()).isPresent()) {
             throw new IllegalArgumentException("Capítulo #" + dto.chapterNumber() + " já está cadastrado nesta obra.");
@@ -214,9 +202,12 @@ public class ChapterApplicationService {
         ChapterEntity chapter = chapterRepository.findByWorkIdAndChapterNumber(workId, number)
                 .orElseThrow(() -> new ResourceNotFoundException("Capítulo #" + number + " não encontrado"));
 
-        ChapterType chapterType = chapter.getChapterType();
+        ChapterType chapterType = dto.chapterType() != null ? dto.chapterType() : chapter.getChapterType();
         ChapterFormat format = dto.format() != null ? dto.format() : chapter.getFormat();
         List<String> pages = dto.pages() != null ? dto.pages() : readPages(chapter);
+
+        validateChapterTypeAndNumber(number, chapterType);
+        assertChapterFormatMatchesWork(work, format);
 
         boolean hasBlocks = dto.blocksJson() != null && !dto.blocksJson().isBlank();
         boolean hasLegacyProse = dto.content() != null && !dto.content().isBlank();
@@ -278,6 +269,7 @@ public class ChapterApplicationService {
             chapter.setCoverUrl(WorkImageUrlPolicy.cover(dto.coverUrl()));
         }
         chapter.setFormat(format);
+        chapter.setChapterType(chapterType);
         chapter.setContentText(format == ChapterFormat.PROSE ? content : null);
         if (format == ChapterFormat.IMAGE_PAGES) {
             chapter.setPagesJson(writePagesJson(pages));
@@ -404,6 +396,24 @@ public class ChapterApplicationService {
                 cap.getLikes() != null ? cap.getLikes() : 0L,
                 cap.getFormat()
         );
+    }
+
+    private void assertChapterFormatMatchesWork(WorkEntity work, ChapterFormat chapterFormat) {
+        boolean formatMatchesWork = work.getFormat() == com.manganetworking.domain.enums.WorkFormat.MANGA
+                ? chapterFormat == ChapterFormat.IMAGE_PAGES
+                : chapterFormat == ChapterFormat.PROSE;
+        if (!formatMatchesWork) {
+            throw new IllegalArgumentException("O formato do capítulo deve corresponder ao formato da obra.");
+        }
+    }
+
+    private void validateChapterTypeAndNumber(Integer chapterNumber, ChapterType chapterType) {
+        if (chapterType == ChapterType.PROLOGUE && chapterNumber != 0) {
+            throw new IllegalArgumentException("Prólogo deve ser o capítulo 0.");
+        }
+        if (chapterType != ChapterType.PROLOGUE && chapterNumber == 0) {
+            throw new IllegalArgumentException("O capítulo 0 é reservado para o prólogo.");
+        }
     }
 
     private String writePagesJson(List<String> pages) {

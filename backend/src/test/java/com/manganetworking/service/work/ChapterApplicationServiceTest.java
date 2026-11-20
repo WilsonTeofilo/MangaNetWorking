@@ -22,6 +22,7 @@ import com.manganetworking.service.feed.event.WorkFeedSyncEvent;
 import com.manganetworking.service.notification.NotificationService;
 import com.manganetworking.service.work.dto.ChapterSummaryDto;
 import com.manganetworking.service.work.dto.CreateChapterRequestDto;
+import com.manganetworking.service.work.dto.UpdateChapterRequestDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -254,6 +255,53 @@ class ChapterApplicationServiceTest {
                 new CreateChapterRequestDto(1, "Capítulo 1", null, List.of(), LocalDateTime.now(),
                         ChapterFormat.PROSE, ChapterType.REGULAR, "x".repeat(1_000), null)));
         verify(chapterRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Rejeita capítulo zero que não seja prólogo")
+    void rejectsNonPrologueAtChapterZero() {
+        CreateChapterRequestDto dto = new CreateChapterRequestDto(
+                0, "Capítulo zero", null, List.of("pagina.png"), LocalDateTime.now(),
+                ChapterFormat.IMAGE_PAGES, ChapterType.REGULAR, null, null);
+
+        assertThrows(IllegalArgumentException.class, () -> chapterService.createChapter(creatorId, workId, dto));
+        verifyNoInteractions(workRepository, chapterRepository, chapterFileRepository);
+    }
+
+    @Test
+    @DisplayName("Edição não aceita formato incompatível com a obra")
+    void rejectsIncompatibleFormatOnChapterUpdate() {
+        ChapterEntity existing = chapter(1, LocalDateTime.now());
+        existing.setFormat(ChapterFormat.IMAGE_PAGES);
+        existing.setChapterType(ChapterType.REGULAR);
+        when(workRepository.findById(workId)).thenReturn(Optional.of(work));
+        when(chapterRepository.findByWorkIdAndChapterNumber(workId, 1)).thenReturn(Optional.of(existing));
+
+        UpdateChapterRequestDto dto = new UpdateChapterRequestDto(
+                "Capítulo 1", null, List.of(), "Texto ".repeat(200), ChapterFormat.PROSE,
+                ChapterType.REGULAR, LocalDateTime.now(), null);
+
+        assertThrows(IllegalArgumentException.class, () -> chapterService.updateChapter(creatorId, workId, 1, dto));
+        verify(chapterRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Edição persiste tipo editorial permitido do capítulo")
+    void persistsChapterTypeOnUpdate() {
+        ChapterEntity existing = chapter(1, LocalDateTime.now());
+        existing.setFormat(ChapterFormat.IMAGE_PAGES);
+        existing.setChapterType(ChapterType.REGULAR);
+        when(workRepository.findById(workId)).thenReturn(Optional.of(work));
+        when(chapterRepository.findByWorkIdAndChapterNumber(workId, 1)).thenReturn(Optional.of(existing));
+        when(chapterRepository.save(any(ChapterEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        UpdateChapterRequestDto dto = new UpdateChapterRequestDto(
+                "Especial", null, List.of("pagina.png"), null, ChapterFormat.IMAGE_PAGES,
+                ChapterType.SPECIAL, LocalDateTime.now(), null);
+
+        chapterService.updateChapter(creatorId, workId, 1, dto);
+
+        assertEquals(ChapterType.SPECIAL, existing.getChapterType());
     }
 
     @Test

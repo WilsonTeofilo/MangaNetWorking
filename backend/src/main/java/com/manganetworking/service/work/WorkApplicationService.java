@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -177,7 +178,7 @@ public class WorkApplicationService {
             work.setFormat(dto.format());
         }
         if (dto.status() != null && !dto.status().isBlank()) {
-            work.setStatus(normalizeWorkStatus(dto.status()));
+            work.setStatus(parseAuthorEditableStatus(dto.status()));
         }
 
         WorkEntity saved = workRepository.save(work);
@@ -263,11 +264,18 @@ public class WorkApplicationService {
         );
     }
 
-    private WorkStatus normalizeWorkStatus(String status) {
-        if (status == null || status.isBlank()) {
-            return WorkStatus.ONGOING;
+    private WorkStatus parseAuthorEditableStatus(String value) {
+        final WorkStatus status;
+        try {
+            status = WorkStatus.valueOf(value.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException("Estado editorial inválido.", exception);
         }
-        return WorkStatus.fromString(status);
+
+        if (!EnumSet.of(WorkStatus.DRAFT, WorkStatus.ONGOING, WorkStatus.COMPLETED).contains(status)) {
+            throw new IllegalArgumentException("Este estado não pode ser alterado pelo autor.");
+        }
+        return status;
     }
 
     private void assertWorkVisible(WorkEntity work) {
