@@ -20,11 +20,6 @@ export function limitPasswordLength(value: string): string {
   return Array.from(value).slice(0, 64).join('');
 }
 
-/** OTP aleatório usado apenas no modo demonstração (backend indisponível). */
-function randomOtp(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
-
 export function useAuthForm({ onBackToFeed, onLoginSuccess }: UseAuthFormOptions) {
   const { refreshSession } = useAuth();
   const [mode, setMode] = useState<AuthMode>('login');
@@ -48,9 +43,8 @@ export function useAuthForm({ onBackToFeed, onLoginSuccess }: UseAuthFormOptions
   const [birthDate, setBirthDate] = useState('');
   const [passwordRecoveryStep, setPasswordRecoveryStep] = useState<PasswordRecoveryStep>('none');
 
-  // E-mail que identifica o desafio 2FA no servidor e modo demonstração (sem backend).
+  // E-mail que identifica o desafio 2FA emitido pelo servidor.
   const [challengeEmail, setChallengeEmail] = useState('');
-  const [isDemoMode, setIsDemoMode] = useState(false);
   // Código 2FA para conveniência em desenvolvimento (Dev Outbox). Vazio em produção.
   const [devOtpHint, setDevOtpHint] = useState('');
 
@@ -72,7 +66,7 @@ export function useAuthForm({ onBackToFeed, onLoginSuccess }: UseAuthFormOptions
   }, []);
 
   const completeLogin = async () => {
-    // Hidrata a sessão real (pode não haver sessão em modo demonstração).
+    // Hidrata a sessão autoritativa criada após a validação 2FA no servidor.
     await refreshSession();
     if (onLoginSuccess) {
       onLoginSuccess();
@@ -123,6 +117,7 @@ export function useAuthForm({ onBackToFeed, onLoginSuccess }: UseAuthFormOptions
   const handleCredentialsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
+    setDevOtpHint('');
 
     if (mode === 'register') {
       if (!name.trim()) {
@@ -184,7 +179,6 @@ export function useAuthForm({ onBackToFeed, onLoginSuccess }: UseAuthFormOptions
 
       const targetEmail = challenge.email || email;
       setChallengeEmail(targetEmail);
-      setIsDemoMode(false);
       setDevOtpHint((await authApi.fetchDevOtp(targetEmail)) ?? '');
       setStep('two-factor');
     } catch (err: unknown) {
@@ -193,14 +187,7 @@ export function useAuthForm({ onBackToFeed, onLoginSuccess }: UseAuthFormOptions
         const data = err.data as { message?: string } | undefined;
         setErrorMessage(data?.message || 'Não foi possível continuar. Verifique os dados informados.');
       } else {
-        if (import.meta.env.DEV) {
-          setIsDemoMode(true);
-          setChallengeEmail(email);
-          setDevOtpHint(randomOtp());
-          setStep('two-factor');
-        } else {
-          setErrorMessage('Não foi possível conectar ao serviço de autenticação. Tente novamente.');
-        }
+        setErrorMessage('Não foi possível conectar ao serviço de autenticação. Tente novamente.');
       }
     } finally {
       setIsLoading(false);
@@ -217,17 +204,14 @@ export function useAuthForm({ onBackToFeed, onLoginSuccess }: UseAuthFormOptions
 
     setIsLoading(true);
     try {
-      if (!isDemoMode) {
-        await authApi.verify2fa({ identifier: challengeEmail || email, code: twoFactorCode });
-      }
+      await authApi.verify2fa({ identifier: challengeEmail || email, code: twoFactorCode });
       await completeLogin();
     } catch (err: unknown) {
       if (err instanceof ApiError && err.status >= 400 && err.status < 500) {
         const data = err.data as { message?: string } | undefined;
         setErrorMessage(data?.message || 'Código inválido ou expirado. Tente novamente.');
       } else {
-        if (import.meta.env.DEV) await completeLogin();
-        else setErrorMessage('Não foi possível confirmar sua sessão. Entre novamente.');
+        setErrorMessage('Não foi possível confirmar sua sessão. Entre novamente.');
       }
     } finally {
       setIsLoading(false);
@@ -284,7 +268,6 @@ export function useAuthForm({ onBackToFeed, onLoginSuccess }: UseAuthFormOptions
     birthDate,
     setBirthDate,
     challengeEmail,
-    isDemoMode,
     devOtpHint,
     handleCredentialsSubmit,
     handleTwoFactorSubmit,

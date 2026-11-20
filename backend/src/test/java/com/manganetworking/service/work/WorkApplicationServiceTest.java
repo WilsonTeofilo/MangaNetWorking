@@ -15,6 +15,7 @@ import com.manganetworking.service.session.SessionService;
 import com.manganetworking.service.storage.FilePolicyException;
 import com.manganetworking.service.work.dto.ChapterSummaryDto;
 import com.manganetworking.service.work.dto.CreateWorkRequestDto;
+import com.manganetworking.service.work.dto.UpdateWorkRequestDto;
 import com.manganetworking.service.work.dto.WorkDetailsResponseDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -127,6 +128,39 @@ class WorkApplicationServiceTest {
 
         assertNotNull(created);
         verify(eventPublisher).publishEvent(new WorkFeedSyncEvent(workId, "cadastro"));
+    }
+
+    @Test
+    @DisplayName("Autor pode definir apenas status editoriais permitidos")
+    void shouldRejectReservedAndUnknownWorkStatusesFromAuthor() {
+        when(workRepository.findById(workId)).thenReturn(Optional.of(work));
+
+        for (String status : List.of("SUSPENDED", "ARCHIVED_LGPD", "INVALID")) {
+            UpdateWorkRequestDto dto = new UpdateWorkRequestDto(
+                    "Título atualizado", "Sinopse válida com mais de cem caracteres para passar a validação do serviço.",
+                    "/api/storage/11111111-1111-1111-1111-111111111111.jpg", null, null, null, status);
+
+            assertThrows(IllegalArgumentException.class, () -> workService.updateWork(creatorId, workId, dto), status);
+        }
+
+        verify(workRepository, never()).save(any(WorkEntity.class));
+        assertThrows(IllegalArgumentException.class, () -> WorkStatus.fromString("INVALID"));
+    }
+
+    @Test
+    @DisplayName("Autor pode definir estados editoriais permitidos")
+    void shouldAllowEditorialWorkStatusesFromAuthor() {
+        when(workRepository.findById(workId)).thenReturn(Optional.of(work));
+        when(workRepository.save(any(WorkEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        for (String status : List.of("DRAFT", "ONGOING", "COMPLETED")) {
+            UpdateWorkRequestDto dto = new UpdateWorkRequestDto(
+                    "Título atualizado", "Sinopse válida com mais de cem caracteres para passar a validação do serviço.",
+                    "/api/storage/11111111-1111-1111-1111-111111111111.jpg", null, null, null, status);
+
+            workService.updateWork(creatorId, workId, dto);
+            assertEquals(WorkStatus.valueOf(status), work.getStatus());
+        }
     }
 
     @Test

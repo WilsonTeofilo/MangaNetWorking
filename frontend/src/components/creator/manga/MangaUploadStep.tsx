@@ -40,7 +40,9 @@ export function MangaUploadStep({
       >
         <ImageIcon size={28} className="mx-auto text-[var(--mn-mute)]" />
         <p className="font-display text-sm text-[var(--mn-paper)] uppercase mt-2">Arraste as páginas aqui</p>
-        <p className="font-body text-xs text-[var(--mn-mute)]">ou use o seletor abaixo (JPG, PNG ou WebP)</p>
+        <p className="font-body text-xs text-[var(--mn-mute)]">
+          JPG, PNG ou WebP · até 300 páginas por capítulo · até 15 MB por arquivo
+        </p>
         <Button type="button" variant="ghost" className="mt-3" onClick={() => pagesInputRef.current?.click()}>
           <Upload size={14} /> ESCOLHER PÁGINAS
         </Button>
@@ -58,7 +60,7 @@ export function MangaUploadStep({
       </div>
       {pages.length > 0 && (
         <p className="font-pixel text-[11px] uppercase text-[var(--mn-mute)]">
-          {pages.length} página(s) selecionada(s)
+          {pages.length} de 300 página(s) selecionada(s)
         </p>
       )}
     </section>

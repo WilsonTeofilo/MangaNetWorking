@@ -32,15 +32,14 @@ public enum WorkStatus {
     @JsonCreator
     public static WorkStatus fromString(String value) {
         if (value == null || value.isBlank()) {
-            return ONGOING;
+            throw new IllegalArgumentException("Estado da obra é obrigatório.");
         }
         String normalized = value.trim().toUpperCase(Locale.ROOT);
-        for (WorkStatus status : values()) {
-            if (status.name().equals(normalized)) {
-                return status;
-            }
+        try {
+            return WorkStatus.valueOf(normalized);
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException("Estado da obra inválido.", exception);
         }
-        return ONGOING;
     }
 
     @JsonValue

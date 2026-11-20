@@ -1,6 +1,7 @@
 import { LightNovelChapterWizard } from './LightNovelChapterWizard';
 import { MangaChapterWizard } from './manga/MangaChapterWizard';
 import type { ChapterDraft } from './LightNovelChapterWizard';
+import { useAuth } from '../../context/AuthContext';
 
 export type { ChapterDraft };
 
@@ -23,8 +24,9 @@ export interface ChapterPublishWizardProps {
  * - LIGHT_NOVEL: editor de blocos tipados e ilustrações (LightNovelChapterWizard).
  */
 export function ChapterPublishWizard(props: ChapterPublishWizardProps) {
+  const { user } = useAuth();
   if (props.workFormat === 'LIGHT_NOVEL') {
-    return <LightNovelChapterWizard {...props} />;
+    return <LightNovelChapterWizard key={user.uid} {...props} />;
   }
-  return <MangaChapterWizard {...props} />;
+  return <MangaChapterWizard key={user.uid} {...props} />;
 }
