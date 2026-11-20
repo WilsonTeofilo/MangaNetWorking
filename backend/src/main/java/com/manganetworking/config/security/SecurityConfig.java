@@ -131,7 +131,8 @@ public class SecurityConfig {
                         ).authenticated()
                         // Documentos legais públicos (Política de Privacidade publicada)
                         .requestMatchers(HttpMethod.GET, "/api/legal/**").permitAll()
-                        // Webhook assinado do Mercado Pago para confirmação de pagamentos
+                        // Consulta pública de preço VIP e webhook assinado do Mercado Pago
+                        .requestMatchers(HttpMethod.GET, "/api/monetization/mercadopago/vip/price").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/monetization/mercadopago/webhook").permitAll()
                         // Webhook de bounce/complaint do provedor de e-mail: a autenticação é o
                         // segredo compartilhado conferido no controller (rota fechada sem ele).

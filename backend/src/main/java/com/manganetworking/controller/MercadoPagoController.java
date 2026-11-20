@@ -2,7 +2,7 @@ package com.manganetworking.controller;
 
 import com.manganetworking.config.exception.AccessDeniedException;
 import com.manganetworking.service.auth.AuthApplicationService;
-import com.manganetworking.service.monetization.MercadoPagoService;
+import com.manganetworking.service.monetization.PaymentGatewayPort;
 import com.manganetworking.service.session.SessionService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
@@ -18,20 +18,25 @@ import java.util.Map;
 public class MercadoPagoController {
 
     private static final Logger log = LoggerFactory.getLogger(MercadoPagoController.class);
-    private final MercadoPagoService mercadoPagoService;
+    private final PaymentGatewayPort paymentGatewayPort;
     private final AuthApplicationService authService;
 
-    public MercadoPagoController(MercadoPagoService mercadoPagoService, AuthApplicationService authService) {
-        this.mercadoPagoService = mercadoPagoService;
+    public MercadoPagoController(PaymentGatewayPort paymentGatewayPort, AuthApplicationService authService) {
+        this.paymentGatewayPort = paymentGatewayPort;
         this.authService = authService;
+    }
+
+    @GetMapping("/vip/price")
+    public ResponseEntity<Map<String, Object>> getVipPrice() {
+        return ResponseEntity.ok(Map.of("priceBrl", paymentGatewayPort.getVipPrice()));
     }
 
     @PostMapping("/vip/checkout")
     public ResponseEntity<Map<String, Object>> createVipCheckout(HttpServletRequest request) {
         SessionService.UserSession session = authService.getCurrentSession(request)
                 .orElseThrow(() -> new AccessDeniedException("Autenticação necessária para assinar o plano VIP."));
-        String checkoutUrl = mercadoPagoService.createVipCheckoutPreference(session.userId());
-        return ResponseEntity.ok(Map.of("checkoutUrl", checkoutUrl, "priceBrl", mercadoPagoService.getVipPrice()));
+        String checkoutUrl = paymentGatewayPort.createVipCheckoutPreference(session.userId());
+        return ResponseEntity.ok(Map.of("checkoutUrl", checkoutUrl, "priceBrl", paymentGatewayPort.getVipPrice()));
     }
 
     @PostMapping("/webhook")
@@ -49,11 +54,11 @@ public class MercadoPagoController {
         }
         if (type != null && !"payment".equalsIgnoreCase(type)) return ResponseEntity.ok().build();
         if (dataId == null || signature == null || requestId == null
-                || !mercadoPagoService.verifyWebhookSignature(signature, requestId, dataId)) {
+                || !paymentGatewayPort.verifyWebhookSignature(signature, requestId, dataId)) {
             log.warn("[MERCADO-PAGO] Notificação de pagamento rejeitada por assinatura ausente/inválida.");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        mercadoPagoService.processPaymentNotification(dataId);
+        paymentGatewayPort.processPaymentNotification(dataId);
         return ResponseEntity.ok().build();
     }
 }
