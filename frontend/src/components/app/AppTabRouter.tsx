@@ -2,9 +2,11 @@ import { Suspense, lazy } from 'react';
 import { AppTab } from '../layout/Header';
 import { Work, Chapter } from '../../types';
 import { HomePage } from '../../pages/HomePage';
-import { CatalogPage } from '../../pages/CatalogPage';
-import { BibliotecaPage } from '../../pages/BibliotecaPage';
-import { AccountProfilePage } from '../../pages/AccountProfilePage';
+
+// Rotas carregadas sob demanda via Code-Splitting (React.lazy)
+const CatalogPage = lazy(() => import('../../pages/CatalogPage').then((m) => ({ default: m.CatalogPage })));
+const BibliotecaPage = lazy(() => import('../../pages/BibliotecaPage').then((m) => ({ default: m.BibliotecaPage })));
+const AccountProfilePage = lazy(() => import('../../pages/AccountProfilePage').then((m) => ({ default: m.AccountProfilePage })));
 
 // Rotas secundárias e administrativas carregadas sob demanda via Code-Splitting (React.lazy)
 const SobrePage = lazy(() => import('../../pages/SobrePage').then((m) => ({ default: m.SobrePage })));
