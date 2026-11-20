@@ -148,7 +148,7 @@ export function useReaderState({
     setChapterFormat(chapter.format ?? 'IMAGE_PAGES');
     setProseContent(chapter.format === 'PROSE' ? chapter.content ?? null : null);
     setProseBlocks([]);
-    setCurrentPage(1);
+    setCurrentPage(initialPage && initialPage > 1 ? initialPage : 1);
     setChapterFinished(false);
     setCumulativePages(0);
     setChapterLikes(Number(chapter.likes ?? 0));
@@ -214,7 +214,7 @@ export function useReaderState({
     };
   }, [work.slug, chapter.number, chapter.pages, chapter.format, chapter.content, chapter.blocksJson]);
 
-  // Retomada da página salva
+  // Retomada da página salva (Manga)
   useEffect(() => {
     if (!initialPage || initialPage < 1 || chapterFormat === 'PROSE') return;
     if (initialPageAppliedRef.current === chapter.id) return;
@@ -224,9 +224,35 @@ export function useReaderState({
     initialPageAppliedRef.current = chapter.id;
   }, [initialPage, pages.length, chapter.id, chapter.pages, chapterFormat]);
 
+  // Retomada da página salva (Prosa / Light Novel)
   useEffect(() => {
-    window.scrollTo({ top: 0 });
-  }, [work.slug, chapter.number]);
+    if (chapterFormat !== 'PROSE' || !initialPage || initialPage <= 1) return;
+    if (initialPageAppliedRef.current === chapter.id) return;
+    if (proseBlocks.length === 0 && !proseContent) return;
+
+    const timer = window.setTimeout(() => {
+      const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+      if (maxScroll > 0) {
+        const targetScroll = (maxScroll * Math.min(100, initialPage)) / 100;
+        window.scrollTo({ top: targetScroll, behavior: 'auto' });
+        initialPageAppliedRef.current = chapter.id;
+
+        const topBar = document.getElementById('prose-progress-bar-top');
+        const bottomBar = document.getElementById('prose-progress-bar');
+        const pct = Math.min(100, Math.max(0, initialPage));
+        if (topBar) topBar.style.width = `${pct}%`;
+        if (bottomBar) bottomBar.style.width = `${pct}%`;
+      }
+    }, 50);
+
+    return () => window.clearTimeout(timer);
+  }, [chapterFormat, initialPage, proseBlocks.length, proseContent, chapter.id]);
+
+  useEffect(() => {
+    if (!initialPage || initialPage <= 1) {
+      window.scrollTo({ top: 0 });
+    }
+  }, [work.slug, chapter.number, initialPage]);
 
   // Anúncio a cada 30 páginas lidas (apenas imagem)
   useEffect(() => {

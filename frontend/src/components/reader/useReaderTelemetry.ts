@@ -91,8 +91,8 @@ export function useReaderTelemetry({
       .trackReadingProgress({
         workId,
         chapterId,
-        page: isProse ? 1 : currentPage,
-        totalPages: isProse ? 1 : totalPages,
+        page: isProse ? Math.max(1, currentPage) : currentPage,
+        totalPages: isProse ? 100 : totalPages,
       })
       .catch(() => {});
   }, [workId, chapterId, currentPage, totalPages, chapterFormat, viewQualified]);
@@ -140,10 +140,14 @@ export function useReaderTelemetry({
               .trackReadingProgress({
                 workId,
                 chapterId,
-                page: 1,
-                totalPages: 1,
+                page: Math.max(1, progress),
+                totalPages: 100,
               })
               .catch(() => {});
+
+            if (checkpoint === 100) {
+              onFinishChapter();
+            }
           }
         }
 

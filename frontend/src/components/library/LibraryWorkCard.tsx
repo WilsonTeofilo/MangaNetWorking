@@ -91,7 +91,7 @@ export function LibraryWorkCard({
         </button>
 
         {/* Barra de Progresso Embutida na base inferior da capa (3px) */}
-        {card.progress && !isLn && (
+        {card.progress && (
           <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-[var(--mn-line)] z-10" aria-hidden="true">
             <div
               className="h-full bg-[var(--mn-yellow)]"
@@ -121,8 +121,14 @@ export function LibraryWorkCard({
           {card.progress ? (
             isLn ? (
               <div className="flex items-center justify-between font-pixel text-[10px] text-[var(--mn-mute)] uppercase">
-                <span>CAP. {card.progress.chapterNumber ?? 1}</span>
-                <span className="text-[var(--mn-yellow)]">EM ANDAMENTO</span>
+                <span>
+                  {card.finished
+                    ? '100% CONCLUÍDO'
+                    : `CAP. ${card.progress.chapterNumber ?? 1} · ${percent}%`}
+                </span>
+                <span className="tabular-nums text-[var(--mn-yellow)]">
+                  {card.finished ? 'CONCLUÍDO' : `${percent}%`}
+                </span>
               </div>
             ) : (
               <div className="flex items-center justify-between font-pixel text-[10px] text-[var(--mn-mute)] uppercase">

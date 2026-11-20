@@ -3,6 +3,7 @@ package com.manganetworking.service.reading;
 import com.manganetworking.config.exception.ResourceNotFoundException;
 import com.manganetworking.config.observability.ObservabilityMetricsService;
 import com.manganetworking.config.properties.PlatformProperties;
+import com.manganetworking.domain.enums.ChapterFormat;
 import com.manganetworking.domain.nosql.EngagementEventDocument;
 import com.manganetworking.domain.relational.ChapterEntity;
 import com.manganetworking.domain.relational.WorkEntity;
@@ -320,5 +321,75 @@ class ReadingProgressServiceValidationTest {
                 readingProgressService.trackPageRead(userId.toString(), "id-invalido", chapterId.toString(), 1, 3)
         ).isInstanceOf(IllegalArgumentException.class)
          .hasMessageContaining("Identificador de obra ou capítulo inválido");
+    }
+
+    @Test
+    @DisplayName("Deve aceitar progresso válido de leitura em prosa")
+    void shouldAcceptValidProseReadingProgress() {
+        ChapterEntity proseChapter = new ChapterEntity();
+        proseChapter.setId(chapterId);
+        proseChapter.setWork(work);
+        proseChapter.setChapterNumber(1);
+        proseChapter.setTitle("Capítulo Prosa 1");
+        proseChapter.setFormat(ChapterFormat.PROSE);
+
+        when(chapterRepository.findById(chapterId)).thenReturn(Optional.of(proseChapter));
+        when(progressMongoRepository.findByUserIdAndWorkId(userId.toString(), workId.toString()))
+                .thenReturn(Optional.empty());
+        when(properties.getAds()).thenReturn(new PlatformProperties.Ads());
+        when(progressMongoRepository.save(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = readingProgressService.trackPageRead(
+                userId.toString(), workId.toString(), chapterId.toString(), 50, 100);
+
+        assertThat(result.progress().getPage()).isEqualTo(50);
+        assertThat(result.progress().getTotalPages()).isEqualTo(100);
+        assertThat(result.triggerAd()).isFalse();
+    }
+
+    @Test
+    @DisplayName("Deve aceitar progresso legado de leitura em prosa (1/1)")
+    void shouldAcceptLegacyProseReadingProgress() {
+        ChapterEntity proseChapter = new ChapterEntity();
+        proseChapter.setId(chapterId);
+        proseChapter.setWork(work);
+        proseChapter.setChapterNumber(1);
+        proseChapter.setTitle("Capítulo Prosa 1");
+        proseChapter.setFormat(ChapterFormat.PROSE);
+
+        when(chapterRepository.findById(chapterId)).thenReturn(Optional.of(proseChapter));
+        when(progressMongoRepository.findByUserIdAndWorkId(userId.toString(), workId.toString()))
+                .thenReturn(Optional.empty());
+        when(properties.getAds()).thenReturn(new PlatformProperties.Ads());
+        when(progressMongoRepository.save(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = readingProgressService.trackPageRead(
+                userId.toString(), workId.toString(), chapterId.toString(), 1, 1);
+
+        assertThat(result.progress().getPage()).isEqualTo(1);
+        assertThat(result.progress().getTotalPages()).isEqualTo(1);
+        assertThat(result.triggerAd()).isFalse();
+    }
+
+    @Test
+    @DisplayName("Deve rejeitar progresso de prosa quando a página for maior que totalPages")
+    void shouldRejectProseWhenPageGreaterThanTotalPages() {
+        assertThatThrownBy(() ->
+                readingProgressService.trackPageRead(userId.toString(), workId.toString(), chapterId.toString(), 101, 100)
+        ).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("Deve rejeitar progresso de prosa quando a página for zero ou negativa")
+    void shouldRejectProseWhenPageIsZeroOrNegative() {
+        assertThatThrownBy(() ->
+                readingProgressService.trackPageRead(userId.toString(), workId.toString(), chapterId.toString(), 0, 100)
+        ).isInstanceOf(IllegalArgumentException.class);
+
+        assertThatThrownBy(() ->
+                readingProgressService.trackPageRead(userId.toString(), workId.toString(), chapterId.toString(), -1, 100)
+        ).isInstanceOf(IllegalArgumentException.class);
     }
 }

@@ -24,6 +24,11 @@ export function HomeContinueReading({
     return null;
   }
 
+  const isLn = isLightNovel(progressWork.format);
+  const total = progress.totalPages && progress.totalPages > 0 ? progress.totalPages : (isLn ? 100 : 1);
+  const current = progress.page ?? 1;
+  const percent = Math.min(100, Math.round((current / total) * 100));
+
   return (
     <section className="space-y-3 max-w-xl">
       <h2 className="font-display text-2xl text-[var(--mn-paper)] uppercase tracking-wide">CONTINUAR LENDO</h2>
@@ -37,8 +42,8 @@ export function HomeContinueReading({
             <div className="flex items-center gap-2">
               <FormatBadge format={progressWork.format} />
               <span className="font-pixel text-[12px] text-[var(--mn-yellow)] block uppercase tracking-wider">
-                {isLightNovel(progressWork.format)
-                  ? `CAP. ${progress.chapterNumber ?? 1}`
+                {isLn
+                  ? `CAP. ${progress.chapterNumber ?? 1} · ${percent}%`
                   : `PÁG. ${progress.page ?? 1}/${progress.totalPages ?? 1}`}
               </span>
             </div>
@@ -49,15 +54,12 @@ export function HomeContinueReading({
               {chapterLabel(progressWork.format, progress.chapterNumber ?? 1)} — {progress.chapterTitle}
             </p>
 
-            {(progress.totalPages ?? 0) > 1 && (
+            {total > 1 && (
               <div className="mt-2 h-1.5 w-full bg-[var(--mn-line)] border border-[var(--mn-line)]" aria-hidden="true">
                 <div
                   className="h-full bg-[var(--mn-yellow)]"
                   style={{
-                    width: `${Math.min(
-                      100,
-                      Math.round(((progress.page ?? 1) / (progress.totalPages ?? 1)) * 100)
-                    )}%`,
+                    width: `${percent}%`,
                   }}
                 />
               </div>

@@ -108,4 +108,50 @@ describe('LibraryWorkCard', () => {
 
     expect(html).toContain('aria-label="Remover da biblioteca"');
   });
+
+  it('renders progress bar and chapter percent for Light Novel in progress', () => {
+    const lnCard: LibraryCardData = {
+      ...mockCard,
+      work: { ...mockWork, format: 'LIGHT_NOVEL' },
+      entry: { ...mockCard.entry, format: 'LIGHT_NOVEL' },
+      page: 45,
+      totalPages: 100,
+      finished: false,
+    };
+
+    const html = renderToString(
+      <LibraryWorkCard
+        card={lnCard}
+        onSelectWork={() => {}}
+        onRemoveFavorite={() => {}}
+      />
+    );
+
+    expect(html).toContain('h-[3px]');
+    expect(html).toContain('CAP. 5 · 45%');
+    expect(html).toContain('45%');
+  });
+
+  it('renders 100% CONCLUÍDO for finished Light Novel', () => {
+    const finishedLnCard: LibraryCardData = {
+      ...mockCard,
+      work: { ...mockWork, format: 'LIGHT_NOVEL' },
+      entry: { ...mockCard.entry, format: 'LIGHT_NOVEL' },
+      page: 100,
+      totalPages: 100,
+      finished: true,
+    };
+
+    const html = renderToString(
+      <LibraryWorkCard
+        card={finishedLnCard}
+        onSelectWork={() => {}}
+        onRemoveFavorite={() => {}}
+      />
+    );
+
+    expect(html).toContain('h-[3px]');
+    expect(html).toContain('100% CONCLUÍDO');
+    expect(html).toContain('CONCLUÍDO');
+  });
 });

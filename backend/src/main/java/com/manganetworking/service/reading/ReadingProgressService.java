@@ -180,12 +180,11 @@ public class ReadingProgressService {
         if (chapter.getWork() == null || !chapter.getWork().getId().equals(workUuid)) {
             throw new ResourceNotFoundException("Capítulo não encontrado.");
         }
-        // Light novel não tem páginas ilustradas: o progresso mensurável é a
-        // permanência no texto (página 1 de 1). Sem isso, toda leitura em prosa
-        // era rejeitada por não haver pagesJson para comparar.
+        // Capítulos em prosa (Light Novel) não possuem páginas ilustradas (pagesJson).
+        // O progresso pode ser percentual ou checkpoint (page <= totalPages).
         if (chapter.getFormat() == ChapterFormat.PROSE) {
-            if (page != 1 || totalPages != 1) {
-                throw new IllegalArgumentException("Capítulo em prosa deve ser lido na página 1 de 1.");
+            if (page < 1 || totalPages < 1 || page > totalPages) {
+                throw new IllegalArgumentException("A posição de leitura em prosa deve estar entre 1 e o total.");
             }
             return chapter;
         }

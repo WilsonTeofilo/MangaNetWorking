@@ -96,7 +96,7 @@ export function BibliotecaPage({
         work: toWork(entry),
         entry,
         progress: item,
-        finished: !isLightNovel(entry.format) && Boolean(totalPages > 0 && page >= totalPages),
+        finished: Boolean(totalPages > 0 && page >= totalPages),
         page,
         totalPages,
       };
