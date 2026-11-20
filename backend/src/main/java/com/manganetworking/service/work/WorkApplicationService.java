@@ -224,7 +224,7 @@ public class WorkApplicationService {
                 : null);
         work.setGenres(dto.genres());
         work.setFormat(dto.format());
-        work.setStatus(WorkStatus.ONGOING);
+        work.setStatus(WorkStatus.DRAFT);
 
         WorkEntity saved = workRepository.save(work);
         publishFeedSync(saved.getId(), "cadastro");

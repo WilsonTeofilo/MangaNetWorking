@@ -107,7 +107,7 @@ class FeedSyncIntegrationTest {
     private boolean openInView;
 
     @Test
-    @DisplayName("Cadastro de obra: persiste no PostgreSQL e sincroniza o feed no MongoDB no afterCommit, sem OSIV")
+    @DisplayName("Cadastro de obra cria rascunho (fora do feed); publicação do 1º capítulo promove a ONGOING e sincroniza no feed sem OSIV")
     void createWork_persistsInPostgresAndSyncsFeedInMongoAfterCommit_withoutOsiv() {
         // Garante que o cenário realmente roda com o OSIV desligado (é a premissa do teste).
         assertThat(openInView).isFalse();
@@ -115,10 +115,17 @@ class FeedSyncIntegrationTest {
         CreatorEntity creator = newCreator();
         WorkEntity work = newWork(creator.getId());
 
-        // Passado o commit relacional, a obra existe no PostgreSQL...
+        // Passado o commit relacional, a obra existe no PostgreSQL como DRAFT...
         assertThat(workRepository.findById(work.getId())).isPresent();
+        assertThat(workRepository.findById(work.getId()).get().getStatus()).isEqualTo(WorkStatus.DRAFT);
 
-        // ...e o feed (MongoDB) foi sincronizado no afterCommit, sem LazyInitializationException.
+        // ...e NÃO foi indexada no feed público do MongoDB (pois rascunhos não entram no feed).
+        assertThat(workFeedMongoRepository.findByWorkId(work.getId().toString())).isEmpty();
+
+        // Ao publicar o 1º capítulo, a obra é auto-promovida para ONGOING e sincronizada no feed (MongoDB) no afterCommit, sem LazyInitializationException.
+        chapterApplicationService.createChapter(creator.getId(), work.getId(),
+                new CreateChapterRequestDto(1, "Capítulo 1", null, List.of("p-" + UUID.randomUUID() + ".png"), LocalDateTime.now()));
+
         WorkFeedDocument feed = workFeedMongoRepository.findByWorkId(work.getId().toString()).orElseThrow();
         assertThat(feed.getSlug()).isEqualTo(work.getSlug());
         assertThat(feed.getTitle()).isEqualTo(work.getTitle());
@@ -135,7 +142,7 @@ class FeedSyncIntegrationTest {
 
         LocalDateTime releaseAt = LocalDateTime.now().plusDays(2);
         chapterApplicationService.createChapter(creator.getId(), work.getId(),
-                new CreateChapterRequestDto(1, "Capítulo 1", null, List.of("p1.png", "p2.png"), releaseAt));
+                new CreateChapterRequestDto(1, "Capítulo 1", null, List.of("p1-" + UUID.randomUUID() + ".png", "p2-" + UUID.randomUUID() + ".png"), releaseAt));
 
         WorkFeedDocument feed = workFeedMongoRepository.findByWorkId(work.getId().toString()).orElseThrow();
         assertThat(feed.getTotalChapters()).isEqualTo(1);
@@ -149,7 +156,7 @@ class FeedSyncIntegrationTest {
     @DisplayName("Reindexação do catálogo fora de requisição web resolve o autor LAZY sem OSIV e recria o documento")
     void syncAllWorksToFeed_reindexesWithoutLazyInitializationException_withOsivOff() {
         CreatorEntity creator = newCreator();
-        WorkEntity work = newWork(creator.getId());
+        WorkEntity work = newOngoingWork(creator.getId());
         String workId = work.getId().toString();
 
         // Remove o documento criado no afterCommit do cadastro: só assim a reindexação tem o que recriar,
@@ -171,10 +178,10 @@ class FeedSyncIntegrationTest {
     @DisplayName("Suspensão por moderação: obra é removida do feed no MongoDB no afterCommit")
     void suspendWork_removesWorkFromFeedAfterCommit() {
         CreatorEntity creator = newCreator();
-        WorkEntity work = newWork(creator.getId());
+        WorkEntity work = newOngoingWork(creator.getId());
         String workId = work.getId().toString();
 
-        // A obra está no feed (sincronizada no cadastro)...
+        // A obra está no feed (sincronizada no 1º capítulo que a promoveu a ONGOING)...
         assertThat(workFeedMongoRepository.findByWorkId(workId)).isPresent();
 
         moderationApplicationService.suspendWork(work.getId(), "Teste de integração");
@@ -188,7 +195,7 @@ class FeedSyncIntegrationTest {
     @DisplayName("Recálculo agendado não ressuscita obra suspensa no feed (invariante de moderação)")
     void syncAllWorksToFeed_doesNotResurrectSuspendedWork() {
         CreatorEntity creator = newCreator();
-        WorkEntity work = newWork(creator.getId());
+        WorkEntity work = newOngoingWork(creator.getId());
         String workId = work.getId().toString();
         assertThat(workFeedMongoRepository.findByWorkId(workId)).isPresent();
 
@@ -205,8 +212,8 @@ class FeedSyncIntegrationTest {
     @DisplayName("Consulta do feed já exclui suspensas: a página é preenchida mesmo com suspensa no topo")
     void getFeed_fillsPageEvenWithSuspendedDocRankedFirst() {
         CreatorEntity creator = newCreator();
-        newWork(creator.getId());
-        newWork(creator.getId());
+        newOngoingWork(creator.getId());
+        newOngoingWork(creator.getId());
 
         // Cenário de borda: um documento suspenso no topo do ranking (não pode consumir slot da página).
         WorkFeedDocument suspended = new WorkFeedDocument();
@@ -257,5 +264,12 @@ class FeedSyncIntegrationTest {
         );
         WorkDetailsResponseDto created = workApplicationService.createWork(creatorId, dto);
         return workRepository.findById(created.id()).orElseThrow();
+    }
+
+    private WorkEntity newOngoingWork(UUID creatorId) {
+        WorkEntity work = newWork(creatorId);
+        chapterApplicationService.createChapter(creatorId, work.getId(),
+                new CreateChapterRequestDto(1, "Capítulo 1", null, List.of("p-" + UUID.randomUUID() + ".png"), LocalDateTime.now()));
+        return workRepository.findById(work.getId()).orElseThrow();
     }
 }

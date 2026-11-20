@@ -247,6 +247,30 @@ class CatalogIntegrationTest {
 
     /* ------------------------------------------------------------------ */
 
+    @Test
+    @DisplayName("Obra recém-criada (DRAFT) sem capítulos não aparece no catálogo público")
+    void newWorkWithoutChapters_isDraftAndHiddenFromCatalog() {
+        CreatorEntity creator = newCreator();
+        String token = token();
+        CreateWorkRequestDto dto = new CreateWorkRequestDto(
+                "Rascunho Puro " + token,
+                null,
+                "Sinopse sem capítulos.",
+                "/api/storage/11111111-1111-1111-1111-111111111111.png",
+                null,
+                List.of(Genre.ACAO),
+                true,
+                WorkFormat.MANGA
+        );
+        WorkDetailsResponseDto created = workApplicationService.createWork(creator.getId(), dto);
+        assertThat(created.status()).isEqualTo(WorkStatus.DRAFT.name());
+
+        CatalogPageResponseDto result = catalogQueryService.search(
+                null, null, null, null, token, "relevance", false, 0, 24);
+
+        assertThat(result.items()).isEmpty();
+    }
+
     private String token() {
         return UUID.randomUUID().toString().substring(0, 8);
     }
@@ -283,6 +307,8 @@ class CatalogIntegrationTest {
                 format
         );
         WorkDetailsResponseDto created = workApplicationService.createWork(creatorId, dto);
-        return workRepository.findById(created.id()).orElseThrow();
+        WorkEntity entity = workRepository.findById(created.id()).orElseThrow();
+        entity.setStatus(WorkStatus.ONGOING);
+        return workRepository.save(entity);
     }
 }

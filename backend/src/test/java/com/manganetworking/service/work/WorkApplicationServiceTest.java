@@ -21,6 +21,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -80,7 +81,7 @@ class WorkApplicationServiceTest {
     }
 
     @Test
-    @DisplayName("Deve criar obra com sucesso se declaração de autoria original for verdadeira")
+    @DisplayName("Deve criar obra com sucesso com status DRAFT se declaração de autoria original for verdadeira")
     void shouldCreateWorkWithOriginalAuthorDeclaration() {
         when(creatorRepository.findById(creatorId)).thenReturn(Optional.of(author));
         when(workRepository.findBySlug(any())).thenReturn(Optional.empty());
@@ -100,7 +101,11 @@ class WorkApplicationServiceTest {
 
         assertNotNull(created);
         assertEquals("Nova Obra Original", created.title());
-        verify(workRepository).save(any(WorkEntity.class));
+        assertEquals(WorkStatus.DRAFT.name(), created.status());
+
+        ArgumentCaptor<WorkEntity> workCaptor = ArgumentCaptor.forClass(WorkEntity.class);
+        verify(workRepository).save(workCaptor.capture());
+        assertEquals(WorkStatus.DRAFT, workCaptor.getValue().getStatus());
     }
 
     @Test
